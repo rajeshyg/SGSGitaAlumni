@@ -10,7 +10,7 @@ import io
 import logging
 from database import get_db
 from models import RawCsvUpload
-from schemas import RawCsvUpload as RawCsvUploadSchema
+from schemas import RawCsvUpload as RawCsvUploadSchema, RawCsvUploadCreate
 
 # Configure logging
 logger = logging.getLogger(__name__)
