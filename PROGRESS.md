@@ -171,6 +171,29 @@
 - Monitoring and logging
 - Performance monitoring
 
+## ✅ Resolved: Build Pipeline and Styling on /admin
+
+What happened and fix applied
+- The running dev server was the root app, but Tailwind was only configured in the frontend subproject. As a result, Tailwind directives imported from the subproject compiled to nothing in the root build.
+- Fix implemented: Tailwind/PostCSS pipeline added at the root so imported CSS is processed correctly.
+  - Root configs now present and used by Vite:
+    - [postcss.config.js](SGSGitaAlumni/postcss.config.js)
+    - [tailwind.config.js](SGSGitaAlumni/tailwind.config.js)
+  - Root entry and imports verified:
+    - [index.html](SGSGitaAlumni/index.html)
+    - [main.tsx](SGSGitaAlumni/src/main.tsx:1)
+    - [frontend/src/index.css](SGSGitaAlumni/frontend/src/index.css:1)
+    - [frontend/src/App.tsx](SGSGitaAlumni/frontend/src/App.tsx:1)
+
+Why this resolves styling on /admin
+- Root Vite now runs Tailwind over all content globs (root + frontend paths), so utilities/classes referenced in JSX resolve to themed CSS that maps to shadcn/ui tokens and the ThemeProvider’s CSS variables.
+
+Prevention plan (policy-level)
+- Single serving root: Only the root app runs dev/build. No secondary app roots or nested dev servers.
+- Centralized Tailwind/PostCSS: Keep Tailwind and PostCSS configs only at the serving root.
+- Verified content coverage: Root Tailwind content globs must include all source paths until consolidation completes, then be tightened to the single source-of-truth path.
+- CI guardrails: Add checks to block new duplicate app roots, nested package.json with dev/build scripts, or Tailwind configs outside the serving root.
+
 ## 🎉 Recent Major Achievements
 
 ### 🔄 **Project Plan Update - Component & Theme Refactoring** (September 4, 2025)
@@ -214,6 +237,47 @@
 4. ✅ **Implement dashboard layout** - AdminPage follows prototype dashboard pattern
 5. ❌ **Validate theme compliance** - Multiple violations identified, requires fixes for <200ms switching and CSS variable limits
 6. ❌ **Test component functionality** - Pagination, selection issues remain; multiple functionality gaps
+
+### Phase 1.7: Frontend Consolidation and Redundancy Removal
+
+Status: Planned (High Priority)
+Objective: Eliminate redundant frontend code and ensure a single source of truth is used by the running dev/build pipeline.
+
+Scope
+- Decide and enforce single serving root at SGSGitaAlumni.
+- Consolidate all active UI/theme code into the root source tree; remove duplicate/legacy implementations from the frontend subproject (or migrate them into root and archive/delete the subproject).
+- Centralize Tailwind/PostCSS at root; until consolidation is complete, keep content globs covering both root and frontend paths to avoid regressions.
+
+Plan of record (execution steps)
+1) Inventory and decide
+   - Confirm root as the single serving app (already running via npm run dev).
+   - Catalog all code currently imported from frontend/ into root/src.
+2) Migrate and update imports
+   - Move referenced files from [frontend/src](SGSGitaAlumni/frontend/src) into [src](SGSGitaAlumni/src).
+   - Update all imports to local paths (no ../frontend imports).
+   - Verify the root Tailwind content globs; after migration, tighten them to root-only paths.
+3) Remove redundancy
+   - Remove now-obsolete [frontend/postcss.config.js](SGSGitaAlumni/frontend/postcss.config.js) and [frontend/tailwind.config.js](SGSGitaAlumni/frontend/tailwind.config.js) if present.
+   - Remove any nested package.json/scripts under frontend that start a dev/build server.
+   - Delete leftover unused components, styles, or theme code in frontend/.
+4) CI guardrails (prevent regressions)
+   - Add a script to fail CI if:
+     - Another index.html or Vite entrypoint exists outside the root.
+     - A nested package.json contains dev/build scripts outside the root.
+     - Tailwind/PostCSS configs exist outside the root.
+     - Any import path includes ../frontend after consolidation.
+   - Add a pre-commit check to verify at least one of [postcss.config.js](SGSGitaAlumni/postcss.config.js) and [tailwind.config.js](SGSGitaAlumni/tailwind.config.js) exists at root and is referenced by Vite.
+
+Acceptance criteria
+- Running SGSGitaAlumni> npm run dev starts only one dev server at the root.
+- No code paths import from ../frontend; all code lives under [src](SGSGitaAlumni/src).
+- Only one Tailwind/PostCSS configuration exists at the root, and content globs are scoped to root paths.
+- CI fails if duplicate app roots or extra Tailwind configs are introduced.
+
+Verification
+- Visual: /admin renders fully styled using the theme and shadcn tokens.
+- Static checks: Search results show zero references to ../frontend after consolidation.
+- CI: Guardrails pass on main; fail appropriately when violations are introduced.
 
 ### Phase 4: Backend Integration (Ready to Start)
 

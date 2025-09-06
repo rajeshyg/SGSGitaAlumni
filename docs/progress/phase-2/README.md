@@ -157,6 +157,29 @@ frontend/src/components/ui/
 - **Loading States** - Loading components ready for async operations
 - **Data Management** - Table components ready for real data
 
+## Consolidation and Redundancy Prevention
+
+Context
+- The dev server runs from the project root and now processes Tailwind/PostCSS at the root. Any duplicate app roots or nested Tailwind configs risk breaking styling again.
+
+Policy
+- Single serving root: SGSGitaAlumni is the only app root that runs dev/build.
+- Centralized Tailwind/PostCSS: Keep configs only at root ([postcss.config.js](SGSGitaAlumni/postcss.config.js:1), [tailwind.config.js](SGSGitaAlumni/tailwind.config.js:1)).
+- Import hygiene: No cross-root imports like ../frontend; all runtime code must live under [src](SGSGitaAlumni/src).
+- CI guardrails: Block nested dev/build scripts, duplicate index.html/Vite entries, and Tailwind/PostCSS configs outside root.
+
+Dependencies
+- Requires completion of [Task 1.9: Frontend Consolidation and Redundancy Removal](SGSGitaAlumni/docs/progress/phase-1/task-1.9-frontend-consolidation.md:1).
+
+Acceptance Criteria
+- Running SGSGitaAlumni › npm run dev starts a single root dev server.
+- 0 references to ../frontend in imports.
+- Only one Tailwind/PostCSS configuration at the root; Tailwind content globs scoped to root paths.
+
+Verification
+- Visual: /admin fully styled under root dev server.
+- Static: Repo-wide search shows no ../frontend imports and no Tailwind/PostCSS configs in frontend/.
+- CI: New guardrails pass on main; intentionally adding duplicates fails CI.
 ---
 
 *Phase 2 completed successfully with full prototype integration and enterprise-grade component architecture.*

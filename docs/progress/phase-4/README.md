@@ -65,3 +65,29 @@ Production deployment preparation, infrastructure setup, and launch readiness fo
 - Monitoring and alerting for immediate issue detection
 - Rollback procedures for quick recovery
 - User training and support documentation
+## Consolidation Invariants and Pre-Deployment Checks
+
+Context
+- The dev server runs from the root app and Tailwind/PostCSS are configured at the root. Any duplicate app roots or nested Tailwind/PostCSS configurations can silently break styling in production.
+
+Invariants (must remain true before deploy)
+- Single serving root: Only SGSGitaAlumni runs dev/build; no nested app roots or dev servers.
+- Centralized Tailwind/PostCSS: Present only at root ([postcss.config.js](SGSGitaAlumni/postcss.config.js:1), [tailwind.config.js](SGSGitaAlumni/tailwind.config.js:1)).
+- Import hygiene: No ../frontend import paths; all runtime code lives under [src](SGSGitaAlumni/src).
+- Tight content globs: Root [tailwind.config.js](SGSGitaAlumni/tailwind.config.js:1) content scoped to:
+  - "./index.html"
+  - "./src/**/*.{js,ts,jsx,tsx}"
+
+Pre-deployment checklist
+- [ ] Complete [Task 1.9: Frontend Consolidation and Redundancy Removal](SGSGitaAlumni/docs/progress/phase-1/task-1.9-frontend-consolidation.md:1)
+- [ ] Repo search: 0 matches for ../frontend in source
+- [ ] No Tailwind/PostCSS configs under [frontend](SGSGitaAlumni/frontend) or any subfolder
+- [ ] No nested package.json with dev/build/preview scripts outside root
+- [ ] /admin renders fully styled and themed on production build (vite build + preview)
+
+CI guardrails (block regressions)
+- Fail CI if:
+  - Another index.html or Vite entrypoint exists outside root
+  - Nested package.json contains dev/build/preview scripts
+  - Tailwind/PostCSS configs exist outside root
+  - Any source imports reference ../frontend after consolidation

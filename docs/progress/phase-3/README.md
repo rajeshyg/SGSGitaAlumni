@@ -23,6 +23,21 @@ Backend integration with existing FastAPI infrastructure, database optimization,
 - **Authentication System:** Basic auth system in place
 - **API Endpoints:** Some existing endpoints for data operations
 
+## Consolidation Prerequisite
+
+This phase must start only after [Task 1.9: Frontend Consolidation and Redundancy Removal](SGSGitaAlumni/docs/progress/phase-1/task-1.9-frontend-consolidation.md:1) is complete to ensure a single serving root and centralized Tailwind/PostCSS.
+
+Checks
+- Single app root: dev/build run only from SGSGitaAlumni.
+- No ../frontend imports exist in [src](SGSGitaAlumni/src).
+- Only root Tailwind/PostCSS present: [postcss.config.js](SGSGitaAlumni/postcss.config.js:1), [tailwind.config.js](SGSGitaAlumni/tailwind.config.js:1); no configs under [frontend](SGSGitaAlumni/frontend).
+- Tailwind content globs scoped to root paths only.
+- CI guardrails enabled to block duplicate roots/configs and cross-root imports.
+
+Impact on backend integration
+- Prevents styling regressions during API feature work.
+- Ensures consistent theming when wiring API-driven pages (e.g., /admin).
+
 ## Key Objectives
 
 ### **Primary Goals**

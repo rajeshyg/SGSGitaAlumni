@@ -1,9 +1,9 @@
 
 # Phase 1: Prototype Import – Theme & Component Foundation
 
-**Status:** ✅ Complete (with corrections)
-**Progress:** 100%
-**Completion Date:** September 6, 2025
+**Status:** ✅ Complete (build pipeline fix) | 🔄 Consolidation pending
+**Progress:** 90% (pending frontend consolidation)
+**Completion Date:** September 6, 2025 (build fix)
 
 ## Overview
 Import the reusable theme system and UI components from the react-shadcn-platform prototype. Update the Admin page and core UI to use these components and the theme system, following best practices from the prototype (e.g., `member-dashboard.tsx`, `TanStackTableDemo.tsx`). Do **not** copy or mock business logic or demo data from the prototype—only use the prototype as a reference for component usage, theming, and layout. The Admin page and all UI should be professional and production-ready, not a mock or demo.
@@ -24,6 +24,25 @@ Import the reusable theme system and UI components from the react-shadcn-platfor
 4. ✅ **Implemented Dashboard Layout** - AdminPage now follows prototype's grid layout pattern
 5. ✅ **Updated Branding** - Changed to "SGSGita Alumni System" matching prototype
 
+
+## Build Pipeline Fix and Prevention
+
+Summary of root cause and fix
+- Symptom: /admin rendered unstyled because Tailwind directives from [frontend/src/index.css](SGSGitaAlumni/frontend/src/index.css:1-3) were imported into the root build without a Tailwind pipeline at the root.
+- Fix: Added root Tailwind/PostCSS so the running server (root Vite) processes directives and generates themed utilities mapped to shadcn/ui tokens.
+  - Root configs: [postcss.config.js](SGSGitaAlumni/postcss.config.js), [tailwind.config.js](SGSGitaAlumni/tailwind.config.js)
+  - Root entry chain: [index.html](SGSGitaAlumni/index.html) ➜ [main.tsx](SGSGitaAlumni/src/main.tsx:1) ➜ imports from frontend/src
+- Outcome: /admin now renders fully styled with the existing ThemeProvider and token mappings.
+
+Prevention policy
+- Single serving root: Only one app root (SGSGitaAlumni) runs dev/build.
+- Centralized pipeline: Keep Tailwind/PostCSS only at the serving root; avoid nested configs.
+- Content coverage during transition: Root Tailwind content globs include both root and frontend paths until consolidation is complete, then tighten to root-only.
+- CI guardrails: Fail CI if
+  - another index.html/Vite entrypoint exists outside root,
+  - nested package.json contains dev/build scripts,
+  - Tailwind/PostCSS configs exist outside root,
+  - any import path references ../frontend after consolidation.
 
 ## Tasks
 
@@ -58,6 +77,24 @@ Import the reusable theme system and UI components from the react-shadcn-platfor
 ### [Task 1.8: Implement Dashboard Layout Pattern](./task-1.8-dashboard-layout.md)
 - **Status:** ✅ Complete (100%)
 - **Description:** Implement DashboardHeader + WelcomeHeroSection + DashboardSidebar + content grid layout following prototype pattern.
+
+### [Task 1.9: Frontend Consolidation and Redundancy Removal](./task-1.9-frontend-consolidation.md)
+- **Status:** 🔄 Pending (High Priority)
+- **Objective:** Eliminate redundant frontend code and ensure a single source of truth aligned with the serving root.
+- **Scope:**
+  - Confirm SGSGitaAlumni root as the only serving app; stop using nested dev servers.
+  - Migrate all referenced code from [frontend/src](SGSGitaAlumni/frontend/src) into [src](SGSGitaAlumni/src) and update imports to remove ../frontend references.
+  - Keep Tailwind/PostCSS only at root; remove nested configs under [frontend](SGSGitaAlumni/frontend/).
+  - Remove/Archive any unused components/styles left in frontend/.
+- **Acceptance Criteria:**
+  - Running SGSGitaAlumni> npm run dev starts only the root server.
+  - 0 references to ../frontend in source imports.
+  - Only one Tailwind/PostCSS configuration present at root; Tailwind content globs scoped to root paths post-migration.
+  - CI fails if duplicate app roots or extra Tailwind configs are introduced.
+- **Verification:**
+  - Visual: /admin fully styled and themed.
+  - Static: Repo-wide search shows no ../frontend imports.
+  - CI: Guardrails block regressions on PRs.
 
 
 ## Key Deliverables
