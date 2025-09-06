@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Only non-theme specific variables that don't change */
+    --radius: 0.5rem;
+
+    /* Essential table variables - max 5 for strict guideline compliance */
+    --table-frozen-shadow: 2px 0 4px rgba(0,0,0,0.05);
+    --table-resize-handle-opacity: 0.5;
+    --table-row-height: 48px;
+    --table-header-height: 48px;
+    --table-selection-width: 48px;
+
+    /* Global shadow system - semantic elevation levels - ENHANCED for visibility */
+    --shadow-sm: 0 2px 8px 0 rgba(0,0,0,0.25), 0 1px 4px 0 rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px 0 rgba(0,0,0,0.3), 0 2px 6px 0 rgba(0,0,0,0.35);
+    --shadow-lg: 0 8px 24px 0 rgba(0,0,0,0.35), 0 4px 12px 0 rgba(0,0,0,0.4);
+    --shadow-header: 0 3px 8px 0 rgba(0,0,0,0.25), 0 1px 4px 0 rgba(0,0,0,0.2);
+
+    /* Badge colors and shadcn/ui variables managed by theme system */
+    /* No static color overrides - theme system handles all color variables */
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-family-primary);
+    transition: background-color 0.3s, color 0.3s;
+  }
+}

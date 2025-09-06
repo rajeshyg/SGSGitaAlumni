@@ -1,0 +1,49 @@
+// Core Components
+export { Button, buttonVariants } from './button'
+export { Badge, badgeVariants } from './badge'
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from './card'
+export { Input } from './input'
+export { Checkbox } from './checkbox'
+export { Avatar, AvatarImage, AvatarFallback } from './avatar'
+
+// Layout & Navigation
+export {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuGroup,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuTrigger
+} from './dropdown-menu'
+
+// Data Display
+export {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow
+} from './table'
+export { TanStackAdvancedTable } from './tanstack-advanced-table'
+
+// Navigation
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs'
+export { ScrollArea, ScrollBar } from './scroll-area'
+export { Progress } from './progress'
+export { Separator } from './separator'
+
+// Advanced Components
+// Domain-specific components removed per Phase 1 correction
+// RoleBadge, StatusBadge, InventoryBadge removed - not reusable
