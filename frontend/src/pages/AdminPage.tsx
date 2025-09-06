@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { TanStackAdvancedTable, Badge } from '../components/ui'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { type ColumnDef } from "@tanstack/react-table"
-import { getData, type RawCsvUpload } from '../lib/api'
+import { APIService, type FileImport } from '../services/APIService'
 import { MoreHorizontal, Edit, FileText, Database, Upload } from 'lucide-react'
 import {
   DropdownMenu,
@@ -20,44 +20,8 @@ import { Card, CardContent } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 
 // File Import interface for managing data imports
-interface FileImport extends Record<string, unknown> {
-  id: number
-  filename: string
-  file_type: string
-  upload_date: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  records_count: number
-  processed_records: number
-  errors_count: number
-  uploaded_by: string
-  file_size: string
-}
 
 // Transform raw data to file import format
-const transformToFileImportData = (rawData: RawCsvUpload[]): FileImport[] => {
-  // If no data from API, return empty array
-  if (!rawData || rawData.length === 0) {
-    return []
-  }
-
-  return rawData.map((item, index) => {
-    // Transform actual API data to FileImport format
-    const itemAny = item as any
-    
-    return {
-      id: itemAny.id || index + 1,
-      filename: itemAny.filename || itemAny.file_name || `data_file_${index + 1}.csv`,
-      file_type: itemAny.file_type || itemAny.type || 'CSV',
-      upload_date: itemAny.upload_date || itemAny.created_at || new Date().toISOString(),
-      status: (itemAny.status || 'completed') as 'pending' | 'processing' | 'completed' | 'failed',
-      records_count: itemAny.records_count || itemAny.total_records || 0,
-      processed_records: itemAny.processed_records || itemAny.records_count || 0,
-      errors_count: itemAny.errors_count || itemAny.error_count || 0,
-      uploaded_by: itemAny.uploaded_by || itemAny.user || 'System',
-      file_size: itemAny.file_size || itemAny.size || '0KB',
-    }
-  })
-}
 
 // Professional column definitions for file imports
 const columns: ColumnDef<FileImport>[] = [
@@ -188,10 +152,16 @@ const columns: ColumnDef<FileImport>[] = [
 
 export function AdminPage() {
   const navigate = useNavigate()
-  const [rawData, setRawData] = useState<RawCsvUpload[]>([])
   const [fileImportData, setFileImportData] = useState<FileImport[]>([])
+  const [pagination, setPagination] = useState({
+    page: 0,
+    pageSize: 10,
+    total: 0,
+    totalPages: 0
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
 
   // Get actual user profile from localStorage or use default
   const storedProfile = localStorage.getItem('currentProfile')
@@ -209,24 +179,39 @@ export function AdminPage() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const result = await getData(0, 100) // Get initial 100 records
-        setRawData(result)
+        setError(null)
         
-        // Transform raw data to file import format
-        const transformedData = transformToFileImportData(result)
-        setFileImportData(transformedData)
+        const response = await APIService.getFileImports({
+          page: pagination.page,
+          pageSize: pagination.pageSize,
+          search: searchTerm
+        })
+        
+        console.log('AdminPage: API response:', response)
+        
+        setFileImportData(response.data)
+        setPagination({
+          ...pagination,
+          total: response.total,
+          totalPages: response.totalPages
+        })
+        
       } catch (err) {
-        console.error('Error fetching data:', err)
-        setError('Failed to load data. Please check your connection and try again.')
-        // Set empty data on error
+        console.error('Error fetching file imports:', err)
+        setError('Failed to load file imports. Please check your connection and try again.')
         setFileImportData([])
+        setPagination({
+          ...pagination,
+          total: 0,
+          totalPages: 0
+        })
       } finally {
         setLoading(false)
       }
     }
 
     fetchData()
-  }, [])
+  }, [pagination.page, pagination.pageSize, searchTerm])
 
   if (loading) {
     return (
@@ -256,8 +241,8 @@ export function AdminPage() {
     )
   }
 
-  // Calculate real statistics from actual data
-  const totalImports = fileImportData.length
+  // Calculate real statistics from actual data and pagination
+  const totalImports = pagination.total
   const completedImports = fileImportData.filter(imp => imp.status === 'completed').length
   const totalRecords = fileImportData.reduce((sum, imp) => sum + imp.records_count, 0)
   const totalErrors = fileImportData.reduce((sum, imp) => sum + imp.errors_count, 0)
@@ -269,6 +254,18 @@ export function AdminPage() {
     totalRecords: totalRecords,
     processedFiles: completedImports,
     activeUsers: 1 // Current user
+  }
+
+  // Handle page navigation
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 0 && newPage < pagination.totalPages) {
+      setPagination(prev => ({ ...prev, page: newPage }))
+    }
+  }
+
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term)
+    setPagination(prev => ({ ...prev, page: 0 })) // Reset to first page on search
   }
 
   return (
@@ -343,59 +340,92 @@ export function AdminPage() {
                         className: 'bg-muted/50'
                       }
                     ]}
-                  selection={{
-                    enabled: true,
-                    mode: 'multiple',
-                    onSelectionChange: (_rows) => {
-                      console.log('Selected files:', _rows)
-                    }
-                  }}
-                  frozenColumns={{
-                    count: 1,
-                    shadowIntensity: 'medium'
-                  }}
-                  resizing={{
-                    enabled: true,
-                    minSize: 60,
-                    maxSize: 400,
-                    defaultSize: 150
-                  }}
-                  reordering={{
-                    enabled: true,
-                    onReorder: (_fromIndex, _toIndex) => {
-                      console.log(`Reordered column from ${_fromIndex} to ${_toIndex}`)
-                    }
-                  }}
-                  editing={{
-                    enabled: true,
-                    mode: 'cell',
-                    onSave: async (_rowIndex, columnId, value, _row) => {
-                      console.log('Edited file:', { _rowIndex, columnId, value, _row })
-                      await new Promise(resolve => setTimeout(resolve, 500))
-                    },
-                    validation: (value, columnId, _row) => {
-                      if (columnId === 'records_count' || columnId === 'processed_records') {
-                        const numValue = Number(value)
-                        if (isNaN(numValue) || numValue < 0) {
-                          return 'Must be a positive number'
-                        }
+                    selection={{
+                      enabled: true,
+                      mode: 'multiple',
+                      onSelectionChange: (_rows) => {
+                        console.log('Selected files:', _rows)
                       }
-                      return true
-                    }
-                  }}
-                  searchable={true}
-                  filterable={true}
-                  sortable={true}
-                  pagination={true}
-                  pageSize={10}
-                  exportable={true}
-                  exportFilename="file-imports"
-                  maxHeight="600px"
-                  onRowClick={(_row) => {
-                    console.log('File clicked:', _row)
-                  }}
-                    className="border rounded-lg shadow-sm"
+                    }}
+                    frozenColumns={{
+                      count: 1,
+                      shadowIntensity: 'medium'
+                    }}
+                    resizing={{
+                      enabled: true,
+                      minSize: 60,
+                      maxSize: 400,
+                      defaultSize: 150
+                    }}
+                    reordering={{
+                      enabled: true,
+                      onReorder: (_fromIndex, _toIndex) => {
+                        console.log(`Reordered column from ${_fromIndex} to ${_toIndex}`)
+                      }
+                    }}
+                    editing={{
+                      enabled: true,
+                      mode: 'cell',
+                      onSave: async (_rowIndex, columnId, value, _row) => {
+                        console.log('Edited file:', { _rowIndex, columnId, value, _row })
+                        await new Promise(resolve => setTimeout(resolve, 500))
+                      },
+                      validation: (value, columnId, _row) => {
+                        if (columnId === 'records_count' || columnId === 'processed_records') {
+                          const numValue = Number(value)
+                          if (isNaN(numValue) || numValue < 0) {
+                            return 'Must be a positive number'
+                          }
+                        }
+                        return true
+                      }
+                    }}
+                    searchable={false} // Handled by parent component
+                    filterable={true}
+                    sortable={true}
+                    pagination={false} // Using custom pagination controls
+                    pageSize={pagination.pageSize}
+                    exportable={true}
+                    exportFilename="file-imports"
+                    maxHeight="600px"
+                    onRowClick={(_row) => {
+                      console.log('File clicked:', _row)
+                    }}
+                      className="border rounded-lg shadow-sm"
                   />
+                  
+                  {/* Custom Pagination Controls */}
+                  {pagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between space-x-2 py-4">
+                      <div className="flex-1 text-sm text-muted-foreground">
+                        Showing {(pagination.page * pagination.pageSize) + 1} to {Math.min((pagination.page + 1) * pagination.pageSize, pagination.total)}
+                        of {pagination.total} file imports
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(pagination.page - 1)}
+                          disabled={pagination.page === 0}
+                          aria-label="Previous page"
+                        >
+                          Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                          Page {pagination.page + 1} of {pagination.totalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(pagination.page + 1)}
+                          disabled={pagination.page >= pagination.totalPages - 1}
+                          aria-label="Next page"
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </ErrorBoundary>
               )}
             </div>

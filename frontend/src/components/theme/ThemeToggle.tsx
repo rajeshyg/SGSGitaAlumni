@@ -1,0 +1,1 @@
+export { ThemeToggle } from '@proto/components/theme/ThemeToggle';

@@ -5,15 +5,23 @@ import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// https://vite.dev/config/
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-    }
+      "@": path.resolve(__dirname, "./frontend/src"),
+      "@proto": path.resolve(__dirname, "../SGSDataMgmtCore/prototypes/react-shadcn-platform/src"),
+    },
   },
   server: {
+    fs: {
+      // Allow importing files from the prototype workspace
+      allow: [
+        path.resolve(__dirname, "../SGSDataMgmtCore/prototypes/react-shadcn-platform/src"),
+        "..",
+      ],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

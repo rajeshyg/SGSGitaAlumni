@@ -18,6 +18,7 @@ import {
   UserPlus,
   Menu
 } from 'lucide-react'
+import { ThemeToggle } from '../theme/ThemeToggle'
 // Note: ThemeToggle component will be imported once theme system is fully set up
 
 interface UserProfile {
@@ -105,8 +106,8 @@ export function DashboardHeader({ currentProfile, stats, onSwitchProfile, onLogo
                 )}
               </Button>
 
-              {/* Theme Toggle - Placeholder for now */}
-              <div className="w-10 h-10" /> {/* Placeholder for theme toggle */}
+              {/* Theme Toggle */}
+              <ThemeToggle />
 
               <Separator orientation="vertical" className="h-6" />
             </div>
@@ -176,8 +177,10 @@ export function DashboardHeader({ currentProfile, stats, onSwitchProfile, onLogo
                   <LogOut className="h-4 w-4" />
                 </Button>
               </div>
-              {/* Mobile Theme Toggle Placeholder */}
-              <div className="md:hidden w-10 h-10" />
+              {/* Mobile Theme Toggle */}
+              <div className="md:hidden">
+                <ThemeToggle />
+              </div>
             </div>
           </div>
         </div>
