@@ -46,8 +46,8 @@ export const APIService = {
       console.log('APIService: Raw response:', response.data);
 
       // Validate response structure
-      if (!Array.isArray(response.data)) {
-        console.warn('APIService: Invalid response format, expected array');
+      if (!response.data || !Array.isArray(response.data.data)) {
+        console.warn('APIService: Invalid response format, expected {data: array, total: number}');
         return {
           data: [],
           total: 0,
@@ -56,11 +56,11 @@ export const APIService = {
           totalPages: 0
         };
       }
-
+    
       // Transform raw data to FileImport format without fallbacks that create fake data
       const transformedData: FileImport[] = [];
       
-      response.data.forEach((item: RawCsvUpload, index: number) => {
+      response.data.data.forEach((item: RawCsvUpload, index: number) => {
         const itemData = item as any;
         
         // Only include items with valid filename - NO FALLBACK GENERATION
@@ -81,13 +81,13 @@ export const APIService = {
           console.warn(`APIService: Skipping item ${index} - missing filename`);
         }
       });
-
-      // Calculate pagination metadata
-      const total = response.data.length; // In real implementation, this should come from API
+    
+      // Calculate pagination metadata from API response
+      const total = response.data.total || 0;
       const totalPages = Math.ceil(total / params.pageSize);
-
-      console.log(`APIService: Transformed ${transformedData.length} valid file imports from ${response.data.length} raw items`);
-
+    
+      console.log(`APIService: Transformed ${transformedData.length} valid file imports from ${response.data.data.length} raw items, total: ${total}`);
+    
       return {
         data: transformedData,
         total,

@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/data", response_model=List[RawCsvUploadSchema])
+@router.get("/data")
 def get_data(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -45,10 +45,11 @@ def get_data(
                 )
             )
 
+        total = query.count()
         data = query.offset(skip).limit(limit).all()
-        logger.info(f"Retrieved {len(data)} records")
+        logger.info(f"Retrieved {len(data)} records out of {total} total")
 
-        return data
+        return {"data": data, "total": total}
 
     except SQLAlchemyError as e:
         logger.error(f"Database error in get_data: {e}")
@@ -60,6 +61,30 @@ def get_data(
     except Exception as e:
         logger.error(f"Unexpected error in get_data: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.put("/data/{id}")
+def update_data(
+    id: int,
+    update_data: RawCsvUploadCreate,
+    db: Session = Depends(get_db)
+):
+    try:
+        db_item = db.query(RawCsvUpload).filter(RawCsvUpload.ID == id).first()
+        if not db_item:
+            raise HTTPException(status_code=404, detail="Item not found")
+
+        for key, value in update_data.dict(exclude_unset=True).items():
+            setattr(db_item, key, value)
+
+        db.commit()
+        db.refresh(db_item)
+        logger.info(f"Updated data item {id}")
+        return {"data": db_item, "message": "Updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating data item {id}: {e}")
+        raise HTTPException(status_code=500, detail="Update failed")
 
 @router.get("/export/csv")
 def export_csv(

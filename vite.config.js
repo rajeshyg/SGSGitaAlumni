@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./frontend/src"),
+      "@": path.resolve(__dirname, "./src"),
       "@proto": path.resolve(__dirname, "../SGSDataMgmtCore/prototypes/react-shadcn-platform/src"),
     },
   },

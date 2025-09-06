@@ -17,7 +17,7 @@
     --primary-foreground: 210 40% 98%;
     
     /* Essential table variables - max 5 for strict guideline compliance */
-    --table-frozen-shadow: 2px 0 4px rgba(0,0,0,0.05);
+    --table-frozen-shadow: hsl(var(--muted-foreground) / 0.2);
     --table-resize-handle-opacity: 0.5;
     --table-row-height: 48px;
     --table-header-height: 48px;

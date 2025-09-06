@@ -327,17 +327,17 @@ export function AdminPage() {
                       {
                         label: 'File Information',
                         columns: ['filename', 'file_type', 'status'],
-                        className: 'bg-muted/50'
+                        style: { backgroundColor: 'hsl(var(--muted) / 0.5)' }
                       },
                       {
                         label: 'Processing Details',
                         columns: ['records_count', 'processed_records', 'errors_count', 'file_size'],
-                        className: 'bg-muted/50'
+                        style: { backgroundColor: 'hsl(var(--muted) / 0.5)' }
                       },
                       {
                         label: 'Metadata',
                         columns: ['upload_date', 'uploaded_by', 'actions'],
-                        className: 'bg-muted/50'
+                        style: { backgroundColor: 'hsl(var(--muted) / 0.5)' }
                       }
                     ]}
                     selection={{
@@ -367,8 +367,11 @@ export function AdminPage() {
                       enabled: true,
                       mode: 'cell',
                       onSave: async (_rowIndex, columnId, value, _row) => {
-                        console.log('Edited file:', { _rowIndex, columnId, value, _row })
-                        await new Promise(resolve => setTimeout(resolve, 500))
+                        const updated = await APIService.updateFileImport(_row.original.id, { [columnId]: value })
+                        if (updated) {
+                          // Refresh data after successful update
+                          fetchData()
+                        }
                       },
                       validation: (value, columnId, _row) => {
                         if (columnId === 'records_count' || columnId === 'processed_records') {

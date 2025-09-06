@@ -43,12 +43,14 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu"
 import type { CSSProperties } from "react"
+import { TablePagination } from "./table-pagination"
 
 // Advanced table interfaces based on TanStack Table and proven patterns
 export interface GroupHeaderConfig {
   label: string
   columns: string[]
   className?: string
+  style?: React.CSSProperties
 }
 
 export interface FrozenColumnsConfig {
@@ -193,6 +195,7 @@ function InlineEditor({
             className
           )}
           disabled={saving}
+          aria-label="Edit select"
         >
           {options.map((option) => (
             <option key={option.value} value={option.value}>
@@ -270,9 +273,9 @@ function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
 
   return {
     boxShadow: isLastLeftPinnedColumn
-      ? '2px 0 4px rgba(0,0,0,0.2)'
+      ? `var(--table-frozen-shadow)`
       : isFirstRightPinnedColumn
-        ? '-2px 0 4px rgba(0,0,0,0.2)'
+        ? `var(--table-frozen-shadow)`
         : undefined,
     left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
     right: isPinned === 'right' ? `${column.getAfter('right')}px` : undefined,
@@ -599,8 +602,7 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
           {selection.enabled && table.getFilteredSelectedRowModel().rows.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                {table.getFilteredRowModel().rows.length} row(s) selected
+                {table.getFilteredSelectedRowModel().rows.length} row(s) selected
               </span>
             </div>
           )}
@@ -742,50 +744,7 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
       </div>
 
       {/* Pagination */}
-      {pagination && (
-        <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="flex-1 text-sm text-muted-foreground">
-            {selection.enabled && (
-              <>
-                {table.getFilteredSelectedRowModel().rows.length} of{" "}
-                {table.getFilteredRowModel().rows.length} row(s) selected
-              </>
-            )}
-            {!selection.enabled && (
-              <>
-                Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to{" "}
-                {Math.min(
-                  (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                  table.getFilteredRowModel().rows.length
-                )}{" "}
-                of {table.getFilteredRowModel().rows.length} entries
-              </>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-muted-foreground">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      {pagination && <TablePagination table={table} />}
     </div>
   )
 }
