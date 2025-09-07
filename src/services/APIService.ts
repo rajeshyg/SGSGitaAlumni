@@ -1,7 +1,7 @@
-import { AWSDataService, type FileImport as AWSFileImport, checkAWSConfiguration, getAWSConfigStatus } from '../lib/awsData';
+import { APIDataService, type FileImport as APIFileImport, checkAPIConfiguration, getAPIConfigStatus } from '../lib/apiData';
 
 export interface FileImport extends Record<string, unknown> {
-  id: string; // Changed from number to string to match AWS DynamoDB
+  id: number; // MySQL auto-increment primary key
   filename: string;
   file_type: string;
   upload_date: string;
@@ -28,9 +28,9 @@ export interface ApiResponse<T> {
 }
 
 export const APIService = {
-  // Check AWS configuration status
-  getAWSConfigStatus: () => {
-    return getAWSConfigStatus();
+  // Check API configuration status
+  getAPIConfigStatus: () => {
+    return getAPIConfigStatus();
   },
 
   // Enhanced getFileImports using AWS DynamoDB
@@ -38,9 +38,10 @@ export const APIService = {
     try {
       console.log('APIService: Fetching file imports with params:', params);
 
-      // Check if AWS is configured
-      if (!checkAWSConfiguration()) {
-        console.warn('APIService: AWS not configured, returning empty response');
+      // Check if API is configured
+      if (!checkAPIConfiguration()) {
+        console.warn('APIService: API not configured, returning empty response');
+        console.warn('APIService: API Config Status:', getAPIConfigStatus());
         return {
           data: [],
           total: 0,
@@ -50,13 +51,15 @@ export const APIService = {
         };
       }
 
-      // Use AWS service instead of mock data
-      const response = await AWSDataService.getFileImports(params);
+      console.log('APIService: API is configured, attempting to connect to backend...');
 
-      console.log('APIService: AWS response:', response);
+      // Use API service instead of mock data
+      const response = await APIDataService.getFileImports(params);
 
-      // Transform AWS data to FileImport format (already compatible)
-      const transformedData: FileImport[] = response.data.map((item: AWSFileImport) => ({
+      console.log('APIService: API response:', response);
+
+      // Transform API data to FileImport format (already compatible)
+      const transformedData: FileImport[] = response.data.map((item: APIFileImport) => ({
         id: item.id,
         filename: item.filename,
         file_type: item.file_type,
@@ -93,19 +96,19 @@ export const APIService = {
     }
   },
 
-  // Update functionality using AWS DynamoDB
-  updateFileImport: async (id: string, updates: Partial<FileImport>): Promise<FileImport | null> => {
+  // Update functionality using MySQL
+  updateFileImport: async (id: number, updates: Partial<FileImport>): Promise<FileImport | null> => {
     try {
       console.log('APIService: Updating file import:', { id, updates });
 
-      // Check if AWS is configured
-      if (!checkAWSConfiguration()) {
-        console.warn('APIService: AWS not configured, cannot update');
+      // Check if API is configured
+      if (!checkAPIConfiguration()) {
+        console.warn('APIService: API not configured, cannot update');
         return null;
       }
 
-      // Use AWS service for updates
-      const updatedItem = await AWSDataService.updateFileImport(id, updates as Partial<AWSFileImport>);
+      // Use API service for updates
+      const updatedItem = await APIDataService.updateFileImport(id, updates as Partial<APIFileImport>);
 
       if (!updatedItem) {
         return null;
@@ -135,13 +138,13 @@ export const APIService = {
     try {
       console.log('APIService: Exporting data:', { format, search });
 
-      // Check if AWS is configured
-      if (!checkAWSConfiguration()) {
-        console.warn('APIService: AWS not configured, cannot export');
-        throw new Error('AWS not configured');
+      // Check if API is configured
+      if (!checkAPIConfiguration()) {
+        console.warn('APIService: API not configured, cannot export');
+        throw new Error('API not configured');
       }
 
-      const data = await AWSDataService.exportData(format, search);
+      const data = await APIDataService.exportData(format, search);
 
       if (format === 'csv') {
         // data is already an array of arrays from AWSDataService
@@ -163,9 +166,9 @@ export const APIService = {
     try {
       console.log('APIService: Fetching statistics');
 
-      // Check if AWS is configured
-      if (!checkAWSConfiguration()) {
-        console.warn('APIService: AWS not configured, returning empty statistics');
+      // Check if API is configured
+      if (!checkAPIConfiguration()) {
+        console.warn('APIService: API not configured, returning empty statistics');
         return {
           totalImports: 0,
           completedImports: 0,
@@ -174,7 +177,7 @@ export const APIService = {
         };
       }
 
-      return await AWSDataService.getStatistics();
+      return await APIDataService.getStatistics();
     } catch (error) {
       console.error('APIService: Error fetching statistics:', error);
       return {

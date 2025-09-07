@@ -222,7 +222,7 @@ export function useLazyData(options: UseLazyDataOptions = {}) {
 }
 
 // Hook for lazy loading individual items
-export function useLazyItem(id: string) {
+export function useLazyItem(id: number) {
   const [item, setItem] = useState<FileImport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
