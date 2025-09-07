@@ -1,5 +1,4 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { ThemeProvider } from './lib/theme/provider'
 import { AdminPage } from './pages/AdminPage'
 import { HomePage } from './pages/HomePage'
 
@@ -83,37 +82,35 @@ const LoginPage = () => (
 
 function App() {
   return (
-    <ThemeProvider>
-      <Router>
-        <Routes>
-          {/* Main routes */}
-          <Route path="/" element={<Navigate to="/admin" replace />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/Admin" element={<AdminPage />} />
-          
-          {/* Data management routes */}
-          <Route path="/upload" element={<UploadPage />} />
-          <Route path="/alumni-directory" element={<AlumniDirectoryPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/data-files" element={<DataFilesPage />} />
-          <Route path="/export" element={<ExportPage />} />
-          
-          {/* User & system routes */}
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/responses" element={<ResponsesPage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          <Route path="/users" element={<UsersPage />} />
-          
-          {/* Auth routes */}
-          <Route path="/profile-selection" element={<ProfileSelectionPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          
-          {/* Catch all - redirect to admin */}
-          <Route path="*" element={<Navigate to="/admin" replace />} />
-        </Routes>
-      </Router>
-    </ThemeProvider>
+    <Router>
+      <Routes>
+        {/* Main routes */}
+        <Route path="/" element={<Navigate to="/admin" replace />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/Admin" element={<AdminPage />} />
+
+        {/* Data management routes */}
+        <Route path="/upload" element={<UploadPage />} />
+        <Route path="/alumni-directory" element={<AlumniDirectoryPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/data-files" element={<DataFilesPage />} />
+        <Route path="/export" element={<ExportPage />} />
+
+        {/* User & system routes */}
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/responses" element={<ResponsesPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/users" element={<UsersPage />} />
+
+        {/* Auth routes */}
+        <Route path="/profile-selection" element={<ProfileSelectionPage />} />
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Catch all - redirect to admin */}
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Routes>
+    </Router>
   )
 }
 
