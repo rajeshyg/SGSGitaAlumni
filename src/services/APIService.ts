@@ -1,5 +1,4 @@
-import api from '../lib/api';
-import type { RawCsvUpload } from '../lib/api';
+import { MockAPIService, type MockFileImport } from '../lib/mockData';
 
 export interface FileImport extends Record<string, unknown> {
   id: number;
@@ -29,77 +28,44 @@ export interface ApiResponse<T> {
 }
 
 export const APIService = {
-  // Enhanced getFileImports with proper pagination and validation
+  // Enhanced getFileImports using mock data layer
   getFileImports: async (params: PaginationParams): Promise<ApiResponse<FileImport>> => {
     try {
       console.log('APIService: Fetching file imports with params:', params);
-      
-      // Use the existing API endpoint but with proper parameters
-      const response = await api.get("/data", { 
-        params: {
-          skip: params.page * params.pageSize,
-          limit: params.pageSize,
-          search: params.search
-        }
-      });
 
-      console.log('APIService: Raw response:', response.data);
+      // Use mock API service instead of HTTP requests
+      const response = await MockAPIService.getFileImports(params);
 
-      // Validate response structure
-      if (!response.data || !Array.isArray(response.data.data)) {
-        console.warn('APIService: Invalid response format, expected {data: array, total: number}');
-        return {
-          data: [],
-          total: 0,
-          page: params.page,
-          pageSize: params.pageSize,
-          totalPages: 0
-        };
-      }
-    
-      // Transform raw data to FileImport format without fallbacks that create fake data
-      const transformedData: FileImport[] = [];
-      
-      response.data.data.forEach((item: RawCsvUpload, index: number) => {
-        const itemData = item as any;
-        
-        // Only include items with valid filename - NO FALLBACK GENERATION
-        if (itemData.filename || itemData.file_name) {
-          transformedData.push({
-            id: itemData.id || index + 1,
-            filename: itemData.filename || itemData.file_name, // Required field
-            file_type: itemData.file_type || itemData.type || 'CSV',
-            upload_date: itemData.upload_date || itemData.created_at || new Date().toISOString(),
-            status: (itemData.status || 'completed') as 'pending' | 'processing' | 'completed' | 'failed',
-            records_count: itemData.records_count || itemData.total_records || 0,
-            processed_records: itemData.processed_records || itemData.records_count || 0,
-            errors_count: itemData.errors_count || itemData.error_count || 0,
-            uploaded_by: itemData.uploaded_by || itemData.user || 'System',
-            file_size: itemData.file_size || itemData.size || '0KB',
-          });
-        } else {
-          console.warn(`APIService: Skipping item ${index} - missing filename`);
-        }
-      });
-    
-      // Calculate pagination metadata from API response
-      const total = response.data.total || 0;
-      const totalPages = Math.ceil(total / params.pageSize);
-    
-      console.log(`APIService: Transformed ${transformedData.length} valid file imports from ${response.data.data.length} raw items, total: ${total}`);
-    
+      console.log('APIService: Mock response:', response);
+
+      // Transform mock data to FileImport format
+      const transformedData: FileImport[] = response.data.map((item: MockFileImport) => ({
+        id: item.id,
+        filename: item.filename,
+        file_type: item.file_type,
+        upload_date: item.upload_date,
+        status: item.status,
+        records_count: item.records_count,
+        processed_records: item.processed_records,
+        errors_count: item.errors_count,
+        uploaded_by: item.uploaded_by,
+        file_size: item.file_size,
+      }));
+
+      console.log(`APIService: Transformed ${transformedData.length} file imports, total: ${response.total}`);
+
       return {
         data: transformedData,
-        total,
-        page: params.page,
-        pageSize: params.pageSize,
-        totalPages
+        total: response.total,
+        page: response.page,
+        pageSize: response.pageSize,
+        totalPages: response.totalPages
       };
 
     } catch (error) {
       console.error('APIService: Error fetching file imports:', error);
-      
-      // Return empty response on error - NO FAKE DATA
+
+      // Return empty response on error
       return {
         data: [],
         total: 0,
@@ -110,30 +76,56 @@ export const APIService = {
     }
   },
 
-  // Placeholder for future update functionality
+  // Update functionality using mock data layer
   updateFileImport: async (id: number, updates: Partial<FileImport>): Promise<FileImport | null> => {
     try {
-      // TODO: Implement actual update endpoint when backend is ready
       console.log('APIService: Updating file import:', { id, updates });
-      
-      // For now, return mock success - replace with real API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+
+      // Use mock API service for updates
+      const updatedItem = await MockAPIService.updateFileImport(id, updates as Partial<MockFileImport>);
+
+      if (!updatedItem) {
+        return null;
+      }
+
+      // Transform back to FileImport format
       return {
-        id,
-        filename: updates.filename || 'Updated File',
-        file_type: 'CSV',
-        upload_date: new Date().toISOString(),
-        status: 'completed' as const,
-        records_count: 100,
-        processed_records: 100,
-        errors_count: 0,
-        uploaded_by: 'System',
-        file_size: '1.2MB'
+        id: updatedItem.id,
+        filename: updatedItem.filename,
+        file_type: updatedItem.file_type,
+        upload_date: updatedItem.upload_date,
+        status: updatedItem.status,
+        records_count: updatedItem.records_count,
+        processed_records: updatedItem.processed_records,
+        errors_count: updatedItem.errors_count,
+        uploaded_by: updatedItem.uploaded_by,
+        file_size: updatedItem.file_size,
       };
     } catch (error) {
       console.error('APIService: Error updating file import:', error);
       return null;
+    }
+  },
+
+  // Export functionality using mock data layer
+  exportData: async (format: 'csv' | 'json', search?: string) => {
+    try {
+      console.log('APIService: Exporting data:', { format, search });
+
+      const data = await MockAPIService.exportData(format, search);
+
+      if (format === 'csv') {
+        // data is already an array of arrays from MockAPIService
+        const csvData = data as (string | number)[][];
+        const csvContent = csvData.map((row: (string | number)[]) => row.join(',')).join('\n');
+        return csvContent;
+      } else {
+        // data is already MockFileImport[] from MockAPIService
+        return JSON.stringify(data, null, 2);
+      }
+    } catch (error) {
+      console.error('APIService: Error exporting data:', error);
+      throw error;
     }
   }
 };

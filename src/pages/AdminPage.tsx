@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { TanStackAdvancedTable, Badge } from '../components/ui'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { type ColumnDef } from "@tanstack/react-table"
 import { APIService, type FileImport } from '../services/APIService'
+import { useLazyData } from '../hooks/useLazyData'
 import { MoreHorizontal, Edit, FileText, Database, Upload } from 'lucide-react'
 import {
   DropdownMenu,
@@ -152,16 +153,25 @@ const columns: ColumnDef<FileImport>[] = [
 
 export function AdminPage() {
   const navigate = useNavigate()
-  const [fileImportData, setFileImportData] = useState<FileImport[]>([])
-  const [pagination, setPagination] = useState({
-    page: 0,
+
+  // Use lazy loading hook with caching
+  const {
+    data: fileImportData,
+    loading,
+    error,
+    total,
+    page,
+    pageSize,
+    hasMore,
+    loadMore,
+    search,
+    refresh
+  } = useLazyData({
     pageSize: 10,
-    total: 0,
-    totalPages: 0
+    enableCache: true,
+    cacheTtl: 5 * 60 * 1000, // 5 minutes
+    autoLoad: true
   })
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
 
   // Get actual user profile from localStorage or use default
   const storedProfile = localStorage.getItem('currentProfile')
@@ -174,44 +184,6 @@ export function AdminPage() {
       professionalStatus: 'Administrator'
     }
   }
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        const response = await APIService.getFileImports({
-          page: pagination.page,
-          pageSize: pagination.pageSize,
-          search: searchTerm
-        })
-        
-        console.log('AdminPage: API response:', response)
-        
-        setFileImportData(response.data)
-        setPagination({
-          ...pagination,
-          total: response.total,
-          totalPages: response.totalPages
-        })
-        
-      } catch (err) {
-        console.error('Error fetching file imports:', err)
-        setError('Failed to load file imports. Please check your connection and try again.')
-        setFileImportData([])
-        setPagination({
-          ...pagination,
-          total: 0,
-          totalPages: 0
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [pagination.page, pagination.pageSize, searchTerm])
 
   if (loading) {
     return (
@@ -241,12 +213,12 @@ export function AdminPage() {
     )
   }
 
-  // Calculate real statistics from actual data and pagination
-  const totalImports = pagination.total
+  // Calculate real statistics from actual data
+  const totalImports = total
   const completedImports = fileImportData.filter(imp => imp.status === 'completed').length
   const totalRecords = fileImportData.reduce((sum, imp) => sum + imp.records_count, 0)
   const totalErrors = fileImportData.reduce((sum, imp) => sum + imp.errors_count, 0)
-  
+
   // Real stats based on actual data
   const stats = {
     notifications: { unread: totalErrors > 0 ? 1 : 0 },
@@ -256,16 +228,15 @@ export function AdminPage() {
     activeUsers: 1 // Current user
   }
 
-  // Handle page navigation
+  // Handle page navigation using lazy loading hook
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 0 && newPage < pagination.totalPages) {
-      setPagination(prev => ({ ...prev, page: newPage }))
+    if (newPage >= 0 && hasMore) {
+      loadMore()
     }
   }
 
   const handleSearchChange = (term: string) => {
-    setSearchTerm(term)
-    setPagination(prev => ({ ...prev, page: 0 })) // Reset to first page on search
+    search(term) // This will automatically reset to page 0
   }
 
   return (
@@ -367,10 +338,11 @@ export function AdminPage() {
                       enabled: true,
                       mode: 'cell',
                       onSave: async (_rowIndex, columnId, value, _row) => {
-                        const updated = await APIService.updateFileImport(_row.original.id, { [columnId]: value })
+                        const row = _row as FileImport
+                        const updated = await APIService.updateFileImport(row.id, { [columnId]: value })
                         if (updated) {
                           // Refresh data after successful update
-                          fetchData()
+                          refresh()
                         }
                       },
                       validation: (value, columnId, _row) => {
@@ -387,7 +359,7 @@ export function AdminPage() {
                     filterable={true}
                     sortable={true}
                     pagination={false} // Using custom pagination controls
-                    pageSize={pagination.pageSize}
+                    pageSize={pageSize}
                     exportable={true}
                     exportFilename="file-imports"
                     maxHeight="600px"
@@ -398,30 +370,30 @@ export function AdminPage() {
                   />
                   
                   {/* Custom Pagination Controls */}
-                  {pagination.totalPages > 1 && (
+                  {hasMore && (
                     <div className="flex items-center justify-between space-x-2 py-4">
                       <div className="flex-1 text-sm text-muted-foreground">
-                        Showing {(pagination.page * pagination.pageSize) + 1} to {Math.min((pagination.page + 1) * pagination.pageSize, pagination.total)}
-                        of {pagination.total} file imports
+                        Showing {(page * pageSize) + 1} to {Math.min((page + 1) * pageSize, total)}
+                        of {total} file imports
                       </div>
                       <div className="flex items-center space-x-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handlePageChange(pagination.page - 1)}
-                          disabled={pagination.page === 0}
+                          onClick={() => handlePageChange(page - 1)}
+                          disabled={page === 0}
                           aria-label="Previous page"
                         >
                           Previous
                         </Button>
                         <span className="text-sm text-muted-foreground">
-                          Page {pagination.page + 1} of {pagination.totalPages}
+                          Page {page + 1}
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handlePageChange(pagination.page + 1)}
-                          disabled={pagination.page >= pagination.totalPages - 1}
+                          onClick={() => handlePageChange(page + 1)}
+                          disabled={!hasMore}
                           aria-label="Next page"
                         >
                           Next
