@@ -11,7 +11,17 @@ export function AdminPage() {
   const navigate = useNavigate();
 
   // Data fetching with lazy loading and caching
-  const dataState = useLazyData({
+  const {
+    data: fileImportData,
+    total,
+    page,
+    pageSize,
+    hasMore,
+    loadMore,
+    refresh,
+    loading,
+    error
+  } = useLazyData({
     pageSize: 10,
     enableCache: true,
     cacheTtl: 5 * 60 * 1000,
@@ -22,19 +32,19 @@ export function AdminPage() {
   const currentProfile = getCurrentProfile();
   const apiConfig = APIService.getAPIConfigStatus();
 
-  if (dataState.loading) {
+  if (loading) {
     return <LoadingState />;
   }
 
-  if (dataState.error) {
-    return <ErrorState error={dataState.error} />;
+  if (error) {
+    return <ErrorState error={error} />;
   }
 
   // Calculate statistics
-  const stats = calculateStats(dataState.data);
+  const stats = calculateStats(fileImportData);
 
   const handlePageChange = (newPage: number) =>
-    newPage >= 0 && dataState.hasMore && dataState.loadMore();
+    newPage >= 0 && hasMore && loadMore();
 
 
 
