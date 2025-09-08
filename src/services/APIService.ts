@@ -1,5 +1,23 @@
 import { APIDataService, type FileImport as APIFileImport, checkAPIConfiguration, getAPIConfigStatus } from '../lib/apiData';
 
+// Simple logger utility for production-safe logging
+const logger = {
+  info: (message: string, ...args: unknown[]) => {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`[APIService] ${message}`, ...args);
+    }
+  },
+  warn: (message: string, ...args: unknown[]) => {
+    // eslint-disable-next-line no-console
+    console.warn(`[APIService] ${message}`, ...args);
+  },
+  error: (message: string, ...args: unknown[]) => {
+    // eslint-disable-next-line no-console
+    console.error(`[APIService] ${message}`, ...args);
+  }
+};
+
 export interface FileImport extends Record<string, unknown> {
   id: number; // MySQL auto-increment primary key
   filename: string;
@@ -27,6 +45,27 @@ export interface ApiResponse<T> {
   totalPages: number;
 }
 
+const createEmptyResponse = (params: PaginationParams): ApiResponse<FileImport> => ({
+  data: [],
+  total: 0,
+  page: params.page,
+  pageSize: params.pageSize,
+  totalPages: 0
+});
+
+const transformAPIFileImport = (item: APIFileImport): FileImport => ({
+  id: item.id,
+  filename: item.filename,
+  file_type: item.file_type,
+  upload_date: item.upload_date,
+  status: item.status,
+  records_count: item.records_count,
+  processed_records: item.processed_records,
+  errors_count: item.errors_count,
+  uploaded_by: item.uploaded_by,
+  file_size: item.file_size,
+});
+
 export const APIService = {
   // Check API configuration status
   getAPIConfigStatus: () => {
@@ -36,43 +75,26 @@ export const APIService = {
   // Enhanced getFileImports using AWS DynamoDB
   getFileImports: async (params: PaginationParams): Promise<ApiResponse<FileImport>> => {
     try {
-      console.log('APIService: Fetching file imports with params:', params);
+      logger.info('Fetching file imports with params:', params);
 
       // Check if API is configured
       if (!checkAPIConfiguration()) {
-        console.warn('APIService: API not configured, returning empty response');
-        console.warn('APIService: API Config Status:', getAPIConfigStatus());
-        return {
-          data: [],
-          total: 0,
-          page: params.page,
-          pageSize: params.pageSize,
-          totalPages: 0
-        };
+        logger.warn('API not configured, returning empty response');
+        logger.warn('API Config Status:', getAPIConfigStatus());
+        return createEmptyResponse(params);
       }
 
-      console.log('APIService: API is configured, attempting to connect to backend...');
+      logger.info('API is configured, attempting to connect to backend...');
 
       // Use API service instead of mock data
       const response = await APIDataService.getFileImports(params);
 
-      console.log('APIService: API response:', response);
+      logger.info('API response received', { dataLength: response.data?.length, total: response.total });
 
-      // Transform API data to FileImport format (already compatible)
-      const transformedData: FileImport[] = response.data.map((item: APIFileImport) => ({
-        id: item.id,
-        filename: item.filename,
-        file_type: item.file_type,
-        upload_date: item.upload_date,
-        status: item.status,
-        records_count: item.records_count,
-        processed_records: item.processed_records,
-        errors_count: item.errors_count,
-        uploaded_by: item.uploaded_by,
-        file_size: item.file_size,
-      }));
+      // Transform API data to FileImport format
+      const transformedData: FileImport[] = response.data.map(transformAPIFileImport);
 
-      console.log(`APIService: Transformed ${transformedData.length} file imports, total: ${response.total}`);
+      logger.info(`Transformed ${transformedData.length} file imports`, { total: response.total });
 
       return {
         data: transformedData,
@@ -83,27 +105,19 @@ export const APIService = {
       };
 
     } catch (error) {
-      console.error('APIService: Error fetching file imports:', error);
-
-      // Return empty response on error
-      return {
-        data: [],
-        total: 0,
-        page: params.page,
-        pageSize: params.pageSize,
-        totalPages: 0
-      };
+      logger.error('Error fetching file imports:', error);
+      return createEmptyResponse(params);
     }
   },
 
   // Update functionality using MySQL
   updateFileImport: async (id: number, updates: Partial<FileImport>): Promise<FileImport | null> => {
     try {
-      console.log('APIService: Updating file import:', { id, updates });
+      logger.info('Updating file import', { id, updates });
 
       // Check if API is configured
       if (!checkAPIConfiguration()) {
-        console.warn('APIService: API not configured, cannot update');
+        logger.warn('API not configured, cannot update');
         return null;
       }
 
@@ -128,7 +142,7 @@ export const APIService = {
         file_size: updatedItem.file_size,
       };
     } catch (error) {
-      console.error('APIService: Error updating file import:', error);
+      logger.error('Error updating file import:', error);
       return null;
     }
   },
@@ -136,11 +150,11 @@ export const APIService = {
   // Export functionality using AWS DynamoDB
   exportData: async (format: 'csv' | 'json', search?: string) => {
     try {
-      console.log('APIService: Exporting data:', { format, search });
+      logger.info('Exporting data', { format, search });
 
       // Check if API is configured
       if (!checkAPIConfiguration()) {
-        console.warn('APIService: API not configured, cannot export');
+        logger.warn('API not configured, cannot export');
         throw new Error('API not configured');
       }
 
@@ -149,14 +163,13 @@ export const APIService = {
       if (format === 'csv') {
         // data is already an array of arrays from AWSDataService
         const csvData = data as (string | number)[][];
-        const csvContent = csvData.map((row: (string | number)[]) => row.join(',')).join('\n');
-        return csvContent;
+        return csvData.map((row: (string | number)[]) => row.join(',')).join('\n');
       } else {
         // data is already AWSFileImport[] from AWSDataService
         return JSON.stringify(data, null, 2);
       }
     } catch (error) {
-      console.error('APIService: Error exporting data:', error);
+      logger.error('Error exporting data:', error);
       throw error;
     }
   },
@@ -164,11 +177,11 @@ export const APIService = {
   // Get statistics using AWS DynamoDB
   getStatistics: async () => {
     try {
-      console.log('APIService: Fetching statistics');
+      logger.info('Fetching statistics');
 
       // Check if API is configured
       if (!checkAPIConfiguration()) {
-        console.warn('APIService: API not configured, returning empty statistics');
+        logger.warn('API not configured, returning empty statistics');
         return {
           totalImports: 0,
           completedImports: 0,
@@ -179,7 +192,7 @@ export const APIService = {
 
       return await APIDataService.getStatistics();
     } catch (error) {
-      console.error('APIService: Error fetching statistics:', error);
+      logger.error('Error fetching statistics:', error);
       return {
         totalImports: 0,
         completedImports: 0,

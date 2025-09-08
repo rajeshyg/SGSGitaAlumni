@@ -6,12 +6,17 @@ import App from './App.tsx'
 import { ThemeProvider } from './lib/theme/provider'
 
 // Initialize Sentry for error tracking
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN || 'https://your-sentry-dsn-here',
-  environment: import.meta.env.MODE || 'development',
-  // Performance Monitoring
-  tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
-})
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN
+const isValidDsn = sentryDsn && sentryDsn !== 'https://your-sentry-dsn-here'
+
+if (isValidDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: import.meta.env.MODE || 'development',
+    // Performance Monitoring
+    tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
+  })
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

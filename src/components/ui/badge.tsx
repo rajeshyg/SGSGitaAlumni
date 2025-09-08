@@ -115,4 +115,4 @@ function BadgeWrapper({
   )
 }
 
-export { Badge, BadgeWrapper }
+export { Badge, BadgeWrapper, badgeVariants }
