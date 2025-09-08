@@ -100,13 +100,14 @@ function renderColumnMenu(column: any, compactMode: boolean): React.ReactNode {
 }
 
 function renderTableHeader<T extends Record<string, unknown>>(
-  column: any,
+  header: any,
   sortable: boolean,
   reordering: { enabled: boolean },
   resizing: { enabled: boolean },
   editing: { enabled: boolean },
   compactMode: boolean
 ): React.ReactNode {
+  const column = header.column
   return (
     <div className="group flex items-center justify-between gap-1">
       <div className="flex items-center gap-1">
@@ -125,7 +126,12 @@ function renderTableHeader<T extends Record<string, unknown>>(
           )}
         </div>
         <span className="select-none">
-          {column.columnDef.header}
+          {header.isPlaceholder
+            ? null
+            : flexRender(
+                column.columnDef.header,
+                header.getContext()
+              )}
         </span>
       </div>
       <div className={cn("flex items-center gap-1", compactMode && "w-0 overflow-hidden group-hover:w-auto")}>
@@ -431,7 +437,6 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
     // Add main columns with enhanced functionality
     cols.push(...columns.map((col) => ({
       ...col,
-      header: ({ column }: HeaderContext<T, unknown>) => renderTableHeader(column, sortable, reordering, resizing, editing, compactMode),
       cell: (cellProps: CellContext<T, unknown>) => renderTableCell(cellProps, col, editing, editingCell, setEditingCell),
       enableResizing: resizing.enabled,
       size: resizing.defaultSize || 150,
