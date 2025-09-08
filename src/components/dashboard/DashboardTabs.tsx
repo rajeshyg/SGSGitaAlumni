@@ -30,12 +30,6 @@ interface ActivityItem {
   timestamp: string
 }
 
-interface PerformanceMetric {
-  label: string
-  value: string
-  trend: string
-  description: string
-}
 
 interface DashboardTabsProps {
   stats: SystemStats
@@ -52,135 +46,173 @@ interface DashboardTabsProps {
   }
 }
 
-function OverviewTab({ stats }: { stats: SystemStats }) {
-  const navigate = useNavigate()
+function SystemStatusCard() {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-base font-medium">System Status</CardTitle>
+        <CheckCircle2 className="h-5 w-5 text-green-500" />
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-64">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center space-x-3">
+                <Database className="h-4 w-4 text-blue-500" />
+                <span className="text-sm font-medium">Database</span>
+              </div>
+              <Badge variant="secondary" className="bg-green-100 text-green-800">Online</Badge>
+            </div>
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center space-x-3">
+                <Upload className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium">File Processing</span>
+              </div>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800">Active</Badge>
+            </div>
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center space-x-3">
+                <BarChart3 className="h-4 w-4 text-orange-500" />
+                <span className="text-sm font-medium">Analytics</span>
+              </div>
+              <Badge variant="secondary" className="bg-purple-100 text-purple-800">Ready</Badge>
+            </div>
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  )
+}
+
+function RecentActivityCard({ onViewAll }: { onViewAll: () => void }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-base font-medium">Recent Activity</CardTitle>
+        <Button variant="ghost" size="sm" onClick={onViewAll}>
+          View All
+        </Button>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-64">
+          <div className="space-y-4">
+            <div className="flex items-start space-x-3">
+              <Activity className="h-4 w-4 mt-1 text-muted-foreground" />
+              <div className="flex-1 text-sm">
+                <p>New data file uploaded: alumni_2024.csv</p>
+                <p className="text-xs text-muted-foreground mt-1">2 hours ago</p>
+              </div>
+            </div>
+            <div className="flex items-start space-x-3">
+              <Users className="h-4 w-4 mt-1 text-muted-foreground" />
+              <div className="flex-1 text-sm">
+                <p>User registration: john.doe@example.com</p>
+                <p className="text-xs text-muted-foreground mt-1">4 hours ago</p>
+              </div>
+            </div>
+            <div className="flex items-start space-x-3">
+              <FileText className="h-4 w-4 mt-1 text-muted-foreground" />
+              <div className="flex-1 text-sm">
+                <p>Report generated: Monthly Summary</p>
+                <p className="text-xs text-muted-foreground mt-1">1 day ago</p>
+              </div>
+            </div>
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  )
+}
+
+function PerformanceMetricCard({
+  title,
+  value: _value,
+  trend: _trend,
+  description,
+  badgeText,
+  trendIcon: TrendIcon,
+  trendValue
+}: {
+  title: string
+  value: string
+  trend: string
+  description: string
+  badgeText: string
+  trendIcon: React.ComponentType<{ className?: string }>
+  trendValue: string
+}) {
+  return (
+    <div className="p-4 border rounded-lg">
+      <div className="flex items-center justify-between mb-2">
+        <Badge variant="secondary" className="text-xs">{badgeText}</Badge>
+        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+          <TrendIcon className="h-3 w-3" />
+          <span>{trendValue}</span>
+        </div>
+      </div>
+      <h4 className="text-sm font-medium mb-1">{title}</h4>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </div>
+  )
+}
+
+function QuickStatsCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <TrendingUp className="h-5 w-5 mr-2" />
+          System Performance
+        </CardTitle>
+        <CardDescription>
+          Key metrics and performance indicators
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <PerformanceMetricCard
+            title="File Processing Rate"
+            value="98%"
+            trend="+12%"
+            description="98% success rate"
+            badgeText="Data Processing"
+            trendIcon={TrendingUp}
+            trendValue="+12%"
+          />
+          <PerformanceMetricCard
+            title="Active Sessions"
+            value="24"
+            trend="+8%"
+            description="24 users online"
+            badgeText="User Activity"
+            trendIcon={TrendingUp}
+            trendValue="+8%"
+          />
+          <PerformanceMetricCard
+            title="Uptime"
+            value="99.9%"
+            trend="99.9%"
+            description="Last 30 days"
+            badgeText="System Health"
+            trendIcon={CheckCircle2}
+            trendValue="99.9%"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function OverviewTab({ stats: _stats }: { stats: SystemStats }) {
   const [, setActiveTab] = useState('overview')
 
   return (
     <TabsContent value="overview" className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* System Status */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">System Status</CardTitle>
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-64">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Database className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm font-medium">Database</span>
-                  </div>
-                  <Badge variant="secondary" className="bg-green-100 text-green-800">Online</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <Upload className="h-4 w-4 text-purple-500" />
-                    <span className="text-sm font-medium">File Processing</span>
-                  </div>
-                  <Badge variant="secondary" className="bg-blue-100 text-blue-800">Active</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <BarChart3 className="h-4 w-4 text-orange-500" />
-                    <span className="text-sm font-medium">Analytics</span>
-                  </div>
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-800">Ready</Badge>
-                </div>
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-base font-medium">Recent Activity</CardTitle>
-            <Button variant="ghost" size="sm" onClick={() => setActiveTab('data')}>
-              View All
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-64">
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <Activity className="h-4 w-4 mt-1 text-muted-foreground" />
-                  <div className="flex-1 text-sm">
-                    <p>New data file uploaded: alumni_2024.csv</p>
-                    <p className="text-xs text-muted-foreground mt-1">2 hours ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <Users className="h-4 w-4 mt-1 text-muted-foreground" />
-                  <div className="flex-1 text-sm">
-                    <p>User registration: john.doe@example.com</p>
-                    <p className="text-xs text-muted-foreground mt-1">4 hours ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <FileText className="h-4 w-4 mt-1 text-muted-foreground" />
-                  <div className="flex-1 text-sm">
-                    <p>Report generated: Monthly Summary</p>
-                    <p className="text-xs text-muted-foreground mt-1">1 day ago</p>
-                  </div>
-                </div>
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+        <SystemStatusCard />
+        <RecentActivityCard onViewAll={() => setActiveTab('data')} />
       </div>
-
-      {/* Quick Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <TrendingUp className="h-5 w-5 mr-2" />
-            System Performance
-          </CardTitle>
-          <CardDescription>
-            Key metrics and performance indicators
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 border rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <Badge variant="secondary" className="text-xs">Data Processing</Badge>
-                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>+12%</span>
-                </div>
-              </div>
-              <h4 className="text-sm font-medium mb-1">File Processing Rate</h4>
-              <p className="text-xs text-muted-foreground">98% success rate</p>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <Badge variant="secondary" className="text-xs">User Activity</Badge>
-                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  <TrendingUp className="h-3 w-3" />
-                  <span>+8%</span>
-                </div>
-              </div>
-              <h4 className="text-sm font-medium mb-1">Active Sessions</h4>
-              <p className="text-xs text-muted-foreground">24 users online</p>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <Badge variant="secondary" className="text-xs">System Health</Badge>
-                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                  <CheckCircle2 className="h-3 w-3" />
-                  <span>99.9%</span>
-                </div>
-              </div>
-              <h4 className="text-sm font-medium mb-1">Uptime</h4>
-              <p className="text-xs text-muted-foreground">Last 30 days</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <QuickStatsCard />
     </TabsContent>
   )
 }

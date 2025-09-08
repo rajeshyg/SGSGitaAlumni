@@ -105,6 +105,60 @@ function DesktopNavigation({ stats }: { stats: DashboardHeaderProps['stats'] }) 
   )
 }
 
+function NotificationMenuItem({ unreadCount }: { unreadCount: number }) {
+  const navigate = useNavigate()
+
+  return (
+    <DropdownMenuItem onClick={() => navigate('/responses')}>
+      <Bell className="h-4 w-4 mr-2" />
+      Notifications
+      {unreadCount > 0 && (
+        <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
+          {unreadCount}
+        </Badge>
+      )}
+    </DropdownMenuItem>
+  )
+}
+
+function MessageMenuItem({ unreadCount }: { unreadCount: number }) {
+  const navigate = useNavigate()
+
+  return (
+    <DropdownMenuItem onClick={() => navigate('/chat')}>
+      <MessageSquare className="h-4 w-4 mr-2" />
+      Messages
+      {unreadCount > 0 && (
+        <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
+          {unreadCount}
+        </Badge>
+      )}
+    </DropdownMenuItem>
+  )
+}
+
+function ProfileMenuItems({
+  onSwitchProfile,
+  onLogout
+}: {
+  onSwitchProfile: () => void
+  onLogout: () => void
+}) {
+  return (
+    <>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={onSwitchProfile}>
+        <UserPlus className="h-4 w-4 mr-2" />
+        Switch Profile
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={onLogout}>
+        <LogOut className="h-4 w-4 mr-2" />
+        Logout
+      </DropdownMenuItem>
+    </>
+  )
+}
+
 function MobileMenu({ stats, onSwitchProfile, onLogout }: {
   stats: DashboardHeaderProps['stats']
   onSwitchProfile: () => void
@@ -125,33 +179,9 @@ function MobileMenu({ stats, onSwitchProfile, onLogout }: {
             <Search className="h-4 w-4 mr-2" />
             Search Alumni
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/responses')}>
-            <Bell className="h-4 w-4 mr-2" />
-            Notifications
-            {stats.notifications.unread > 0 && (
-              <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
-                {stats.notifications.unread}
-              </Badge>
-            )}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/chat')}>
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Messages
-            {stats.chat.totalUnread > 0 && (
-              <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
-                {stats.chat.totalUnread}
-              </Badge>
-            )}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onSwitchProfile}>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Switch Profile
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </DropdownMenuItem>
+          <NotificationMenuItem unreadCount={stats.notifications.unread} />
+          <MessageMenuItem unreadCount={stats.chat.totalUnread} />
+          <ProfileMenuItems onSwitchProfile={onSwitchProfile} onLogout={onLogout} />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

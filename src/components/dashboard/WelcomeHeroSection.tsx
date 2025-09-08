@@ -73,56 +73,59 @@ function ActionButtons() {
   )
 }
 
+function MetricCard({
+  label,
+  value,
+  icon: Icon,
+  iconColor = "text-primary",
+  valueColor = "text-primary"
+}: {
+  label: string
+  value: string | number
+  icon: React.ComponentType<{ className?: string }>
+  iconColor?: string
+  valueColor?: string
+}) {
+  return (
+    <Card className="bg-card/50 border-primary/20">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
+          </div>
+          <Icon className={`h-8 w-8 ${iconColor}`} />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function MetricsGrid({ stats }: { stats: SystemStats }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <Card className="bg-card/50 border-primary/20">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Records</p>
-              <p className="text-2xl font-bold text-primary">{stats?.totalRecords || 0}</p>
-            </div>
-            <Database className="h-8 w-8 text-primary" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-card/50 border-primary/20">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Files Processed</p>
-              <p className="text-2xl font-bold text-primary">{stats?.processedFiles || 0}</p>
-            </div>
-            <TrendingUp className="h-8 w-8 text-primary" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-card/50 border-primary/20">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Active Users</p>
-              <p className="text-2xl font-bold text-primary">{stats?.activeUsers || 0}</p>
-            </div>
-            <Users className="h-8 w-8 text-primary" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-card/50 border-primary/20">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">System Status</p>
-              <p className="text-2xl font-bold text-green-500">Healthy</p>
-            </div>
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
-          </div>
-        </CardContent>
-      </Card>
+      <MetricCard
+        label="Total Records"
+        value={stats?.totalRecords || 0}
+        icon={Database}
+      />
+      <MetricCard
+        label="Files Processed"
+        value={stats?.processedFiles || 0}
+        icon={TrendingUp}
+      />
+      <MetricCard
+        label="Active Users"
+        value={stats?.activeUsers || 0}
+        icon={Users}
+      />
+      <MetricCard
+        label="System Status"
+        value="Healthy"
+        icon={CheckCircle2}
+        iconColor="text-green-500"
+        valueColor="text-green-500"
+      />
     </div>
   )
 }

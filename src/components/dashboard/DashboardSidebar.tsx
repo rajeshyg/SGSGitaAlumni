@@ -32,9 +32,43 @@ interface DashboardSidebarProps {
   }
 }
 
-function QuickActions() {
+function ActionButton({
+  icon: Icon,
+  label,
+  path,
+  variant = "outline",
+  showBadge = false,
+  badgeText = "",
+  hoverTransform = "group-hover:scale-110"
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  path: string
+  variant?: "default" | "outline"
+  showBadge?: boolean
+  badgeText?: string
+  hoverTransform?: string
+}) {
   const navigate = useNavigate()
 
+  return (
+    <Button
+      className="w-full justify-start group min-h-[44px] text-sm"
+      variant={variant}
+      onClick={() => navigate(path)}
+    >
+      <Icon className={`h-4 w-4 mr-2 ${hoverTransform} transition-transform`} />
+      <span className="truncate">{label}</span>
+      {showBadge && (
+        <Badge variant="secondary" className="ml-auto hidden sm:flex">
+          {badgeText}
+        </Badge>
+      )}
+    </Button>
+  )
+}
+
+function QuickActions() {
   return (
     <Card>
       <CardHeader className="pb-2 sm:pb-3">
@@ -44,59 +78,73 @@ function QuickActions() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 p-3 sm:p-6">
-        <Button
-          className="w-full justify-start group min-h-[44px] text-sm"
+        <ActionButton
+          icon={Upload}
+          label="Upload Data"
+          path="/upload"
           variant="default"
-          onClick={() => navigate('/upload')}
-        >
-          <Upload className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-          <span className="truncate">Upload Data</span>
-          <Badge variant="secondary" className="ml-auto hidden sm:flex">
-            New
-          </Badge>
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full justify-start group min-h-[44px] text-sm"
-          onClick={() => navigate('/alumni-directory')}
-        >
-          <Users className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-          <span className="truncate">Alumni Directory</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full justify-start group min-h-[44px] text-sm"
-          onClick={() => navigate('/reports')}
-        >
-          <BarChart3 className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-          <span className="truncate">Reports</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full justify-start group min-h-[44px] text-sm"
-          onClick={() => navigate('/data-files')}
-        >
-          <Database className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />
-          <span className="truncate">Data Files</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full justify-start group min-h-[44px] text-sm"
-          onClick={() => navigate('/export')}
-        >
-          <Download className="h-4 w-4 mr-2 group-hover:rotate-90 transition-transform" />
-          <span className="truncate">Export Data</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full justify-start group min-h-[44px] text-sm"
-          onClick={() => navigate('/settings')}
-        >
-          <Settings className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform" />
-          <span className="truncate">Settings</span>
-        </Button>
+          showBadge={true}
+          badgeText="New"
+        />
+        <ActionButton
+          icon={Users}
+          label="Alumni Directory"
+          path="/alumni-directory"
+        />
+        <ActionButton
+          icon={BarChart3}
+          label="Reports"
+          path="/reports"
+        />
+        <ActionButton
+          icon={Database}
+          label="Data Files"
+          path="/data-files"
+        />
+        <ActionButton
+          icon={Download}
+          label="Export Data"
+          path="/export"
+          hoverTransform="group-hover:rotate-90"
+        />
+        <ActionButton
+          icon={Settings}
+          label="Settings"
+          path="/settings"
+          hoverTransform="group-hover:rotate-12"
+        />
       </CardContent>
     </Card>
+  )
+}
+
+function StatusItem({
+  icon: Icon,
+  label,
+  status,
+  iconColor,
+  badgeColor
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  status: string
+  iconColor: string
+  badgeColor: string
+}) {
+  return (
+    <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
+      <div className="flex items-center space-x-3">
+        <div className={iconColor}>
+          <Icon className="h-4 w-4" />
+        </div>
+        <span className="text-sm font-medium">{label}</span>
+      </div>
+      <div className="flex items-center space-x-2">
+        <Badge variant="secondary" className={`text-xs ${badgeColor}`}>
+          {status}
+        </Badge>
+      </div>
+    </div>
   )
 }
 
@@ -114,45 +162,27 @@ function SystemStatus() {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
-            <div className="flex items-center space-x-3">
-              <div className="text-green-500">
-                <Database className="h-4 w-4" />
-              </div>
-              <span className="text-sm font-medium">Database</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                Online
-              </Badge>
-            </div>
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
-            <div className="flex items-center space-x-3">
-              <div className="text-blue-500">
-                <Upload className="h-4 w-4" />
-              </div>
-              <span className="text-sm font-medium">File Processing</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
-                Active
-              </Badge>
-            </div>
-          </div>
-          <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors group">
-            <div className="flex items-center space-x-3">
-              <div className="text-purple-500">
-                <BarChart3 className="h-4 w-4" />
-              </div>
-              <span className="text-sm font-medium">Analytics</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-800">
-                Ready
-              </Badge>
-            </div>
-          </div>
+          <StatusItem
+            icon={Database}
+            label="Database"
+            status="Online"
+            iconColor="text-green-500"
+            badgeColor="bg-green-100 text-green-800"
+          />
+          <StatusItem
+            icon={Upload}
+            label="File Processing"
+            status="Active"
+            iconColor="text-blue-500"
+            badgeColor="bg-blue-100 text-blue-800"
+          />
+          <StatusItem
+            icon={BarChart3}
+            label="Analytics"
+            status="Ready"
+            iconColor="text-purple-500"
+            badgeColor="bg-purple-100 text-purple-800"
+          />
         </div>
       </CardContent>
     </Card>
