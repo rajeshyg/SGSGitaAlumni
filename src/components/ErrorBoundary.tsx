@@ -1,5 +1,6 @@
 import React, { Component } from 'react'
 import type { ReactNode, ErrorInfo } from 'react'
+import * as Sentry from '@sentry/react'
 import { Button } from '@/components/ui/button'
 
 interface ErrorBoundaryState {
@@ -24,7 +25,24 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo)
+    // Send error to Sentry
+    Sentry.captureException(error, {
+      contexts: {
+        react: {
+          componentStack: errorInfo.componentStack,
+        },
+      },
+      tags: {
+        component: 'ErrorBoundary',
+        boundary_type: 'react_error_boundary'
+      }
+    })
+
+    // Also log to console in development
+    if (import.meta.env.DEV) {
+      console.error('ErrorBoundary caught an error:', error, errorInfo)
+    }
+
     this.props.onError?.(error, errorInfo)
   }
 
@@ -62,7 +80,22 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 // Hook version for functional components
 export function useErrorHandler() {
   return (error: Error, errorInfo?: { componentStack?: string }) => {
-    console.error('Error caught by useErrorHandler:', error, errorInfo)
-    // You can send this to an error reporting service
+    // Send error to Sentry
+    Sentry.captureException(error, {
+      contexts: {
+        react: {
+          componentStack: errorInfo?.componentStack,
+        },
+      },
+      tags: {
+        component: 'useErrorHandler',
+        boundary_type: 'functional_error_handler'
+      }
+    })
+
+    // Also log to console in development
+    if (import.meta.env.DEV) {
+      console.error('Error caught by useErrorHandler:', error, errorInfo)
+    }
   }
 }

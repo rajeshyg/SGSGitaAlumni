@@ -1,84 +1,97 @@
-# MySQL Database Setup Guide for SGS Alumni Application
+# AWS Deployment Setup Guide for SGS Alumni Application
 
-## 🚀 **Quick Start**
+## 🚀 **Overview**
 
-This guide will help you set up MySQL database connection to replace the mock data with real database integration.
+This guide outlines the AWS deployment strategy for migrating from the current simplified architecture to a cloud-native solution using AWS services.
 
 ## 📋 **Prerequisites**
 
-- MySQL database server (local or remote)
-- Database access credentials
+- AWS Account with appropriate permissions
 - Node.js and npm installed
-- Basic knowledge of MySQL databases
+- Basic knowledge of AWS services (Lambda, API Gateway, DynamoDB, Cognito)
+- Understanding of serverless architecture patterns
 
-## 🔧 **Step 1: Database Access Setup**
+## 🔧 **Step 1: AWS Services Setup**
 
-### 1.1 Verify Database Connection
-You should have received these MySQL credentials:
-- **Host**: `sgsbg-app-db.cj88ledblqs8.us-east-1.rds.amazonaws.com`
-- **User**: `sgsgita_alumni_user`
-- **Password**: `2FvT6j06sfI`
-- **Database**: `sgs_alumni_db`
-- **Port**: `3306`
+### 1.1 Create Required AWS Services
+Set up the following AWS services in your account:
+- **API Gateway**: REST API for frontend-backend communication
+- **Lambda Functions**: Serverless compute for business logic
+- **DynamoDB Table**: NoSQL database for data storage
+- **Cognito User Pool**: User authentication and authorization
+- **CloudWatch**: Monitoring and logging
 
-### 1.2 Test Database Connection (Optional)
-You can test the connection using MySQL client:
-```bash
-mysql -h sgsbg-app-db.cj88ledblqs8.us-east-1.rds.amazonaws.com \
-      -u sgsgita_alumni_user \
-      -p sgs_alumni_db
+### 1.2 Configure IAM Permissions
+Create an IAM user or role with the following permissions:
+- `lambda:*` - Lambda function management
+- `apigateway:*` - API Gateway management
+- `dynamodb:*` - DynamoDB table operations
+- `cognito-idp:*` - Cognito user pool management
+- `logs:*` - CloudWatch logging
+
+## 🗄️ **Step 2: DynamoDB Table Setup**
+
+### 2.1 Create DynamoDB Table
+Create a DynamoDB table for alumni data storage:
+
+```json
+{
+  "TableName": "AlumniData",
+  "KeySchema": [
+    {
+      "AttributeName": "id",
+      "KeyType": "HASH"
+    }
+  ],
+  "AttributeDefinitions": [
+    {
+      "AttributeName": "id",
+      "AttributeType": "S"
+    }
+  ],
+  "BillingMode": "PAY_PER_REQUEST"
+}
 ```
 
-## 🗄️ **Step 2: Database Table Structure**
-
-### 2.1 Required Table Schema
-The application expects a `file_imports` table with the following structure:
-
-```sql
-CREATE TABLE file_imports (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  filename VARCHAR(255) NOT NULL,
-  file_type VARCHAR(50) NOT NULL,
-  upload_date DATETIME NOT NULL,
-  status ENUM('pending', 'processing', 'completed', 'failed') NOT NULL,
-  records_count INT NOT NULL DEFAULT 0,
-  processed_records INT NOT NULL DEFAULT 0,
-  errors_count INT NOT NULL DEFAULT 0,
-  uploaded_by VARCHAR(100) NOT NULL,
-  file_size VARCHAR(50) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+### 2.2 Configure Global Secondary Indexes (Optional)
+Add GSI for search functionality:
+```json
+{
+  "IndexName": "NameIndex",
+  "KeySchema": [
+    {
+      "AttributeName": "lastName",
+      "KeyType": "HASH"
+    }
+  ],
+  "Projection": {
+    "ProjectionType": "ALL"
+  }
+}
 ```
 
-### 2.2 Verify Table Exists
-Check if the table exists in your database:
-```sql
-SHOW TABLES LIKE 'file_imports';
-DESCRIBE file_imports;
-```
-
-## 🔐 **Step 3: Configure Environment Variables**
+## 🔐 **Step 3: Configure AWS Credentials**
 
 ### 3.1 Update `.env.local` File
-The `.env.local` file should already contain your MySQL credentials:
+Configure AWS credentials for development:
 
 ```env
-# MySQL Database Configuration for DEV Environment
-VITE_DB_HOST=sgsbg-app-db.cj88ledblqs8.us-east-1.rds.amazonaws.com
-VITE_DB_USER=sgsgita_alumni_user
-VITE_DB_PASSWORD=2FvT6j06sfI
-VITE_DB_NAME=sgs_alumni_db
-VITE_DB_PORT=3306
+# AWS Configuration for DEV Environment
+VITE_AWS_REGION=us-east-1
+VITE_AWS_ACCESS_KEY_ID=your-access-key-id
+VITE_AWS_SECRET_ACCESS_KEY=your-secret-access-key
+VITE_COGNITO_USER_POOL_ID=your-user-pool-id
+VITE_COGNITO_CLIENT_ID=your-client-id
 VITE_ENVIRONMENT=development
 ```
 
 ### 3.2 Security Best Practices
-- ✅ Use `.env.local` (not committed to git)
-- ✅ Use database user with minimal permissions
-- ✅ Rotate database credentials regularly
-- ❌ Never use root database credentials
-- ❌ Never commit credentials to version control
+- ✅ Use IAM roles instead of access keys in production
+- ✅ Implement least-privilege access policies
+- ✅ Rotate credentials regularly
+- ✅ Use AWS Secrets Manager for sensitive data
+- ❌ Never commit AWS credentials to version control
+- ❌ Never use root AWS account credentials
 
 ## 🧪 **Step 4: Test the Integration**
 
@@ -87,56 +100,53 @@ VITE_ENVIRONMENT=development
 npm run dev
 ```
 
-### 4.2 Check MySQL Configuration
+### 4.2 Verify AWS Configuration
 1. Open browser console in the admin page
-2. Look for MySQL configuration status messages
-3. If configured correctly, you'll see data loading from your MySQL database
+2. Look for AWS configuration status messages
+3. If configured correctly, you'll see successful API calls to AWS services
 
-### 4.3 Add Test Data (Optional)
-You can manually add test data to MySQL:
-
-```sql
-INSERT INTO file_imports
-(filename, file_type, upload_date, status, records_count, processed_records, errors_count, uploaded_by, file_size)
-VALUES
-('alumni_test.csv', 'CSV', NOW(), 'completed', 100, 100, 0, 'admin', '1.2MB');
-```
+### 4.3 Test AWS Services
+Verify each service is working:
+- **DynamoDB**: Data operations (create, read, update, delete)
+- **Cognito**: User authentication flows
+- **API Gateway**: REST API endpoints responding
+- **Lambda**: Serverless functions executing
 
 ## 🔍 **Troubleshooting**
 
 ### Common Issues
 
-#### ❌ "MySQL not configured" Error
+#### ❌ "AWS not configured" Error
 - Check if `.env.local` file exists
-- Verify all MySQL environment variables are set
+- Verify all AWS environment variables are set
 - Ensure Vite server is restarted after changing `.env.local`
 
-#### ❌ "Connection failed" Error
-- Verify database credentials are correct
-- Check if database server is accessible
-- Ensure database user has proper permissions
+#### ❌ "AWS Connection failed" Error
+- Verify AWS credentials are correct and have proper permissions
+- Check if AWS services are accessible from your network
+- Ensure IAM user/role has the required permissions
 
-#### ❌ "Table not found" Error
-- Verify `file_imports` table exists in the database
-- Check if table schema matches the expected structure
-- Ensure database user has SELECT permissions on the table
+#### ❌ "DynamoDB Table not found" Error
+- Verify DynamoDB table exists in the correct region
+- Check if table name matches the expected configuration
+- Ensure IAM user has DynamoDB permissions
 
 ### Debug Commands
 ```bash
 # Check environment variables
-echo $VITE_DB_HOST
+echo $VITE_AWS_REGION
 
-# Test MySQL connection (if MySQL client installed)
-mysql -h sgsbg-app-db.cj88ledblqs8.us-east-1.rds.amazonaws.com \
-      -u sgsgita_alumni_user \
-      -p sgs_alumni_db \
-      -e "SHOW TABLES;"
+# Test AWS credentials
+aws sts get-caller-identity
 
-# Check table structure
-mysql -h sgsbg-app-db.cj88ledblqs8.us-east-1.rds.amazonaws.com \
-      -u sgsgita_alumni_user \
-      -p sgs_alumni_db \
-      -e "DESCRIBE file_imports;"
+# List DynamoDB tables
+aws dynamodb list-tables --region us-east-1
+
+# Describe DynamoDB table
+aws dynamodb describe-table --table-name AlumniData --region us-east-1
+
+# Check Cognito user pool
+aws cognito-idp describe-user-pool --user-pool-id your-user-pool-id
 ```
 
 ## 📊 **Monitoring & Costs**
@@ -171,20 +181,23 @@ Access Keys    → IAM Roles    → Secure Tokens
 If you encounter issues:
 1. Check the browser console for detailed error messages
 2. Verify AWS credentials and permissions
-3. Ensure DynamoDB table exists and is accessible
+3. Ensure all AWS services are properly configured
 4. Review the troubleshooting section above
+5. Check AWS service health status
 
 ## 🔒 **Security Checklist**
 
 - [ ] AWS credentials stored securely (not in code)
-- [ ] IAM user has minimal required permissions
+- [ ] IAM roles/users have minimal required permissions
 - [ ] DynamoDB table has proper access controls
+- [ ] Cognito user pool properly configured
+- [ ] API Gateway has appropriate security settings
 - [ ] Environment variables properly configured
-- [ ] No sensitive data logged in browser console
+- [ ] CloudWatch logging enabled for monitoring
 - [ ] Regular credential rotation planned
 
 ---
 
-**🎉 You're now ready to use real AWS services instead of mock data!**
+**🎉 You're now ready for AWS deployment!**
 
-The application will automatically detect your AWS configuration and start using DynamoDB for data storage.
+The application is designed for seamless migration from the current simplified architecture to a full AWS serverless deployment.

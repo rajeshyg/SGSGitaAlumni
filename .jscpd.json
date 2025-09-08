@@ -1,0 +1,28 @@
+{
+  "threshold": 0,
+  "reporters": ["console", "html"],
+  "output": "./reports/jscpd/",
+  "min-lines": 10,
+  "min-tokens": 50,
+  "max-lines": 500,
+  "max-size": "1mb",
+  "ignore": [
+    "**/node_modules/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/dist/**",
+    "**/build/**",
+    "**/.next/**",
+    "**/.nuxt/**",
+    "**/coverage/**",
+    "**/reports/**",
+    "**/docs/**",
+    "**/*.config.*",
+    "**/package-lock.json",
+    "**/yarn.lock",
+    "**/pnpm-lock.yaml"
+  ],
+  "format": ["javascript", "typescript", "jsx", "tsx"],
+  "blame": true,
+  "absolute": true
+}
