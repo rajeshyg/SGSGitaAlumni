@@ -113,7 +113,7 @@ export const AccessibilityUtils = {
     return size >= TOUCH_TARGETS[platform].MINIMUM
   },
 
-  calculateContrastRatio: (foreground: string, background: string): number => {
+  calculateContrastRatio: (_foreground: string, _background: string): number => {
     // Implementation of WCAG contrast ratio calculation
     // This would include color parsing and luminance calculation
     // For now, return a placeholder

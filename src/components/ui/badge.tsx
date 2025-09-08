@@ -1,6 +1,5 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-
 import { cn } from "../../lib"
 
 const badgeVariants = cva(
@@ -15,7 +14,6 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground border-border bg-transparent",
-        // Grade variants using CSS variables from theme system
         "grade-a": "border-transparent bg-[var(--badge-grade-a)] text-[var(--badge-grade-a-foreground)] hover:bg-[var(--badge-grade-a)]/80",
         "grade-b": "border-transparent bg-[var(--badge-grade-b)] text-[var(--badge-grade-b-foreground)] hover:bg-[var(--badge-grade-b)]/80",
         "grade-c": "border-transparent bg-[var(--badge-grade-c)] text-[var(--badge-grade-c-foreground)] hover:bg-[var(--badge-grade-c)]/80",
@@ -39,7 +37,6 @@ const badgeVariants = cva(
 export interface BadgeProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'content'>,
     VariantProps<typeof badgeVariants> {
-  // Enhanced Badge Props from old app analysis
   count?: number
   content?: React.ReactNode
   max?: number
@@ -48,37 +45,27 @@ export interface BadgeProps
   standalone?: boolean
 }
 
-// Badge Content Helper from old app patterns
-const BadgeContent = ({ count, content, max, showZero }: Pick<BadgeProps, 'count' | 'content' | 'max' | 'showZero'>) => {
-  if (content) {
-    return content
-  }
-
+function getBadgeContent({ count, content, max, showZero }: Pick<BadgeProps, 'count' | 'content' | 'max' | 'showZero'>) {
+  if (content) return content
   if (count !== undefined) {
-    if (count === 0 && !showZero) {
-      return null
-    }
+    if (count === 0 && !showZero) return null
     return count > (max || 99) ? `${max || 99}+` : count
   }
-
   return null
 }
 
-// Wrapper Badge Component (for positioning badges on other elements)
-const BadgeWrapper = ({
-  children,
-  className,
-  ...props
-}: {
-  children: React.ReactNode
-  className?: string
-  position?: BadgeProps['position']
-} & React.HTMLAttributes<HTMLDivElement>) => {
-  return (
-    <div className={cn('relative inline-block', className)} {...props}>
-      {children}
-    </div>
-  )
+function getPositionClasses(position: BadgeProps['position']) {
+  const classes = {
+    'top-right': 'absolute -top-2 -right-2 z-10',
+    'top-left': 'absolute -top-2 -left-2 z-10',
+    'bottom-right': 'absolute -bottom-2 -right-2 z-10',
+    'bottom-left': 'absolute -bottom-2 -left-2 z-10'
+  }
+  return classes[position || 'top-right']
+}
+
+function shouldUsePositioning({ standalone, count, content }: Pick<BadgeProps, 'standalone' | 'count' | 'content'>) {
+  return !standalone && !!(count || content)
 }
 
 function Badge({
@@ -94,40 +81,38 @@ function Badge({
   children,
   ...props
 }: BadgeProps) {
-  const badgeContentValue = BadgeContent({ count, content, max, showZero })
+  const badgeContent = getBadgeContent({ count, content, max, showZero })
+  const displayContent = badgeContent !== null ? badgeContent : children
 
-  // Determine what to display: badgeContentValue, children, or nothing
-  const displayContent = badgeContentValue !== null ? badgeContentValue : children
-
-  // If no content to show, return null
   if (displayContent === null || displayContent === undefined) {
     return null
   }
 
-  const badgeElement = (
-    <div className={cn(badgeVariants({ variant, size }), className)} {...props}>
-      {displayContent}
-    </div>
-  )
-
-  // If standalone or no positioning needed (when using children or simple content)
-  if (standalone || (!count && !content)) {
-    return badgeElement
-  }
-
-  // Positioned badge (for overlaying on other elements) - only for count/content badges
-  const positionClasses = {
-    'top-right': 'absolute -top-2 -right-2 z-10',
-    'top-left': 'absolute -top-2 -left-2 z-10',
-    'bottom-right': 'absolute -bottom-2 -right-2 z-10',
-    'bottom-left': 'absolute -bottom-2 -left-2 z-10'
-  }
+  const baseClasses = badgeVariants({ variant, size })
+  const finalClasses = shouldUsePositioning({ standalone, count, content })
+    ? cn(baseClasses, getPositionClasses(position), className)
+    : cn(baseClasses, className)
 
   return (
-    <div className={cn(badgeVariants({ variant, size }), positionClasses[position], className)} {...props}>
+    <div className={finalClasses} {...props}>
       {displayContent}
     </div>
   )
 }
 
-export { Badge, BadgeWrapper, badgeVariants }
+function BadgeWrapper({
+  children,
+  className,
+  ...props
+}: {
+  children: React.ReactNode
+  className?: string
+} & React.HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={cn('relative inline-block', className)} {...props}>
+      {children}
+    </div>
+  )
+}
+
+export { Badge, BadgeWrapper }

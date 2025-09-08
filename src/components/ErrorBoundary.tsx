@@ -1,5 +1,4 @@
-import React, { Component } from 'react'
-import type { ReactNode, ErrorInfo } from 'react'
+import React, { Component, type ReactNode, type ErrorInfo } from 'react'
 import * as Sentry from '@sentry/react'
 import { Button } from '@/components/ui/button'
 
@@ -40,7 +39,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
     // Also log to console in development
     if (import.meta.env.DEV) {
-      console.error('ErrorBoundary caught an error:', error, errorInfo)
+      // eslint-disable-next-line no-console
+      console.error('[ErrorBoundary] Caught an error:', {
+        error: error.message,
+        stack: error.stack,
+        componentStack: errorInfo.componentStack
+      })
     }
 
     this.props.onError?.(error, errorInfo)
@@ -95,7 +99,12 @@ export function useErrorHandler() {
 
     // Also log to console in development
     if (import.meta.env.DEV) {
-      console.error('Error caught by useErrorHandler:', error, errorInfo)
+      // eslint-disable-next-line no-console
+      console.error('[useErrorHandler] Caught an error:', {
+        error: error?.message || 'Unknown error',
+        stack: error?.stack,
+        componentStack: errorInfo?.componentStack
+      })
     }
   }
 }

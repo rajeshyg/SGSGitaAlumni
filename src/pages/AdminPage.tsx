@@ -217,7 +217,6 @@ export function AdminPage() {
   }
 
   // Calculate real statistics from actual data
-  const totalImports = total
   const completedImports = fileImportData.filter(imp => imp.status === 'completed').length
   const totalRecords = fileImportData.reduce((sum, imp) => sum + imp.records_count, 0)
   const totalErrors = fileImportData.reduce((sum, imp) => sum + imp.errors_count, 0)
@@ -238,9 +237,6 @@ export function AdminPage() {
     }
   }
 
-  const handleSearchChange = (term: string) => {
-    search(term) // This will automatically reset to page 0
-  }
 
   return (
     <div className="min-h-screen bg-background">

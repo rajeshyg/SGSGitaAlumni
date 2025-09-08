@@ -1,9 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { cn } from './lib/utils'
 
+const TEST_STRINGS = {
+  CLASS1_CLASS2: 'class1 class2',
+  CLASS1: 'class1',
+  CLASS2: 'class2'
+} as const;
+
 describe('cn utility function', () => {
   it('should merge class names correctly', () => {
-    expect(cn('class1', 'class2')).toBe('class1 class2')
+    expect(cn(TEST_STRINGS.CLASS1, TEST_STRINGS.CLASS2)).toBe(TEST_STRINGS.CLASS1_CLASS2)
   })
 
   it('should handle conditional classes', () => {
@@ -19,6 +25,6 @@ describe('cn utility function', () => {
   })
 
   it('should handle undefined and null', () => {
-    expect(cn('class1', undefined, null, 'class2')).toBe('class1 class2')
+    expect(cn(TEST_STRINGS.CLASS1, undefined, null, TEST_STRINGS.CLASS2)).toBe(TEST_STRINGS.CLASS1_CLASS2)
   })
 })

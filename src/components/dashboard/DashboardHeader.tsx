@@ -19,7 +19,6 @@ import {
   Menu
 } from 'lucide-react'
 import { ThemeToggle } from '../theme/ThemeToggle'
-// Note: ThemeToggle component will be imported once theme system is fully set up
 
 interface UserProfile {
   id: string | number
@@ -41,147 +40,169 @@ interface DashboardHeaderProps {
   onLogout: () => void
 }
 
-export function DashboardHeader({ currentProfile, stats, onSwitchProfile, onLogout }: DashboardHeaderProps) {
+function LogoSection() {
+  return (
+    <div className="flex items-center space-x-3">
+      <img
+        src="/images/opportunities/sgsgf-logo.png"
+        alt="SGS Gita Foundation Logo"
+        className="h-8 w-auto"
+      />
+      <div>
+        <h1 className="text-lg font-bold">SGSGita Alumni System</h1>
+        <p className="text-xs text-muted-foreground hidden sm:block">Alumni Management Platform</p>
+      </div>
+    </div>
+  )
+}
+
+function DesktopNavigation({ stats }: { stats: DashboardHeaderProps['stats'] }) {
   const navigate = useNavigate()
 
+  return (
+    <div className="hidden md:flex items-center space-x-2">
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-muted-foreground"
+        onClick={() => navigate('/alumni-directory')}
+      >
+        <Search className="h-4 w-4 mr-2" />
+        Search alumni...
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative"
+        onClick={() => navigate('/responses')}
+      >
+        <Bell className="h-5 w-5" />
+        {stats.notifications.unread > 0 && (
+          <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center font-medium">
+            {stats.notifications.unread}
+          </span>
+        )}
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative"
+        onClick={() => navigate('/chat')}
+      >
+        <MessageSquare className="h-5 w-5" />
+        {stats.chat.totalUnread > 0 && (
+          <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center font-medium">
+            {stats.chat.totalUnread}
+          </span>
+        )}
+      </Button>
+
+      <ThemeToggle />
+      <Separator orientation="vertical" className="h-6" />
+    </div>
+  )
+}
+
+function MobileMenu({ stats, onSwitchProfile, onLogout }: {
+  stats: DashboardHeaderProps['stats']
+  onSwitchProfile: () => void
+  onLogout: () => void
+}) {
+  const navigate = useNavigate()
+
+  return (
+    <div className="md:hidden">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuItem onClick={() => navigate('/alumni-directory')}>
+            <Search className="h-4 w-4 mr-2" />
+            Search Alumni
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/responses')}>
+            <Bell className="h-4 w-4 mr-2" />
+            Notifications
+            {stats.notifications.unread > 0 && (
+              <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
+                {stats.notifications.unread}
+              </Badge>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/chat')}>
+            <MessageSquare className="h-4 w-4 mr-2" />
+            Messages
+            {stats.chat.totalUnread > 0 && (
+              <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
+                {stats.chat.totalUnread}
+              </Badge>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onSwitchProfile}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Switch Profile
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+}
+
+function ProfileSection({ currentProfile, onSwitchProfile, onLogout }: {
+  currentProfile: UserProfile
+  onSwitchProfile: () => void
+  onLogout: () => void
+}) {
+  return (
+    <div className="flex items-center space-x-2">
+      <div className="hidden lg:block text-right">
+        <p className="text-sm font-medium">{currentProfile.name}</p>
+        <p className="text-xs text-muted-foreground capitalize">
+          {currentProfile.preferences?.professionalStatus || 'member'} • {currentProfile.role}
+        </p>
+      </div>
+      <Avatar className="h-8 w-8 border-2 border-primary/20">
+        <AvatarImage src={currentProfile.avatar} />
+        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+          {currentProfile.name.split(' ').map(n => n[0]).join('')}
+        </AvatarFallback>
+      </Avatar>
+      <div className="hidden md:flex items-center space-x-1">
+        <Button variant="ghost" size="icon" onClick={onSwitchProfile}>
+          <UserPlus className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={onLogout}>
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
+      <div className="md:hidden">
+        <ThemeToggle />
+      </div>
+    </div>
+  )
+}
+
+export function DashboardHeader({ currentProfile, stats, onSwitchProfile, onLogout }: DashboardHeaderProps) {
   return (
     <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
-          {/* Logo and Brand */}
-          <div className="flex items-center space-x-3">
-            <img
-              src="/images/opportunities/sgsgf-logo.png"
-              alt="SGS Gita Foundation Logo"
-              className="h-8 w-auto"
-            />
-            <div>
-              <h1 className="text-lg font-bold">SGSGita Alumni System</h1>
-              <p className="text-xs text-muted-foreground hidden sm:block">Alumni Management Platform</p>
-            </div>
-          </div>
+          <LogoSection />
 
-          {/* Navigation and Actions */}
           <div className="flex items-center space-x-2">
-            {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-2">
-              {/* Quick Search */}
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-muted-foreground"
-                onClick={() => navigate('/alumni-directory')}
-              >
-                <Search className="h-4 w-4 mr-2" />
-                Search alumni...
-              </Button>
-
-              {/* Notifications */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative"
-                onClick={() => navigate('/responses')}
-              >
-                <Bell className="h-5 w-5" />
-                {stats.notifications.unread > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center font-medium">
-                    {stats.notifications.unread}
-                  </span>
-                )}
-              </Button>
-
-              {/* Messages */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative"
-                onClick={() => navigate('/chat')}
-              >
-                <MessageSquare className="h-5 w-5" />
-                {stats.chat.totalUnread > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center font-medium">
-                    {stats.chat.totalUnread}
-                  </span>
-                )}
-              </Button>
-
-              {/* Theme Toggle */}
-              <ThemeToggle />
-
-              <Separator orientation="vertical" className="h-6" />
-            </div>
-
-            {/* Mobile Menu Dropdown */}
-            <div className="md:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Menu className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={() => navigate('/alumni-directory')}>
-                    <Search className="h-4 w-4 mr-2" />
-                    Search Alumni
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/responses')}>
-                    <Bell className="h-4 w-4 mr-2" />
-                    Notifications
-                    {stats.notifications.unread > 0 && (
-                      <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
-                        {stats.notifications.unread}
-                      </Badge>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/chat')}>
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Messages
-                    {stats.chat.totalUnread > 0 && (
-                      <Badge variant="destructive" className="ml-auto h-5 w-5 p-0 text-xs">
-                        {stats.chat.totalUnread}
-                      </Badge>
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={onSwitchProfile}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Switch Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onLogout}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Logout
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Profile Section */}
-            <div className="flex items-center space-x-2">
-              <div className="hidden lg:block text-right">
-                <p className="text-sm font-medium">{currentProfile.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{currentProfile.preferences?.professionalStatus || 'member'} • {currentProfile.role}</p>
-              </div>
-              <Avatar className="h-8 w-8 border-2 border-primary/20">
-                <AvatarImage src={currentProfile.avatar} />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                  {currentProfile.name.split(' ').map(n => n[0]).join('')}
-                </AvatarFallback>
-              </Avatar>
-              {/* Desktop Profile Actions */}
-              <div className="hidden md:flex items-center space-x-1">
-                <Button variant="ghost" size="icon" onClick={onSwitchProfile}>
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={onLogout}>
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </div>
-              {/* Mobile Theme Toggle */}
-              <div className="md:hidden">
-                <ThemeToggle />
-              </div>
-            </div>
+            <DesktopNavigation stats={stats} />
+            <MobileMenu stats={stats} onSwitchProfile={onSwitchProfile} onLogout={onLogout} />
+            <ProfileSection currentProfile={currentProfile} onSwitchProfile={onSwitchProfile} onLogout={onLogout} />
           </div>
         </div>
       </div>

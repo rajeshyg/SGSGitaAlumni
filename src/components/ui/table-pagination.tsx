@@ -1,10 +1,10 @@
 // TablePagination.tsx
 import * as React from "react"
 import { Button } from "./button"
-import { cn } from "../../lib/utils"
+import type { Table } from "@tanstack/react-table"
 
 interface TablePaginationProps {
-  table: any
+  table: Table<any>
 }
 
 export function TablePagination({ table }: TablePaginationProps) {

@@ -6,17 +6,15 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-} from "@tanstack/react-table"
-import type {
-  ColumnDef,
-  VisibilityState,
-  ColumnFiltersState,
-  SortingState,
-  RowSelectionState,
-  ColumnOrderState,
-  ColumnSizingState,
-  ColumnPinningState,
-  Column,
+  type ColumnDef,
+  type VisibilityState,
+  type ColumnFiltersState,
+  type SortingState,
+  type RowSelectionState,
+  type ColumnOrderState,
+  type ColumnSizingState,
+  type ColumnPinningState,
+  type Column,
 } from "@tanstack/react-table"
 import { cn } from "../../lib"
 import { Checkbox } from "./checkbox"
@@ -45,6 +43,12 @@ import {
 import type { CSSProperties } from "react"
 import { TablePagination } from "./table-pagination"
 
+// Constants for repeated strings
+const HOVER_OPACITY_CLASS = "opacity-0 group-hover:opacity-100 transition-opacity"
+const ICON_SIZE_CLASS = "h-3 w-3"
+const MUTED_BACKGROUND = "hsl(var(--muted))"
+const BACKGROUND_COLOR = "hsl(var(--background))"
+
 // Advanced table interfaces based on TanStack Table and proven patterns
 export interface GroupHeaderConfig {
   label: string
@@ -58,7 +62,7 @@ export interface FrozenColumnsConfig {
   shadowIntensity?: 'light' | 'medium' | 'heavy'
 }
 
-export interface SelectionConfig<T = any> {
+export interface SelectionConfig<T = Record<string, unknown>> {
   enabled: boolean
   mode?: 'single' | 'multiple'
   selectedRows?: T[]
@@ -85,15 +89,15 @@ export interface ReorderingConfig {
   onReorder?: (_fromIndex: number, _toIndex: number) => void
 }
 
-export interface EditingConfig<T = any> {
+export interface EditingConfig<T = Record<string, unknown>> {
   enabled: boolean
   mode?: 'cell' | 'row'
-  onSave?: (_rowIndex: number, _columnId: string, _value: any, _row: T) => Promise<void>
+  onSave?: (_rowIndex: number, _columnId: string, _value: unknown, _row: T) => Promise<void>
   onCancel?: () => void
-  validation?: (_value: any, _columnId: string, _row: T) => boolean | string
+  validation?: (_value: unknown, _columnId: string, _row: T) => boolean | string
 }
 
-export interface AdvancedDataTableProps<T = any> {
+export interface AdvancedDataTableProps<T = Record<string, unknown>> {
   data: T[]
   columns: ColumnDef<T>[]
   selection?: SelectionConfig<T>
@@ -120,12 +124,12 @@ export interface AdvancedDataTableProps<T = any> {
 
 // Enhanced inline editor component
 interface InlineEditorProps {
-  value: any
+  value: string | number
   type?: 'text' | 'number' | 'select'
-  options?: { value: any; label: string }[]
-  onSave: (_value: any) => Promise<void>
+  options?: { value: string | number; label: string }[]
+  onSave: (_value: string | number) => Promise<void>
   onCancel: () => void
-  validation?: (_value: any) => boolean | string
+  validation?: (_value: string | number) => boolean | string
   className?: string
 }
 
@@ -385,14 +389,14 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
               <div className={cn("flex items-center gap-1", compactMode && "w-0 overflow-hidden group-hover:w-auto")}>
                 {reordering.enabled && (
                   <GripVertical className={cn(
-                    "h-3 w-3 text-muted-foreground cursor-grab",
-                    compactMode && "opacity-0 group-hover:opacity-100 transition-opacity"
+                    `${ICON_SIZE_CLASS} text-muted-foreground cursor-grab`,
+                    compactMode && HOVER_OPACITY_CLASS
                   )} />
                 )}
                 {column.getIsPinned() && (
                   <Pin className={cn(
-                    "h-3 w-3 text-muted-foreground/60",
-                    compactMode && "opacity-0 group-hover:opacity-100 transition-opacity"
+                    `${ICON_SIZE_CLASS} text-muted-foreground/60`,
+                    compactMode && HOVER_OPACITY_CLASS
                   )} />
                 )}
               </div>
@@ -412,11 +416,11 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
                   onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
                   {column.getIsSorted() === "asc" ? (
-                    <ChevronUp className="h-3 w-3" />
+                    <ChevronUp className={ICON_SIZE_CLASS} />
                   ) : column.getIsSorted() === "desc" ? (
-                    <ChevronDown className="h-3 w-3" />
+                    <ChevronDown className={ICON_SIZE_CLASS} />
                   ) : (
-                    <ChevronsUpDown className="h-3 w-3" />
+                    <ChevronsUpDown className={ICON_SIZE_CLASS} />
                   )}
                 </Button>
               )}
@@ -424,9 +428,9 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className={cn(
                     "h-6 w-6 p-0",
-                    compactMode && "opacity-0 group-hover:opacity-100 transition-opacity"
+                    compactMode && HOVER_OPACITY_CLASS
                   )}>
-                    <MoreHorizontal className="h-3 w-3" />
+                    <MoreHorizontal className={ICON_SIZE_CLASS} />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -638,7 +642,7 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
                       "h-8 px-2 text-center align-middle font-semibold text-foreground border-r text-xs",
                       header.className
                     )}
-                    style={{ backgroundColor: 'hsl(var(--muted))' }}
+                    style={{ backgroundColor: MUTED_BACKGROUND }}
                   >
                     {header.label}
                   </th>
@@ -661,7 +665,7 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
                       style={{
                         ...pinningStyles,
                         width: header.getSize(),
-                        backgroundColor: header.column.id === 'select' ? 'hsl(var(--background))' : 'hsl(var(--muted))',
+                        backgroundColor: header.column.id === 'select' ? BACKGROUND_COLOR : MUTED_BACKGROUND,
                         boxShadow: pinningStyles.boxShadow
                           ? `${pinningStyles.boxShadow}, var(--shadow-header)`
                           : 'var(--shadow-header)',
@@ -716,8 +720,8 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
                         style={{
                           ...pinningStyles,
                           width: cell.column.getSize(),
-                          backgroundColor: cell.column.id === 'select' ? 'hsl(var(--background))' :
-                                          cell.column.getIsPinned() ? 'hsl(var(--muted))' : 'hsl(var(--background))',
+                          backgroundColor: cell.column.id === 'select' ? BACKGROUND_COLOR :
+                                          cell.column.getIsPinned() ? MUTED_BACKGROUND : BACKGROUND_COLOR,
                         }}
                       >
                         {flexRender(

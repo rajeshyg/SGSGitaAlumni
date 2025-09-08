@@ -104,6 +104,7 @@ export const PerformanceUtils = {
 
     if (value <= target) return 'good'
     if (value <= warningThreshold) return 'warning'
-    return 'critical'
+    if (value <= criticalThreshold) return 'critical'
+    return 'critical' // Beyond critical threshold, still critical
   }
 } as const
