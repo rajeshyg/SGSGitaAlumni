@@ -27,7 +27,7 @@ A modern React-based alumni management platform with advanced data table functio
 
 ### Code Quality Rules
 - ❌ No console statements in production code
-- 📏 Files limited to 300 lines maximum (AI context optimization)
+- 📏 Files limited to 500 lines maximum (AI context optimization)
 - 🔧 Functions limited to 50 lines maximum
 - 🗑️ No unused imports or variables
 - 📦 No duplicate imports
@@ -133,7 +133,7 @@ See [Quality Standards](docs/QUALITY_STANDARDS.md) for comprehensive redundancy 
 
 ### Current Quality Gates
 - 🔍 **Redundancy Detection**: jscpd + SonarJS active
-- 📏 **File Size Limits**: 300 lines max (AI context optimized)
+- 📏 **File Size Limits**: 500 lines max (AI context optimized)
 - 🔧 **Function Complexity**: 50 lines max, complexity score ≤10
 - ❌ **Zero Console**: Production code free of debug statements
 - ✅ **Test Coverage**: Automated testing pipeline

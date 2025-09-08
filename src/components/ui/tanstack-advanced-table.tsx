@@ -14,7 +14,8 @@ import {
   type ColumnOrderState,
   type ColumnSizingState,
   type ColumnPinningState,
-  type Column,
+  type HeaderContext,
+  type CellContext,
 } from "@tanstack/react-table"
 import { cn } from "../../lib"
 import { Checkbox } from "./checkbox"
@@ -28,8 +29,6 @@ import {
   Download,
   GripVertical,
   Edit2,
-  Check,
-  X,
   Pin,
   PinOff,
   MoreHorizontal,
@@ -40,254 +39,305 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./dropdown-menu"
-import type { CSSProperties } from "react"
 import { TablePagination } from "./table-pagination"
+import { InlineEditor } from "./inline-editor"
+import { getCommonPinningStyles, HOVER_OPACITY_CLASS, ICON_SIZE_CLASS, MUTED_BACKGROUND, BACKGROUND_COLOR, exportTableToCSV } from "./table-utils"
+import type { AdvancedDataTableProps } from "./table-types"
 
-// Constants for repeated strings
-const HOVER_OPACITY_CLASS = "opacity-0 group-hover:opacity-100 transition-opacity"
-const ICON_SIZE_CLASS = "h-3 w-3"
-const MUTED_BACKGROUND = "hsl(var(--muted))"
-const BACKGROUND_COLOR = "hsl(var(--background))"
 
-// Advanced table interfaces based on TanStack Table and proven patterns
-export interface GroupHeaderConfig {
-  label: string
-  columns: string[]
-  className?: string
-  style?: React.CSSProperties
-}
-
-export interface FrozenColumnsConfig {
-  count: number
-  shadowIntensity?: 'light' | 'medium' | 'heavy'
-}
-
-export interface SelectionConfig<T = Record<string, unknown>> {
-  enabled: boolean
-  mode?: 'single' | 'multiple'
-  selectedRows?: T[]
-  onSelectionChange?: (_rows: T[]) => void
-  getRowId?: (_row: T) => string | number
-}
-
-export interface MobileConfig {
-  enabled: boolean
-  hideColumns?: string[]
-  stackColumns?: boolean
-  touchOptimized?: boolean
-}
-
-export interface ResizingConfig {
-  enabled: boolean
-  minSize?: number
-  maxSize?: number
-  defaultSize?: number
-}
-
-export interface ReorderingConfig {
-  enabled: boolean
-  onReorder?: (_fromIndex: number, _toIndex: number) => void
-}
-
-export interface EditingConfig<T = Record<string, unknown>> {
-  enabled: boolean
-  mode?: 'cell' | 'row'
-  onSave?: (_rowIndex: number, _columnId: string, _value: unknown, _row: T) => Promise<void>
-  onCancel?: () => void
-  validation?: (_value: unknown, _columnId: string, _row: T) => boolean | string
-}
-
-export interface AdvancedDataTableProps<T = Record<string, unknown>> {
-  data: T[]
-  columns: ColumnDef<T>[]
-  selection?: SelectionConfig<T>
-  groupHeaders?: GroupHeaderConfig[]
-  frozenColumns?: FrozenColumnsConfig
-  mobile?: MobileConfig
-  resizing?: ResizingConfig
-  reordering?: ReorderingConfig
-  editing?: EditingConfig<T>
-  searchable?: boolean
-  filterable?: boolean
-  sortable?: boolean
-  pagination?: boolean
-  pageSize?: number
-  loading?: boolean
-  emptyMessage?: string
-  className?: string
-  maxHeight?: string
-  onRowClick?: (_row: T) => void
-  exportable?: boolean
-  exportFilename?: string
-  compactMode?: boolean
-}
-
-// Enhanced inline editor component
-interface InlineEditorProps {
-  value: string | number
-  type?: 'text' | 'number' | 'select'
-  options?: { value: string | number; label: string }[]
-  onSave: (_value: string | number) => Promise<void>
-  onCancel: () => void
-  validation?: (_value: string | number) => boolean | string
-  className?: string
-}
-
-function InlineEditor({
-  value,
-  type = 'text',
-  options,
-  onSave,
-  onCancel,
-  validation,
-  className
-}: InlineEditorProps) {
-  const [editValue, setEditValue] = React.useState(value)
-  const [error, setError] = React.useState<string>()
-  const [saving, setSaving] = React.useState(false)
-  const inputRef = React.useRef<HTMLInputElement>(null)
-
-  React.useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [])
-
-  const handleSave = async () => {
-    if (validation) {
-      const result = validation(editValue)
-      if (typeof result === 'string') {
-        setError(result)
-        return
-      }
-      if (!result) {
-        setError('Invalid value')
-        return
-      }
-    }
-
-    setSaving(true)
-    try {
-      await onSave(editValue)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSave()
-    } else if (e.key === 'Escape') {
-      onCancel()
-    }
-  }
-
-  if (type === 'select' && options) {
-    return (
-      <div className="flex items-center gap-1">
-        <select
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className={cn(
-            "flex h-6 w-full rounded border border-input bg-background px-2 py-1 text-xs",
-            "focus:outline-none focus:ring-1 focus:ring-ring",
-            className
-          )}
-          disabled={saving}
-          aria-label="Edit select"
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-6 w-6 p-0"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          <Check className="h-3 w-3" />
-        </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-6 w-6 p-0"
-          onClick={onCancel}
-          disabled={saving}
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      </div>
-    )
-  }
+function renderSortingButton(column: any, sortable: boolean, compactMode: boolean): React.ReactNode {
+  const canSort = sortable && column.enableSorting !== false
+  if (!canSort) return null
 
   return (
-    <div className="flex items-center gap-1">
-      <Input
-        ref={inputRef}
-        type={type}
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        className={cn(
-          "h-6 text-xs",
-          error && "border-destructive focus-visible:ring-destructive",
-          className
-        )}
-        disabled={saving}
-      />
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-6 w-6 p-0"
-        onClick={handleSave}
-        disabled={saving}
-      >
-        <Check className="h-3 w-3" />
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-6 w-6 p-0"
-        onClick={onCancel}
-        disabled={saving}
-      >
-        <X className="h-3 w-3" />
-      </Button>
-      {error && (
-        <span className="text-xs text-destructive ml-1">{error}</span>
+    <Button
+      variant="ghost"
+      size="sm"
+      className={cn(
+        "h-6 w-6 p-0",
+        compactMode && "opacity-0 group-hover:opacity-100 transition-opacity"
       )}
+      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    >
+      {column.getIsSorted() === "asc" ? (
+        <ChevronUp className={ICON_SIZE_CLASS} />
+      ) : column.getIsSorted() === "desc" ? (
+        <ChevronDown className={ICON_SIZE_CLASS} />
+      ) : (
+        <ChevronsUpDown className={ICON_SIZE_CLASS} />
+      )}
+    </Button>
+  )
+}
+
+function renderColumnMenu(column: any, compactMode: boolean): React.ReactNode {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className={cn(
+          "h-6 w-6 p-0",
+          compactMode && HOVER_OPACITY_CLASS
+        )}>
+          <MoreHorizontal className={ICON_SIZE_CLASS} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => column.pin('left')}>
+          <Pin className="mr-2 h-4 w-4" />
+          Pin Left
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => column.pin('right')}>
+          <Pin className="mr-2 h-4 w-4" />
+          Pin Right
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => column.pin(false)}>
+          <PinOff className="mr-2 h-4 w-4" />
+          Unpin
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function renderTableHeader<T extends Record<string, unknown>>(
+  column: any,
+  sortable: boolean,
+  reordering: { enabled: boolean },
+  resizing: { enabled: boolean },
+  editing: { enabled: boolean },
+  compactMode: boolean
+): React.ReactNode {
+  return (
+    <div className="group flex items-center justify-between gap-1">
+      <div className="flex items-center gap-1">
+        <div className={cn("flex items-center gap-1", compactMode && "w-0 overflow-hidden group-hover:w-auto")}>
+          {reordering.enabled && (
+            <GripVertical className={cn(
+              `${ICON_SIZE_CLASS} text-muted-foreground cursor-grab`,
+              compactMode && HOVER_OPACITY_CLASS
+            )} />
+          )}
+          {column.getIsPinned() && (
+            <Pin className={cn(
+              `${ICON_SIZE_CLASS} text-muted-foreground/60`,
+              compactMode && HOVER_OPACITY_CLASS
+            )} />
+          )}
+        </div>
+        <span className="select-none">
+          {column.columnDef.header}
+        </span>
+      </div>
+      <div className={cn("flex items-center gap-1", compactMode && "w-0 overflow-hidden group-hover:w-auto")}>
+        {renderSortingButton(column, sortable, compactMode)}
+        {renderColumnMenu(column, compactMode)}
+      </div>
     </div>
   )
 }
 
-// Common pinning styles for frozen columns (based on TanStack implementation)
-function getCommonPinningStyles<T>(column: Column<T, unknown>): CSSProperties {
-  const isPinned = column.getIsPinned()
-  const isLastLeftPinnedColumn = isPinned === 'left' && column.getIsLastColumn('left')
-  const isFirstRightPinnedColumn = isPinned === 'right' && column.getIsFirstColumn('right')
+function renderEditingCell<T extends Record<string, unknown>>(
+  value: unknown,
+  row: any,
+  column: any,
+  editing: { onSave?: any; validation?: any },
+  setEditingCell: (cell: { rowIndex: number; columnId: string } | null) => void
+): React.ReactNode {
+  return (
+    <InlineEditor
+      value={value as string | number}
+      onSave={async (newValue) => {
+        if (editing.onSave) {
+          await editing.onSave(row.index, column.id, newValue, row.original)
+        }
+        setEditingCell(null)
+      }}
+      onCancel={() => setEditingCell(null)}
+      validation={editing.validation ? (val: any) => editing.validation!(val, column.id, row.original) : undefined}
+    />
+  )
+}
 
-  return {
-    boxShadow: isLastLeftPinnedColumn
-      ? `var(--table-frozen-shadow)`
-      : isFirstRightPinnedColumn
-        ? `var(--table-frozen-shadow)`
-        : undefined,
-    left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
-    right: isPinned === 'right' ? `${column.getAfter('right')}px` : undefined,
-    position: isPinned ? 'sticky' : 'relative',
-    width: column.getSize(),
-    zIndex: isPinned ? 20 : 0,
-    backgroundColor: isPinned && column.id !== 'select' ? 'hsl(var(--muted))' : undefined,
+function renderEditableCell<T extends Record<string, unknown>>(
+  cellProps: CellContext<T, unknown>,
+  col: any,
+  setEditingCell: (cell: { rowIndex: number; columnId: string } | null) => void
+): React.ReactNode {
+  const { row, column, getValue } = cellProps
+  const value = getValue()
+
+  return (
+    <div
+      className="group flex items-center gap-2 cursor-pointer"
+      onClick={() => setEditingCell({ rowIndex: row.index, columnId: column.id })}
+    >
+      <span>{col.cell ? (typeof col.cell === 'function' ? col.cell(cellProps) : col.cell) : String(value)}</span>
+      <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50" />
+    </div>
+  )
+}
+
+function renderTableCell<T extends Record<string, unknown>>(
+  cellProps: CellContext<T, unknown>,
+  col: any,
+  editing: { enabled: boolean; onSave?: any; validation?: any },
+  editingCell: { rowIndex: number; columnId: string } | null,
+  setEditingCell: (cell: { rowIndex: number; columnId: string } | null) => void
+): React.ReactNode {
+  const { row, column, getValue } = cellProps
+  const value = getValue()
+  const isEditing = editingCell?.rowIndex === row.index && editingCell?.columnId === column.id
+
+  if (editing.enabled && isEditing) {
+    return renderEditingCell(value, row, column, editing, setEditingCell)
   }
+
+  if (editing.enabled) {
+    return renderEditableCell(cellProps, col, setEditingCell)
+  }
+
+  return col.cell ? (typeof col.cell === 'function' ? col.cell(cellProps) : col.cell) : String(value)
+}
+
+function TableControls<T extends Record<string, unknown>>({
+  searchable,
+  globalFilter,
+  setGlobalFilter,
+  selection,
+  table,
+  exportable,
+  handleExport
+}: {
+  searchable: boolean
+  globalFilter: string
+  setGlobalFilter: (value: string) => void
+  selection: { enabled: boolean }
+  table: any
+  exportable: boolean
+  handleExport: () => void
+}): React.ReactNode {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-4">
+        {searchable && (
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search all columns..."
+              value={globalFilter ?? ""}
+              onChange={(event) => setGlobalFilter(String(event.target.value))}
+              className="max-w-sm"
+            />
+          </div>
+        )}
+
+        {selection.enabled && table.getFilteredSelectedRowModel().rows.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {table.getFilteredSelectedRowModel().rows.length} row(s) selected
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2">
+        {exportable && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TableHeader<T extends Record<string, unknown>>({
+  groupHeaders,
+  table,
+  resizing,
+  getCommonPinningStyles,
+  BACKGROUND_COLOR,
+  MUTED_BACKGROUND
+}: {
+  groupHeaders: any[]
+  table: any
+  resizing: { enabled: boolean }
+  getCommonPinningStyles: any
+  BACKGROUND_COLOR: string
+  MUTED_BACKGROUND: string
+}): React.ReactNode {
+  return (
+    <thead className="[&_tr]:border-b">
+      {/* Dynamic Group Headers Row */}
+      {groupHeaders && groupHeaders.length > 0 && (
+        <tr className="border-b sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--background))' }}>
+          {/* Map through group headers dynamically */}
+          {groupHeaders.map((header, index) => (
+            <th
+              key={index}
+              colSpan={header.columns.length}
+              className={cn(
+                "h-8 px-2 text-center align-middle font-semibold text-foreground border-r text-xs",
+                header.className
+              )}
+              style={{ backgroundColor: MUTED_BACKGROUND }}
+            >
+              {header.label}
+            </th>
+          ))}
+        </tr>
+      )}
+
+      {/* Column Headers Row */}
+      {table.getHeaderGroups().map((headerGroup: any) => (
+        <tr key={headerGroup.id} className="sticky z-25" style={{ top: groupHeaders && groupHeaders.length > 0 ? '24px' : '0' }}>
+          {headerGroup.headers.map((header: any) => {
+            const pinningStyles = getCommonPinningStyles(header.column)
+            return (
+              <th
+                key={header.id}
+                className={cn(
+                  header.column.id === 'select' ? "h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs" : "h-10 px-3 text-left align-middle font-medium text-muted-foreground text-xs",
+                  "border-r border-border last:border-r-0"
+                )}
+                style={{
+                  ...pinningStyles,
+                  width: header.getSize(),
+                  backgroundColor: header.column.id === 'select' ? BACKGROUND_COLOR : MUTED_BACKGROUND,
+                  boxShadow: pinningStyles.boxShadow
+                    ? `${pinningStyles.boxShadow}, var(--shadow-header)`
+                    : 'var(--shadow-header)',
+                }}
+              >
+                {header.isPlaceholder
+                  ? null
+                  : flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                {/* Resize handle */}
+                {resizing.enabled && header.column.getCanResize() && (
+                  <div
+                    onMouseDown={header.getResizeHandler()}
+                    onTouchStart={header.getResizeHandler()}
+                    className={cn(
+                      "absolute right-0 top-0 h-full w-1 bg-border cursor-col-resize select-none touch-none opacity-0 hover:opacity-100",
+                      header.column.getIsResizing() && "opacity-100 bg-primary"
+                    )}
+                  />
+                )}
+              </th>
+            )
+          })}
+        </tr>
+      ))}
+    </thead>
+  )
 }
 
 export function TanStackAdvancedTable<T extends Record<string, unknown>>({
@@ -379,121 +429,18 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
     }
 
     // Add main columns with enhanced functionality
-    cols.push(...columns.map((col): any => ({
+    cols.push(...columns.map((col) => ({
       ...col,
-      header: ({ column }: any) => {
-        const canSort = sortable && col.enableSorting !== false
-        return (
-          <div className="group flex items-center justify-between gap-1">
-            <div className="flex items-center gap-1">
-              <div className={cn("flex items-center gap-1", compactMode && "w-0 overflow-hidden group-hover:w-auto")}>
-                {reordering.enabled && (
-                  <GripVertical className={cn(
-                    `${ICON_SIZE_CLASS} text-muted-foreground cursor-grab`,
-                    compactMode && HOVER_OPACITY_CLASS
-                  )} />
-                )}
-                {column.getIsPinned() && (
-                  <Pin className={cn(
-                    `${ICON_SIZE_CLASS} text-muted-foreground/60`,
-                    compactMode && HOVER_OPACITY_CLASS
-                  )} />
-                )}
-              </div>
-              <span className="select-none">
-                {typeof col.header === 'function' ? col.header({ column } as any) : col.header}
-              </span>
-            </div>
-            <div className={cn("flex items-center gap-1", compactMode && "w-0 overflow-hidden group-hover:w-auto")}>
-              {canSort && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-6 w-6 p-0",
-                    compactMode && "opacity-0 group-hover:opacity-100 transition-opacity"
-                  )}
-                  onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                  {column.getIsSorted() === "asc" ? (
-                    <ChevronUp className={ICON_SIZE_CLASS} />
-                  ) : column.getIsSorted() === "desc" ? (
-                    <ChevronDown className={ICON_SIZE_CLASS} />
-                  ) : (
-                    <ChevronsUpDown className={ICON_SIZE_CLASS} />
-                  )}
-                </Button>
-              )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className={cn(
-                    "h-6 w-6 p-0",
-                    compactMode && HOVER_OPACITY_CLASS
-                  )}>
-                    <MoreHorizontal className={ICON_SIZE_CLASS} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => column.pin('left')}>
-                    <Pin className="mr-2 h-4 w-4" />
-                    Pin Left
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => column.pin('right')}>
-                    <Pin className="mr-2 h-4 w-4" />
-                    Pin Right
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => column.pin(false)}>
-                    <PinOff className="mr-2 h-4 w-4" />
-                    Unpin
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        )
-      },
-      cell: ({ row, column, getValue }: any) => {
-        const value = getValue()
-        const isEditing = editingCell?.rowIndex === row.index && editingCell?.columnId === column.id
-
-        if (editing.enabled && isEditing) {
-          return (
-            <InlineEditor
-              value={value}
-              onSave={async (newValue) => {
-                if (editing.onSave) {
-                  await editing.onSave(row.index, column.id, newValue, row.original)
-                }
-                setEditingCell(null)
-              }}
-              onCancel={() => setEditingCell(null)}
-              validation={editing.validation ? (val) => editing.validation!(val, column.id, row.original) : undefined}
-            />
-          )
-        }
-
-        if (editing.enabled) {
-          return (
-            <div
-              className="group flex items-center gap-2 cursor-pointer"
-              onClick={() => setEditingCell({ rowIndex: row.index, columnId: column.id })}
-            >
-              <span>{col.cell ? (typeof col.cell === 'function' ? col.cell({ row, column, getValue } as any) : col.cell) : String(value)}</span>
-              <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-50" />
-            </div>
-          )
-        }
-
-        return col.cell ? (typeof col.cell === 'function' ? col.cell({ row, column, getValue } as any) : col.cell) : String(value)
-      },
+      header: ({ column }: HeaderContext<T, unknown>) => renderTableHeader(column, sortable, reordering, resizing, editing, compactMode),
+      cell: (cellProps: CellContext<T, unknown>) => renderTableCell(cellProps, col, editing, editingCell, setEditingCell),
       enableResizing: resizing.enabled,
       size: resizing.defaultSize || 150,
       minSize: resizing.minSize || 50,
       maxSize: resizing.maxSize || 500,
-    })))
+    } as ColumnDef<T>)))
 
     return cols
-  }, [columns, selection.enabled, sortable, reordering.enabled, resizing, editing, editingCell, compactMode])
+  }, [columns, selection.enabled, sortable, reordering, resizing, editing, editingCell, compactMode])
 
   const table = useReactTable({
     data,
@@ -537,37 +484,7 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
   // Export functionality
   const handleExport = () => {
     if (!exportable) return
-
-    const headers = table.getAllColumns()
-      .filter(col => col.getIsVisible() && col.id !== 'select')
-      .map(col => col.columnDef.header)
-      .join(',')
-
-    const rows = table.getRowModel().rows
-      .map(row =>
-        row.getVisibleCells()
-          .filter(cell => cell.column.id !== 'select')
-          .map(cell => {
-            const value = cell.getValue()
-            return typeof value === 'string' && value.includes(',')
-              ? `"${value}"`
-              : String(value)
-          })
-          .join(',')
-      )
-      .join('\n')
-
-    const csv = `${headers}\n${rows}`
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${exportFilename}.csv`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    exportTableToCSV(table, exportFilename)
   }
 
   if (loading) {
@@ -588,112 +505,27 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
 
   return (
     <div className={cn("w-full space-y-4", className)}>
-      {/* Controls */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          {searchable && (
-            <div className="flex items-center gap-2">
-              <Search className="h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search all columns..."
-                value={globalFilter ?? ""}
-                onChange={(event) => setGlobalFilter(String(event.target.value))}
-                className="max-w-sm"
-              />
-            </div>
-          )}
-
-          {selection.enabled && table.getFilteredSelectedRowModel().rows.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {table.getFilteredSelectedRowModel().rows.length} row(s) selected
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          {exportable && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
-          )}
-        </div>
-      </div>
+      <TableControls
+        searchable={searchable}
+        globalFilter={globalFilter}
+        setGlobalFilter={setGlobalFilter}
+        selection={selection}
+        table={table}
+        exportable={exportable}
+        handleExport={handleExport}
+      />
 
       {/* Table */}
       <div className="relative rounded-md border overflow-auto" style={{ maxHeight, boxShadow: 'var(--shadow-sm)' }}>
         <table className="w-full caption-bottom text-sm border-collapse">
-          <thead className="[&_tr]:border-b">
-            {/* Dynamic Group Headers Row */}
-            {groupHeaders && groupHeaders.length > 0 && (
-              <tr className="border-b sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--background))' }}>
-                {/* Map through group headers dynamically */}
-                {groupHeaders.map((header, index) => (
-                  <th
-                    key={index}
-                    colSpan={header.columns.length}
-                    className={cn(
-                      "h-8 px-2 text-center align-middle font-semibold text-foreground border-r text-xs",
-                      header.className
-                    )}
-                    style={{ backgroundColor: MUTED_BACKGROUND }}
-                  >
-                    {header.label}
-                  </th>
-                ))}
-              </tr>
-            )}
-
-            {/* Column Headers Row */}
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="sticky z-25" style={{ top: groupHeaders && groupHeaders.length > 0 ? '24px' : '0' }}>
-                {headerGroup.headers.map((header) => {
-                  const pinningStyles = getCommonPinningStyles(header.column)
-                  return (
-                    <th
-                      key={header.id}
-                      className={cn(
-                        header.column.id === 'select' ? "h-10 px-2 text-center align-middle font-medium text-muted-foreground text-xs" : "h-10 px-3 text-left align-middle font-medium text-muted-foreground text-xs",
-                        "border-r border-border last:border-r-0"
-                      )}
-                      style={{
-                        ...pinningStyles,
-                        width: header.getSize(),
-                        backgroundColor: header.column.id === 'select' ? BACKGROUND_COLOR : MUTED_BACKGROUND,
-                        boxShadow: pinningStyles.boxShadow
-                          ? `${pinningStyles.boxShadow}, var(--shadow-header)`
-                          : 'var(--shadow-header)',
-                      }}
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                      {/* Resize handle */}
-                      {resizing.enabled && header.column.getCanResize() && (
-                        <div
-                          onMouseDown={header.getResizeHandler()}
-                          onTouchStart={header.getResizeHandler()}
-                          className={cn(
-                            "absolute right-0 top-0 h-full w-1 bg-border cursor-col-resize select-none touch-none opacity-0 hover:opacity-100",
-                            header.column.getIsResizing() && "opacity-100 bg-primary"
-                          )}
-                        />
-                      )}
-                    </th>
-                  )
-                })}
-              </tr>
-            ))}
-          </thead>
+          <TableHeader
+            groupHeaders={groupHeaders}
+            table={table}
+            resizing={resizing}
+            getCommonPinningStyles={getCommonPinningStyles}
+            BACKGROUND_COLOR={BACKGROUND_COLOR}
+            MUTED_BACKGROUND={MUTED_BACKGROUND}
+          />
           <tbody className="[&_tr:last-child]:border-0">
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (

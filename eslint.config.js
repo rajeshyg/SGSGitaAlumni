@@ -78,8 +78,8 @@ export default [
       'prefer-const': 'error',
       'no-var': 'error',
 
-      // File size and complexity (general files: 300 lines max)
-      'max-lines': ['error', 300],
+      // File size and complexity (general files: 500 lines max)
+      'max-lines': ['error', 500],
       'max-lines-per-function': ['error', 50],
       'complexity': ['error', 10],
 

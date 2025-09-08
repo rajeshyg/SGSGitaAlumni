@@ -3,11 +3,11 @@ import * as React from "react"
 import { Button } from "./button"
 import type { Table } from "@tanstack/react-table"
 
-interface TablePaginationProps {
-  table: Table<any>
+interface TablePaginationProps<TData> {
+  table: Table<TData>
 }
 
-export function TablePagination({ table }: TablePaginationProps) {
+export function TablePagination<TData>({ table }: TablePaginationProps<TData>) {
   return (
     <div className="flex items-center justify-between space-x-2 py-4">
       <div className="flex-1 text-sm text-muted-foreground">

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../ui/button'
-import { Badge } from '../ui/badge'
+import Badge from '../ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { Separator } from '../ui/separator'
 import {

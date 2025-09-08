@@ -70,14 +70,14 @@ function renderAsChildButton({
   props,
   children
 }: {
-  Comp: any
+  Comp: React.ElementType
   className?: string
-  variant?: any
-  size?: any
-  ref: any
+  variant?: VariantProps<typeof buttonVariants>['variant']
+  size?: VariantProps<typeof buttonVariants>['size']
+  ref: React.Ref<HTMLButtonElement>
   disabled?: boolean
   loading?: boolean
-  props: any
+  props: React.HTMLAttributes<HTMLButtonElement>
   children: React.ReactNode
 }) {
   return (
