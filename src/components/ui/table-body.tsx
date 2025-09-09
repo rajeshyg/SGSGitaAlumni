@@ -4,7 +4,8 @@ import {
   type Row,
   type Cell,
   type Table as TanStackTable,
-  type ColumnDef
+  type ColumnDef,
+  flexRender
 } from "@tanstack/react-table"
 import { cn } from "../../lib"
 import { Edit2 } from "lucide-react"
@@ -42,6 +43,13 @@ function renderTableCell(
   const value = getValue()
   const isEditing = editingCell?.rowIndex === row.index && editingCell?.columnId === column.id
 
+
+  // If column has a custom cell renderer, use it (e.g., for select column checkboxes)
+  if (column.columnDef.cell) {
+    return flexRender(column.columnDef.cell, cellProps)
+  }
+
+  // Handle editing for regular data columns
   if (editing.enabled && isEditing) {
     return (
       <InlineEditor

@@ -40,7 +40,7 @@ function createEnhancedColumns<T extends Record<string, unknown>>(
   const cols: ColumnDef<T>[] = []
 
   if (selection.enabled) {
-    cols.push({
+    const selectCol = {
       id: 'select',
       header: ({ table }) => (
         <Checkbox
@@ -63,16 +63,19 @@ function createEnhancedColumns<T extends Record<string, unknown>>(
       enablePinning: true,
       size: 40,
       enableResizing: false,
-    })
+    }
+    cols.push(selectCol)
   }
 
-  cols.push(...columns.map((col) => ({
+  const enhancedCols = columns.map((col) => ({
     ...col,
     enableResizing: resizing.enabled,
     size: resizing.defaultSize || 150,
     minSize: resizing.minSize || 50,
     maxSize: resizing.maxSize || 500,
-  } as ColumnDef<T>)))
+  } as ColumnDef<T>))
+
+  cols.push(...enhancedCols)
 
   return cols
 }

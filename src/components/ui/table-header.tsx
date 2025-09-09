@@ -34,8 +34,10 @@ interface TableHeaderProps {
 }
 
 function renderSortingButton(column: Column<unknown>, compactMode: boolean): React.ReactNode {
-  const canSort = column.enableSorting !== false
-  if (!canSort) return null
+  const canSort = column.columnDef.enableSorting !== false
+
+  // Don't show sorting for select column
+  if (column.id === 'select' || !canSort) return null
 
   return (
     <Button
@@ -59,6 +61,9 @@ function renderSortingButton(column: Column<unknown>, compactMode: boolean): Rea
 }
 
 function renderColumnMenu(column: Column<unknown>, compactMode: boolean): React.ReactNode {
+  // Don't show menu for select column
+  if (column.id === 'select') return null
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -98,7 +103,7 @@ function renderTableHeader(
     <div className="group flex items-center justify-between gap-1">
       <div className="flex items-center gap-1">
         <div className={cn("flex items-center gap-1", compactMode && "w-0 overflow-hidden group-hover:w-auto")}>
-          {reordering.enabled && (
+          {reordering.enabled && column.id !== 'select' && (
             <GripVertical className={cn(
               `${ICON_SIZE_CLASS} text-muted-foreground cursor-grab`,
               compactMode && HOVER_OPACITY_CLASS
