@@ -1,18 +1,13 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import { APIService } from '../services/APIService'
-import { useLazyData } from '../hooks/useLazyData'
-import { LoadingState, ErrorState, calculateStats, getCurrentProfile } from '../components/admin/AdminHelpers'
-import { MainLayout } from '../components/admin/MainLayout'
-import { DataTableSection } from '../components/admin/DataTableSection'
-
+import { useAdminData } from '../hooks/useAdminData'
+import { LoadingState, ErrorState } from '../components/admin/AdminHelpers'
+import { AdminContent } from '../components/admin/AdminContent'
 
 export function AdminPage() {
-  const navigate = useNavigate();
-
-  // Data fetching with lazy loading and caching
+  const navigate = useNavigate()
   const {
-    data: fileImportData,
+    fileImportData,
     total,
     page,
     pageSize,
@@ -20,47 +15,36 @@ export function AdminPage() {
     loadMore,
     refresh,
     loading,
-    error
-  } = useLazyData({
-    pageSize: 10,
-    enableCache: true,
-    cacheTtl: 5 * 60 * 1000,
-    autoLoad: true
-  });
+    error,
+    currentProfile,
+    apiConfig,
+    stats
+  } = useAdminData()
 
-  // Get user profile and API config
-  const currentProfile = getCurrentProfile();
-  const apiConfig = APIService.getAPIConfigStatus();
+  const handlePageChange = (newPage: number) =>
+    newPage >= 0 && hasMore && loadMore()
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState />
   }
 
   if (error) {
-    return <ErrorState error={error} />;
+    return <ErrorState error={error} />
   }
 
-  // Calculate statistics
-  const stats = calculateStats(fileImportData);
-
-  const handlePageChange = (newPage: number) =>
-    newPage >= 0 && hasMore && loadMore();
-
-
-
   return (
-    <MainLayout currentProfile={currentProfile} stats={stats}>
-      <DataTableSection
-        fileImportData={fileImportData}
-        apiConfig={apiConfig}
-        navigate={navigate}
-        total={total}
-        page={page}
-        pageSize={pageSize}
-        hasMore={hasMore}
-        handlePageChange={handlePageChange}
-        refresh={refresh}
-      />
-    </MainLayout>
-  );
+    <AdminContent
+      fileImportData={fileImportData}
+      apiConfig={apiConfig}
+      navigate={navigate}
+      total={total}
+      page={page}
+      pageSize={pageSize}
+      hasMore={hasMore}
+      handlePageChange={handlePageChange}
+      refresh={refresh}
+      currentProfile={currentProfile}
+      stats={stats}
+    />
+  )
 }

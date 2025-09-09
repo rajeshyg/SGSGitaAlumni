@@ -30,11 +30,8 @@ export function useLazyData(options: UseLazyDataOptions = {}) {
     setState(prev => ({ ...prev, loading: true, error: null }))
 
     try {
-      console.log('useLazyData: Starting data load - page:', page, 'search:', search, 'append:', append)
       await loadDataWithCache(page, search, pageSize, append, enableCache, cacheTtl, state.data, cache, setState)
-      console.log('useLazyData: Data load completed successfully')
     } catch (error) {
-      console.error('useLazyData: Data load failed:', error)
       if (error instanceof Error && error.name === 'AbortError') return
       setState(prev => ({ ...prev, loading: false, error: error instanceof Error ? error.message : 'Failed to load data' }))
     }

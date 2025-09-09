@@ -3,47 +3,18 @@ import { cn } from "../../lib"
 import { Button } from "./button"
 import { Input } from "./input"
 import { Check, X } from "lucide-react"
-import type { InlineEditorProps } from "./table-types"
+import type { InlineEditorProps, EditorValue, EditorOptions, ValidationResult } from "./table-types"
 
-function InlineSelectEditor({
-  editValue,
-  setEditValue,
-  options,
-  handleKeyDown,
-  className,
-  saving,
-  handleSave,
-  onCancel
-}: {
-  editValue: any
-  setEditValue: (value: any) => void
-  options: { value: string | number; label: string }[]
-  handleKeyDown: (e: React.KeyboardEvent) => void
-  className?: string
+interface EditorActionProps {
   saving: boolean
   handleSave: () => void
   onCancel: () => void
-}): React.ReactNode {
+}
+
+// Helper function to render action buttons
+function renderActionButtons({ saving, handleSave, onCancel }: EditorActionProps) {
   return (
-    <div className="flex items-center gap-1">
-      <select
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        className={cn(
-          "flex h-6 w-full rounded border border-input bg-background px-2 py-1 text-xs",
-          "focus:outline-none focus:ring-1 focus:ring-ring",
-          className
-        )}
-        disabled={saving}
-        aria-label="Edit select"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+    <>
       <Button
         size="sm"
         variant="ghost"
@@ -62,11 +33,72 @@ function InlineSelectEditor({
       >
         <X className="h-3 w-3" />
       </Button>
+    </>
+  )
+}
+
+// Helper function for validation
+function validateValue(value: string | number, validation?: (val: string | number) => boolean | string): ValidationResult {
+  if (!validation) {
+    return { isValid: true }
+  }
+  
+  const result = validation(value)
+  if (typeof result === 'string') {
+    return { isValid: false, error: result }
+  }
+  if (result === false) {
+    return { isValid: false, error: 'Invalid value' }
+  }
+  
+  return { isValid: true }
+}
+
+export function InlineSelectEditor({
+  editValue,
+  setEditValue,
+  options,
+  handleKeyDown,
+  className,
+  saving,
+  handleSave,
+  onCancel
+}: {
+  editValue: EditorValue['value']
+  setEditValue: (value: EditorValue['value']) => void
+  options: EditorOptions[]
+  handleKeyDown: (e: React.KeyboardEvent) => void
+  className?: string
+  saving: boolean
+  handleSave: () => void
+  onCancel: () => void
+}): React.ReactNode {
+  return (
+    <div className="flex items-center gap-1">
+      <select
+        value={editValue ?? ''}
+        onChange={(e) => setEditValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        className={cn(
+          "flex h-6 w-full rounded border border-input bg-background px-2 py-1 text-xs",
+          "focus:outline-none focus:ring-1 focus:ring-ring",
+          className
+        )}
+        disabled={saving}
+        aria-label="Edit select"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {renderActionButtons({ saving, handleSave, onCancel })}
     </div>
   )
 }
 
-function InlineInputEditor({
+export function InlineInputEditor({
   editValue,
   setEditValue,
   type,
@@ -78,8 +110,8 @@ function InlineInputEditor({
   error,
   inputRef
 }: {
-  editValue: any
-  setEditValue: (value: any) => void
+  editValue: string | number
+  setEditValue: (value: string | number) => void
   type: string
   handleKeyDown: (e: React.KeyboardEvent) => void
   className?: string
@@ -104,24 +136,7 @@ function InlineInputEditor({
         )}
         disabled={saving}
       />
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-6 w-6 p-0"
-        onClick={handleSave}
-        disabled={saving}
-      >
-        <Check className="h-3 w-3" />
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="h-6 w-6 p-0"
-        onClick={onCancel}
-        disabled={saving}
-      >
-        <X className="h-3 w-3" />
-      </Button>
+      {renderActionButtons({ saving, handleSave, onCancel })}
       {error && (
         <span className="text-xs text-destructive ml-1">{error}</span>
       )}
@@ -138,7 +153,7 @@ export function InlineEditor({
   validation,
   className
 }: InlineEditorProps) {
-  const [editValue, setEditValue] = React.useState(value)
+  const [editValue, setEditValue] = React.useState<string | number>(value ?? '')
   const [error, setError] = React.useState<string>()
   const [saving, setSaving] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -150,28 +165,23 @@ export function InlineEditor({
     }
   }, [])
 
-  const handleSave = async () => {
-    if (validation) {
-      const result = validation(editValue)
-      if (typeof result === 'string') {
-        setError(result)
-        return
-      }
-      if (!result) {
-        setError('Invalid value')
-        return
-      }
+  const handleSave = React.useCallback(async () => {
+    const currentValue = editValue ?? ''
+    const validationResult = validateValue(currentValue, validation)
+    if (!validationResult.isValid) {
+      setError(validationResult.error)
+      return
     }
 
     setSaving(true)
     try {
-      await onSave(editValue)
+      await onSave(currentValue)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
       setSaving(false)
     }
-  }
+  }, [editValue, validation, onSave])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -185,8 +195,8 @@ export function InlineEditor({
   if (type === 'select' && options) {
     return (
       <InlineSelectEditor
-        editValue={editValue}
-        setEditValue={setEditValue}
+        editValue={editValue ?? ''}
+        setEditValue={(value) => setEditValue(value ?? '')}
         options={options}
         handleKeyDown={handleKeyDown}
         className={className}
@@ -199,7 +209,7 @@ export function InlineEditor({
 
   return (
     <InlineInputEditor
-      editValue={editValue}
+      editValue={editValue ?? ''}
       setEditValue={setEditValue}
       type={type}
       handleKeyDown={handleKeyDown}

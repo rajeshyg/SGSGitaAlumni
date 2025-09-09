@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
 import { APIService, type FileImport } from '../../services/APIService'
-import { logger, MUTED_BACKGROUND_STYLE, GRADE_A_VARIANT, GRADE_B_VARIANT, GRADE_C_VARIANT, GRADE_F_VARIANT, DESTRUCTIVE_VARIANT, SECONDARY_VARIANT } from './AdminHelpers'
+import { logger, MUTED_BACKGROUND_STYLE, GRADE_A_VARIANT, GRADE_B_VARIANT, GRADE_C_VARIANT, GRADE_F_VARIANT, DESTRUCTIVE_VARIANT, SECONDARY_VARIANT } from './admin-utils'
 
 // Professional column definitions for file imports
 export const columns: ColumnDef<FileImport>[] = [

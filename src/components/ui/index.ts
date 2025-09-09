@@ -1,6 +1,8 @@
 // Core Components
-export { Button, buttonVariants } from './button'
-export { default as Badge, badgeVariants } from './badge'
+export { default as Badge } from './badge'
+export { badgeVariants, type BadgeVariantProps } from './badge-utils'
+export { Button } from './button'
+export { buttonVariants, type ButtonVariantProps } from './button-utils'
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from './card'
 export { Input } from './input'
 export { Checkbox } from './checkbox'
