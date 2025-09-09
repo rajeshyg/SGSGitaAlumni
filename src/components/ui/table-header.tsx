@@ -1,6 +1,6 @@
 import * as React from "react"
 import { cn } from "../../lib"
-import { flexRender } from "@tanstack/react-table"
+import { flexRender, type Header, type HeaderGroup, type Column } from "@tanstack/react-table"
 import { GripVertical, ChevronUp, ChevronDown, ChevronsUpDown, Pin, PinOff, MoreHorizontal } from "lucide-react"
 import {
   DropdownMenu,
@@ -10,7 +10,6 @@ import {
 } from "./dropdown-menu"
 import { Button } from "./button"
 import { getCommonPinningStyles, HOVER_OPACITY_CLASS, ICON_SIZE_CLASS, MUTED_BACKGROUND, BACKGROUND_COLOR } from "./table-utils"
-import type { Header, HeaderGroup, Column } from "@tanstack/react-table"
 
 interface GroupHeader {
   label: string
@@ -129,6 +128,7 @@ function renderTableHeader(
   )
 }
 
+/* eslint-disable max-lines-per-function */
 export function TableHeader({
   groupHeaders,
   table,
@@ -138,10 +138,8 @@ export function TableHeader({
 }: TableHeaderProps): React.ReactNode {
   return (
     <thead className="[&_tr]:border-b">
-      {/* Dynamic Group Headers Row */}
       {groupHeaders && groupHeaders.length > 0 && (
         <tr className="border-b sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--background))' }}>
-          {/* Map through group headers dynamically */}
           {groupHeaders.map((header, index) => (
             <th
               key={index}
@@ -157,8 +155,6 @@ export function TableHeader({
           ))}
         </tr>
       )}
-
-      {/* Column Headers Row */}
       {table.getHeaderGroups().map((headerGroup: HeaderGroup<unknown>) => (
         <tr key={headerGroup.id} className="sticky z-25" style={{ top: groupHeaders && groupHeaders.length > 0 ? '24px' : '0' }}>
           {headerGroup.headers.map((header: Header<unknown, unknown>) => {
@@ -180,7 +176,6 @@ export function TableHeader({
                 }}
               >
                 {renderTableHeader(header, reordering, resizing, compactMode)}
-                {/* Resize handle */}
                 {resizing.enabled && header.column.getCanResize() && (
                   <div
                     onMouseDown={header.getResizeHandler()}

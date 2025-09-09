@@ -20,7 +20,6 @@ import { TableControls } from "./table-controls"
 import { TableHeader } from "./table-header"
 import { TableBody } from "./table-body"
 import { TablePagination } from "./table-pagination"
-import { exportTableToCSV } from "./table-utils"
 import type { AdvancedDataTableProps } from "./table-types"
 
 // Types for table state
@@ -33,11 +32,57 @@ interface FrozenColumnsConfig {
   count: number
 }
 
+function createEnhancedColumns<T extends Record<string, unknown>>(
+  columns: ColumnDef<T>[],
+  selection: { enabled: boolean },
+  resizing: { enabled: boolean, defaultSize?: number, minSize?: number, maxSize?: number }
+): ColumnDef<T>[] {
+  const cols: ColumnDef<T>[] = []
+
+  if (selection.enabled) {
+    cols.push({
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+          className="translate-y-[2px]"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+          className="translate-y-[2px]"
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      enablePinning: true,
+      size: 40,
+      enableResizing: false,
+    })
+  }
+
+  cols.push(...columns.map((col) => ({
+    ...col,
+    enableResizing: resizing.enabled,
+    size: resizing.defaultSize || 150,
+    minSize: resizing.minSize || 50,
+    maxSize: resizing.maxSize || 500,
+  } as ColumnDef<T>)))
+
+  return cols
+}
 
 
 
 
 
+
+/* eslint-disable max-lines-per-function, complexity */
 export function TanStackAdvancedTable<T extends Record<string, unknown>>({
   data,
   columns,
@@ -50,7 +95,6 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
   editing = { enabled: false },
   searchable = true,
   filterable: _filterable = false,
-  sortable = true,
   pagination = true,
   pageSize = 10,
   loading = false,
@@ -93,49 +137,7 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
     setColumnPinning({ left: leftPinnedColumns, right: [] })
   }, [frozenColumns, columns, selection.enabled])
 
-  // Enhanced columns with selection column
-  const enhancedColumns = React.useMemo<ColumnDef<T>[]>(() => {
-    const cols: ColumnDef<T>[] = []
-
-    // Add selection column if enabled
-    if (selection.enabled) {
-      cols.push({
-        id: 'select',
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-            aria-label="Select all"
-            className="translate-y-[2px]"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-            className="translate-y-[2px]"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-        enablePinning: true,
-        size: 40,
-        enableResizing: false,
-      })
-    }
-
-    // Add main columns with enhanced functionality
-    cols.push(...columns.map((col) => ({
-      ...col,
-      enableResizing: resizing.enabled,
-      size: resizing.defaultSize || 150,
-      minSize: resizing.minSize || 50,
-      maxSize: resizing.maxSize || 500,
-    } as ColumnDef<T>)))
-
-    return cols
-  }, [columns, selection.enabled, resizing])
+  const enhancedColumns = React.useMemo(() => createEnhancedColumns(columns, selection, resizing), [columns, selection, resizing])
 
   const table = useReactTable<unknown>({
     data,
@@ -176,12 +178,6 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
     },
   })
 
-  // Export functionality
-  const handleExport = () => {
-    if (!exportable) return
-    exportTableToCSV(table, exportFilename)
-  }
-
   if (loading) {
     return (
       <div className={cn("space-y-4", className)}>
@@ -210,7 +206,6 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
         exportFilename={exportFilename}
       />
 
-      {/* Table */}
       <div className="relative rounded-md border overflow-auto" style={{ maxHeight, boxShadow: 'var(--shadow-sm)' }}>
         <table className="w-full caption-bottom text-sm border-collapse">
           <TableHeader
@@ -232,7 +227,6 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
         </table>
       </div>
 
-      {/* Pagination */}
       {pagination && <TablePagination table={table} />}
     </div>
   )

@@ -1,7 +1,6 @@
 import * as React from "react"
 import { cn } from "../../lib"
-import { badgeVariants } from "./badge-utils"
-import type { BadgeVariantProps } from "./badge-utils"
+import { badgeVariants, type BadgeVariantProps } from "./badge-utils"
 
 export interface BadgeProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, 'content'>,

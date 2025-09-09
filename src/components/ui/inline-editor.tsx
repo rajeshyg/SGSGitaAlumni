@@ -42,7 +42,7 @@ function validateValue(value: string | number, validation?: (val: string | numbe
   if (!validation) {
     return { isValid: true }
   }
-  
+
   const result = validation(value)
   if (typeof result === 'string') {
     return { isValid: false, error: result }
@@ -50,8 +50,55 @@ function validateValue(value: string | number, validation?: (val: string | numbe
   if (result === false) {
     return { isValid: false, error: 'Invalid value' }
   }
-  
+
   return { isValid: true }
+}
+
+function useInlineEditorState(
+  value: string | number,
+  validation?: (val: string | number) => boolean | string,
+  onSave?: (val: string | number) => Promise<void>,
+  onCancel?: () => void
+) {
+  const [editValue, setEditValue] = React.useState<string | number>(value ?? '')
+  const [error, setError] = React.useState<string>()
+  const [saving, setSaving] = React.useState(false)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [])
+
+  const handleSave = React.useCallback(async () => {
+    const currentValue = editValue ?? ''
+    const validationResult = validateValue(currentValue, validation)
+    if (!validationResult.isValid) {
+      setError(validationResult.error)
+      return
+    }
+    setSaving(true)
+    try {
+      await onSave?.(currentValue)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }, [editValue, validation, onSave])
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSave()
+    } else if (e.key === 'Escape') {
+      onCancel?.()
+    }
+  }
+
+  return { editValue, setEditValue, error, saving, inputRef, handleSave, handleKeyDown }
 }
 
 export function InlineSelectEditor({
@@ -153,70 +200,26 @@ export function InlineEditor({
   validation,
   className
 }: InlineEditorProps) {
-  const [editValue, setEditValue] = React.useState<string | number>(value ?? '')
-  const [error, setError] = React.useState<string>()
-  const [saving, setSaving] = React.useState(false)
-  const inputRef = React.useRef<HTMLInputElement>(null)
+  const { editValue, setEditValue, error, saving, inputRef, handleSave, handleKeyDown } = useInlineEditorState(value, validation, onSave, onCancel)
 
-  React.useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [])
-
-  const handleSave = React.useCallback(async () => {
-    const currentValue = editValue ?? ''
-    const validationResult = validateValue(currentValue, validation)
-    if (!validationResult.isValid) {
-      setError(validationResult.error)
-      return
-    }
-
-    setSaving(true)
-    try {
-      await onSave(currentValue)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
-    } finally {
-      setSaving(false)
-    }
-  }, [editValue, validation, onSave])
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSave()
-    } else if (e.key === 'Escape') {
-      onCancel()
-    }
+  const editorProps = {
+    editValue: editValue ?? '',
+    setEditValue,
+    handleKeyDown,
+    className,
+    saving,
+    handleSave,
+    onCancel
   }
 
   if (type === 'select' && options) {
-    return (
-      <InlineSelectEditor
-        editValue={editValue ?? ''}
-        setEditValue={(value) => setEditValue(value ?? '')}
-        options={options}
-        handleKeyDown={handleKeyDown}
-        className={className}
-        saving={saving}
-        handleSave={handleSave}
-        onCancel={onCancel}
-      />
-    )
+    return <InlineSelectEditor {...editorProps} options={options} />
   }
 
   return (
     <InlineInputEditor
-      editValue={editValue ?? ''}
-      setEditValue={setEditValue}
+      {...editorProps}
       type={type}
-      handleKeyDown={handleKeyDown}
-      className={className}
-      saving={saving}
-      handleSave={handleSave}
-      onCancel={onCancel}
       error={error}
       inputRef={inputRef}
     />

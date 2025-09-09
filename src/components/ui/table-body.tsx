@@ -2,14 +2,14 @@ import * as React from "react"
 import {
   type CellContext,
   type Row,
-  type Cell
+  type Cell,
+  type Table as TanStackTable,
+  type ColumnDef
 } from "@tanstack/react-table"
 import { cn } from "../../lib"
 import { Edit2 } from "lucide-react"
 import { InlineEditor } from "./inline-editor"
 import { getCommonPinningStyles, BACKGROUND_COLOR, MUTED_BACKGROUND } from "./table-utils"
-import type { Table as TanStackTable } from "@tanstack/react-table"
-import type { ColumnDef } from "@tanstack/react-table"
 
 interface EditingConfig {
   enabled: boolean

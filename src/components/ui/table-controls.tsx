@@ -47,7 +47,6 @@ export function TableControls({
             />
           </div>
         )}
-
         {selection.enabled && table.getFilteredSelectedRowModel().rows.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
@@ -56,14 +55,9 @@ export function TableControls({
           </div>
         )}
       </div>
-
       <div className="flex items-center gap-2">
         {exportable && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExport}
-          >
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
