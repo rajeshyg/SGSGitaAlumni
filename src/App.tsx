@@ -119,7 +119,7 @@ const PageLoadingFallback = () => (
 function App() {
   return (
     <ThemeProvider>
-      <Router>
+      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Suspense fallback={<PageLoadingFallback />}>
           <Routes>
             {/* Main routes */}
