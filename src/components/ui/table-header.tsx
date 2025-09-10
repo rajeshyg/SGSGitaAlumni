@@ -150,10 +150,10 @@ export function TableHeader({
               key={index}
               colSpan={header.columns.length}
               className={cn(
-                "h-8 px-2 text-center align-middle font-semibold text-foreground border-r text-xs",
+                "h-2 px-0 text-center align-middle font-semibold text-foreground border-r text-xs",
                 header.className
               )}
-              style={{ backgroundColor: MUTED_BACKGROUND }}
+              style={{ backgroundColor: BACKGROUND_COLOR }}
             >
               {header.label}
             </th>
@@ -161,7 +161,7 @@ export function TableHeader({
         </tr>
       )}
       {table.getHeaderGroups().map((headerGroup: HeaderGroup<unknown>) => (
-        <tr key={headerGroup.id} className="sticky z-25" style={{ top: groupHeaders && groupHeaders.length > 0 ? '24px' : '0' }}>
+        <tr key={headerGroup.id} className="sticky z-25" style={{ top: groupHeaders && groupHeaders.length > 0 ? '8px' : '0' }}>
           {headerGroup.headers.map((header: Header<unknown, unknown>) => {
             const pinningStyles = getCommonPinningStyles(header.column)
             return (
