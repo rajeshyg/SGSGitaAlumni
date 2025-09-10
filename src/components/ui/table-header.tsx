@@ -109,7 +109,7 @@ function renderTableHeader(
               compactMode && HOVER_OPACITY_CLASS
             )} />
           )}
-          {column.getIsPinned() && (
+          {column.getIsPinned() && column.id !== 'select' && (
             <Pin className={cn(
               `${ICON_SIZE_CLASS} text-muted-foreground/60`,
               compactMode && HOVER_OPACITY_CLASS
