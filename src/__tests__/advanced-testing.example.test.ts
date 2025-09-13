@@ -35,7 +35,7 @@ describe('Advanced Testing Framework Examples', () => {
       const result = await propertyTester.testProperty(
         (x: number) => x / x === 1,
         'integer',
-        10
+        50
       );
 
       // Should find counterexample (x = 0)
