@@ -31,11 +31,20 @@ describe('Advanced Testing Framework Examples', () => {
     it('should find counterexamples for incorrect properties', async () => {
       const propertyTester = new PropertyTester();
 
+      // Custom generator that includes 0
+      const customGenerator = PropertyTester.createGenerator(
+        () => {
+          const values = [0, 1, -1, 2, -2, 5, -5, 10, -10];
+          return values[Math.floor(Math.random() * values.length)];
+        },
+        (value: number) => value === 0 ? 0 : value > 0 ? value - 1 : value + 1
+      );
+
       // This property should fail (division by zero)
       const result = await propertyTester.testProperty(
         (x: number) => x / x === 1,
-        'integer',
-        50
+        customGenerator,
+        20
       );
 
       // Should find counterexample (x = 0)
