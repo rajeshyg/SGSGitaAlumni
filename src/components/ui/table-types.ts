@@ -83,3 +83,18 @@ export interface InlineEditorProps {
   validation?: (_value: string | number) => boolean | string
   className?: string
 }
+
+// Types for inline editor
+export interface EditorValue {
+  value: string | number
+}
+
+export interface EditorOptions {
+  value: string | number
+  label: string
+}
+
+export interface ValidationResult {
+  isValid: boolean
+  error?: string
+}
