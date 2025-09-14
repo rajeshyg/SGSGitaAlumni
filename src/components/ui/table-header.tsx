@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn } from "../../lib"
+import { cn } from "@/lib/utils"
 import { flexRender, type Header, type HeaderGroup, type Column } from "@tanstack/react-table"
 import { GripVertical, ChevronUp, ChevronDown, ChevronsUpDown, Pin, PinOff, MoreHorizontal } from "lucide-react"
 import {

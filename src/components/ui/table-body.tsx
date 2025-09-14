@@ -7,7 +7,7 @@ import {
   type ColumnDef,
   flexRender
 } from "@tanstack/react-table"
-import { cn } from "../../lib"
+import { cn } from "@/lib/utils"
 import { Edit2 } from "lucide-react"
 import { InlineEditor } from "./inline-editor"
 import { getCommonPinningStyles, BACKGROUND_COLOR, MUTED_BACKGROUND } from "./table-utils"

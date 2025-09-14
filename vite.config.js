@@ -21,7 +21,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "lib/": path.resolve(__dirname, "./src/lib"),
+      "lib": path.resolve(__dirname, "./src/lib"),
       "@proto": path.resolve(__dirname, "../SGSDataMgmtCore/prototypes/react-shadcn-platform/src"),
     },
   },
