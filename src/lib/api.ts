@@ -66,11 +66,12 @@ export class RawCsvUpload {
   }
 }
 
-export const handleApiError = (error: any) => {
+export const handleApiError = (error: unknown) => {
+  // eslint-disable-next-line no-console
   console.error('API Error:', error)
   // Handle error logging/monitoring here
   return {
     success: false,
-    error: error.message || 'An error occurred'
+    error: (error as Error)?.message || 'An error occurred'
   }
 }

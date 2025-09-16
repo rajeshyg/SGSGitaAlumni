@@ -1,5 +1,18 @@
 import { ThemeConfiguration, ThemeName } from './types';
 
+// Common constants to avoid duplicate strings
+const FONT_SIZE_XS = '0.75rem';
+const FONT_SIZE_SM = '0.875rem';
+const FONT_SIZE_BASE = '1rem';
+const FONT_SIZE_LG = '1.125rem';
+const FONT_SIZE_XL = '1.25rem';
+const FONT_SIZE_2XL = '1.5rem';
+const FONT_SIZE_3XL = '1.875rem';
+
+const FONT_FAMILY_PRIMARY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif';
+const FONT_FAMILY_SECONDARY = 'Inter, sans-serif';
+const FONT_FAMILY_MONO = 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace';
+
 export const defaultTheme: ThemeConfiguration = {
   name: 'default',
   displayName: 'Default',
@@ -291,13 +304,13 @@ export const gitaTheme: ThemeConfiguration = {
       mono: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
     },
     fontSize: {
-      xs: '0.75rem',
-      sm: '0.875rem',
-      base: '1rem',
-      lg: '1.125rem',
-      xl: '1.25rem',
-      '2xl': '1.5rem',
-      '3xl': '1.875rem',
+      xs: FONT_SIZE_XS,
+      sm: FONT_SIZE_SM,
+      base: FONT_SIZE_BASE,
+      lg: FONT_SIZE_LG,
+      xl: FONT_SIZE_XL,
+      '2xl': FONT_SIZE_2XL,
+      '3xl': FONT_SIZE_3XL,
     },
     fontWeight: {
       normal: '400',

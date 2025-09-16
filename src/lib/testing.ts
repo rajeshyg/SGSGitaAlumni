@@ -1,27 +1,26 @@
 // Testing utilities
-export const createMockFunction = (implementation?: (...args: any[]) => any) => {
-  const mockFn = jest.fn(implementation || (() => {}))
-  return mockFn
+export const createMockFunction = (implementation?: (...args: unknown[]) => unknown) => {
+  return jest.fn(implementation || (() => {}))
 }
 
-export const createMockComponent = (displayName: string) => {
-  const MockComponent = ({ children, ...props }: any) => {
+export const createMockComponent = (_displayName: string) => {
+  const MockComponent = ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) => {
     return {
       type: 'div',
       props: {
-        'data-testid': displayName,
+        'data-testid': _displayName,
         ...props,
         children
       }
     }
   }
-  MockComponent.displayName = displayName
+  MockComponent.displayName = _displayName
   return MockComponent
 }
 
 export const waitForNextTick = () => new Promise(resolve => setTimeout(resolve, 0))
 
-export const renderWithProviders = (component: React.ReactElement) => {
+export const renderWithProviders = (_component: React.ReactElement) => {
   // Mock implementation - in real app this would wrap with all providers
   return {
     container: document.createElement('div'),
@@ -64,9 +63,17 @@ export interface CodeChange {
 }
 
 export class PropertyTester {
-  static counterexample(value: any): boolean {
+  static counterexample(_value: unknown): boolean {
     // Mock implementation
     return false
+  }
+
+  testProperty(): boolean {
+    return false
+  }
+
+  static createGenerator(): unknown {
+    return {}
   }
 }
 
@@ -76,6 +83,10 @@ export class TestPrioritizer {
       const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 }
       return priorityOrder[b.priority] - priorityOrder[a.priority]
     })
+  }
+
+  prioritizeTests(_tests: TestCase[]): TestCase[] {
+    return []
   }
 }
 
@@ -97,8 +108,16 @@ export class BasicChangeAnalyzer {
 }
 
 export class AdvancedTestingSuite {
-  run(tests: TestCase[]): Promise<boolean> {
+  run(_tests: TestCase[]): Promise<boolean> {
     // Mock implementation
+    return Promise.resolve(true)
+  }
+
+  runComprehensiveTestSuite(): Promise<boolean> {
+    return Promise.resolve(true)
+  }
+
+  runPropertyTest(): Promise<boolean> {
     return Promise.resolve(true)
   }
 }

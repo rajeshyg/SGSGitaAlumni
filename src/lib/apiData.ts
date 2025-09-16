@@ -25,9 +25,10 @@ export const APIDataService = {
   },
   updateFileImport: async (id: string, updates: Partial<FileImport>): Promise<void> => {
     // Mock implementation
+    // eslint-disable-next-line no-console
     console.log('Updating file import', id, updates)
   },
-  exportData: async (format: string): Promise<Blob> => {
+  exportData: async (_format: string): Promise<Blob> => {
     // Mock implementation
     return new Blob(['mock data'], { type: 'text/plain' })
   },

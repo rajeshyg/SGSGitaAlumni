@@ -1,136 +1,143 @@
 import { ThemeConfiguration } from './types';
 
+// Common constants to avoid duplicate strings
+const COLORS_PREFIX = 'colors.';
+const TYPOGRAPHY_PREFIX = 'typography.';
+const SPACING_PREFIX = 'spacing.';
+const BORDERRADIUS_PREFIX = 'borderRadius.';
+const SHADOWS_PREFIX = 'shadows.';
+
 // CSS Variable mapping for theme injection
 export const cssVariableMap = {
   // Background colors
-  '--bg-primary': 'colors.bgPrimary',
-  '--bg-secondary': 'colors.bgSecondary',
-  '--bg-tertiary': 'colors.bgTertiary',
-  '--bg-header': 'colors.bgHeader',
-  '--bg-header-group': 'colors.bgHeaderGroup',
+  '--bg-primary': `${COLORS_PREFIX}bgPrimary`,
+  '--bg-secondary': `${COLORS_PREFIX}bgSecondary`,
+  '--bg-tertiary': `${COLORS_PREFIX}bgTertiary`,
+  '--bg-header': `${COLORS_PREFIX}bgHeader`,
+  '--bg-header-group': `${COLORS_PREFIX}bgHeaderGroup`,
 
   // Text colors
-  '--text-primary': 'colors.textPrimary',
-  '--text-secondary': 'colors.textSecondary',
-  '--text-header': 'colors.textHeader',
+  '--text-primary': `${COLORS_PREFIX}textPrimary`,
+  '--text-secondary': `${COLORS_PREFIX}textSecondary`,
+  '--text-header': `${COLORS_PREFIX}textHeader`,
 
   // Border colors
-  '--border-color': 'colors.borderColor',
-  '--border-header': 'colors.borderHeader',
+  '--border-color': `${COLORS_PREFIX}borderColor`,
+  '--border-header': `${COLORS_PREFIX}borderHeader`,
 
   // Accent colors
-  '--accent-color': 'colors.accentColor',
-  '--hover-bg': 'colors.hoverBg',
+  '--accent-color': `${COLORS_PREFIX}accentColor`,
+  '--hover-bg': `${COLORS_PREFIX}hoverBg`,
 
   // Shadow colors
-  '--shadow': 'colors.shadow',
-  '--frozen-shadow': 'colors.frozenShadow',
+  '--shadow': `${COLORS_PREFIX}shadow`,
+  '--frozen-shadow': `${COLORS_PREFIX}frozenShadow`,
 
   // Table-specific variables (from proven react-web-platform implementation)
-  '--table-container': 'colors.bgPrimary',
-  '--table-container-elevated': 'colors.bgSecondary',
-  '--table-header': 'colors.bgHeader',
-  '--table-header-elevated': 'colors.bgHeaderGroup',
-  '--table-group-header': 'colors.bgHeaderGroup',
-  '--table-group-header-line': 'colors.borderHeader',
-  '--table-row': 'colors.bgSecondary',
-  '--table-row-hover': 'colors.hoverBg',
-  '--table-border': 'colors.borderColor',
-  '--table-shadow': 'colors.shadow',
-  '--table-shadow-elevated': 'colors.shadow',
-  '--table-freeze-shadow': 'colors.frozenShadow',
+  '--table-container': `${COLORS_PREFIX}bgPrimary`,
+  '--table-container-elevated': `${COLORS_PREFIX}bgSecondary`,
+  '--table-header': `${COLORS_PREFIX}bgHeader`,
+  '--table-header-elevated': `${COLORS_PREFIX}bgHeaderGroup`,
+  '--table-group-header': `${COLORS_PREFIX}bgHeaderGroup`,
+  '--table-group-header-line': `${COLORS_PREFIX}borderHeader`,
+  '--table-row': `${COLORS_PREFIX}bgSecondary`,
+  '--table-row-hover': `${COLORS_PREFIX}hoverBg`,
+  '--table-border': `${COLORS_PREFIX}borderColor`,
+  '--table-shadow': `${COLORS_PREFIX}shadow`,
+  '--table-shadow-elevated': `${COLORS_PREFIX}shadow`,
+  '--table-freeze-shadow': `${COLORS_PREFIX}frozenShadow`,
 
   // Badge colors
-  '--badge-grade-a': 'colors.badgeGradeA',
-  '--badge-grade-a-foreground': 'colors.badgeGradeAForeground',
-  '--badge-grade-a-border': 'colors.badgeGradeABorder',
+  '--badge-grade-a': `${COLORS_PREFIX}badgeGradeA`,
+  '--badge-grade-a-foreground': `${COLORS_PREFIX}badgeGradeAForeground`,
+  '--badge-grade-a-border': `${COLORS_PREFIX}badgeGradeABorder`,
 
-  '--badge-grade-b': 'colors.badgeGradeB',
-  '--badge-grade-b-foreground': 'colors.badgeGradeBForeground',
-  '--badge-grade-b-border': 'colors.badgeGradeBBorder',
+  '--badge-grade-b': `${COLORS_PREFIX}badgeGradeB`,
+  '--badge-grade-b-foreground': `${COLORS_PREFIX}badgeGradeBForeground`,
+  '--badge-grade-b-border': `${COLORS_PREFIX}badgeGradeBBorder`,
 
-  '--badge-grade-c': 'colors.badgeGradeC',
-  '--badge-grade-c-foreground': 'colors.badgeGradeCForeground',
-  '--badge-grade-c-border': 'colors.badgeGradeCBorder',
+  '--badge-grade-c': `${COLORS_PREFIX}badgeGradeC`,
+  '--badge-grade-c-foreground': `${COLORS_PREFIX}badgeGradeCForeground`,
+  '--badge-grade-c-border': `${COLORS_PREFIX}badgeGradeCBorder`,
 
-  '--badge-grade-d': 'colors.badgeGradeD',
-  '--badge-grade-d-foreground': 'colors.badgeGradeDForeground',
-  '--badge-grade-d-border': 'colors.badgeGradeDBorder',
+  '--badge-grade-d': `${COLORS_PREFIX}badgeGradeD`,
+  '--badge-grade-d-foreground': `${COLORS_PREFIX}badgeGradeDForeground`,
+  '--badge-grade-d-border': `${COLORS_PREFIX}badgeGradeDBorder`,
 
-  '--badge-grade-f': 'colors.badgeGradeF',
-  '--badge-grade-f-foreground': 'colors.badgeGradeFForeground',
-  '--badge-grade-f-border': 'colors.badgeGradeFBorder',
+  '--badge-grade-f': `${COLORS_PREFIX}badgeGradeF`,
+  '--badge-grade-f-foreground': `${COLORS_PREFIX}badgeGradeFForeground`,
+  '--badge-grade-f-border': `${COLORS_PREFIX}badgeGradeFBorder`,
 
-  '--badge-neutral': 'colors.badgeNeutral',
-  '--badge-neutral-foreground': 'colors.badgeNeutralForeground',
-  '--badge-neutral-border': 'colors.badgeNeutralBorder',
+  '--badge-neutral': `${COLORS_PREFIX}badgeNeutral`,
+  '--badge-neutral-foreground': `${COLORS_PREFIX}badgeNeutralForeground`,
+  '--badge-neutral-border': `${COLORS_PREFIX}badgeNeutralBorder`,
 
   // Typography
-  '--font-family-primary': 'typography.fontFamily.primary',
-  '--font-family-secondary': 'typography.fontFamily.secondary',
-  '--font-family-mono': 'typography.fontFamily.mono',
+  '--font-family-primary': `${TYPOGRAPHY_PREFIX}fontFamily.primary`,
+  '--font-family-secondary': `${TYPOGRAPHY_PREFIX}fontFamily.secondary`,
+  '--font-family-mono': `${TYPOGRAPHY_PREFIX}fontFamily.mono`,
 
-  '--font-size-xs': 'typography.fontSize.xs',
-  '--font-size-sm': 'typography.fontSize.sm',
-  '--font-size-base': 'typography.fontSize.base',
-  '--font-size-lg': 'typography.fontSize.lg',
-  '--font-size-xl': 'typography.fontSize.xl',
-  '--font-size-2xl': 'typography.fontSize.2xl',
-  '--font-size-3xl': 'typography.fontSize.3xl',
+  '--font-size-xs': `${TYPOGRAPHY_PREFIX}fontSize.xs`,
+  '--font-size-sm': `${TYPOGRAPHY_PREFIX}fontSize.sm`,
+  '--font-size-base': `${TYPOGRAPHY_PREFIX}fontSize.base`,
+  '--font-size-lg': `${TYPOGRAPHY_PREFIX}fontSize.lg`,
+  '--font-size-xl': `${TYPOGRAPHY_PREFIX}fontSize.xl`,
+  '--font-size-2xl': `${TYPOGRAPHY_PREFIX}fontSize.2xl`,
+  '--font-size-3xl': `${TYPOGRAPHY_PREFIX}fontSize.3xl`,
 
-  '--font-weight-normal': 'typography.fontWeight.normal',
-  '--font-weight-medium': 'typography.fontWeight.medium',
-  '--font-weight-semibold': 'typography.fontWeight.semibold',
-  '--font-weight-bold': 'typography.fontWeight.bold',
+  '--font-weight-normal': `${TYPOGRAPHY_PREFIX}fontWeight.normal`,
+  '--font-weight-medium': `${TYPOGRAPHY_PREFIX}fontWeight.medium`,
+  '--font-weight-semibold': `${TYPOGRAPHY_PREFIX}fontWeight.semibold`,
+  '--font-weight-bold': `${TYPOGRAPHY_PREFIX}fontWeight.bold`,
 
-  '--line-height-tight': 'typography.lineHeight.tight',
-  '--line-height-normal': 'typography.lineHeight.normal',
-  '--line-height-relaxed': 'typography.lineHeight.relaxed',
+  '--line-height-tight': `${TYPOGRAPHY_PREFIX}lineHeight.tight`,
+  '--line-height-normal': `${TYPOGRAPHY_PREFIX}lineHeight.normal`,
+  '--line-height-relaxed': `${TYPOGRAPHY_PREFIX}lineHeight.relaxed`,
 
   // Spacing
-  '--spacing-xs': 'spacing.xs',
-  '--spacing-sm': 'spacing.sm',
-  '--spacing-md': 'spacing.md',
-  '--spacing-lg': 'spacing.lg',
-  '--spacing-xl': 'spacing.xl',
-  '--spacing-2xl': 'spacing.2xl',
-  '--spacing-3xl': 'spacing.3xl',
+  '--spacing-xs': `${SPACING_PREFIX}xs`,
+  '--spacing-sm': `${SPACING_PREFIX}sm`,
+  '--spacing-md': `${SPACING_PREFIX}md`,
+  '--spacing-lg': `${SPACING_PREFIX}lg`,
+  '--spacing-xl': `${SPACING_PREFIX}xl`,
+  '--spacing-2xl': `${SPACING_PREFIX}2xl`,
+  '--spacing-3xl': `${SPACING_PREFIX}3xl`,
 
   // Border radius
-  '--radius-none': 'borderRadius.none',
-  '--radius-sm': 'borderRadius.sm',
-  '--radius-md': 'borderRadius.md',
-  '--radius-lg': 'borderRadius.lg',
-  '--radius-xl': 'borderRadius.xl',
-  '--radius-full': 'borderRadius.full',
+  '--radius-none': `${BORDERRADIUS_PREFIX}none`,
+  '--radius-sm': `${BORDERRADIUS_PREFIX}sm`,
+  '--radius-md': `${BORDERRADIUS_PREFIX}md`,
+  '--radius-lg': `${BORDERRADIUS_PREFIX}lg`,
+  '--radius-xl': `${BORDERRADIUS_PREFIX}xl`,
+  '--radius-full': `${BORDERRADIUS_PREFIX}full`,
 
   // Shadows
-  '--shadow-sm': 'shadows.sm',
-  '--shadow-md': 'shadows.md',
-  '--shadow-lg': 'shadows.lg',
-  '--shadow-xl': 'shadows.xl',
+  '--shadow-sm': `${SHADOWS_PREFIX}sm`,
+  '--shadow-md': `${SHADOWS_PREFIX}md`,
+  '--shadow-lg': `${SHADOWS_PREFIX}lg`,
+  '--shadow-xl': `${SHADOWS_PREFIX}xl`,
 } as const;
 
 // shadcn/ui CSS variable mappings for theme integration
 export const shadcnVariableMap = {
   // Background colors
-  '--background': 'colors.bgPrimary',
-  '--foreground': 'colors.textPrimary',
-  '--card': 'colors.bgSecondary',
-  '--card-foreground': 'colors.textPrimary',
-  '--popover': 'colors.bgSecondary',
-  '--popover-foreground': 'colors.textPrimary',
-  '--primary': 'colors.accentColor',
-  '--primary-foreground': 'colors.bgPrimary',
-  '--secondary': 'colors.bgTertiary',
-  '--secondary-foreground': 'colors.textPrimary',
-  '--muted': 'colors.bgTertiary',
-  '--muted-foreground': 'colors.textSecondary',
-  '--accent': 'colors.bgTertiary',
-  '--accent-foreground': 'colors.textPrimary',
-  '--border': 'colors.borderColor',
-  '--input': 'colors.borderColor',
-  '--ring': 'colors.accentColor',
+  '--background': `${COLORS_PREFIX}bgPrimary`,
+  '--foreground': `${COLORS_PREFIX}textPrimary`,
+  '--card': `${COLORS_PREFIX}bgSecondary`,
+  '--card-foreground': `${COLORS_PREFIX}textPrimary`,
+  '--popover': `${COLORS_PREFIX}bgSecondary`,
+  '--popover-foreground': `${COLORS_PREFIX}textPrimary`,
+  '--primary': `${COLORS_PREFIX}accentColor`,
+  '--primary-foreground': `${COLORS_PREFIX}bgPrimary`,
+  '--secondary': `${COLORS_PREFIX}bgTertiary`,
+  '--secondary-foreground': `${COLORS_PREFIX}textPrimary`,
+  '--muted': `${COLORS_PREFIX}bgTertiary`,
+  '--muted-foreground': `${COLORS_PREFIX}textSecondary`,
+  '--accent': `${COLORS_PREFIX}bgTertiary`,
+  '--accent-foreground': `${COLORS_PREFIX}textPrimary`,
+  '--border': `${COLORS_PREFIX}borderColor`,
+  '--input': `${COLORS_PREFIX}borderColor`,
+  '--ring': `${COLORS_PREFIX}accentColor`,
   // Keep destructive colors static for now (red variants)
   '--destructive': '#dc2626',
   '--destructive-foreground': '#ffffff',

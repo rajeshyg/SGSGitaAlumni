@@ -21,15 +21,15 @@ export const getMockData = (type: string) => {
 }
 
 export const MockAPIService = {
-  get: (url: string) => Promise.resolve({ data: [] }),
-  post: (url: string, data: any) => Promise.resolve({ data }),
-  put: (url: string, data: any) => Promise.resolve({ data }),
-  delete: (url: string) => Promise.resolve({ data: null }),
+  get: (_url: string) => Promise.resolve({ data: [] }),
+  post: (_url: string, _data: unknown) => Promise.resolve({ data: _data }),
+  put: (_url: string, _data: unknown) => Promise.resolve({ data: _data }),
+  delete: (_url: string) => Promise.resolve({ data: null }),
   clearData: () => Promise.resolve(true),
   getFileImports: () => Promise.resolve([]),
   loadData: () => Promise.resolve([]),
-  updateFileImport: (id: string, updates: any) => Promise.resolve({}),
-  exportData: (format: string) => Promise.resolve(new Blob())
+  updateFileImport: (_id: string, _updates: unknown) => Promise.resolve({}),
+  exportData: (_format: string) => Promise.resolve(new Blob())
 }
 
 export const LocalStorageService = {
@@ -41,7 +41,7 @@ export const LocalStorageService = {
       return null
     }
   },
-  set: (key: string, value: any) => {
+  set: (key: string, value: unknown) => {
     try {
       localStorage.setItem(key, JSON.stringify(value))
       return true
