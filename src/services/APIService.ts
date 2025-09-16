@@ -1,4 +1,4 @@
-import { APIDataService, type FileImport as APIFileImport, checkAPIConfiguration, getAPIConfigStatus } from '@/lib/apiData';
+import { APIDataService, type FileImport as APIFileImport, checkAPIConfiguration, getAPIConfigStatus } from '../lib/apiData';
 
 // Simple logger utility for production-safe logging
 const logger = {

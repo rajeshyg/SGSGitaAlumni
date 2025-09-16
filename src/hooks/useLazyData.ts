@@ -5,7 +5,7 @@ import {
   type LazyDataState,
   loadDataWithCache,
   createActionCallbacks
-} from '@/lib/dataCache'
+} from '../lib/dataCache'
 
 export interface UseLazyDataOptions {
   pageSize?: number

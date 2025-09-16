@@ -14,7 +14,7 @@ import {
   type ColumnSizingState,
   type ColumnPinningState,
 } from "@tanstack/react-table"
-import { cn } from "@/lib/utils"
+import { cn } from "../../lib"
 import { Checkbox } from "./checkbox"
 import { TableControls } from "./table-controls"
 import { TableHeader } from "./table-header"

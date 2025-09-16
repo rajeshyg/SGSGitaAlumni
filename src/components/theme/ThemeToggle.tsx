@@ -1,7 +1,7 @@
-import { useTheme } from '@/lib/theme/hooks';
+import { useTheme } from '../../lib/theme/hooks';
 import { ThemedButton } from './ThemedButton';
-import { cn } from '@/lib/utils';
-import type { ThemeName } from '@/lib/theme/types';
+import { cn } from '../../lib/utils';
+import type { ThemeName } from '../../lib/theme/types';
 
 const THEME_CONFIG = {
   dark: { icon: '🌙', label: 'Dark' },

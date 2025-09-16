@@ -10,7 +10,7 @@ import {
   BasicChangeAnalyzer,
   TestCase,
   CodeChange
-} from '../lib/testing/index';
+} from '../lib/testing';
 
 describe('Advanced Testing Framework Examples', () => {
   describe('Property-Based Testing', () => {
