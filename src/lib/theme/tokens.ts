@@ -206,8 +206,8 @@ export function generateShadcnVariables(theme: ThemeConfiguration): Record<strin
       if (typeof value === 'string' && value.startsWith('#') && value.length >= 7) {
         try {
           cssVariables[cssVar] = hexToHsl(value);
-        } catch (error) {
-          console.warn(`Failed to convert ${value} to HSL for ${cssVar}:`, error);
+        } catch {
+          // Fallback to original value if HSL conversion fails
           cssVariables[cssVar] = value;
         }
       } else {

@@ -1,4 +1,4 @@
-import { ThemeConfiguration } from './types';
+import { ThemeConfiguration, ThemeName } from './types';
 
 export const defaultTheme: ThemeConfiguration = {
   name: 'default',
@@ -459,8 +459,6 @@ export const professionalTheme: ThemeConfiguration = {
     },
   },
 };
-
-import { ThemeName } from './types';
 
 export const themes: Record<ThemeName, ThemeConfiguration> = {
   default: defaultTheme,

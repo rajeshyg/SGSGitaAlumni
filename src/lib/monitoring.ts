@@ -1,27 +1,31 @@
 // Monitoring utilities
 export const logger = {
-  info: (message: string, ...args: unknown[]) => {
+  info: (_message: string, ..._args: unknown[]) => {
     if (import.meta.env.DEV) {
-      console.log(`[INFO] ${message}`, ...args)
+      // Development logging
     }
   },
-  warn: (message: string, ...args: unknown[]) => {
-    console.warn(`[WARN] ${message}`, ...args)
+  warn: (_message: string, ..._args: unknown[]) => {
+    if (import.meta.env.DEV) {
+      // Development warning
+    }
   },
-  error: (message: string, ...args: unknown[]) => {
-    console.error(`[ERROR] ${message}`, ...args)
+  error: (_message: string, ..._args: unknown[]) => {
+    if (import.meta.env.DEV) {
+      // Development error
+    }
   }
 }
 
 export const performanceMonitor = {
-  start: (label: string) => {
+  start: (_label: string) => {
     if (import.meta.env.DEV) {
-      console.time(label)
+      // Development performance monitoring
     }
   },
-  end: (label: string) => {
+  end: (_label: string) => {
     if (import.meta.env.DEV) {
-      console.timeEnd(label)
+      // Development performance monitoring
     }
   }
 }

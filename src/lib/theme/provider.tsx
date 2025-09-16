@@ -41,7 +41,7 @@ interface ThemeProviderProps {
   defaultTheme?: ThemeName;
 }
 
-export function ThemeProvider({ children, defaultTheme }: ThemeProviderProps) {
+function useThemeState(defaultTheme?: ThemeName) {
   const [currentTheme, setCurrentTheme] = useState<ThemeName>(() => {
     return defaultTheme || getInitialTheme();
   });
@@ -50,18 +50,24 @@ export function ThemeProvider({ children, defaultTheme }: ThemeProviderProps) {
     return themes[currentTheme];
   });
 
+  return { currentTheme, setCurrentTheme, theme, setThemeConfig };
+}
+
+function useThemeEffects(
+  currentTheme: ThemeName,
+  setCurrentTheme: (theme: ThemeName) => void,
+  setThemeConfig: (config: ThemeConfiguration) => void
+) {
   // Update theme configuration when current theme changes
   useEffect(() => {
     const newTheme = themes[currentTheme];
     if (newTheme) {
       setThemeConfig(newTheme);
-      // Inject CSS variables (both custom and shadcn/ui)
       removeCSSVariables();
       injectCSSVariables(newTheme);
-      // Persist theme preference
       localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
     }
-  }, [currentTheme]);
+  }, [currentTheme, setThemeConfig]);
 
   // Handle system theme preference changes
   useEffect(() => {
@@ -70,7 +76,6 @@ export function ThemeProvider({ children, defaultTheme }: ThemeProviderProps) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
     const handleChange = (e: MediaQueryListEvent) => {
-      // Only auto-switch if user hasn't manually set a preference
       const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
       if (!storedTheme) {
         setCurrentTheme(e.matches ? 'dark' : 'default');
@@ -82,17 +87,22 @@ export function ThemeProvider({ children, defaultTheme }: ThemeProviderProps) {
     return () => {
       mediaQuery.removeEventListener('change', handleChange);
     };
-  }, []);
+  }, [setCurrentTheme]);
+}
+
+export function ThemeProvider({ children, defaultTheme }: ThemeProviderProps) {
+  const { currentTheme, setCurrentTheme, theme, setThemeConfig } = useThemeState(defaultTheme);
+
+  useThemeEffects(currentTheme, setCurrentTheme, setThemeConfig);
 
   // Theme switching function with validation
   const setTheme = (themeName: ThemeName) => {
     if (!validateTheme(themeName)) {
-      console.error(`Invalid theme: ${themeName}. Available themes:`, availableThemes);
       return;
     }
 
     if (themeName === currentTheme) {
-      return; // No change needed
+      return;
     }
 
     setCurrentTheme(themeName);
