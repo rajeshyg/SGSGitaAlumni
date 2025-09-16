@@ -1,5 +1,4 @@
 // TablePagination.tsx
-import * as React from "react"
 import { Button } from "./button"
 import type { Table } from "@tanstack/react-table"
 

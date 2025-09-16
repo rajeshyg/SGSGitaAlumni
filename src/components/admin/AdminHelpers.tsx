@@ -1,4 +1,3 @@
-import React from 'react'
 import { Database, Upload } from 'lucide-react'
 import { Button } from '../ui/button'
 

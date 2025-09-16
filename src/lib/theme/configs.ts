@@ -9,9 +9,12 @@ const FONT_SIZE_XL = '1.25rem';
 const FONT_SIZE_2XL = '1.5rem';
 const FONT_SIZE_3XL = '1.875rem';
 
-const FONT_FAMILY_PRIMARY = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif';
-const FONT_FAMILY_SECONDARY = 'Inter, sans-serif';
+// Font family constants to avoid duplicate strings
+const FONT_FAMILY_SYSTEM = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif';
+const FONT_FAMILY_INTER = 'Inter, sans-serif';
 const FONT_FAMILY_MONO = 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace';
+const FONT_FAMILY_TIMES = '"Times New Roman", serif';
+const FONT_FAMILY_GEORGIA = 'Georgia, serif';
 
 export const defaultTheme: ThemeConfiguration = {
   name: 'default',
@@ -69,9 +72,9 @@ export const defaultTheme: ThemeConfiguration = {
   },
   typography: {
     fontFamily: {
-      primary: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
-      secondary: 'Inter, sans-serif',
-      mono: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+      primary: FONT_FAMILY_SYSTEM,
+      secondary: FONT_FAMILY_INTER,
+      mono: FONT_FAMILY_MONO,
     },
     fontSize: {
       xs: '0.75rem',
@@ -184,9 +187,9 @@ export const darkTheme: ThemeConfiguration = {
   },
   typography: {
     fontFamily: {
-      primary: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
-      secondary: 'Inter, sans-serif',
-      mono: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+      primary: FONT_FAMILY_SYSTEM,
+      secondary: FONT_FAMILY_INTER,
+      mono: FONT_FAMILY_MONO,
     },
     fontSize: {
       xs: '0.75rem',
@@ -299,9 +302,9 @@ export const gitaTheme: ThemeConfiguration = {
   },
   typography: {
     fontFamily: {
-      primary: '"Times New Roman", serif',
-      secondary: 'Georgia, serif',
-      mono: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+      primary: FONT_FAMILY_TIMES,
+      secondary: FONT_FAMILY_GEORGIA,
+      mono: FONT_FAMILY_MONO,
     },
     fontSize: {
       xs: FONT_SIZE_XS,
@@ -414,9 +417,9 @@ export const professionalTheme: ThemeConfiguration = {
   },
   typography: {
     fontFamily: {
-      primary: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif',
-      secondary: 'Inter, sans-serif',
-      mono: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+      primary: FONT_FAMILY_SYSTEM,
+      secondary: FONT_FAMILY_INTER,
+      mono: FONT_FAMILY_MONO,
     },
     fontSize: {
       xs: '0.75rem',

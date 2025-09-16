@@ -1,4 +1,3 @@
-import React from 'react'
 import { DataTableSection } from './DataTableSection'
 import { MainLayout } from './MainLayout'
 import type { FileImport } from '../../services/APIService'

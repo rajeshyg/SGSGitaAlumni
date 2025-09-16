@@ -23,14 +23,14 @@ export const apiClient = {
     return this.request(endpoint)
   },
 
-  post(endpoint: string, data: any) {
+  post(endpoint: string, data: Record<string, unknown>) {
     return this.request(endpoint, {
       method: 'POST',
       body: JSON.stringify(data)
     })
   },
 
-  put(endpoint: string, data: any) {
+  put(endpoint: string, data: Record<string, unknown>) {
     return this.request(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data)
@@ -49,7 +49,7 @@ export const getData = async (endpoint: string) => {
 }
 
 export class RawCsvUpload {
-  static async upload(file: File): Promise<any> {
+  static async upload(file: File): Promise<Record<string, unknown>> {
     const formData = new FormData()
     formData.append('file', file)
 

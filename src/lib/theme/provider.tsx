@@ -4,7 +4,9 @@ import { themes, availableThemes } from './configs';
 import { injectCSSVariables, removeCSSVariables } from './tokens';
 
 // Create theme context
+// eslint-disable-next-line react-refresh/only-export-components
 export const ThemeProviderContext = createContext<ThemeContextType | null>(null);
+// eslint-disable-next-line react-refresh/only-export-components
 export const CustomThemeProviderContext = createContext<ThemeContextType | null>(null);
 export const ThemeContext = ThemeProviderContext; // For backward compatibility
 

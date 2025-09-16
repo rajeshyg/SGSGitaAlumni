@@ -1,4 +1,3 @@
-import React from 'react'
 import { TanStackAdvancedTable } from '../ui'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { Card, CardContent } from '../ui/card'

@@ -144,8 +144,13 @@ export const shadcnVariableMap = {
 } as const;
 
 // Helper function to get nested object value by path
-export function getNestedValue(obj: any, path: string): any {
-  return path.split('.').reduce((current, key) => current?.[key], obj);
+export function getNestedValue(obj: unknown, path: string): unknown {
+  return path.split('.').reduce((current, key) => {
+    if (current && typeof current === 'object' && key in current) {
+      return (current as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj);
 }
 
 // Helper function to convert hex color to HSL format for shadcn/ui
@@ -194,7 +199,7 @@ export function generateCSSVariables(theme: ThemeConfiguration): Record<string, 
 
   Object.entries(cssVariableMap).forEach(([cssVar, themePath]) => {
     const value = getNestedValue(theme, themePath);
-    if (value !== undefined) {
+    if (value !== undefined && typeof value === 'string') {
       cssVariables[cssVar] = value;
     }
   });
@@ -208,9 +213,9 @@ export function generateShadcnVariables(theme: ThemeConfiguration): Record<strin
 
   Object.entries(shadcnVariableMap).forEach(([cssVar, themePath]) => {
     const value = getNestedValue(theme, themePath);
-    if (value !== undefined) {
+    if (value !== undefined && typeof value === 'string') {
       // Convert hex colors to HSL format for shadcn/ui
-      if (typeof value === 'string' && value.startsWith('#') && value.length >= 7) {
+      if (value.startsWith('#') && value.length >= 7) {
         try {
           cssVariables[cssVar] = hexToHsl(value);
         } catch {

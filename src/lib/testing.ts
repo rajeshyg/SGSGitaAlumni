@@ -1,6 +1,8 @@
 // Testing utilities
+import { vi } from 'vitest'
+
 export const createMockFunction = (implementation?: (...args: unknown[]) => unknown) => {
-  return jest.fn(implementation || (() => {}))
+  return vi.fn(implementation || (() => {}))
 }
 
 export const createMockComponent = (_displayName: string) => {
@@ -32,18 +34,18 @@ export const renderWithProviders = (_component: React.ReactElement) => {
 export const setupTestEnvironment = () => {
   // Setup test environment
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
-    jest.clearAllTimers()
+    vi.clearAllTimers()
   })
 }
 
 export const mockConsole = {
-  log: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn()
+  log: vi.fn(),
+  error: vi.fn(),
+  warn: vi.fn()
 }
 
 // Advanced testing classes and interfaces
