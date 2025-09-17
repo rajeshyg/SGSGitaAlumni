@@ -13,8 +13,6 @@ export * from './theme/types'
 export * from './theme/configs'
 export * from './theme/hooks'
 
-// Testing utilities
-export * from './testing'
 
 // Other modules
 export * from './dataCache'
