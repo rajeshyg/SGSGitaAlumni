@@ -1,6 +1,6 @@
 // API utilities
 export const apiClient = {
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '',
 
   async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`
