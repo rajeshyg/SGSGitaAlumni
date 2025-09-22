@@ -5,11 +5,7 @@ This document outlines the fundamental coding standards, patterns, and best prac
 ## 📏 Code Quality Standards
 
 ### File Size Limits
-- **Maximum 300 lines** per file (general files)
-- **Maximum 500 lines** per component file
-- **Maximum 50 lines** per function
-- **Reason**: AI context optimization and maintainability
-- **ESLint**: Configured with component-specific overrides (see eslint.config.js)
+→ **See [Quality Metrics](../standards/QUALITY_METRICS.md#file-size-standards)** for authoritative file size standards
 
 ### Function Complexity
 - Functions should have a single responsibility

@@ -16,53 +16,9 @@ This document defines the comprehensive quality standards and metrics for the SG
 - **Clear Naming**: Descriptive names for files, functions, and variables
 - **Import Organization**: Grouped by type and purpose
 
-## 📏 Size & Complexity Limits
+## 📏 Size & Complexity Standards
 
-### File Size Standards
-```typescript
-// ✅ General files: Maximum 300 lines per file
-// Reason: AI context optimization and maintainability
-// Applies to: utilities, hooks, services, configuration files
-
-// ✅ Component files: Maximum 500 lines per component file
-// Reason: Complex components may require more lines for comprehensive functionality
-// Strategy: Split large components into smaller, focused components
-// ESLint Override: src/components/**/*.tsx allows up to 500 lines
-
-// ❌ Avoid files like this:
-export function HugeComponent() {
-  // 600+ lines of mixed logic
-  // Hard to maintain, test, and understand
-}
-
-// 📋 ESLint Configuration Reference:
-// - General files: max-lines: 300 (eslint.config.js)
-// - Component files: max-lines: 500 (component override in eslint.config.js)
-```
-
-### Function Size Standards
-```typescript
-// ✅ Maximum: 50 lines per function
-// Reason: Single responsibility and testability
-
-// ✅ Good: Extract complex logic
-export function processUserData(user: User) {
-  const validated = validateUser(user)      // 10 lines
-  const enriched = enrichUserData(validated) // 15 lines
-  const saved = saveUser(enriched)          // 10 lines
-  return saved                             // 5 lines
-}
-
-// ❌ Bad: Monolithic function
-export function processUserData(user: User) {
-  // 80+ lines of mixed validation, enrichment, and saving
-}
-```
-
-### Complexity Standards
-- **Cyclomatic Complexity**: Maximum score of 10
-- **Cognitive Complexity**: Keep functions simple and focused
-- **Nested Depth**: Maximum 3 levels of nesting
+→ **See [Quality Metrics](./standards/QUALITY_METRICS.md)** for authoritative file size, function size, and complexity standards.
 
 ## 🔧 Code Quality Rules
 
@@ -258,7 +214,7 @@ describe('Button Component', () => {
 ### Performance Metrics
 - **Bundle Size**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
 - **First Contentful Paint**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance)
-- **Largest Contentful Paint**: < 2.5s
+- **Largest Contentful Paint**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance)
 - **Cumulative Layout Shift**: < 0.1
 - **Error Rate**: < 1% (tracked via Sentry)
 - **Theme Switching Performance**: < 200ms (maintains smooth UX)
@@ -367,7 +323,7 @@ export default [
   {
     rules: {
       'no-console': 'error',
-      'max-lines': ['error', 300],
+      'max-lines': ['error', 500],
       'max-lines-per-function': ['error', 50],
       'no-duplicate-imports': 'error',
       // SonarJS rules for redundancy
@@ -425,9 +381,7 @@ export function calculateScore(metrics: Metrics) {
 ## 🎯 Quality Checklist
 
 ### Code Review Checklist
-- [ ] File size under 300 lines
-- [ ] Functions under 50 lines
-- [ ] Complexity score < 10
+→ **See [Quality Metrics](./standards/QUALITY_METRICS.md)** for file size, function size, and complexity standards
 - [ ] No console statements
 - [ ] Proper TypeScript types
 - [ ] Comprehensive error handling

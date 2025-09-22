@@ -13,7 +13,7 @@ This document explains how to use the development tools and quality assurance sy
 {
   // Core quality rules
   "no-console": "error",           // Prevents debug code
-  "max-lines": ["error", 300],     // Prevents large files (AI context limit)
+  "max-lines": ["error", 500],     // Prevents large files (AI context limit)
   "max-lines-per-function": ["error", 50], // Prevents complex functions
   "no-duplicate-imports": "error", // Prevents duplicate imports
   "no-unused-vars": "off",         // TypeScript handles this

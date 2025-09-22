@@ -34,9 +34,9 @@ Establish the foundational documentation standards and create authoritative docu
 - **File:** `docs/standards/PERFORMANCE_TARGETS.md`
 - **Purpose:** Single source of truth for all performance metrics
 - **Key Metrics:**
-  - Bundle Size: < 500KB gzipped
-  - First Contentful Paint: < 1.2 seconds
-  - Largest Contentful Paint: < 2.5 seconds
+  - Bundle Size: See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
+  - First Contentful Paint: See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#loading-performance)
+  - Largest Contentful Paint: See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#loading-performance)
   - Time to Interactive: < 3.5 seconds
   - Touch Response Time: < 100ms
 
@@ -45,9 +45,9 @@ Establish the foundational documentation standards and create authoritative docu
 - **Purpose:** Single source of truth for all code quality standards
 - **Key Metrics:**
   - File Size: 300 lines (general), 500 lines (components)
-  - Function Size: 50 lines maximum
-  - Test Coverage: > 80%
-  - Complexity Score: < 10
+  - Function Size: See [Quality Metrics](docs/standards/QUALITY_METRICS.md#function-size-limits)
+  - Test Coverage: See [Quality Metrics](docs/standards/QUALITY_METRICS.md#testing-standards)
+  - Complexity Score: See [Quality Metrics](docs/standards/QUALITY_METRICS.md#complexity-scores)
   - ESLint/SonarJS: 0 errors, 0 warnings
 
 ### ✅ Documentation Consistency Checker
@@ -86,9 +86,9 @@ Established clear ownership for each topic area:
 Resolved conflicting metrics by establishing single authoritative values:
 
 #### Performance Targets
-- **Bundle Size**: < 500KB gzipped (was conflicting between multiple values)
-- **First Contentful Paint**: < 1.2 seconds (was conflicting between 100ms and 1.2s)
-- **Test Coverage**: > 80% (was conflicting between 80% and 90%)
+- **Bundle Size**: See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#bundle-size-targets) (was conflicting between multiple values)
+- **First Contentful Paint**: See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#loading-performance) (was conflicting between 100ms and 1.2s)
+- **Test Coverage**: See [Testing Guide](docs/development/TESTING_GUIDE.md#coverage-targets) (was conflicting between 80% and 90%)
 
 #### Quality Standards
 - **File Size**: 300 lines (general), 500 lines (components) (was inconsistent)

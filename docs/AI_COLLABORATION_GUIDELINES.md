@@ -158,7 +158,7 @@ For complete and authoritative metrics, see [Documentation Standards](DOCUMENTAT
 ### Performance
 - **Bundle Size**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
 - **First Contentful Paint**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance)
-- **Error Rate**: < 1% (tracked via Sentry)
+- **Error Rate**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#error-rate-targets)
 
 ### File Standards
 - **Maximum File Size**: 300 lines (general), 500 lines (components)

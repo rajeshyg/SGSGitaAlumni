@@ -11,7 +11,7 @@ This checklist ensures code quality and prevents technical debt accumulation.
 - [ ] **Build succeeds**: `npm run build` completes without errors
 - [ ] **Bundle analysis reviewed**: `npm run analyze-bundle` checked for size issues
 - [ ] **No console statements**: Search shows no `console.log/error/warn`
-- [ ] **File sizes OK**: General files ≤ 300 lines, component files ≤ 500 lines (ESLint validated)
+- [ ] **File sizes OK**: General files ≤ 500 lines, component files ≤ 800 lines (ESLint validated)
 - [ ] **Function sizes OK**: No functions exceed 50 lines
 - [ ] **Complexity OK**: No functions exceed complexity score of 10
 

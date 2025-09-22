@@ -528,13 +528,13 @@ export default defineConfig({
 - ✅ Performance regression testing detects >5% degradations
 - ✅ AI test generation creates meaningful test cases
 - ✅ Test prioritization reduces execution time by >50%
-- ✅ Test coverage exceeds 90%
+- ✅ Test coverage exceeds 80% (see [Quality Metrics](../../standards/QUALITY_METRICS.md#testing-standards))
 - ✅ Test execution time under 10 minutes
 - ✅ False positive rate below 2%
 - ✅ Visual test accuracy above 95%
 
 ## Quality Requirements
-- **Test Coverage:** >90% (future goal - current standard: [Quality Metrics](../../standards/QUALITY_METRICS.md#testing-standards))
+- **Test Coverage:** See [Quality Metrics](../../standards/QUALITY_METRICS.md#testing-standards)
 - **Test Execution Time:** <10 minutes for prioritized suite
 - **False Positive Rate:** <2% for automated test generation
 - **Visual Test Accuracy:** >95% for UI change detection

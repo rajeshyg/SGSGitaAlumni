@@ -1,0 +1,268 @@
+erDiagram
+    %% Core User Management
+    USERS {
+        uuid id PK
+        string email UK
+        string password_hash
+        enum status
+        timestamp created_at
+        timestamp updated_at
+        timestamp last_login
+        json preferences
+    }
+    USER_PROFILES {
+        uuid id PK
+        uuid user_id FK
+        string first_name
+        string last_name
+        string display_name
+        text bio
+        string avatar_url
+        string phone
+        json social_links
+        timestamp created_at
+        timestamp updated_at
+    }
+    USER_ROLES {
+        uuid id PK
+        uuid user_id FK
+        uuid role_id FK
+        timestamp assigned_at
+        timestamp expires_at
+        uuid assigned_by FK
+    }
+    ROLES {
+        uuid id PK
+        string name UK
+        string description
+        json permissions
+        boolean is_active
+        timestamp created_at
+    }
+    PERMISSIONS {
+        uuid id PK
+        string resource
+        string action
+        json conditions
+    }
+    ROLE_PERMISSIONS {
+        uuid role_id FK
+        uuid permission_id FK
+        boolean is_granted
+        json constraints
+    }
+    USER_PERMISSIONS {
+        uuid user_id FK
+        uuid permission_id FK
+        boolean is_granted
+        timestamp expires_at
+    }
+    USER_SESSIONS {
+        uuid id PK
+        uuid user_id FK
+        string token
+        timestamp expires_at
+        string ip_address
+        string device_info
+    }
+    AUDIT_LOGS {
+        uuid id PK
+        uuid user_id FK
+        string action_type
+        json details
+        timestamp timestamp
+    }
+
+    %% Alumni-Specific
+    ALUMNI_PROFILES {
+        uuid id PK
+        uuid user_profile_id FK
+        string student_id UK
+        date graduation_date
+        string degree_type
+        string major
+        string minor
+        decimal gpa
+        enum alumni_status
+        uuid domain_id FK
+        json custom_fields
+        timestamp created_at
+        timestamp updated_at
+    }
+    EDUCATION_HISTORY {
+        uuid id PK
+        uuid alumni_profile_id FK
+        string institution_name
+        string degree_type
+        string field_of_study
+        date start_date
+        date end_date
+        decimal gpa
+        text description
+        boolean is_primary
+    }
+    CAREER_HISTORY {
+        uuid id PK
+        uuid alumni_profile_id FK
+        string company_name
+        string position_title
+        text job_description
+        date start_date
+        date end_date
+        string location
+        decimal salary_range_min
+        decimal salary_range_max
+        boolean is_current
+        enum employment_type
+    }
+    ACHIEVEMENTS {
+        uuid id PK
+        uuid alumni_profile_id FK
+        string title
+        text description
+        date achieved_date
+        string issuer
+    }
+    DOMAINS {
+        uuid id PK
+        string name UK
+        string description
+        string color_code
+        json metadata
+        boolean is_active
+        timestamp created_at
+    }
+
+    %% Content & Communication
+    POSTS {
+        uuid id PK
+        uuid author_id FK
+        string title
+        text content
+        enum post_type
+        enum visibility
+        json tags
+        integer like_count
+        integer comment_count
+        integer share_count
+        boolean is_pinned
+        timestamp published_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    COMMENTS {
+        uuid id PK
+        uuid post_id FK
+        uuid author_id FK
+        uuid parent_comment_id FK
+        text content
+        integer like_count
+        boolean is_edited
+        timestamp created_at
+        timestamp updated_at
+    }
+    POST_ATTACHMENTS {
+        uuid id PK
+        uuid post_id FK
+        string file_name
+        string file_type
+        string file_url
+        integer file_size
+        json metadata
+        timestamp uploaded_at
+    }
+    MESSAGES {
+        uuid id PK
+        uuid sender_id FK
+        uuid receiver_id FK
+        text content
+        boolean is_read
+        timestamp sent_at
+    }
+
+    %% Events & Activities
+    EVENTS {
+        uuid id PK
+        uuid organizer_id FK
+        string title
+        text description
+        datetime start_time
+        datetime end_time
+        string location
+        enum event_type
+        integer capacity
+        timestamp created_at
+    }
+    EVENT_REGISTRATIONS {
+        uuid id PK
+        uuid event_id FK
+        uuid user_id FK
+        enum status
+        timestamp registered_at
+    }
+
+    %% Professional Network
+    CONNECTIONS {
+        uuid id PK
+        uuid user_id_1 FK
+        uuid user_id_2 FK
+        enum status
+        timestamp requested_at
+        timestamp accepted_at
+    }
+    JOB_POSTINGS {
+        uuid id PK
+        uuid creator_id FK
+        string title
+        text description
+        string company
+        string location
+        enum job_type
+        decimal salary_min
+        decimal salary_max
+        timestamp posted_at
+        timestamp expires_at
+    }
+    JOB_APPLICATIONS {
+        uuid id PK
+        uuid job_id FK
+        uuid applicant_id FK
+        text cover_letter
+        string resume_url
+        enum status
+        timestamp applied_at
+    }
+
+    %% Relationships
+    USERS ||--|{ USER_PROFILES : has
+    USERS ||--o{ USER_ROLES : has
+    USERS ||--o{ USER_SESSIONS : creates
+    USERS ||--o{ AUDIT_LOGS : generates
+    ROLES ||--|{ USER_ROLES : assigned_to
+    ROLES ||--o{ ROLE_PERMISSIONS : has
+    PERMISSIONS ||--|{ ROLE_PERMISSIONS : assigned_to
+    PERMISSIONS ||--o{ USER_PERMISSIONS : overrides_for
+    USERS ||--o{ USER_PERMISSIONS : has
+
+    USER_PROFILES ||--|| ALUMNI_PROFILES : extends
+    ALUMNI_PROFILES ||--o{ EDUCATION_HISTORY : has
+    ALUMNI_PROFILES ||--o{ CAREER_HISTORY : has
+    ALUMNI_PROFILES ||--o{ ACHIEVEMENTS : has
+    DOMAINS ||--o{ ALUMNI_PROFILES : categorizes
+
+    USERS ||--o{ POSTS : creates
+    USERS ||--o{ COMMENTS : writes
+    USERS ||--o{ MESSAGES : sends
+    USERS ||--o{ MESSAGES : receives
+    POSTS ||--o{ COMMENTS : has
+    POSTS ||--o{ POST_ATTACHMENTS : contains
+
+    USERS ||--o{ EVENTS : organizes
+    USERS ||--o{ EVENT_REGISTRATIONS : registers
+    EVENTS ||--o{ EVENT_REGISTRATIONS : has
+
+    USERS ||--o{ CONNECTIONS : initiates
+    USERS ||--o{ CONNECTIONS : receives
+    USERS ||--o{ JOB_POSTINGS : creates
+    USERS ||--o{ JOB_APPLICATIONS : submits
+    JOB_POSTINGS ||--o{ JOB_APPLICATIONS : receives

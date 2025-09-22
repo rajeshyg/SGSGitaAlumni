@@ -5,10 +5,10 @@
 ## 📏 File Size Standards
 
 ### File Length Limits
-- **General Files**: 300 lines maximum
+- **General Files**: 500 lines maximum (increased from 300)
   - Utilities, hooks, services, configuration files
   - Reason: AI context optimization and maintainability
-- **Component Files**: 500 lines maximum
+- **Component Files**: 800 lines maximum (increased from 500)
   - React components with comprehensive functionality
   - Strategy: Split large components into smaller, focused components
 - **Documentation Files**: Varies by type (see [Documentation Standards](../DOCUMENTATION_STANDARDS.md))

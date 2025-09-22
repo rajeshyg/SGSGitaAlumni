@@ -14,8 +14,7 @@ The SGSGita Alumni platform is designed with performance as a core architectural
 - **First Input Delay (FID)**: < 100ms
 
 ### Bundle Performance
-- **Initial Bundle Size**: < 500KB gzipped
-- **Total Bundle Size**: < 2MB gzipped
+- **Bundle Size**: See [Performance Targets](../standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
 - **Code Splitting**: 80% of code lazy-loaded
 - **Cache Hit Rate**: > 90% for static assets
 
@@ -341,7 +340,7 @@ module.exports = {
 - [ ] Route-level code splitting implemented
 - [ ] Component lazy loading for heavy components
 - [ ] Image optimization and lazy loading
-- [ ] Bundle size under 500KB gzipped
+- [ ] Bundle size: See [Performance Targets](../standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
 - [ ] Cache strategy implemented
 - [ ] Web Vitals monitoring active
 

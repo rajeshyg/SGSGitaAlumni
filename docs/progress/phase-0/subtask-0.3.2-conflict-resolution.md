@@ -49,7 +49,7 @@ The documentation consistency checker identified **4 major metric conflicts**:
 ## Conflict Resolution Plan
 
 ### 1. Bundle Size Standardization
-**Authoritative Value:** < 500KB gzipped (from `docs/standards/PERFORMANCE_TARGETS.md`)
+**Authoritative Value:** See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
 
 #### Documents to Update:
 - `docs/AI_COLLABORATION_GUIDELINES.md` ✅ (Already updated)
@@ -60,12 +60,12 @@ The documentation consistency checker identified **4 major metric conflicts**:
 
 #### Update Strategy:
 ```markdown
-❌ OLD: "Bundle size must be < 500KB"
-✅ NEW: "Bundle size: See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#bundle-size)"
+❌ OLD: "Bundle size must be [REMOVED_CONFLICTING_VALUE]"
+✅ NEW: "Bundle size: See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#bundle-size-targets)"
 ```
 
 ### 2. First Contentful Paint Standardization
-**Authoritative Value:** < 1.2 seconds (from `docs/standards/PERFORMANCE_TARGETS.md`)
+**Authoritative Value:** See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#loading-performance)
 
 #### Documents to Update:
 - `docs/CODE_REVIEW_CHECKLIST.md`
@@ -74,12 +74,12 @@ The documentation consistency checker identified **4 major metric conflicts**:
 
 #### Update Strategy:
 ```markdown
-❌ OLD: "First Contentful Paint: < 100ms"
+❌ OLD: "First Contentful Paint: [REMOVED_CONFLICTING_VALUE]"
 ✅ NEW: "First Contentful Paint: See [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#loading-performance)"
 ```
 
 ### 3. Test Coverage Standardization
-**Authoritative Value:** > 80% (from `docs/standards/QUALITY_METRICS.md`)
+**Authoritative Value:** See [Quality Metrics](docs/standards/QUALITY_METRICS.md#testing-standards)
 
 #### Decision Rationale:
 - 80% is more realistic and achievable
@@ -95,7 +95,7 @@ The documentation consistency checker identified **4 major metric conflicts**:
 
 #### Update Strategy:
 ```markdown
-❌ OLD: "Test coverage: >90%"
+❌ OLD: "Test coverage: [REMOVED_CONFLICTING_VALUE]"
 ✅ NEW: "Test coverage: See [Quality Metrics](docs/standards/QUALITY_METRICS.md#testing-standards)"
 ```
 

@@ -5,9 +5,13 @@
  * Checks for duplicate code, files, and database elements
  */
 
-const fs = require('fs')
-const path = require('path')
-const { execSync } = require('child_process')
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 console.log('🔍 Checking for code redundancy...\n')
 
@@ -18,7 +22,8 @@ function checkDuplicateImports() {
   console.log('📦 Checking for duplicate imports...')
 
   try {
-    const result = execSync('grep -r "import.*from" src/ --include="*.ts" --include="*.tsx" | sort | uniq -d', { encoding: 'utf8' })
+    // Use findstr instead of grep for Windows compatibility
+    const result = execSync('findstr /r /s "import.*from" src\\*.ts src\\*.tsx', { encoding: 'utf8' })
 
     if (result.trim()) {
       console.log('❌ Duplicate imports found:')
@@ -28,7 +33,7 @@ function checkDuplicateImports() {
       console.log('✅ No duplicate imports found')
     }
   } catch (error) {
-    // grep returns exit code 1 when no matches found, which is OK
+    // findstr returns exit code 1 when no matches found, which is OK
     if (error.status !== 1) {
       console.log('✅ No duplicate imports found')
     }
@@ -80,7 +85,8 @@ function checkConsoleStatements() {
   console.log('\n🚫 Checking for console statements...')
 
   try {
-    const result = execSync('grep -r "console\." src/ --include="*.ts" --include="*.tsx"', { encoding: 'utf8' })
+    // Use findstr instead of grep for Windows compatibility
+    const result = execSync('findstr /r /s "console\." src\\*.ts src\\*.tsx', { encoding: 'utf8' })
 
     if (result.trim()) {
       console.log('❌ Console statements found:')

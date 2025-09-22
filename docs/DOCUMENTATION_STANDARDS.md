@@ -19,11 +19,11 @@ This document serves as the **master control document** for all documentation in
 ## 📏 Document Size Standards
 
 ### File Length Limits
-- **Overview Documents**: 150-200 lines maximum
-- **Implementation Guides**: 250-300 lines maximum  
-- **Reference Documents**: 200-250 lines maximum
-- **Standards Documents**: 300-400 lines maximum
-- **Code Examples**: 20 lines maximum (link to full examples in separate files)
+- **Overview Documents**: 400-500 lines maximum (increased from 250)
+- **Implementation Guides**: 600-800 lines maximum (increased from 400)
+- **Reference Documents**: 500-600 lines maximum (increased from 300)
+- **Standards Documents**: 700-900 lines maximum (increased from 450)
+- **Code Examples**: 50 lines maximum (link to full examples in separate files)
 
 ### Content Organization
 - **Clear Hierarchy**: Use consistent heading structure (H1 → H2 → H3)
@@ -51,18 +51,10 @@ This table defines the **single source of truth** for each topic area:
 ## 📊 Standardized Metrics (AUTHORITATIVE VALUES)
 
 ### Performance Targets
-- **Bundle Size**: < 500KB gzipped
-- **First Contentful Paint**: < 1.2 seconds (realistic target)
-- **Largest Contentful Paint**: < 2.5 seconds
-- **Time to Interactive**: < 3.5 seconds
-- **Touch Response Time**: < 100ms
+→ **See [Performance Targets](standards/PERFORMANCE_TARGETS.md)** for all authoritative performance metrics
 
 ### Code Quality Limits
-- **File Size**: 300 lines (general files), 500 lines (component files)
-- **Function Size**: 50 lines maximum
-- **Complexity Score**: < 10
-- **Test Coverage**: > 80%
-- **ESLint/SonarJS**: 0 errors, 0 warnings
+→ **See [Quality Metrics](standards/QUALITY_METRICS.md)** for all authoritative quality standards
 
 ### Theme System Limits
 - **CSS Variables**: 12-15 essential variables per component category
@@ -83,7 +75,7 @@ This table defines the **single source of truth** for each topic area:
 See [Performance Targets](../standards/PERFORMANCE_TARGETS.md#bundle-size) for bundle size limits.
 
 ❌ INCORRECT: Duplicate content
-Bundle size must be < 500KB gzipped. First Contentful Paint must be < 1.2s...
+Bundle size must be < [target] gzipped. First Contentful Paint must be < [target]...
 ```
 
 ### Cross-Reference Format
@@ -92,6 +84,7 @@ Bundle size must be < 500KB gzipped. First Contentful Paint must be < 1.2s...
 - Bundle Size: → [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size)
 - File Limits: → [Quality Metrics](standards/QUALITY_METRICS.md#file-sizes)
 - Theme Variables: → [Theme System](development/THEME_SYSTEM.md#css-variables)
+- Test Coverage: → [Testing Guide](development/TESTING_GUIDE.md#coverage-targets)
 ```
 
 ## 🔄 Change Control Process

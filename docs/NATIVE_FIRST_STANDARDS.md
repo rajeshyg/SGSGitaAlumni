@@ -6,7 +6,7 @@ This document defines the comprehensive standards for delivering native-quality 
 
 ### Instant Loading Experience
 - **First Contentful Paint**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance)
-- **Largest Contentful Paint**: < 2.5 seconds
+- **Largest Contentful Paint**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance)
 - **Time to Interactive**: < 3.5 seconds
 - **Bundle Size Limit**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
 

@@ -216,7 +216,7 @@ This phase implements a comprehensive, AI-driven quality assurance ecosystem tha
 See [Task 6.1: QA Framework](./task-6.1-qa-framework.md) for detailed quality metrics implementation and scoring criteria.
 
 ### Advanced Testing Metrics
-- **Test Coverage:** >90% (future goal - current standard: [Quality Metrics](../../standards/QUALITY_METRICS.md#testing-standards))
+- **Test Coverage:** See [Quality Metrics](../../standards/QUALITY_METRICS.md#testing-standards)
 - **Test Effectiveness:** >80% mutation score with intelligent test generation
 - **Test Execution Efficiency:** <10 minutes for prioritized test suites
 - **AI Test Generation Quality:** >85% generated tests provide meaningful coverage

@@ -31,9 +31,9 @@
 | **Component Reusability** | > 90% | 95% | ✅ Exceeded |
 | **TypeScript Coverage** | 100% | 100% | ✅ Achieved |
 | **Prototype Integration** | 100% | 100% | ✅ Achieved |
-| **Bundle Size** | [< 500KB](docs/standards/PERFORMANCE_TARGETS.md#bundle-size-targets) | TBD | 🟡 Not Measured |
+| **Bundle Size** | [See Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#bundle-size-targets) | TBD | 🟡 Not Measured |
 | **ESLint + SonarJS Compliance** | 100% | TBD | 🟡 Not Measured |
-| **Test Coverage** | [> 80%](docs/standards/QUALITY_METRICS.md#testing-standards) | TBD | 🟡 Not Measured |
+| **Test Coverage** | [See Quality Metrics](docs/standards/QUALITY_METRICS.md#testing-standards) | TBD | 🟡 Not Measured |
 | **Cross-Platform Compatibility** | 100% | TBD | 🟡 Not Measured |
 | **Accessibility Compliance** | WCAG 2.1 AA | TBD | 🟡 Not Measured |
 | **Security Audit Score** | > 90% | TBD | 🟡 Not Measured |
@@ -395,7 +395,7 @@ Verification
 |--------|--------|--------|
 | **Theme Switch Time** | < 200ms | ✅ Achieved |
 | **Component Load Time** | < 100ms | ✅ Achieved |
-| **Bundle Size** | [< 500KB](docs/standards/PERFORMANCE_TARGETS.md#bundle-size-targets) | 🟡 TBD |
+| **Bundle Size** | [See Performance Targets](docs/standards/PERFORMANCE_TARGETS.md#bundle-size-targets) | 🟡 TBD |
 
 ## 📚 Documentation Structure
 

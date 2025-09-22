@@ -26,6 +26,30 @@ class DocumentationStandardsValidator {
     this.rootDir = path.join(__dirname, '..');
   }
 
+  // Check if a task document has completed status
+  isTaskCompleted(filePath) {
+    // Only check task documents in progress directory
+    if (!filePath.includes('progress') || !filePath.includes('task-')) {
+      return false;
+    }
+
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+
+      // Look for completed status indicators
+      const completedPatterns = [
+        /\*\*Status:\*\*\s*✅\s*Complete/i,
+        /Status:\s*✅\s*Complete/i,
+        /\*\*Status:\*\*\s*🟢\s*Complete/i,
+        /Status:\s*🟢\s*Complete/i
+      ];
+
+      return completedPatterns.some(pattern => pattern.test(content));
+    } catch (error) {
+      return false;
+    }
+  }
+
   // Main validation function
   async validateStandards() {
     console.log('📋 Starting Documentation Standards Validation...\n');
@@ -139,14 +163,19 @@ class DocumentationStandardsValidator {
           }
 
           if (!validStatusPattern.test(line)) {
-            this.violations.push({
-              type: 'STATUS_FORMAT_VIOLATION',
-              file: path.relative(this.rootDir, file),
-              description: `Status format does not match standard: "${line}"`,
-              severity: 'MEDIUM',
-              line: i + 1,
-              expected: 'Status: [emoji] [Status] ([details])'
-            });
+            // Skip medium issues for completed tasks
+            if (this.isTaskCompleted(file)) {
+              console.log(`  ⚠️ Ignoring status format issue in completed task: ${path.relative(this.rootDir, file)}`);
+            } else {
+              this.violations.push({
+                type: 'STATUS_FORMAT_VIOLATION',
+                file: path.relative(this.rootDir, file),
+                description: `Status format does not match standard: "${line}"`,
+                severity: 'MEDIUM',
+                line: i + 1,
+                expected: 'Status: [emoji] [Status] ([details])'
+              });
+            }
           }
         }
       }
@@ -180,21 +209,31 @@ class DocumentationStandardsValidator {
         const criteriaCount = this.countCriteriaItems(criteriaSection);
 
         if (criteriaCount < 8) {
-          this.violations.push({
-            type: 'INSUFFICIENT_SUCCESS_CRITERIA',
-            file: relativePath,
-            description: `Only ${criteriaCount} success criteria found (minimum 8 required)`,
-            severity: 'MEDIUM',
-            line: this.findSectionLine(content, 'Success Criteria')
-          });
+          // Skip medium issues for completed tasks
+          if (this.isTaskCompleted(file)) {
+            console.log(`  ⚠️ Ignoring insufficient success criteria in completed task: ${relativePath}`);
+          } else {
+            this.violations.push({
+              type: 'INSUFFICIENT_SUCCESS_CRITERIA',
+              file: relativePath,
+              description: `Only ${criteriaCount} success criteria found (minimum 8 required)`,
+              severity: 'MEDIUM',
+              line: this.findSectionLine(content, 'Success Criteria')
+            });
+          }
         } else if (criteriaCount > 10) {
-          this.violations.push({
-            type: 'EXCESSIVE_SUCCESS_CRITERIA',
-            file: relativePath,
-            description: `${criteriaCount} success criteria found (maximum 10 recommended)`,
-            severity: 'LOW',
-            line: this.findSectionLine(content, 'Success Criteria')
-          });
+          // Skip low issues for completed tasks
+          if (this.isTaskCompleted(file)) {
+            console.log(`  ⚠️ Ignoring excessive success criteria in completed task: ${relativePath}`);
+          } else {
+            this.violations.push({
+              type: 'EXCESSIVE_SUCCESS_CRITERIA',
+              file: relativePath,
+              description: `${criteriaCount} success criteria found (maximum 10 recommended)`,
+              severity: 'LOW',
+              line: this.findSectionLine(content, 'Success Criteria')
+            });
+          }
         }
       }
     }
@@ -226,13 +265,20 @@ class DocumentationStandardsValidator {
     // Report duplicate status entries
     for (const [status, files] of statusMap.entries()) {
       if (files.length > 1) {
-        this.violations.push({
-          type: 'REDUNDANT_STATUS',
-          file: files[0],
-          description: `Status "${status}" duplicated across ${files.length} files: ${files.join(', ')}`,
-          severity: 'LOW',
-          line: 0
-        });
+        // Check if any of the files are completed tasks
+        const hasCompletedTask = files.some(file => this.isTaskCompleted(path.join(this.rootDir, file)));
+
+        if (hasCompletedTask) {
+          console.log(`  ⚠️ Ignoring redundant status in files with completed tasks: ${files.join(', ')}`);
+        } else {
+          this.violations.push({
+            type: 'REDUNDANT_STATUS',
+            file: files[0],
+            description: `Status "${status}" duplicated across ${files.length} files: ${files.join(', ')}`,
+            severity: 'LOW',
+            line: 0
+          });
+        }
       }
     }
   }

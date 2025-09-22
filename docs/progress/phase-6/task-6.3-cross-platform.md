@@ -26,64 +26,34 @@ Optimize the SGSGita Alumni application for consistent performance and user expe
 #### Advanced Device Detection System
 ```typescript
 // src/lib/device-detection.ts
-
 export interface DeviceCapabilities {
   type: 'mobile' | 'tablet' | 'desktop'
-  orientation: 'portrait' | 'landscape'
   touchSupport: boolean
-  screenSize: { width: number; height: number }
-  pixelRatio: number
   platform: string
   browser: string
-  capabilities: {
-    webgl: boolean
-    serviceWorker: boolean
-    indexedDB: boolean
-    localStorage: boolean
-    geolocation: boolean
-    camera: boolean
-    microphone: boolean
-  }
 }
 
 export class DeviceDetector {
   private capabilities: DeviceCapabilities
-  private listeners: Set<(capabilities: DeviceCapabilities) => void> = new Set()
 
   constructor() {
     this.capabilities = this.detectCapabilities()
-    this.setupEventListeners()
   }
 
   private detectCapabilities(): DeviceCapabilities {
     const userAgent = navigator.userAgent
-    const screen = window.screen
-    const viewport = {
-      width: window.innerWidth,
-      height: window.innerHeight
-    }
+    const viewport = { width: window.innerWidth, height: window.innerHeight }
 
-    // Device type detection
     let type: 'mobile' | 'tablet' | 'desktop' = 'desktop'
-    if (viewport.width < 768) {
-      type = 'mobile'
-    } else if (viewport.width < 1024) {
-      type = 'tablet'
-    }
+    if (viewport.width < 768) type = 'mobile'
+    else if (viewport.width < 1024) type = 'tablet'
 
-    // Orientation detection
-    const orientation: 'portrait' | 'landscape' =
-      viewport.height > viewport.width ? 'portrait' : 'landscape'
-
-    // Platform detection
     let platform = 'unknown'
     if (userAgent.includes('Android')) platform = 'android'
     else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) platform = 'ios'
     else if (userAgent.includes('Windows')) platform = 'windows'
     else if (userAgent.includes('Mac')) platform = 'macos'
-    else if (userAgent.includes('Linux')) platform = 'linux'
 
-    // Browser detection
     let browser = 'unknown'
     if (userAgent.includes('Chrome')) browser = 'chrome'
     else if (userAgent.includes('Firefox')) browser = 'firefox'
@@ -92,79 +62,9 @@ export class DeviceDetector {
 
     return {
       type,
-      orientation,
       touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
-      screenSize: { width: screen.width, height: screen.height },
-      pixelRatio: window.devicePixelRatio || 1,
       platform,
-      browser,
-      capabilities: {
-        webgl: this.detectWebGL(),
-        serviceWorker: 'serviceWorker' in navigator,
-        indexedDB: 'indexedDB' in window,
-        localStorage: this.detectLocalStorage(),
-        geolocation: 'geolocation' in navigator,
-        camera: this.detectCamera(),
-        microphone: this.detectMicrophone()
-      }
-    }
-  }
-
-  private detectWebGL(): boolean {
-    try {
-      const canvas = document.createElement('canvas')
-      return !!(window.WebGLRenderingContext &&
-        canvas.getContext('webgl'))
-    } catch (e) {
-      return false
-    }
-  }
-
-  private detectLocalStorage(): boolean {
-    try {
-      const test = '__storage_test__'
-      localStorage.setItem(test, test)
-      localStorage.removeItem(test)
-      return true
-    } catch (e) {
-      return false
-    }
-  }
-
-  private detectCamera(): boolean {
-    return !!(navigator.mediaDevices &&
-      navigator.mediaDevices.getUserMedia)
-  }
-
-  private detectMicrophone(): boolean {
-    return !!(navigator.mediaDevices &&
-      navigator.mediaDevices.getUserMedia &&
-      navigator.mediaDevices.enumerateDevices)
-  }
-
-  private setupEventListeners(): void {
-    // Orientation change
-    window.addEventListener('orientationchange', () => {
-      setTimeout(() => {
-        this.capabilities = this.detectCapabilities()
-        this.notifyListeners()
-      }, 100)
-    })
-
-    // Resize
-    window.addEventListener('resize', () => {
-      this.capabilities = this.detectCapabilities()
-      this.notifyListeners()
-    })
-
-    // Device capabilities might change (e.g., camera permission)
-    if (navigator.permissions) {
-      navigator.permissions.query({ name: 'camera' }).then(result => {
-        result.addEventListener('change', () => {
-          this.capabilities.capabilities.camera = result.state === 'granted'
-          this.notifyListeners()
-        })
-      }).catch(() => {})
+      browser
     }
   }
 
@@ -172,51 +72,20 @@ export class DeviceDetector {
     return { ...this.capabilities }
   }
 
-  public onCapabilitiesChange(callback: (capabilities: DeviceCapabilities) => void): () => void {
-    this.listeners.add(callback)
-    return () => this.listeners.delete(callback)
-  }
-
-  private notifyListeners(): void {
-    this.listeners.forEach(callback => callback(this.capabilities))
-  }
-
-  // Utility methods
-  public isMobile(): boolean {
-    return this.capabilities.type === 'mobile'
-  }
-
-  public isTablet(): boolean {
-    return this.capabilities.type === 'tablet'
-  }
-
-  public isDesktop(): boolean {
-    return this.capabilities.type === 'desktop'
-  }
-
-  public isTouchDevice(): boolean {
-    return this.capabilities.touchSupport
-  }
-
-  public getOptimalImageSize(): { width: number; height: number } {
-    const { screenSize, pixelRatio } = this.capabilities
-    return {
-      width: Math.min(screenSize.width * pixelRatio, 1920),
-      height: Math.min(screenSize.height * pixelRatio, 1080)
-    }
-  }
+  public isMobile(): boolean { return this.capabilities.type === 'mobile' }
+  public isTablet(): boolean { return this.capabilities.type === 'tablet' }
+  public isDesktop(): boolean { return this.capabilities.type === 'desktop' }
+  public isTouchDevice(): boolean { return this.capabilities.touchSupport }
 }
 
-// Singleton instance
 export const deviceDetector = new DeviceDetector()
 ```
 
 #### Platform-Specific Component System
 ```typescript
 // src/components/platform-adaptive/PlatformAdaptive.tsx
-
 import React, { useState, useEffect } from 'react'
-import { deviceDetector, DeviceCapabilities } from '@/lib/device-detection'
+import { deviceDetector } from '@/lib/device-detection'
 
 interface PlatformComponents<T> {
   mobile?: React.ComponentType<T>
@@ -225,52 +94,28 @@ interface PlatformComponents<T> {
   fallback?: React.ComponentType<T>
 }
 
-interface PlatformAdaptiveProps<T> extends T {
-  components: PlatformComponents<T>
-}
-
 export function PlatformAdaptive<T = {}>({
   components,
   ...props
-}: PlatformAdaptiveProps<T>) {
+}: { components: PlatformComponents<T> } & T) {
   const [deviceType, setDeviceType] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
 
   useEffect(() => {
     const capabilities = deviceDetector.getCapabilities()
     setDeviceType(capabilities.type)
-
-    const unsubscribe = deviceDetector.onCapabilitiesChange((newCapabilities) => {
-      setDeviceType(newCapabilities.type)
-    })
-
-    return unsubscribe
   }, [])
 
   const Component = components[deviceType] || components.fallback
-
-  if (!Component) {
-    console.warn(`No component found for device type: ${deviceType}`)
-    return null
-  }
-
-  return <Component {...(props as T)} />
+  return Component ? <Component {...(props as T)} /> : null
 }
 
-// Usage example
-export function AdaptiveButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return (
-    <PlatformAdaptive
-      components={{
-        mobile: MobileButton,
-        tablet: TabletButton,
-        desktop: DesktopButton
-      }}
-      onClick={onClick}
-    >
-      {children}
-    </PlatformAdaptive>
-  )
-}
+// Usage
+<PlatformAdaptive
+  components={{ mobile: MobileButton, tablet: TabletButton, desktop: DesktopButton }}
+  onClick={handleClick}
+>
+  {children}
+</PlatformAdaptive>
 ```
 
 ### Phase 2: Touch & Interaction Optimization (Day 2)
@@ -278,71 +123,39 @@ export function AdaptiveButton({ children, onClick }: { children: React.ReactNod
 #### Touch-Optimized Components
 ```typescript
 // src/components/touch-optimized/TouchButton.tsx
-
 import React, { useState, useCallback } from 'react'
-import { cn } from '@/lib/utils'
 import { deviceDetector } from '@/lib/device-detection'
-
-interface TouchButtonProps {
-  children: React.ReactNode
-  onClick: () => void
-  disabled?: boolean
-  variant?: 'primary' | 'secondary' | 'outline'
-  size?: 'sm' | 'md' | 'lg'
-  className?: string
-}
 
 export function TouchButton({
   children,
   onClick,
   disabled = false,
-  variant = 'primary',
-  size = 'md',
-  className
-}: TouchButtonProps) {
+  variant = 'primary'
+}: {
+  children: React.ReactNode
+  onClick: () => void
+  disabled?: boolean
+  variant?: 'primary' | 'secondary' | 'outline'
+}) {
   const [isPressed, setIsPressed] = useState(false)
-  const [touchStartTime, setTouchStartTime] = useState(0)
-
   const capabilities = deviceDetector.getCapabilities()
   const isTouchDevice = capabilities.touchSupport
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (disabled) return
-
     setIsPressed(true)
-    setTouchStartTime(Date.now())
-
-    // Haptic feedback for supported devices
-    if (navigator.vibrate && isTouchDevice) {
-      navigator.vibrate(50)
-    }
-
-    // Prevent scrolling on touch
+    if (navigator.vibrate && isTouchDevice) navigator.vibrate(50)
     e.preventDefault()
   }, [disabled, isTouchDevice])
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+  const handleTouchEnd = useCallback(() => {
     if (disabled) return
-
-    const touchDuration = Date.now() - touchStartTime
-
-    // Only trigger click if touch was not too long (prevent accidental long presses)
-    if (touchDuration < 500) {
-      onClick()
-    }
-
     setIsPressed(false)
-    e.preventDefault()
-  }, [disabled, onClick, touchStartTime])
-
-  const handleTouchCancel = useCallback(() => {
-    setIsPressed(false)
-  }, [])
+    onClick()
+  }, [disabled, onClick])
 
   const handleMouseDown = useCallback(() => {
-    if (!isTouchDevice && !disabled) {
-      setIsPressed(true)
-    }
+    if (!isTouchDevice && !disabled) setIsPressed(true)
   }, [isTouchDevice, disabled])
 
   const handleMouseUp = useCallback(() => {
@@ -352,79 +165,38 @@ export function TouchButton({
     }
   }, [isTouchDevice, disabled, onClick])
 
-  const handleMouseLeave = useCallback(() => {
-    if (!isTouchDevice) {
-      setIsPressed(false)
-    }
-  }, [isTouchDevice])
+  const sizeClasses = capabilities.type === 'mobile'
+    ? 'min-h-[44px] min-w-[44px] px-4 py-3'
+    : 'px-4 py-3'
 
-  // Platform-specific sizing
-  const getSizeClasses = () => {
-    const baseSizes = {
-      sm: 'px-3 py-2 text-sm',
-      md: 'px-4 py-3 text-base',
-      lg: 'px-6 py-4 text-lg'
-    }
-
-    if (capabilities.type === 'mobile') {
-      // Ensure minimum touch target size
-      return {
-        sm: 'min-h-[44px] min-w-[44px] px-4 py-3 text-base',
-        md: 'min-h-[48px] min-w-[48px] px-5 py-4 text-base',
-        lg: 'min-h-[52px] min-w-[52px] px-6 py-4 text-lg'
-      }
-    }
-
-    return baseSizes
-  }
-
-  const sizeClasses = getSizeClasses()[size]
-
-  const baseClasses = cn(
-    'relative inline-flex items-center justify-center font-medium rounded-lg',
+  const baseClasses = [
+    'inline-flex items-center justify-center font-medium rounded-lg',
     'transition-all duration-150 ease-out',
     'focus:outline-none focus:ring-2 focus:ring-offset-2',
     'disabled:opacity-50 disabled:cursor-not-allowed',
     sizeClasses,
-    {
-      // Touch device styles
-      'active:scale-95': isTouchDevice && !disabled,
-      'hover:bg-opacity-80': !isTouchDevice && !disabled,
-
-      // Pressed state
-      'scale-95': isPressed && !disabled,
-
-      // Variants
-      'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500': variant === 'primary' && !disabled,
-      'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500': variant === 'secondary' && !disabled,
-      'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500': variant === 'outline' && !disabled,
-    },
-    className
-  )
-
-  const touchProps = isTouchDevice ? {
-    onTouchStart: handleTouchStart,
-    onTouchEnd: handleTouchEnd,
-    onTouchCancel: handleTouchCancel,
-    style: {
-      WebkitTapHighlightColor: 'transparent',
-      WebkitTouchCallout: 'none',
-      WebkitUserSelect: 'none'
-    }
-  } : {}
-
-  const mouseProps = !isTouchDevice ? {
-    onMouseDown: handleMouseDown,
-    onMouseUp: handleMouseUp,
-    onMouseLeave: handleMouseLeave
-  } : {}
+    isTouchDevice && !disabled ? 'active:scale-95' : '',
+    !isTouchDevice && !disabled ? 'hover:bg-opacity-80' : '',
+    isPressed && !disabled ? 'scale-95' : '',
+    variant === 'primary' && !disabled ? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500' : '',
+    variant === 'secondary' && !disabled ? 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500' : '',
+    variant === 'outline' && !disabled ? 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500' : ''
+  ].filter(Boolean).join(' ')
 
   return (
     <button
       className={baseClasses}
       disabled={disabled}
-      {...touchProps}
-      {...mouseProps}
+      onTouchStart={isTouchDevice ? handleTouchStart : undefined}
+      onTouchEnd={isTouchDevice ? handleTouchEnd : undefined}
+      onMouseDown={!isTouchDevice ? handleMouseDown : undefined}
+      onMouseUp={!isTouchDevice ? handleMouseUp : undefined}
+      onMouseLeave={!isTouchDevice ? () => setIsPressed(false) : undefined}
+      style={isTouchDevice ? {
+        WebkitTapHighlightColor: 'transparent',
+        WebkitTouchCallout: 'none',
+        WebkitUserSelect: 'none'
+      } : {}}
     >
       {children}
     </button>
@@ -435,108 +207,56 @@ export function TouchButton({
 #### Swipe Gesture Handler
 ```typescript
 // src/hooks/useSwipeGesture.ts
-
 import { useRef, useCallback } from 'react'
-import { deviceDetector } from '@/lib/device-detection'
 
-interface SwipeConfig {
+export function useSwipeGesture({
+  threshold = 150,
+  onSwipeLeft,
+  onSwipeRight,
+  onSwipeUp,
+  onSwipeDown
+}: {
   threshold?: number
-  restraint?: number
-  allowedTime?: number
   onSwipeLeft?: () => void
   onSwipeRight?: () => void
   onSwipeUp?: () => void
   onSwipeDown?: () => void
-}
-
-export function useSwipeGesture(config: SwipeConfig = {}) {
+}) {
   const touchStartX = useRef<number | null>(null)
   const touchStartY = useRef<number | null>(null)
-  const touchStartTime = useRef<number | null>(null)
-
-  const {
-    threshold = 150,
-    restraint = 100,
-    allowedTime = 300,
-    onSwipeLeft,
-    onSwipeRight,
-    onSwipeUp,
-    onSwipeDown
-  } = config
-
-  const capabilities = deviceDetector.getCapabilities()
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    if (!capabilities.touchSupport) return
-
     const touch = e.touches[0]
     touchStartX.current = touch.clientX
     touchStartY.current = touch.clientY
-    touchStartTime.current = Date.now()
-  }, [capabilities.touchSupport])
+  }, [])
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
-    if (!capabilities.touchSupport || !touchStartX.current || !touchStartY.current || !touchStartTime.current) return
+    if (!touchStartX.current || !touchStartY.current) return
 
     const touch = e.changedTouches[0]
-    const touchEndX = touch.clientX
-    const touchEndY = touch.clientY
-    const touchEndTime = Date.now()
+    const distanceX = touch.clientX - touchStartX.current
+    const distanceY = touch.clientY - touchStartY.current
 
-    const timeDiff = touchEndTime - touchStartTime.current
-    const distanceX = touchEndX - touchStartX.current
-    const distanceY = touchEndY - touchStartY.current
-
-    // Check if swipe was within allowed time
-    if (timeDiff > allowedTime) return
-
-    // Check if swipe distance meets threshold
-    if (Math.abs(distanceX) >= threshold && Math.abs(distanceY) <= restraint) {
-      if (distanceX > 0) {
-        onSwipeRight?.()
-      } else {
-        onSwipeLeft?.()
-      }
-    } else if (Math.abs(distanceY) >= threshold && Math.abs(distanceX) <= restraint) {
-      if (distanceY > 0) {
-        onSwipeDown?.()
-      } else {
-        onSwipeUp?.()
-      }
+    if (Math.abs(distanceX) >= threshold && Math.abs(distanceY) <= 100) {
+      if (distanceX > 0) onSwipeRight?.()
+      else onSwipeLeft?.()
+    } else if (Math.abs(distanceY) >= threshold && Math.abs(distanceX) <= 100) {
+      if (distanceY > 0) onSwipeDown?.()
+      else onSwipeUp?.()
     }
 
-    // Reset touch coordinates
     touchStartX.current = null
     touchStartY.current = null
-    touchStartTime.current = null
-  }, [capabilities.touchSupport, threshold, restraint, allowedTime, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown])
+  }, [threshold, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown])
 
-  return {
-    onTouchStart: handleTouchStart,
-    onTouchEnd: handleTouchEnd
-  }
+  return { onTouchStart: handleTouchStart, onTouchEnd: handleTouchEnd }
 }
 
-// Usage example
-export function SwipeableCard({ children, onSwipeLeft, onSwipeRight }: {
-  children: React.ReactNode
-  onSwipeLeft?: () => void
-  onSwipeRight?: () => void
-}) {
-  const swipeHandlers = useSwipeGesture({
-    onSwipeLeft,
-    onSwipeRight
-  })
-
-  return (
-    <div
-      {...swipeHandlers}
-      className="cursor-grab active:cursor-grabbing"
-    >
-      {children}
-    </div>
-  )
-}
+// Usage
+<div {...useSwipeGesture({ onSwipeLeft, onSwipeRight })}>
+  {children}
+</div>
 ```
 
 ### Phase 3: Responsive Layout System (Day 3)
@@ -544,105 +264,61 @@ export function SwipeableCard({ children, onSwipeLeft, onSwipeRight }: {
 #### Adaptive Layout Components
 ```typescript
 // src/components/layout/AdaptiveLayout.tsx
-
 import React, { useState, useEffect } from 'react'
 import { deviceDetector } from '@/lib/device-detection'
 
-interface LayoutConfig {
-  mobile: React.ComponentType<any>
-  tablet: React.ComponentType<any>
-  desktop: React.ComponentType<any>
-}
-
-interface AdaptiveLayoutProps {
-  layouts: LayoutConfig
+export function AdaptiveLayout({
+  layouts,
+  layoutProps = {}
+}: {
+  layouts: { mobile: React.ComponentType<any>, tablet: React.ComponentType<any>, desktop: React.ComponentType<any> }
   layoutProps?: Record<string, any>
-}
-
-export function AdaptiveLayout({ layouts, layoutProps = {} }: AdaptiveLayoutProps) {
+}) {
   const [currentLayout, setCurrentLayout] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
 
   useEffect(() => {
     const capabilities = deviceDetector.getCapabilities()
     setCurrentLayout(capabilities.type)
-
-    const unsubscribe = deviceDetector.onCapabilitiesChange((newCapabilities) => {
-      setCurrentLayout(newCapabilities.type)
-    })
-
-    return unsubscribe
   }, [])
 
   const LayoutComponent = layouts[currentLayout]
-
   return <LayoutComponent {...layoutProps} />
 }
 
-// Usage example
-export function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AdaptiveLayout
-      layouts={{
-        mobile: MobileLayout,
-        tablet: TabletLayout,
-        desktop: DesktopLayout
-      }}
-      layoutProps={{ children }}
-    />
-  )
-}
+// Usage
+<AdaptiveLayout
+  layouts={{ mobile: MobileLayout, tablet: TabletLayout, desktop: DesktopLayout }}
+  layoutProps={{ children }}
+/>
 ```
 
 #### Mobile-First Navigation
 ```typescript
 // src/components/navigation/MobileNavigation.tsx
-
 import React, { useState } from 'react'
-import { cn } from '@/lib/utils'
 import { deviceDetector } from '@/lib/device-detection'
 
-interface NavigationItem {
-  id: string
-  label: string
-  icon: React.ComponentType<{ size?: number }>
-  onClick: () => void
-}
-
-interface MobileNavigationProps {
-  items: NavigationItem[]
+export function MobileNavigation({ items, activeItem, className }: {
+  items: { id: string, label: string, icon: React.ComponentType<{ size?: number }>, onClick: () => void }[]
   activeItem?: string
   className?: string
-}
-
-export function MobileNavigation({ items, activeItem, className }: MobileNavigationProps) {
+}) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const capabilities = deviceDetector.getCapabilities()
 
   if (capabilities.type === 'desktop') {
-    // Desktop sidebar navigation
     return (
-      <nav className={cn('w-64 bg-white border-r border-gray-200', className)}>
+      <nav className={`w-64 bg-white border-r border-gray-200 ${className || ''}`}>
         <div className="p-4">
           <ul className="space-y-2">
             {items.map((item) => {
               const Icon = item.icon
               const isActive = activeItem === item.id
-
               return (
                 <li key={item.id}>
                   <button
-                    onClick={() => {
-                      item.onClick()
-                      setIsMenuOpen(false)
-                    }}
-                    className={cn(
-                      'w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors',
-                      'hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                      {
-                        'bg-blue-50 text-blue-700': isActive,
-                        'text-gray-700': !isActive
-                      }
-                    )}
+                    onClick={() => item.onClick()}
+                    className={`w-full flex items-center px-4 py-3 text-left rounded-lg transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-700'}`}
                   >
                     <Icon size={20} className="mr-3" />
                     <span className="font-medium">{item.label}</span>
@@ -656,36 +332,18 @@ export function MobileNavigation({ items, activeItem, className }: MobileNavigat
     )
   }
 
-  // Mobile bottom navigation
   return (
     <>
-      {/* Bottom Navigation Bar */}
-      <nav className={cn(
-        'fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 z-50',
-        'safe-area-bottom', // iOS safe area
-        className
-      )}>
+      <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 z-50 safe-area-bottom ${className || ''}`}>
         <div className="flex justify-around items-center max-w-md mx-auto">
-          {items.slice(0, 5).map((item) => { // Limit to 5 items for mobile
+          {items.slice(0, 5).map((item) => {
             const Icon = item.icon
             const isActive = activeItem === item.id
-
             return (
               <button
                 key={item.id}
-                onClick={() => {
-                  item.onClick()
-                  setIsMenuOpen(false)
-                }}
-                className={cn(
-                  'flex flex-col items-center justify-center p-2 rounded-lg min-w-[60px] min-h-[60px]',
-                  'transition-colors duration-200',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  {
-                    'text-blue-600': isActive,
-                    'text-gray-500': !isActive
-                  }
-                )}
+                onClick={() => item.onClick()}
+                className={`flex flex-col items-center justify-center p-2 rounded-lg min-w-[60px] min-h-[60px] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isActive ? 'text-blue-600' : 'text-gray-500'}`}
               >
                 <Icon size={24} />
                 <span className="text-xs mt-1 font-medium">{item.label}</span>
@@ -695,7 +353,6 @@ export function MobileNavigation({ items, activeItem, className }: MobileNavigat
         </div>
       </nav>
 
-      {/* Mobile Menu Overlay (for additional items) */}
       {items.length > 5 && (
         <>
           <button
@@ -708,22 +365,15 @@ export function MobileNavigation({ items, activeItem, className }: MobileNavigat
 
           {isMenuOpen && (
             <>
-              <div
-                className="fixed inset-0 bg-black bg-opacity-50 z-40"
-                onClick={() => setIsMenuOpen(false)}
-              />
+              <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setIsMenuOpen(false)} />
               <div className="fixed bottom-20 left-4 right-4 bg-white rounded-lg shadow-lg z-50 p-4">
                 <div className="grid grid-cols-2 gap-4">
                   {items.slice(5).map((item) => {
                     const Icon = item.icon
-
                     return (
                       <button
                         key={item.id}
-                        onClick={() => {
-                          item.onClick()
-                          setIsMenuOpen(false)
-                        }}
+                        onClick={() => { item.onClick(); setIsMenuOpen(false) }}
                         className="flex flex-col items-center p-4 rounded-lg hover:bg-gray-100"
                       >
                         <Icon size={24} />
@@ -747,107 +397,47 @@ export function MobileNavigation({ items, activeItem, className }: MobileNavigat
 #### Platform-Specific Performance Tuning
 ```typescript
 // src/lib/performance-optimization.ts
-
 import { deviceDetector } from '@/lib/device-detection'
 
-export interface PerformanceConfig {
-  imageQuality: number
-  animationDuration: number
-  bundleChunkSize: string
-  cacheStrategy: 'cache-first' | 'network-first' | 'stale-while-revalidate'
-  preloadStrategy: 'aggressive' | 'conservative' | 'none'
-}
-
 export class PerformanceOptimizer {
-  private config: PerformanceConfig
+  private config = this.getOptimalConfig()
 
-  constructor() {
-    this.config = this.getOptimalConfig()
-  }
-
-  private getOptimalConfig(): PerformanceConfig {
+  private getOptimalConfig() {
     const capabilities = deviceDetector.getCapabilities()
 
     switch (capabilities.type) {
-      case 'mobile':
-        return {
-          imageQuality: 0.8,
-          animationDuration: 200,
-          bundleChunkSize: '100kb',
-          cacheStrategy: 'network-first',
-          preloadStrategy: 'conservative'
-        }
-
-      case 'tablet':
-        return {
-          imageQuality: 0.9,
-          animationDuration: 300,
-          bundleChunkSize: '200kb',
-          cacheStrategy: 'cache-first',
-          preloadStrategy: 'aggressive'
-        }
-
-      case 'desktop':
-      default:
-        return {
-          imageQuality: 1.0,
-          animationDuration: 400,
-          bundleChunkSize: '500kb',
-          cacheStrategy: 'stale-while-revalidate',
-          preloadStrategy: 'aggressive'
-        }
+      case 'mobile': return { imageQuality: 0.8, animationDuration: 200 }
+      case 'tablet': return { imageQuality: 0.9, animationDuration: 300 }
+      default: return { imageQuality: 1.0, animationDuration: 400 }
     }
   }
 
-  public getConfig(): PerformanceConfig {
-    return { ...this.config }
+  public getConfig() { return { ...this.config } }
+
+  public optimizeImage(src: string, quality?: number) {
+    return `${src}?quality=${(quality || this.config.imageQuality) * 100}`
   }
 
-  public optimizeImage(src: string, options?: { quality?: number }): string {
-    const quality = options?.quality || this.config.imageQuality
-
-    // Implement image optimization logic
-    // This could integrate with a service like Cloudinary or ImageKit
-    return `${src}?quality=${quality * 100}`
+  public getAnimationDuration(baseDuration: number) {
+    return deviceDetector.getCapabilities().type === 'mobile'
+      ? Math.min(baseDuration, 200)
+      : baseDuration
   }
 
-  public getAnimationDuration(baseDuration: number): number {
-    // Adjust animation duration based on device capabilities
-    const capabilities = deviceDetector.getCapabilities()
-
-    if (capabilities.type === 'mobile') {
-      return Math.min(baseDuration, 200) // Cap mobile animations
-    }
-
-    return baseDuration
-  }
-
-  public shouldPreload(resource: string): boolean {
-    switch (this.config.preloadStrategy) {
-      case 'aggressive':
-        return true
-      case 'conservative':
-        // Only preload critical resources
-        return resource.includes('critical') || resource.includes('hero')
-      case 'none':
-      default:
-        return false
-    }
+  public shouldPreload(resource: string) {
+    return resource.includes('critical') || resource.includes('hero')
   }
 }
 
-// Singleton instance
 export const performanceOptimizer = new PerformanceOptimizer()
 
-// React hook for performance optimization
 export function usePerformanceOptimization() {
-  const [config, setConfig] = useState<PerformanceConfig>(performanceOptimizer.getConfig())
+  const [config, setConfig] = useState(performanceOptimizer.getConfig())
 
   useEffect(() => {
     const unsubscribe = deviceDetector.onCapabilitiesChange(() => {
       setConfig(performanceOptimizer.getConfig())
     })
-
     return unsubscribe
   }, [])
 
@@ -863,24 +453,21 @@ export function usePerformanceOptimization() {
 #### Lazy Loading with Platform Awareness
 ```typescript
 // src/components/lazy/LazyComponent.tsx
-
-import React, { Suspense, lazy, ComponentType } from 'react'
+import React, { Suspense, lazy, ComponentType, useState, useEffect } from 'react'
 import { performanceOptimizer } from '@/lib/performance-optimization'
 import { deviceDetector } from '@/lib/device-detection'
-
-interface LazyComponentProps {
-  importFunc: () => Promise<{ default: ComponentType<any> }>
-  fallback?: React.ComponentType<any>
-  preload?: boolean
-  componentProps?: Record<string, any>
-}
 
 export function LazyComponent({
   importFunc,
   fallback: Fallback,
   preload = false,
   componentProps = {}
-}: LazyComponentProps) {
+}: {
+  importFunc: () => Promise<{ default: ComponentType<any> }>
+  fallback?: React.ComponentType<any>
+  preload?: boolean
+  componentProps?: Record<string, any>
+}) {
   const [LazyLoadedComponent, setLazyLoadedComponent] = useState<ComponentType<any> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -899,10 +486,8 @@ export function LazyComponent({
     if (preload || performanceOptimizer.shouldPreload('component')) {
       loadComponent()
     } else {
-      // Delay loading for mobile devices to improve initial page load
       const capabilities = deviceDetector.getCapabilities()
       const delay = capabilities.type === 'mobile' ? 100 : 0
-
       setTimeout(loadComponent, delay)
     }
   }, [importFunc, preload])
@@ -914,37 +499,16 @@ export function LazyComponent({
   return <LazyLoadedComponent {...componentProps} />
 }
 
-// Usage example
+// Usage
 const AdminPage = lazy(() => import('../pages/AdminPage'))
 const HomePage = lazy(() => import('../pages/HomePage'))
 
-export function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route
-          path="/admin"
-          element={
-            <LazyComponent
-              importFunc={() => import('../pages/AdminPage')}
-              fallback={AdminPageSkeleton}
-              preload={performanceOptimizer.shouldPreload('admin')}
-            />
-          }
-        />
-        <Route
-          path="/"
-          element={
-            <LazyComponent
-              importFunc={() => import('../pages/HomePage')}
-              fallback={HomePageSkeleton}
-            />
-          }
-        />
-      </Routes>
-    </Router>
-  )
-}
+<Router>
+  <Routes>
+    <Route path="/admin" element={<LazyComponent importFunc={() => import('../pages/AdminPage')} fallback={AdminPageSkeleton} />} />
+    <Route path="/" element={<LazyComponent importFunc={() => import('../pages/HomePage')} fallback={HomePageSkeleton} />} />
+  </Routes>
+</Router>
 ```
 
 ## Testing & Validation

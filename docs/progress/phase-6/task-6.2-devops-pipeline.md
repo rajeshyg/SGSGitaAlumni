@@ -33,161 +33,65 @@ on:
   pull_request:
     branches: [ main, develop ]
 
-env:
-  NODE_VERSION: '18'
-  VITE_API_URL: ${{ secrets.VITE_API_URL }}
-
 jobs:
   quality-check:
-    name: Quality Assurance
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '18'
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run ESLint
-        run: npm run lint
-
-      - name: Run TypeScript check
-        run: npm run type-check
-
-      - name: Run tests
-        run: npm run test:run -- --coverage
-
-      - name: Check code redundancy
-        run: npm run check-redundancy
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage/lcov.info
+      - run: npm ci && npm run lint && npm run type-check && npm run test:run -- --coverage
 
   build:
-    name: Build Application
     needs: quality-check
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '18'
           cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build application
-        run: npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+      - run: npm ci && npm run build
+      - uses: actions/upload-artifact@v3
         with:
           name: build-files
           path: dist/
 
   deploy-staging:
-    name: Deploy to Staging
     needs: build
-    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/develop'
-    environment: staging
+    runs-on: ubuntu-latest
     steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v3
         with:
           name: build-files
           path: dist/
-
-      - name: Deploy to staging
-        run: |
-          # Deployment commands for staging environment
-          echo "Deploying to staging environment"
-          # Add your staging deployment commands here
+      - run: echo "Deploy to staging"
 
   deploy-production:
-    name: Deploy to Production
     needs: build
-    runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    environment: production
+    runs-on: ubuntu-latest
     steps:
-      - name: Download build artifacts
-        uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v3
         with:
           name: build-files
           path: dist/
-
-      - name: Deploy to production
-        run: |
-          # Deployment commands for production environment
-          echo "Deploying to production environment"
-          # Add your production deployment commands here
+      - run: echo "Deploy to production"
 ```
 
 #### Environment Configuration
 ```typescript
 // src/config/environments.ts
-
-interface EnvironmentConfig {
-  apiUrl: string
-  environment: 'development' | 'staging' | 'production'
-  sentryDsn?: string
-  analyticsId?: string
-  featureFlags: Record<string, boolean>
+const configs = {
+  development: { apiUrl: 'http://localhost:3001/api', debugMode: true },
+  staging: { apiUrl: 'https://api-staging.sgs-gita-alumni.com', debugMode: false },
+  production: { apiUrl: 'https://api.sgs-gita-alumni.com', debugMode: false }
 }
 
-const configs: Record<string, EnvironmentConfig> = {
-  development: {
-    apiUrl: 'http://localhost:3001/api',
-    environment: 'development',
-    featureFlags: {
-      debugMode: true,
-      analytics: false,
-      errorReporting: false
-    }
-  },
-  staging: {
-    apiUrl: 'https://api-staging.sgs-gita-alumni.com',
-    environment: 'staging',
-    sentryDsn: process.env.VITE_SENTRY_DSN_STAGING,
-    analyticsId: process.env.VITE_ANALYTICS_ID_STAGING,
-    featureFlags: {
-      debugMode: false,
-      analytics: true,
-      errorReporting: true
-    }
-  },
-  production: {
-    apiUrl: 'https://api.sgs-gita-alumni.com',
-    environment: 'production',
-    sentryDsn: process.env.VITE_SENTRY_DSN_PRODUCTION,
-    analyticsId: process.env.VITE_ANALYTICS_ID_PRODUCTION,
-    featureFlags: {
-      debugMode: false,
-      analytics: true,
-      errorReporting: true
-    }
-  }
-}
-
-export function getEnvironmentConfig(): EnvironmentConfig {
-  const env = process.env.VITE_ENVIRONMENT || 'development'
-  return configs[env] || configs.development
-}
-
-export const config = getEnvironmentConfig()
+export const config = configs[process.env.VITE_ENVIRONMENT || 'development'] || configs.development
 ```
 
 ### Phase 2: Deployment Automation (Day 3)
@@ -196,104 +100,38 @@ export const config = getEnvironmentConfig()
 ```dockerfile
 # Dockerfile
 FROM node:18-alpine AS base
-
-# Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
 
-# Copy package files
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
-
-# Build the application
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Production image
 FROM nginx:alpine AS runner
 WORKDIR /app
-
-# Copy built application
 COPY --from=builder /app/dist ./dist
-
-# Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
-
-# Expose port
 EXPOSE 80
-
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
 ```
 
 ```nginx
 # nginx.conf
-events {
-    worker_connections 1024;
-}
-
+events { worker_connections 1024; }
 http {
-    include       /etc/nginx/mime.types;
-    default_type  application/octet-stream;
-
-    # Logging
-    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
-                    '$status $body_bytes_sent "$http_referer" '
-                    '"$http_user_agent" "$http_x_forwarded_for"';
-
-    access_log /var/log/nginx/access.log main;
-    error_log /var/log/nginx/error.log;
-
-    # Gzip compression
-    gzip on;
-    gzip_vary on;
-    gzip_min_length 1024;
-    gzip_types
-        text/plain
-        text/css
-        text/xml
-        text/javascript
-        application/javascript
-        application/xml+rss
-        application/json;
-
+    include /etc/nginx/mime.types;
     server {
         listen 80;
-        server_name localhost;
         root /app/dist;
         index index.html;
-
-        # Security headers
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header Referrer-Policy "no-referrer-when-downgrade" always;
-        add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
-
-        # Handle client-side routing
-        location / {
-            try_files $uri $uri/ /index.html;
-        }
-
-        # Cache static assets
+        location / { try_files $uri $uri/ /index.html; }
         location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
             expires 1y;
             add_header Cache-Control "public, immutable";
-        }
-
-        # API proxy (if needed)
-        location /api/ {
-            proxy_pass http://api-server:3001;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
         }
     }
 }
@@ -303,50 +141,25 @@ http {
 ```yaml
 # docker-compose.yml
 version: '3.8'
-
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3000:80"
-    environment:
-      - NODE_ENV=production
-    depends_on:
-      - api
-    networks:
-      - app-network
+    build: .
+    ports: ["3000:80"]
+    environment: [NODE_ENV=production]
+    depends_on: [api]
 
   api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile.api
-    ports:
-      - "3001:3001"
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-    networks:
-      - app-network
+    build: ./api
+    ports: ["3001:3001"]
+    environment: [NODE_ENV=production, DATABASE_URL=${DATABASE_URL}]
 
   db:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_DB=sgs_alumni
-      - POSTGRES_USER=alumni_user
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    networks:
-      - app-network
+      [POSTGRES_DB=sgs_alumni, POSTGRES_USER=alumni_user, POSTGRES_PASSWORD=${DB_PASSWORD}]
+    volumes: [db_data:/var/lib/postgresql/data]
 
-networks:
-  app-network:
-    driver: bridge
-
-volumes:
-  db_data:
+volumes: { db_data: {} }
 ```
 
 ### Phase 3: Infrastructure as Code (Day 4)
@@ -356,70 +169,23 @@ volumes:
 # main.tf
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
+    aws = { source = "hashicorp/aws", version = "~> 5.0" }
   }
 }
 
-provider "aws" {
-  region = var.aws_region
-}
+provider "aws" { region = var.aws_region }
 
-# S3 bucket for static website hosting
 resource "aws_s3_bucket" "website" {
   bucket = var.bucket_name
-
-  tags = {
-    Name        = "SGS Alumni Website"
-    Environment = var.environment
-  }
-}
-
-resource "aws_s3_bucket_public_access_block" "website" {
-  bucket = aws_s3_bucket.website.id
-
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
-}
-
-resource "aws_s3_bucket_policy" "website" {
-  bucket = aws_s3_bucket.website.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid       = "PublicReadGetObject"
-        Effect    = "Allow"
-        Principal = "*"
-        Resources = [
-          "${aws_s3_bucket.website.arn}/*",
-        ]
-        Action = [
-          "s3:GetObject",
-        ]
-      },
-    ]
-  })
+  tags = { Name = "SGS Alumni Website", Environment = var.environment }
 }
 
 resource "aws_s3_bucket_website_configuration" "website" {
   bucket = aws_s3_bucket.website.id
-
-  index_document {
-    suffix = "index.html"
-  }
-
-  error_document {
-    key = "index.html"
-  }
+  index_document { suffix = "index.html" }
+  error_document { key = "index.html" }
 }
 
-# CloudFront distribution
 resource "aws_cloudfront_distribution" "website" {
   origin {
     domain_name = aws_s3_bucket.website.bucket_regional_domain_name
@@ -427,62 +193,26 @@ resource "aws_cloudfront_distribution" "website" {
   }
 
   enabled             = true
-  is_ipv6_enabled     = true
   default_root_object = "index.html"
 
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "S3-${aws_s3_bucket.website.id}"
-
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
-
+    forwarded_values { query_string = false }
     viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
   }
 
-  restrictions {
-    geo_restriction {
-      restriction_type = "none"
-    }
-  }
-
-  viewer_certificate {
-    cloudfront_default_certificate = true
-  }
-
-  tags = {
-    Name        = "SGS Alumni CloudFront"
-    Environment = var.environment
-  }
+  restrictions { geo_restriction { restriction_type = "none" } }
+  viewer_certificate { cloudfront_default_certificate = true }
 }
 ```
 
 ```hcl
 # variables.tf
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "bucket_name" {
-  description = "S3 bucket name"
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment name"
-  type        = string
-  default     = "production"
-}
+variable "aws_region" { type = string, default = "us-east-1" }
+variable "bucket_name" { type = string }
+variable "environment" { type = string, default = "production" }
 ```
 
 ### Phase 4: Monitoring Integration (Day 5)
@@ -494,163 +224,47 @@ import * as Sentry from '@sentry/react'
 import { config } from '@/config/environments'
 
 export function initializeMonitoring() {
-  // Sentry initialization
   if (config.sentryDsn) {
     Sentry.init({
       dsn: config.sentryDsn,
       environment: config.environment,
-      integrations: [
-        new Sentry.BrowserTracing({
-          tracePropagationTargets: ['localhost', config.apiUrl],
-        }),
-        new Sentry.Replay(),
-      ],
       tracesSampleRate: config.environment === 'production' ? 0.1 : 1.0,
-      replaysSessionSampleRate: config.environment === 'production' ? 0.1 : 1.0,
-      replaysOnErrorSampleRate: 1.0,
-    })
-  }
-
-  // Performance monitoring
-  if (config.environment === 'production') {
-    // Web Vitals tracking
-    import('web-vitals').then(({ getCLS, getFID, getFCP, getLCP, getTTFB }) => {
-      getCLS(console.log)
-      getFID(console.log)
-      getFCP(console.log)
-      getLCP(console.log)
-      getTTFB(console.log)
     })
   }
 }
 
 export function logError(error: Error, context?: Record<string, any>) {
   console.error('Application Error:', error)
-
-  if (config.sentryDsn) {
-    Sentry.captureException(error, {
-      tags: {
-        environment: config.environment,
-      },
-      extra: context,
-    })
-  }
+  if (config.sentryDsn) Sentry.captureException(error, { extra: context })
 }
 
 export function logEvent(event: string, properties?: Record<string, any>) {
   console.log(`Event: ${event}`, properties)
-
-  // Send to analytics service if configured
-  if (config.analyticsId && window.gtag) {
-    window.gtag('event', event, properties)
-  }
 }
 ```
 
 #### Health Check Endpoint
 ```typescript
 // src/pages/api/health.ts
-import type { NextApiRequest, NextApiResponse } from 'next'
+export default async function handler(req, res) {
+  if (req.method !== 'GET') return res.status(405).json({ status: 'unhealthy' })
 
-type HealthStatus = {
-  status: 'healthy' | 'unhealthy'
-  timestamp: string
-  version: string
-  environment: string
-  checks: {
-    database: boolean
-    cache: boolean
-    externalServices: boolean
-  }
+  const isHealthy = await Promise.all([
+    checkDatabaseHealth(),
+    checkCacheHealth(),
+    checkExternalServicesHealth()
+  ]).then(results => results.every(Boolean))
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'healthy' : 'unhealthy',
+    timestamp: new Date().toISOString(),
+    checks: { database: true, cache: true, externalServices: true }
+  })
 }
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse<HealthStatus>
-) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      checks: {
-        database: false,
-        cache: false,
-        externalServices: false,
-      },
-    })
-  }
-
-  try {
-    // Database health check
-    const dbHealthy = await checkDatabaseHealth()
-
-    // Cache health check
-    const cacheHealthy = await checkCacheHealth()
-
-    // External services health check
-    const externalHealthy = await checkExternalServicesHealth()
-
-    const isHealthy = dbHealthy && cacheHealthy && externalHealthy
-
-    res.status(isHealthy ? 200 : 503).json({
-      status: isHealthy ? 'healthy' : 'unhealthy',
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      checks: {
-        database: dbHealthy,
-        cache: cacheHealthy,
-        externalServices: externalHealthy,
-      },
-    })
-  } catch (error) {
-    console.error('Health check failed:', error)
-    res.status(503).json({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      checks: {
-        database: false,
-        cache: false,
-        externalServices: false,
-      },
-    })
-  }
-}
-
-async function checkDatabaseHealth(): Promise<boolean> {
-  try {
-    // Implement database health check
-    // This would connect to your database and run a simple query
-    return true
-  } catch (error) {
-    console.error('Database health check failed:', error)
-    return false
-  }
-}
-
-async function checkCacheHealth(): Promise<boolean> {
-  try {
-    // Implement cache health check
-    return true
-  } catch (error) {
-    console.error('Cache health check failed:', error)
-    return false
-  }
-}
-
-async function checkExternalServicesHealth(): Promise<boolean> {
-  try {
-    // Implement external services health check
-    return true
-  } catch (error) {
-    console.error('External services health check failed:', error)
-    return false
-  }
-}
+async function checkDatabaseHealth() { return true }
+async function checkCacheHealth() { return true }
+async function checkExternalServicesHealth() { return true }
 ```
 
 ## Deployment Strategies
@@ -659,89 +273,31 @@ async function checkExternalServicesHealth(): Promise<boolean> {
 ```yaml
 # blue-green-deployment.yml
 name: Blue-Green Deployment
-
-on:
-  push:
-    branches: [ main ]
-
+on: { push: { branches: [main] } }
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build application
-        run: npm run build
-
-      - name: Determine target environment
-        id: target
-        run: |
-          # Logic to determine blue or green environment
-          echo "target=blue" >> $GITHUB_OUTPUT
-
-      - name: Deploy to target environment
-        run: |
-          TARGET=${{ steps.target.outputs.target }}
-          echo "Deploying to $TARGET environment"
-
-      - name: Health check
-        run: |
-          # Wait for deployment to be healthy
-          echo "Performing health checks"
-
-      - name: Switch traffic
-        run: |
-          # Switch load balancer to new environment
-          echo "Switching traffic to new deployment"
-
-      - name: Cleanup old deployment
-        run: |
-          # Clean up old environment after successful deployment
-          echo "Cleaning up old deployment"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '18', cache: 'npm' }
+      - run: npm ci && npm run build
+      - run: echo "Deploy to blue/green environment"
+      - run: echo "Health check and traffic switch"
 ```
 
 ### Rollback Strategy
 ```yaml
 # rollback.yml
 name: Rollback Deployment
-
-on:
-  workflow_dispatch:
-    inputs:
-      target_version:
-        description: 'Version to rollback to'
-        required: true
-
+on: { workflow_dispatch: { inputs: { target_version: { required: true } } } }
 jobs:
   rollback:
     runs-on: ubuntu-latest
-    environment: production
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.target_version }}
-
-      - name: Deploy rollback version
-        run: |
-          echo "Rolling back to version ${{ github.event.inputs.target_version }}"
-
-      - name: Verify rollback
-        run: |
-          echo "Verifying rollback deployment"
+      - uses: actions/checkout@v4
+        with: { ref: ${{ github.event.inputs.target_version }} }
+      - run: echo "Rolling back to ${{ github.event.inputs.target_version }}"
 ```
 
 ## Success Criteria
@@ -787,40 +343,18 @@ jobs:
 ### Deployment Validation
 ```bash
 # deployment-validation.sh
-#!/bin/bash
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m' # No Color
-
 echo "🔍 Starting deployment validation..."
 
-# Check if application is accessible
-if curl -f -s "$DEPLOYMENT_URL" > /dev/null; then
-    echo -e "${GREEN}✅ Application is accessible${NC}"
-else
-    echo -e "${RED}❌ Application is not accessible${NC}"
-    exit 1
-fi
+# Check application accessibility
+curl -f -s "$DEPLOYMENT_URL" && echo "✅ Application accessible" || exit 1
 
 # Check health endpoint
-if curl -f -s "$DEPLOYMENT_URL/api/health" > /dev/null; then
-    echo -e "${GREEN}✅ Health check passed${NC}"
-else
-    echo -e "${RED}❌ Health check failed${NC}"
-    exit 1
-fi
+curl -f -s "$DEPLOYMENT_URL/api/health" && echo "✅ Health check passed" || exit 1
 
 # Check for JavaScript errors
-if curl -s "$DEPLOYMENT_URL" | grep -q "console.error"; then
-    echo -e "${RED}❌ JavaScript errors detected${NC}"
-    exit 1
-else
-    echo -e "${GREEN}✅ No JavaScript errors detected${NC}"
-fi
+! curl -s "$DEPLOYMENT_URL" | grep -q "console.error" && echo "✅ No JS errors" || exit 1
 
-echo -e "${GREEN}🎉 Deployment validation completed successfully!${NC}"
+echo "🎉 Deployment validation completed!"
 ```
 
 ## Security Considerations
@@ -844,38 +378,24 @@ echo -e "${GREEN}🎉 Deployment validation completed successfully!${NC}"
 # Deployment Guide
 
 ## Environments
+- **Development:** http://localhost:3000 (debug mode)
+- **Staging:** https://staging.sgs-gita-alumni.com
+- **Production:** https://sgs-gita-alumni.com
 
-### Development
-- **URL:** http://localhost:3000
-- **Database:** Local PostgreSQL
-- **Features:** Debug mode enabled
+## Process
+1. Code review and approval
+2. Automated testing via CI
+3. Quality gate checks
+4. Automated deployment
+5. Health verification
+6. Post-deployment monitoring
 
-### Staging
-- **URL:** https://staging.sgs-gita-alumni.com
-- **Database:** Staging RDS instance
-- **Features:** Full feature set, production-like data
-
-### Production
-- **URL:** https://sgs-gita-alumni.com
-- **Database:** Production RDS instance
-- **Features:** Optimized for performance
-
-## Deployment Process
-
-1. **Code Review:** All changes must be reviewed and approved
-2. **Automated Testing:** CI pipeline runs all tests
-3. **Quality Gates:** Code quality checks must pass
-4. **Deployment:** Automated deployment to target environment
-5. **Verification:** Health checks and smoke tests
-6. **Monitoring:** Post-deployment monitoring for issues
-
-## Rollback Procedure
-
-1. **Identify Issue:** Determine the cause of deployment failure
-2. **Select Version:** Choose the previous stable version
-3. **Execute Rollback:** Use the rollback workflow
-4. **Verify:** Confirm application is working correctly
-5. **Investigate:** Analyze the root cause of the issue
+## Rollback
+1. Identify issue
+2. Select stable version
+3. Execute rollback workflow
+4. Verify functionality
+5. Investigate root cause
 ```
 
 ## Monitoring & Alerting
