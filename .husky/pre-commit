@@ -1,5 +1,15 @@
 echo "🔍 Running pre-commit quality checks..."
 
+# Run documentation consistency check
+echo "📄 Checking documentation consistency..."
+node scripts/check-documentation.js
+
+# If documentation check fails, exit
+if [ $? -ne 0 ]; then
+  echo "❌ Documentation check failed. Commit blocked."
+  exit 1
+fi
+
 # Run linting
 echo "📏 Running ESLint..."
 npm run lint

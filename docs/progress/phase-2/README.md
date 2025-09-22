@@ -113,7 +113,7 @@ frontend/src/components/ui/
 - **TypeScript Coverage:** 100%
 - **Linting Errors:** 0
 - **Component Reusability:** 95%
-- **File Size Compliance:** All files < 500 lines
+- **File Size Compliance:** See [Quality Metrics](../../standards/QUALITY_METRICS.md#file-size-standards)
 - **CSS Variables:** 12-15 essential variables per component
 
 ### **Performance**

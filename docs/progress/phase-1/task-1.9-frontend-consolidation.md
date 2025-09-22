@@ -24,7 +24,19 @@ Deliverables
 - Tailwind/PostCSS only at root; root content globs tightened to root paths after migration
 - CI guardrails to prevent reintroduction of duplicates
 
-Plan of Record
+## Success Criteria
+- ✅ All runtime UI/theme code consolidated under single src directory
+- ✅ Zero cross-root imports (../frontend) remaining in codebase
+- ✅ Tailwind/PostCSS configurations exist only at root level
+- ✅ Content globs updated to reference only root paths
+- ✅ All referenced files migrated from frontend/src to src
+- ✅ Duplicate configurations removed from frontend directory
+- ✅ CI guardrails implemented to prevent regression
+- ✅ Build topology simplified to single source of truth
+- ✅ Single root dev server operational
+- ✅ Visual verification of /admin page styling complete
+
+## Implementation Plan
 
 1) Inventory references (current usage map)
 - Search for cross-root imports into frontend:
@@ -72,18 +84,18 @@ Plan of Record
   - 0 nested package.json with dev/build scripts under frontend/.
 - CI: New guardrail job passes; intentionally adding a duplicate config or nested dev script should fail CI.
 
-Acceptance Criteria
+## Acceptance Criteria
 - Running SGSGitaAlumni › npm run dev starts a single root dev server.
 - All code imports resolve within [src](SGSGitaAlumni/src) without ../frontend references.
 - Only one Tailwind/PostCSS configuration exists at root.
 - Tailwind content globs cover only root paths after migration.
 - CI blocks future reintroduction of nested app roots/configs.
 
-Notes
+## Notes
 - Theme and tokens remain unchanged; the consolidation only changes file locations and import paths.
 - This task does not modify business logic or the existing theme system beyond path normalization.
 
-Links
+## Links
 - Root entry: [index.html](SGSGitaAlumni/index.html), [src/main.tsx](SGSGitaAlumni/src/main.tsx:1)
 - Root configs: [postcss.config.js](SGSGitaAlumni/postcss.config.js), [tailwind.config.js](SGSGitaAlumni/tailwind.config.js)
 - Current split sources: [frontend/src](SGSGitaAlumni/frontend/src), [src](SGSGitaAlumni/src)

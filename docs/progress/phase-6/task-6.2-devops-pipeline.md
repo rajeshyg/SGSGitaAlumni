@@ -5,7 +5,7 @@
 Establish a comprehensive DevOps pipeline that automates the build, test, deployment, and monitoring processes for the SGSGita Alumni application, ensuring reliable and efficient delivery of high-quality software.
 
 ## Status
-- **Current Status:** 🔴 Pending
+- **Status:** 🔴 Pending
 - **Estimated Effort:** 4-5 days
 - **Priority:** High
 - **Dependencies:** Task 6.1 (Quality Assurance Framework)
@@ -745,21 +745,22 @@ jobs:
 ```
 
 ## Success Criteria
-
-### Functional Requirements
 - ✅ Automated CI/CD pipeline operational
 - ✅ Multi-environment deployment configured
 - ✅ Infrastructure as code implemented
 - ✅ Monitoring and alerting integrated
 - ✅ Rollback procedures documented and tested
+- ✅ Build time under 5 minutes
+- ✅ Deployment time under 3 minutes
+- ✅ Pipeline success rate above 95%
+- ✅ Mean time to recovery under 15 minutes
+- ✅ Change failure rate below 5%
 
-### Performance Requirements
+## Performance Requirements
 - **Build Time:** < 5 minutes
 - **Deployment Time:** < 3 minutes
 - **Health Check Response:** < 2 seconds
 - **Rollback Time:** < 5 minutes
-
-### Quality Metrics
 - **Pipeline Success Rate:** > 95%
 - **Deployment Frequency:** Multiple times per day
 - **Mean Time to Recovery:** < 15 minutes
@@ -933,6 +934,18 @@ alerts:
 3. **Monitoring Redundancy** - Multiple monitoring systems
 4. **Communication Plan** - Clear incident response procedures
 
+## Additional Requirements
+- [ ] CI/CD pipeline successfully builds and tests all code changes
+- [ ] Automated deployment to staging environment works without errors
+- [ ] Production deployment process is fully automated and tested
+- [ ] Infrastructure as Code (Terraform) manages all AWS resources
+- [ ] Monitoring and alerting systems detect and report issues accurately
+- [ ] Blue-green deployment strategy enables zero-downtime deployments
+- [ ] Rollback procedures are tested and functional
+- [ ] Security scanning is integrated into the pipeline
+- [ ] Performance monitoring provides actionable insights
+- [ ] Documentation is complete and accessible to the team
+
 ---
 
-*Task 6.2: DevOps Pipeline Setup - Last updated: September 11, 2025*
+*Task 6.2: DevOps Pipeline Setup - Last updated: September 22, 2025*

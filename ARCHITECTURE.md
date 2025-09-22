@@ -1,65 +1,33 @@
-# Simplified Alumni Data Management Architecture
+# SGSGita Alumni Architecture
 
 ## Overview
 
-This document outlines the simplified architecture implemented to replace the complex FastAPI backend with a lightweight, scalable solution optimized for AWS deployment, enhanced with comprehensive quality assurance and monitoring systems.
+This document outlines the core architectural decisions for the SGSGita Alumni platform, focusing on a simplified, AWS-ready architecture that prioritizes developer experience, cost efficiency, and scalability.
 
-## Architecture Changes
+## Architecture Philosophy
 
-### Before (Complex Architecture)
-- **Traditional Full-Stack**: Complex backend with multiple dependencies and infrastructure requirements
-- **Database Management**: Traditional relational database with connection pooling and maintenance
-- **Infrastructure Complexity**: Multiple services, scaling, and deployment overhead
-- **Development Overhead**: Backend setup, debugging, and maintenance complexity
+### Design Principles
+- **Simplicity First**: Minimize complexity while maintaining functionality
+- **AWS Native**: Designed for cloud-first deployment and scaling
+- **Developer Experience**: Fast iteration cycles and easy debugging
+- **Cost Efficiency**: Pay-per-use model with minimal infrastructure overhead
+- **Quality Focused**: Built-in quality assurance and monitoring
 
-### After (Simplified Architecture)
-- **Mock Data Layer**: Lightweight in-memory data management with localStorage persistence
-- **Lazy Loading**: Efficient data fetching with caching mechanisms
-- **Component-Level Optimization**: React.lazy() for code splitting and Suspense for loading states
-- **AWS-Ready**: Prepared for serverless migration with minimal changes
+### Technology Stack
+- **Frontend**: React 18 + TypeScript + Vite
+- **Backend**: Express.js (AWS Elastic Beanstalk ready)
+- **Database**: MySQL (AWS RDS ready)
+- **Deployment**: AWS Elastic Beanstalk + RDS
+- **Monitoring**: Sentry + CloudWatch
 
-## Key Improvements
+## Core Architecture Decisions
 
-### 1. **Reduced Complexity**
-- Eliminated complex backend infrastructure and dependencies
-- Removed database connection management and maintenance
-- Simplified deployment requirements
-- No server maintenance or scaling overhead
+### 1. Simplified Data Layer
+**Decision**: Mock data layer with localStorage persistence for development
+**Rationale**: Eliminates complex backend setup during development while maintaining AWS migration path
 
-### 2. **Performance Optimizations**
-- **Lazy Loading**: Components load on-demand
-- **Caching**: 5-minute TTL cache for data operations
-- **Code Splitting**: Reduced initial bundle size
-- **Local Storage**: Client-side data persistence
-
-### 3. **Cost Efficiency**
-- No server costs during development
-- Pay-per-use ready for AWS Lambda
-- Reduced infrastructure complexity
-- Automatic scaling capabilities
-
-### 4. **Developer Experience**
-- Faster development iteration with hot reload
-- Simplified debugging and development workflow
-- No complex infrastructure setup required
-- Easy testing with mock data and isolated components
-
-### 5. **Quality Assurance & Monitoring**
-- **Automated Quality Gates**: Pre-commit hooks prevent technical debt
-- **Advanced Redundancy Detection**: jscpd + SonarJS prevent code duplication
-- **Real-time Error Tracking**: Sentry integration for production monitoring
-- **Performance Monitoring**: Bundle analysis and optimization insights
-- **AI Context Optimization**: 300-line file limits for efficient AI assistance
-
-## Quality Assurance Integration
-
-See [Quality Standards](docs/QUALITY_STANDARDS.md) for comprehensive quality assurance architecture, automated pipelines, and error handling patterns.
-
-## Technical Implementation
-
-### Mock Data Layer (`src/lib/mockData.ts`)
 ```typescript
-// Features:
+// Mock Data Layer Features:
 - In-memory data management
 - localStorage persistence
 - Search and pagination
@@ -67,286 +35,97 @@ See [Quality Standards](docs/QUALITY_STANDARDS.md) for comprehensive quality ass
 - Export functionality (CSV/JSON)
 ```
 
-### Lazy Loading Hook (`src/hooks/useLazyData.ts`)
-```typescript
-// Features:
-- Automatic data fetching
-- Caching with TTL
-- Search and pagination
-- Loading states
-- Error handling
-```
+### 2. Component-Level Optimization
+**Decision**: React.lazy() + Suspense for code splitting
+**Rationale**: Reduces initial bundle size and improves loading performance
 
-### Component Optimization
 ```typescript
-// React.lazy() for code splitting
+// Lazy Loading Implementation
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const HomePage = lazy(() => import('./pages/HomePage'))
 
-// Suspense for loading states
 <Suspense fallback={<LoadingComponent />}>
   <Routes>...</Routes>
 </Suspense>
 ```
 
-## Security Architecture Layer
+### 3. Caching Strategy
+**Decision**: 5-minute TTL cache for data operations
+**Rationale**: Balances data freshness with performance
 
-### Authentication & Authorization
-```typescript
-// AWS Cognito Integration
-interface AuthContext {
-  user: User | null
-  login: (credentials: LoginCredentials) => Promise<void>
-  logout: () => void
-  isAuthenticated: boolean
-  hasRole: (role: UserRole) => boolean
-}
+### 4. AWS-Ready Architecture
+**Decision**: Design for AWS Elastic Beanstalk + RDS deployment
+**Rationale**: Provides scalability, reliability, and cost-effective hosting
 
-// Multi-factor authentication with JWT tokens
-const authConfig = {
-  region: process.env.VITE_AWS_REGION,
-  userPoolId: process.env.VITE_COGNITO_USER_POOL_ID,
-  clientId: process.env.VITE_COGNITO_CLIENT_ID,
-  mfaRequired: true,
-  sessionTimeout: 3600000 // 1 hour
-}
-```
+## System Components
 
-### Data Protection & Encryption
-```typescript
-// Client-side encryption for sensitive data
-class SecureStorage {
-  private encryptionKey: CryptoKey
+### Frontend Layer
+- **React Application**: Main user interface
+- **Component Library**: shadcn/ui based components
+- **State Management**: React Context + hooks
+- **Routing**: React Router with lazy loading
 
-  async encrypt(data: string): Promise<string> {
-    const encoded = new TextEncoder().encode(data)
-    const encrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv: crypto.getRandomValues(new Uint8Array(12)) },
-      this.encryptionKey,
-      encoded
-    )
-    return btoa(String.fromCharCode(...new Uint8Array(encrypted)))
-  }
+### Data Layer
+- **Development**: Mock data with localStorage
+- **Production**: Express.js API + MySQL database
+- **Caching**: Client-side caching with TTL
 
-  async decrypt(encryptedData: string): Promise<string> {
-    const encrypted = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0))
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: encrypted.slice(0, 12) },
-      this.encryptionKey,
-      encrypted.slice(12)
-    )
-    return new TextDecoder().decode(decrypted)
-  }
-}
-```
+### Infrastructure Layer
+- **Development**: Local development server
+- **Production**: AWS Elastic Beanstalk + RDS + CloudFront
 
-### Security Monitoring & Audit
-```typescript
-// Security event logging
-interface SecurityEvent {
-  type: 'auth_attempt' | 'data_access' | 'permission_change'
-  userId: string
-  timestamp: Date
-  ipAddress: string
-  userAgent: string
-  success: boolean
-  details?: Record<string, any>
-}
+## Migration Path
 
-class SecurityMonitor {
-  async logEvent(event: SecurityEvent): Promise<void> {
-    // Send to CloudWatch/Sentry with PII redaction
-    const sanitizedEvent = this.redactSensitiveData(event)
-    await this.sendToMonitoring(sanitizedEvent)
-  }
+### Phase 1: Development (Current)
+- Mock data layer for rapid development
+- Local development environment
+- Component-based architecture
 
-  private redactSensitiveData(event: SecurityEvent): SecurityEvent {
-    // Remove or hash sensitive information
-    return {
-      ...event,
-      userId: this.hashValue(event.userId),
-      ipAddress: this.maskIPAddress(event.ipAddress)
-    }
-  }
-}
-```
+### Phase 2: AWS Migration
+- Deploy Express.js backend to Elastic Beanstalk
+- Configure MySQL RDS instance
+- Set up CloudFront CDN
+- Implement production monitoring
 
-## Accessibility Architecture Layer
+## Quality Integration
 
-### Semantic HTML & ARIA Integration
-```typescript
-// Accessible component foundation
-interface AccessibleComponentProps {
-  id?: string
-  role?: string
-  'aria-label'?: string
-  'aria-describedby'?: string
-  'aria-expanded'?: boolean
-  'aria-current'?: 'page' | 'step' | 'location' | 'date' | 'time' | true | false
-}
+This architecture integrates with comprehensive quality assurance systems:
+- **Standards**: See [Quality Standards](docs/QUALITY_STANDARDS.md)
+- **Security**: See [Security Architecture](docs/architecture/SECURITY_ARCHITECTURE.md)
+- **Performance**: See [Performance Architecture](docs/architecture/PERFORMANCE_ARCHITECTURE.md)
+- **Data Flow**: See [Data Flow](docs/architecture/DATA_FLOW.md)
 
-// Screen reader announcements
-class AccessibilityAnnouncer {
-  private announcer: HTMLElement
+## Benefits
 
-  constructor() {
-    this.announcer = document.createElement('div')
-    this.announcer.setAttribute('aria-live', 'polite')
-    this.announcer.setAttribute('aria-atomic', 'true')
-    this.announcer.style.position = 'absolute'
-    this.announcer.style.left = '-10000px'
-    this.announcer.style.width = '1px'
-    this.announcer.style.height = '1px'
-    this.announcer.style.overflow = 'hidden'
-    document.body.appendChild(this.announcer)
-  }
+### Development Benefits
+- **Fast Setup**: No complex infrastructure required
+- **Rapid Iteration**: Hot reload and instant feedback
+- **Easy Testing**: Isolated components with mock data
+- **Clear Structure**: Well-defined component architecture
 
-  announce(message: string, priority: 'polite' | 'assertive' = 'polite'): void {
-    this.announcer.setAttribute('aria-live', priority)
-    this.announcer.textContent = message
+### Production Benefits
+- **Scalability**: AWS auto-scaling capabilities
+- **Reliability**: Enterprise-grade infrastructure
+- **Cost Efficiency**: Pay-per-use model
+- **Monitoring**: Comprehensive error tracking and performance monitoring
 
-    // Clear after announcement
-    setTimeout(() => {
-      this.announcer.textContent = ''
-    }, 1000)
-  }
-}
-```
+## Next Steps
 
-### Keyboard Navigation System
-```typescript
-// Global keyboard navigation manager
-class KeyboardNavigationManager {
-  private focusableElements: HTMLElement[] = []
-  private currentFocusIndex = 0
+1. **Complete Development**: Finalize component development with mock data
+2. **AWS Setup**: Configure Elastic Beanstalk and RDS
+3. **Backend Migration**: Deploy Express.js API
+4. **Production Testing**: Load testing and performance validation
+5. **Monitoring Setup**: Configure CloudWatch and Sentry integration
 
-  constructor() {
-    this.setupKeyboardListeners()
-    this.updateFocusableElements()
-  }
+For detailed implementation guidance, see:
+- [System Overview](docs/architecture/OVERVIEW.md)
+- [Security Architecture](docs/architecture/SECURITY_ARCHITECTURE.md)
+- [Performance Architecture](docs/architecture/PERFORMANCE_ARCHITECTURE.md)
+- [Data Flow](docs/architecture/DATA_FLOW.md)
 
-  private setupKeyboardListeners(): void {
-    document.addEventListener('keydown', (e) => {
-      switch (e.key) {
-        case 'Tab':
-          if (e.shiftKey) {
-            this.focusPrevious()
-          } else {
-            this.focusNext()
-          }
-          e.preventDefault()
-          break
-        case 'Enter':
-        case ' ':
-          this.activateCurrentElement()
-          e.preventDefault()
-          break
-      }
-    })
-  }
 
-  private updateFocusableElements(): void {
-    this.focusableElements = Array.from(
-      document.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-    ).filter(el => !el.hasAttribute('disabled')) as HTMLElement[]
-  }
 
-  private focusNext(): void {
-    this.currentFocusIndex = (this.currentFocusIndex + 1) % this.focusableElements.length
-    this.focusableElements[this.currentFocusIndex]?.focus()
-  }
 
-  private focusPrevious(): void {
-    this.currentFocusIndex = this.currentFocusIndex === 0
-      ? this.focusableElements.length - 1
-      : this.currentFocusIndex - 1
-    this.focusableElements[this.currentFocusIndex]?.focus()
-  }
-
-  private activateCurrentElement(): void {
-    const element = this.focusableElements[this.currentFocusIndex]
-    if (element) {
-      element.click()
-    }
-  }
-}
-```
-
-### Theme & High Contrast Support
-```typescript
-// Accessible theme system with high contrast support
-interface AccessibleTheme {
-  colors: {
-    primary: string
-    secondary: string
-    background: string
-    surface: string
-    text: {
-      primary: string
-      secondary: string
-      disabled: string
-    }
-    border: string
-    focus: string
-    error: string
-  }
-  typography: {
-    fontSize: {
-      xs: string
-      sm: string
-      md: string
-      lg: string
-      xl: string
-    }
-    lineHeight: {
-      tight: number
-      normal: number
-      relaxed: number
-    }
-  }
-  spacing: {
-    xs: string
-    sm: string
-    md: string
-    lg: string
-    xl: string
-  }
-  focus: {
-    outline: string
-    outlineOffset: string
-    borderRadius: string
-  }
-}
-
-// High contrast theme variant
-const highContrastTheme: AccessibleTheme = {
-  colors: {
-    primary: '#000000',
-    secondary: '#FFFFFF',
-    background: '#FFFFFF',
-    surface: '#F8F8F8',
-    text: {
-      primary: '#000000',
-      secondary: '#333333',
-      disabled: '#666666'
-    },
-    border: '#000000',
-    focus: '#0000FF',
-    error: '#FF0000'
-  },
-  // ... rest of theme configuration
-}
-```
-
-## Cross-Platform Architecture Layer
-
-### Device Detection & Adaptation
-```typescript
-// Platform detection and adaptation system
-class PlatformManager {
-  private platform: 'mobile' | 'tablet' | 'desktop'
   private orientation: 'portrait' | 'landscape'
   private touchSupport: boolean
 
@@ -567,55 +346,146 @@ export function LazyAdvancedDataTable(props: AdvancedDataTableProps) {
 <thead className="bg-muted">  // May conflict with CSS overrides
 ```
 
+## File Storage Architecture
+
+### S3 Integration for User-Generated Content
+```typescript
+// S3 File Storage Configuration
+interface S3FileStorageConfig {
+  bucketName: string
+  region: string
+  accessKeyId: string
+  secretAccessKey: string
+  allowedFileTypes: string[]
+  maxFileSize: number
+  cdnUrl?: string
+}
+
+// File upload service for profile pictures, attachments, and social content
+class S3FileService {
+  private s3: AWS.S3
+  private config: S3FileStorageConfig
+
+  async uploadFile(file: File, userId: string, type: 'profile' | 'attachment' | 'social'): Promise<string> {
+    // Validate file type and size
+    this.validateFile(file, type)
+
+    // Generate unique filename with user ID and timestamp
+    const fileName = `${type}/${userId}/${Date.now()}-${file.name}`
+
+    // Upload to S3 with appropriate permissions
+    const uploadResult = await this.s3.upload({
+      Bucket: this.config.bucketName,
+      Key: fileName,
+      Body: file,
+      ContentType: file.type,
+      ACL: 'private', // Private access for security
+      Metadata: {
+        userId: userId,
+        uploadType: type,
+        originalName: file.name
+      }
+    }).promise()
+
+    return uploadResult.Location
+  }
+
+  async getFileUrl(key: string): Promise<string> {
+    // Generate presigned URL for secure access
+    const url = await this.s3.getSignedUrlPromise('getObject', {
+      Bucket: this.config.bucketName,
+      Key: key,
+      Expires: 3600 // 1 hour expiry
+    })
+
+    return url
+  }
+
+  private validateFile(file: File, type: string): void {
+    const allowedTypes = this.getAllowedTypes(type)
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error(`File type ${file.type} not allowed for ${type}`)
+    }
+
+    if (file.size > this.config.maxFileSize) {
+      throw new Error(`File size ${file.size} exceeds maximum allowed size`)
+    }
+  }
+
+  private getAllowedTypes(type: string): string[] {
+    switch (type) {
+      case 'profile':
+        return ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+      case 'attachment':
+        return ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
+      case 'social':
+        return ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/quicktime']
+      default:
+        return []
+    }
+  }
+}
+```
+
+### File Storage Security Features
+- **Private Access**: All files stored with private ACL for security
+- **Presigned URLs**: Secure temporary access to files
+- **File Validation**: Type and size validation before upload
+- **Metadata Tracking**: User ID and upload type tracking
+- **CDN Integration**: Optional CloudFront integration for faster global access
+
 ## Migration to AWS
 
-### Phase 1: API Gateway + Lambda
-1. **Create API Gateway**: REST API with CORS enabled
-2. **Deploy Lambda Functions**:
-   - `getFileImports`: Handle data fetching with DynamoDB
-   - `updateFileImport`: Handle data updates
-   - `exportData`: Handle CSV/JSON exports
-3. **Configure Environment Variables**:
-   - DynamoDB table name
+### AWS Service Priorities
+
+#### Must-Have Services (Priority 1)
+1. **Elastic Beanstalk**: Deploy Node.js/Express.js backend API server
+2. **S3 (Simple Storage Service)**: Store user-generated content including:
+   - Profile pictures and user avatars
+   - File attachments and documents
+   - Social posts related media content
+3. **CloudWatch**: Basic logging and metrics for monitoring backend performance
+4. **RDS (MySQL)**: Relational database for alumni data storage
+
+#### Good-to-Have Services (Priority 2)
+1. **API Gateway**: Rate limiting and API management (can wait)
+2. **ECS Fargate**: Alternative deployment option if outgrowing Elastic Beanstalk
+3. **CloudWatch Advanced**: Custom dashboards and detailed performance metrics
+
+### Phase 1: Elastic Beanstalk + RDS + S3
+1. **Deploy Express.js Backend**: Deploy server.js to AWS Elastic Beanstalk
+2. **Configure MySQL RDS**: Use existing RDS instance for data storage
+3. **Set up S3 File Storage**: Configure S3 buckets for user-generated content
+4. **Set Environment Variables**:
+   - Database connection string
    - AWS region
+   - S3 bucket configuration
    - Authentication secrets
+5. **Configure Security Groups**: Allow frontend-backend communication and S3 access
 
-### Phase 2: Database Migration
-1. **Create DynamoDB Table**:
-   ```json
-   {
-     "TableName": "AlumniData",
-     "KeySchema": [
-       {"AttributeName": "id", "KeyType": "HASH"}
-     ],
-     "AttributeDefinitions": [
-       {"AttributeName": "id", "AttributeType": "S"}
-     ],
-     "BillingMode": "PAY_PER_REQUEST"
-   }
-   ```
-2. **Migrate Data**: Import existing data from localStorage/mock data
-3. **Update Indexes**: Add GSI for search functionality
+### Phase 2: Database Optimization
+1. **Optimize MySQL RDS**: Configure connection pooling and query optimization
+2. **Database Schema**: Ensure proper indexing for search and filtering
+3. **Data Migration**: Import existing data from CSV uploads to MySQL
+4. **Performance Tuning**: Optimize queries for alumni data operations
 
-### Phase 3: Authentication
-1. **AWS Cognito Setup**:
-   - User Pool for authentication
-   - Identity Pool for AWS service access
-   - JWT token validation
-2. **Update Frontend**:
-   - Replace mock auth with Cognito
-   - Add login/logout flows
-   - Secure API calls with tokens
+### Phase 3: Authentication & Security
+1. **Session Management**: Implement secure session handling
+2. **API Security**: Add authentication middleware to Express.js
+3. **CORS Configuration**: Configure cross-origin resource sharing
+4. **Input Validation**: Add request validation and sanitization
 
-### Phase 4: Caching & CDN
-1. **ElastiCache (Redis)**: For data caching
-2. **CloudFront**: CDN for static assets
-3. **API Gateway Caching**: Response caching
+### Phase 4: Performance & Monitoring
+1. **Application Monitoring**: Set up logging and error tracking
+2. **Database Optimization**: Query optimization and connection pooling
+3. **Caching Strategy**: Implement Redis for session and data caching
+4. **CDN Integration**: CloudFront for static asset delivery
 
-### Phase 5: Monitoring & Security
-1. **CloudWatch**: Logging and monitoring
-2. **AWS WAF**: Security rules
-3. **API Gateway Throttling**: Rate limiting
+### Phase 5: Production Optimization
+1. **Load Balancing**: Configure Elastic Load Balancer
+2. **Auto Scaling**: Set up auto-scaling groups for the application
+3. **Security Groups**: Configure network security
+4. **SSL/TLS**: Enable HTTPS with SSL certificates
 
 ## File Structure Changes
 
@@ -652,14 +522,12 @@ tsconfig.node.json          # Added for Vite
 - 📊 **Bundle Optimization**: Visual analysis prevents size bloat
 
 ### Quality Assurance
-- 🛡️ **Automated Quality Gates**: Pre-commit hooks prevent technical debt
-- 🔍 **Advanced Redundancy Detection**: jscpd + SonarJS catch duplicates
-- 🚨 **Real-time Error Tracking**: Sentry provides production insights
-- 📏 **AI Context Optimization**: 300-line limits for efficient AI assistance
+- 🛡️ **Quality Integration**: See [Quality Standards](docs/QUALITY_STANDARDS.md) for complete quality assurance details
+- 🚨 **Error Tracking**: Sentry provides production insights
 
 ### Cost
 - 💰 **Zero Infrastructure Costs**: No complex infrastructure during development
-- 📊 **Pay-per-Use Ready**: AWS Lambda charges only for execution time
+- 📊 **Pay-per-Use Ready**: AWS Elastic Beanstalk with auto-scaling
 - 🔧 **Reduced Maintenance**: No server management or scaling overhead
 
 ### Developer Experience
@@ -677,7 +545,7 @@ tsconfig.node.json          # Added for Vite
 
 ### Scalability
 - ☁️ **AWS Native**: Designed for cloud scalability
-- 📈 **Auto Scaling**: Lambda functions scale automatically
+- 📈 **Auto Scaling**: Elastic Beanstalk auto-scaling groups
 - 🌐 **Global CDN**: CloudFront for worldwide distribution
 - 📊 **Quality Scaling**: Automated checks scale with team growth
 
@@ -685,26 +553,29 @@ tsconfig.node.json          # Added for Vite
 
 ### AWS Migration
 1. **Deploy to AWS**: Follow the migration phases above
-2. **Add Authentication**: Implement Cognito for user management
-3. **Data Migration**: Move existing data to DynamoDB
-4. **Monitoring Setup**: Configure CloudWatch and integrate with Sentry
-5. **Performance Testing**: Load testing with realistic data volumes
+2. **Database Setup**: Configure MySQL RDS instance
+3. **Backend Deployment**: Deploy Express.js server to Elastic Beanstalk
+4. **Security Configuration**: Set up authentication and security measures
+5. **Monitoring Setup**: Configure CloudWatch and integrate with Sentry
+6. **Performance Testing**: Load testing with realistic data volumes
 
 ### Quality Assurance Integration
-See [Quality Standards](docs/QUALITY_STANDARDS.md) for quality assurance setup and monitoring guidelines.
+See [Quality Standards](docs/QUALITY_STANDARDS.md) for complete quality assurance setup and monitoring guidelines.
 
 ## Migration Checklist
 
 ### AWS Migration
-- [ ] API Gateway created and configured
-- [ ] Lambda functions deployed
-- [ ] DynamoDB table created
-- [ ] Data migrated from localStorage
-- [ ] Authentication implemented
-- [ ] Caching configured
-- [ ] CDN setup
+- [ ] Elastic Beanstalk application created and configured
+- [ ] Express.js backend deployed to Elastic Beanstalk
+- [ ] MySQL RDS instance configured and connected
+- [ ] S3 buckets created for file storage (profile pictures, attachments, social content)
+- [ ] S3 bucket policies and CORS configured
+- [ ] Environment variables configured (including S3 configuration)
+- [ ] Security groups and network configuration (including S3 access)
+- [ ] SSL/TLS certificate configured
+- [ ] Load balancer configured
+- [ ] Auto-scaling groups set up
 - [ ] CloudWatch monitoring integrated with Sentry
-- [ ] Security policies applied
 - [ ] Performance tested with quality metrics
 
 ### Quality Assurance Setup

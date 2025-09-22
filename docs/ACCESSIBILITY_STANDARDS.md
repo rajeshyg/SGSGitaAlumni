@@ -1,6 +1,13 @@
 # Accessibility Standards
 
-This document outlines comprehensive accessibility standards and implementation guidelines for achieving WCAG 2.1 AA compliance, ensuring that applications are usable by people with diverse abilities and assistive technologies.
+This document provides an overview of the accessibility standards and compliance requirements for the SGSGita Alumni project. For detailed requirements and implementation guidance, see the linked documents below.
+
+## 📋 Accessibility Documentation Structure
+
+This accessibility framework is organized into focused documents:
+
+- **[Accessibility Compliance Standards](./standards/ACCESSIBILITY_COMPLIANCE.md)** - WCAG 2.1 AA requirements, testing criteria, and compliance metrics
+- **[Accessibility Implementation Guide](./accessibility/IMPLEMENTATION_GUIDE.md)** - Detailed code examples, patterns, and testing utilities
 
 ## 🎯 WCAG 2.1 AA Compliance Overview
 
@@ -10,12 +17,10 @@ This document outlines comprehensive accessibility standards and implementation 
 - **Understandable**: Information and the operation of user interface must be understandable
 - **Robust**: Content must be robust enough that it can be interpreted reliably by a wide variety of user agents
 
-### Conformance Levels
-- **A (Lowest)**: Basic accessibility support
-- **AA (Recommended)**: Enhanced accessibility with important barriers removed
-- **AAA (Highest)**: Highest accessibility with all barriers removed
+### Conformance Target
+**WCAG 2.1 AA compliance** across all components and features, ensuring applications are usable by people with diverse abilities and assistive technologies.
 
-## ♿ Implementation Guidelines
+## ♿ Quick Reference
 
 ### 1. Semantic HTML & ARIA
 

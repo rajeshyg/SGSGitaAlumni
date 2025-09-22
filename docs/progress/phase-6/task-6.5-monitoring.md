@@ -1,10 +1,430 @@
+# Task 6.5: Monitoring & Analytics Integration
+
+## Status
+- **Status:** 🔴 Pending
+- **Estimated Effort:** 4-5 days
+- **Priority:** High
+- **Dependencies:** Task 6.1 (QA Framework)
+
+## Overview
+
+Implement comprehensive monitoring and analytics system for real-time performance tracking, error monitoring, user behavior analytics, and automated alerting. This task establishes the foundation for data-driven optimization and proactive issue resolution.
+
+## Objectives
+
+### **Primary Goals**
+- Implement real-time performance monitoring
+- Set up error tracking and reporting
+- Configure user analytics and behavior tracking
+- Establish automated alerting system
+- Create monitoring dashboard
+- Ensure privacy compliance and data protection
+
+### **Key Components**
+1. **Performance Monitoring** - Web Vitals, load times, resource usage
+2. **Error Tracking** - JavaScript errors, API failures, user-reported issues
+3. **User Analytics** - Page views, user flows, feature usage
+4. **Alerting System** - Real-time notifications for critical issues
+5. **Dashboard Interface** - Visual monitoring and reporting
+6. **Privacy Controls** - GDPR compliance and user consent management
+
+## Implementation Plan
+
+### Phase 1: Core Monitoring Setup (Days 1-2)
+
+#### Performance Monitoring Integration
+```typescript
+// src/lib/monitoring/performance.ts
+import { getCLS, getFID, getFCP, getLCP, getTTFB } from 'web-vitals'
+
+export class PerformanceMonitor {
+  private metrics: Map<string, number> = new Map()
+  private reportingEndpoint: string
+
+  constructor(endpoint: string) {
+    this.reportingEndpoint = endpoint
+    this.initializeWebVitals()
+  }
+
+  private initializeWebVitals() {
+    getCLS(this.handleMetric.bind(this))
+    getFID(this.handleMetric.bind(this))
+    getFCP(this.handleMetric.bind(this))
+    getLCP(this.handleMetric.bind(this))
+    getTTFB(this.handleMetric.bind(this))
+  }
+
+  private handleMetric(metric: any) {
+    this.metrics.set(metric.name, metric.value)
+
+    // Report to analytics service
+    this.reportMetric({
+      name: metric.name,
+      value: metric.value,
+      rating: metric.rating,
+      timestamp: Date.now(),
+      url: window.location.href,
+      userAgent: navigator.userAgent
+    })
+  }
+
+  private async reportMetric(data: any) {
+    try {
+      await fetch(this.reportingEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+    } catch (error) {
+      console.warn('Failed to report metric:', error)
+    }
+  }
+
+  public getMetrics(): Record<string, number> {
+    return Object.fromEntries(this.metrics)
+  }
+}
+```
+
+#### Error Tracking Setup
+```typescript
+// src/lib/monitoring/errorTracking.ts
+export class ErrorTracker {
+  private errorEndpoint: string
+  private maxErrors: number = 50
+  private errorCount: number = 0
+
+  constructor(endpoint: string) {
+    this.errorEndpoint = endpoint
+    this.setupGlobalErrorHandlers()
+  }
+
+  private setupGlobalErrorHandlers() {
+    // JavaScript errors
+    window.addEventListener('error', (event) => {
+      this.captureError({
+        type: 'javascript',
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno,
+        stack: event.error?.stack,
+        timestamp: Date.now(),
+        url: window.location.href
+      })
+    })
+
+    // Promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+      this.captureError({
+        type: 'promise',
+        message: event.reason?.message || 'Unhandled promise rejection',
+        stack: event.reason?.stack,
+        timestamp: Date.now(),
+        url: window.location.href
+      })
+    })
+
+    // React error boundary integration
+    this.setupReactErrorBoundary()
+  }
+
+  private setupReactErrorBoundary() {
+    // Integration with React Error Boundary
+    window.__REACT_ERROR_OVERLAY_GLOBAL_HOOK__ = {
+      onError: (error: Error, errorInfo: any) => {
+        this.captureError({
+          type: 'react',
+          message: error.message,
+          stack: error.stack,
+          componentStack: errorInfo.componentStack,
+          timestamp: Date.now(),
+          url: window.location.href
+        })
+      }
+    }
+  }
+
+  public captureError(errorData: any) {
+    if (this.errorCount >= this.maxErrors) {
+      return // Prevent spam
+    }
+
+    this.errorCount++
+    this.reportError(errorData)
+  }
+
+  private async reportError(errorData: any) {
+    try {
+      await fetch(this.errorEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...errorData,
+          userAgent: navigator.userAgent,
+          sessionId: this.getSessionId()
+        })
+      })
+    } catch (error) {
+      console.warn('Failed to report error:', error)
+    }
+  }
+
+  private getSessionId(): string {
+    let sessionId = sessionStorage.getItem('monitoring-session-id')
+    if (!sessionId) {
+      sessionId = crypto.randomUUID()
+      sessionStorage.setItem('monitoring-session-id', sessionId)
+    }
+    return sessionId
+  }
+}
+```
+
+### Phase 2: Analytics & User Tracking (Day 3)
+
+#### User Analytics Implementation
+```typescript
+// src/lib/monitoring/analytics.ts
+export class UserAnalytics {
+  private analyticsEndpoint: string
+  private sessionData: any = {}
+  private pageViews: any[] = []
+
+  constructor(endpoint: string) {
+    this.analyticsEndpoint = endpoint
+    this.initializeSession()
+    this.trackPageViews()
+  }
+
+  private initializeSession() {
+    this.sessionData = {
+      sessionId: this.getSessionId(),
+      userId: this.getUserId(),
+      startTime: Date.now(),
+      userAgent: navigator.userAgent,
+      referrer: document.referrer,
+      language: navigator.language,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    }
+  }
+
+  private trackPageViews() {
+    // Initial page view
+    this.trackPageView()
+
+    // SPA navigation tracking
+    const originalPushState = history.pushState
+    const originalReplaceState = history.replaceState
+
+    history.pushState = (...args) => {
+      originalPushState.apply(history, args)
+      this.trackPageView()
+    }
+
+    history.replaceState = (...args) => {
+      originalReplaceState.apply(history, args)
+      this.trackPageView()
+    }
+
+    window.addEventListener('popstate', () => {
+      this.trackPageView()
+    })
+  }
+
+  public trackPageView() {
+    const pageView = {
+      url: window.location.href,
+      title: document.title,
+      timestamp: Date.now(),
+      sessionId: this.sessionData.sessionId
+    }
+
+    this.pageViews.push(pageView)
+    this.reportEvent('page_view', pageView)
+  }
+
+  public trackEvent(eventName: string, properties: any = {}) {
+    const event = {
+      name: eventName,
+      properties,
+      timestamp: Date.now(),
+      sessionId: this.sessionData.sessionId,
+      url: window.location.href
+    }
+
+    this.reportEvent(eventName, event)
+  }
+
+  private async reportEvent(eventType: string, eventData: any) {
+    try {
+      await fetch(this.analyticsEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: eventType,
+          data: eventData,
+          session: this.sessionData
+        })
+      })
+    } catch (error) {
+      console.warn('Failed to report analytics event:', error)
+    }
+  }
+
+  private getSessionId(): string {
+    let sessionId = sessionStorage.getItem('analytics-session-id')
+    if (!sessionId) {
+      sessionId = crypto.randomUUID()
+      sessionStorage.setItem('analytics-session-id', sessionId)
+    }
+    return sessionId
+  }
+
+  private getUserId(): string | null {
+    return localStorage.getItem('user-id') || null
+  }
+}
+```
+
+### Phase 3: Monitoring Dashboard (Day 4)
+
+#### Dashboard Component
+```tsx
+// src/components/monitoring/MonitoringDashboard.tsx
+import React, { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+
+interface MonitoringData {
+  performance: {
+    webVitalsScores: {
+      FCP: number
+      LCP: number
+      CLS: number
+      FID: number
+      TTFB: number
+    }
+    pageLoadTime: number
+    resourceCount: number
+  }
+  errors: {
+    total: number
+    recent: any[]
+    byType: Record<string, number>
+  }
+  analytics: {
+    activeUsers: number
+    pageViews: number
+    sessionDuration: number
+    bounceRate: number
+  }
+  alerts: {
+    active: number
+    recent: any[]
+  }
+}
+
+export function MonitoringDashboard() {
+  const [data, setData] = useState<MonitoringData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchMonitoringData()
+    const interval = setInterval(fetchMonitoringData, 30000) // Update every 30 seconds
+    return () => clearInterval(interval)
+  }, [])
+
+  const fetchMonitoringData = async () => {
+    try {
+      const response = await fetch('/api/monitoring/dashboard')
+      if (!response.ok) throw new Error('Failed to fetch monitoring data')
+      const monitoringData = await response.json()
+      setData(monitoringData)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) return <div>Loading monitoring data...</div>
+  if (error) return <Alert><AlertDescription>Error: {error}</AlertDescription></Alert>
+  if (!data) return <div>No monitoring data available</div>
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Monitoring Dashboard</h1>
+        <div className="text-sm text-muted-foreground">
+          Last updated: {new Date().toLocaleTimeString()}
+        </div>
+      </div>
+
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="errors">Errors</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="alerts">Alerts</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {data.analytics?.activeUsers || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Currently online
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Page Load Time</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {data.performance?.pageLoadTime?.toFixed(0) || 0}ms
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Average load time
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Error Rate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {data.errors?.total || 0}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Errors in last 24h
+                </p>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  {alertData?.active || 0}
+                  {data.alerts?.active || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Require attention
@@ -22,276 +442,64 @@
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <div className="text-lg font-semibold">
-                    {performanceData?.webVitalsScores?.FCP?.toFixed(0) || 0}ms
+                    {data.performance?.webVitalsScores?.FCP?.toFixed(0) || 0}ms
                   </div>
                   <div className="text-xs text-muted-foreground">FCP</div>
                   <Progress
-                    value={Math.min((performanceData?.webVitalsScores?.FCP || 0) / 18, 100)}
+                    value={Math.min((data.performance?.webVitalsScores?.FCP || 0) / 18, 100)}
                     className="mt-1"
                   />
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold">
-                    {performanceData?.webVitalsScores?.LCP?.toFixed(0) || 0}ms
+                    {data.performance?.webVitalsScores?.LCP?.toFixed(0) || 0}ms
                   </div>
                   <div className="text-xs text-muted-foreground">LCP</div>
                   <Progress
-                    value={Math.min((performanceData?.webVitalsScores?.LCP || 0) / 25, 100)}
+                    value={Math.min((data.performance?.webVitalsScores?.LCP || 0) / 25, 100)}
                     className="mt-1"
                   />
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold">
-                    {(performanceData?.webVitalsScores?.CLS || 0).toFixed(3)}
+                    {(data.performance?.webVitalsScores?.CLS || 0).toFixed(3)}
                   </div>
                   <div className="text-xs text-muted-foreground">CLS</div>
                   <Progress
-                    value={Math.min((performanceData?.webVitalsScores?.CLS || 0) * 1000, 100)}
+                    value={Math.min((data.performance?.webVitalsScores?.CLS || 0) * 1000, 100)}
                     className="mt-1"
                   />
                 </div>
                 <div className="text-center">
                   <div className="text-lg font-semibold">
-                    {performanceData?.webVitalsScores?.FID?.toFixed(0) || 0}ms
+                    {(data.performance?.webVitalsScores?.FID || 0).toFixed(0)}ms
                   </div>
                   <div className="text-xs text-muted-foreground">FID</div>
                   <Progress
-                    value={Math.min((performanceData?.webVitalsScores?.FID || 0) / 10, 100)}
+                    value={Math.min((data.performance?.webVitalsScores?.FID || 0) / 100, 100)}
                     className="mt-1"
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="performance" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Response Time Trends</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold mb-2">
-                  {performanceData?.averageResponseTime?.toFixed(0) || 0}ms
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Average response time (last hour)
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Slow Pages</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {performanceData?.topSlowPages?.slice(0, 3).map((page: any, index: number) => (
-                    <div key={index} className="flex justify-between items-center">
-                      <span className="text-sm truncate">{page.url}</span>
-                      <Badge variant="outline">
-                        {page.averageTime.toFixed(0)}ms
-                      </Badge>
-                    </div>
-                  )) || <p className="text-sm text-muted-foreground">No data available</p>}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="errors" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Error Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-red-600">
-                  {errorData?.errorRate?.toFixed(1) || 0}%
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Errors per hour
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Errors by Severity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {Object.entries(errorData?.bySeverity || {}).map(([severity, count]) => (
-                    <div key={severity} className="flex justify-between items-center">
-                      <Badge variant={
-                        severity === 'critical' ? 'destructive' :
-                        severity === 'high' ? 'destructive' :
-                        severity === 'medium' ? 'secondary' : 'outline'
-                      }>
-                        {severity}
-                      </Badge>
-                      <span className="text-sm font-medium">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Error Types</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {errorData?.topErrors?.slice(0, 3).map((error: any, index: number) => (
-                    <div key={index} className="text-sm">
-                      <div className="truncate font-medium">{error.message}</div>
-                      <div className="text-muted-foreground">{error.count} occurrences</div>
-                    </div>
-                  )) || <p className="text-sm text-muted-foreground">No errors</p>}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Events</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">
-                  {analyticsData?.totalEvents || 0}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Tracked interactions
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Avg Session Duration</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">
-                  {analyticsData?.averageSessionDuration
-                    ? `${Math.round(analyticsData.averageSessionDuration / 1000 / 60)}m`
-                    : '0m'
-                  }
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Per user session
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Bounce Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">
-                  {analyticsData?.bounceRate?.toFixed(1) || 0}%
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Single page sessions
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Avg Interactions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold">
-                  {analyticsData?.userEngagement?.averageInteractions?.toFixed(1) || 0}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Per user session
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
+          {/* Recent Alerts */}
           <Card>
             <CardHeader>
-              <CardTitle>Top Pages</CardTitle>
+              <CardTitle>Recent Alerts</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {analyticsData?.topPages?.slice(0, 5).map((page: any, index: number) => (
-                  <div key={index} className="flex justify-between items-center">
-                    <span className="text-sm truncate">{page.path}</span>
-                    <Badge variant="outline">{page.views} views</Badge>
+                {data.alerts?.recent?.map((alert, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-red-50 rounded">
+                    <span className="text-sm">{alert.message}</span>
+                    <span className="text-xs text-muted-foreground">{alert.timestamp}</span>
                   </div>
-                )) || <p className="text-sm text-muted-foreground">No page data</p>}
+                )) || <p className="text-sm text-muted-foreground">No recent alerts</p>}
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="alerts" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Alerts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-red-600">
-                  {alertData?.active || 0}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Require attention
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Alerts by Severity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {Object.entries(alertData?.bySeverity || {}).map(([severity, count]) => (
-                    <div key={severity} className="flex justify-between items-center">
-                      <Badge variant={
-                        severity === 'critical' ? 'destructive' :
-                        severity === 'high' ? 'destructive' :
-                        severity === 'medium' ? 'secondary' : 'outline'
-                      }>
-                        {severity}
-                      </Badge>
-                      <span className="text-sm font-medium">{count}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Alerts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {alertData?.recentAlerts?.slice(0, 3).map((alert: any, index: number) => (
-                    <div key={index} className="text-sm">
-                      <div className="truncate font-medium">{alert.message}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {new Date(alert.timestamp).toLocaleString()}
-                      </div>
-                    </div>
-                  )) || <p className="text-sm text-muted-foreground">No recent alerts</p>}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
       </Tabs>
     </div>
@@ -299,24 +507,37 @@
 }
 ```
 
-## Success Criteria
+#### Additional Dashboard Components
 
-### Functional Requirements
+The monitoring dashboard includes additional components for comprehensive tracking:
+
+- **Performance Metrics**: Web Vitals tracking (FCP, LCP, CLS)
+- **Error Tracking**: Real-time error monitoring and reporting
+- **User Analytics**: Page views, unique users, session duration
+- **Alert Management**: Active and recent alerts display
+- **Behavior Flow**: User journey tracking and analysis
+
+The dashboard provides a comprehensive view of application health and user experience metrics.
+
+
+## Success Criteria
 - ✅ Real-time performance monitoring operational
 - ✅ Error tracking and reporting configured
 - ✅ User analytics and behavior tracking implemented
 - ✅ Automated alerting system active
 - ✅ Monitoring dashboard displaying key metrics
 - ✅ Data export and reporting capabilities
+- ✅ Monitoring overhead under 5% performance impact
+- ✅ Dashboard load time under 2 seconds
+- ✅ Alert accuracy above 95%
+- ✅ System reliability above 99.9%
 
-### Performance Requirements
+## Quality Requirements
 - **Monitoring Overhead:** < 5% performance impact
 - **Data Transmission:** < 100KB per hour
 - **Dashboard Load Time:** < 2 seconds
 - **Alert Response Time:** < 30 seconds
 - **Data Retention:** 30 days rolling
-
-### Quality Metrics
 - **Uptime Monitoring:** 99.9% availability
 - **Alert Accuracy:** > 95% true positives
 - **Data Completeness:** > 98% metric coverage

@@ -5,10 +5,10 @@ This document defines the comprehensive standards for delivering native-quality 
 ## 🎯 Core Principles
 
 ### Instant Loading Experience
-- **First Contentful Paint**: < 1.2 seconds (See `src/constants/performance.ts`)
+- **First Contentful Paint**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance)
 - **Largest Contentful Paint**: < 2.5 seconds
 - **Time to Interactive**: < 3.5 seconds
-- **Bundle Size Limit**: < 500KB (gzipped)
+- **Bundle Size Limit**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
 
 ### Smooth 60fps Performance
 - **Frame Time Budget**: < 16ms per frame
@@ -482,7 +482,7 @@ class MemoryManager {
 ## 📊 Quality Metrics & Monitoring
 
 ### Performance Benchmarks
-- **Bundle Size**: Monitor with webpack-bundle-analyzer
+- **Bundle Size**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size-targets) for limits
 - **Core Web Vitals**: Track with web-vitals library
 - **Memory Usage**: Monitor heap size and leaks
 - **Cache Effectiveness**: Track hit rates and invalidation

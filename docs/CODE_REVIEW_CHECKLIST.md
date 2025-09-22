@@ -32,7 +32,7 @@ This checklist ensures code quality and prevents technical debt accumulation.
 - [ ] **Performance**: No unnecessary re-renders, efficient algorithms
 
 #### 🧪 Testing
-- [ ] **Test coverage**: New code has corresponding tests
+- [ ] **Test coverage**: See [Quality Metrics](standards/QUALITY_METRICS.md#testing-standards) for coverage requirements
 - [ ] **Test naming**: Descriptive test names following patterns
 - [ ] **Edge cases**: Error states, loading states, empty states tested
 - [ ] **User interactions**: Click, keyboard, form interactions tested
@@ -87,10 +87,10 @@ This checklist ensures code quality and prevents technical debt accumulation.
 - [ ] **Offline capability**: Core functionality works without network
 
 #### ⚡ Native-First Performance
-- [ ] **Instant loading**: First Contentful Paint < 1.2s
+- [ ] **Instant loading**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance) for FCP requirements
 - [ ] **Smooth animations**: 60fps animations with < 16ms frame time
 - [ ] **Aggressive caching**: Service worker cache hit rate > 80%
-- [ ] **Bundle optimization**: < 500KB gzipped, code splitting implemented
+- [ ] **Bundle optimization**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size-targets) for size limits
 - [ ] **Memory efficiency**: < 50MB heap size, no memory leaks
 - [ ] **Touch responsiveness**: < 100ms touch response time
 - [ ] **Offline-first**: Core features work without network connection
@@ -126,7 +126,7 @@ This checklist ensures code quality and prevents technical debt accumulation.
 **Strengths:**
 - Clean component structure
 - Good TypeScript usage
-- Comprehensive test coverage
+- Comprehensive test coverage (meets quality standards)
 
 **Suggestions:**
 - Consider extracting [specific logic] into a custom hook
@@ -140,7 +140,7 @@ This checklist ensures code quality and prevents technical debt accumulation.
 
 **Required Changes:**
 - [ ] Fix TypeScript error in [file:line]
-- [ ] Add test coverage for [specific functionality]
+- [ ] Add test coverage for [specific functionality] (see quality standards)
 - [ ] Remove console statement in [file:line]
 - [ ] Break down large function in [file:function]
 

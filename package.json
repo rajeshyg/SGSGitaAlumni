@@ -14,7 +14,9 @@
     "prepare": "husky",
     "check-redundancy": "jscpd",
     "analyze-bundle": "ANALYZE=true npm run build",
-    "quality-check": "npm run lint && npm run check-redundancy"
+    "quality-check": "npm run lint && npm run check-redundancy",
+    "validate-docs": "node scripts/validate-documentation-standards.js",
+    "validate-docs-standards": "node scripts/validate-documentation-standards.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.883.0",

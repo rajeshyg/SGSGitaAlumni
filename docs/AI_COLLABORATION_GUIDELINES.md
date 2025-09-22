@@ -147,19 +147,21 @@ const handleError = useErrorHandler()
 
 ## 📊 Quality Metrics Targets
 
+For complete and authoritative metrics, see [Documentation Standards](DOCUMENTATION_STANDARDS.md#standardized-metrics).
+
 ### Code Quality
 - **ESLint + SonarJS**: 0 errors, 0 warnings
 - **jscpd Duplicates**: 0 code clones detected
-- **Test Coverage**: > 80%
+- **Test Coverage**: See [Quality Metrics](standards/QUALITY_METRICS.md#testing-standards)
 - **Build**: Successful completion
 
 ### Performance
-- **Bundle Size**: < 500KB (gzipped)
-- **First Contentful Paint**: < 100ms
+- **Bundle Size**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
+- **First Contentful Paint**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance)
 - **Error Rate**: < 1% (tracked via Sentry)
 
 ### File Standards
-- **Maximum File Size**: 300 lines
+- **Maximum File Size**: 300 lines (general), 500 lines (components)
 - **Maximum Function Size**: 50 lines
 - **Complexity Score**: < 10
 

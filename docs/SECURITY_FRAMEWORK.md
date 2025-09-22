@@ -1,6 +1,14 @@
 # Security Framework
 
-This document outlines comprehensive security standards and implementation guidelines for protecting user data, ensuring secure authentication, and maintaining compliance with industry regulations including GDPR, SOC 2, and HIPAA.
+This document provides an overview of the security architecture and standards for the SGSGita Alumni project. For detailed requirements and implementation guidance, see the linked documents below.
+
+## 📋 Security Documentation Structure
+
+This security framework is organized into focused documents:
+
+- **[Security Requirements](./standards/SECURITY_REQUIREMENTS.md)** - Authoritative security standards and compliance requirements
+- **[Implementation Guide](./security/IMPLEMENTATION_GUIDE.md)** - Detailed code examples and implementation patterns
+- **[Compliance Framework](./security/COMPLIANCE_FRAMEWORK.md)** - GDPR, SOC 2, and regulatory compliance procedures
 
 ## 🔐 Core Security Principles
 
@@ -16,7 +24,7 @@ This document outlines comprehensive security standards and implementation guide
 - **Continuous Monitoring**: Real-time security event detection and response
 - **Incident Response**: Structured approach to security incidents
 
-## 🛡️ Authentication & Authorization
+## 🛡️ Authentication & Authorization Overview
 
 ### Multi-Factor Authentication (MFA)
 ```typescript

@@ -1,52 +1,35 @@
 # Development Guidelines
 
-This document outlines the coding standards, patterns, and best practices for the SGSGita Alumni project.
+This document provides an overview of the development standards and practices for the SGSGita Alumni project. For detailed implementation guidance, see the linked documents below.
 
-## 📏 Code Quality Standards
+## 📋 Development Documentation Structure
+
+This development framework is organized into focused documents:
+
+- **[Core Guidelines](./development/CORE_GUIDELINES.md)** - Fundamental coding standards, testing, and security practices
+- **[Component Patterns](./development/COMPONENT_PATTERNS.md)** - Component architecture, patterns, and cross-platform development
+- **[Theme System](./development/THEME_SYSTEM.md)** - Theme development, CSS variables, and performance requirements
+
+## 📏 Quick Reference
 
 ### File Size Limits
 - **Maximum 300 lines** per file (general files)
 - **Maximum 500 lines** per component file
 - **Maximum 50 lines** per function
 - **Reason**: AI context optimization and maintainability
-- **ESLint**: Configured with component-specific overrides (see eslint.config.js)
 
-### Function Complexity
-- Functions should have a single responsibility
-- Use early returns to reduce nesting
-- Extract complex logic into smaller functions
+### Key Principles
+- **Security First**: All code must follow security-first development patterns
+- **Mobile First**: Components must be mobile-optimized and touch-friendly
+- **Accessibility**: WCAG 2.1 AA compliance required
+- **Performance**: < 200ms theme switching, optimized bundle sizes
+- **Testing**: Comprehensive test coverage with user-focused testing
 
-### Import Organization
-```typescript
-// ✅ Good: Group related imports
-import React from 'react'
-import { useState, useEffect } from 'react'
-
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
-
-import { useTheme } from '@/lib/theme/hooks'
-import { api } from '@/lib/api'
-
-// ❌ Bad: Mixed import styles
-import React, { useState } from 'react'
-import { Button } from '../ui/button'
-import api from './api'
-```
-
-## 🧪 Testing Guidelines
-
-### Test File Organization
-```
-src/components/Button.tsx    # Component
-src/components/Button.test.tsx # Test file (same directory)
-```
-
-### Test Patterns
-```typescript
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { Button } from './Button'
+### Component Development
+- **Enhance First**: Always enhance existing components before creating new ones
+- **Theme Aware**: All components must work across all 4 existing themes
+- **Responsive**: Mobile-first responsive design required
+- **Accessible**: Proper ARIA labels and keyboard navigation
 
 describe('Button', () => {
   it('renders with correct text', () => {
@@ -542,7 +525,7 @@ export function LazyAdvancedDataTable(props: AdvancedDataTableProps) {
 - **Performance**: < 200ms theme switching maintained
 - **Accessibility**: WCAG 2.1 AA compliance
 - **TypeScript**: 100% type coverage
-- **Bundle Size**: Minimal increase (< 10KB per enhancement)
+- **Bundle Size**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size-targets) for authoritative limits
 - **Maintainability**: Clear, documented, reusable code
 
 ### Feature Completeness

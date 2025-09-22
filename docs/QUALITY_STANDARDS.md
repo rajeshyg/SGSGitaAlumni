@@ -183,7 +183,7 @@ export function GoodComponent({ data }) {
 ## 🧪 Testing Standards
 
 ### Test Coverage Requirements
-- **Unit Tests**: > 80% coverage
+- **Unit Tests**: See [Quality Metrics](standards/QUALITY_METRICS.md#testing-standards) for coverage requirements
 - **Critical Paths**: 100% coverage for business logic
 - **Integration Tests**: Key user workflows
 - **E2E Tests**: Critical user journeys (future implementation)
@@ -256,8 +256,8 @@ describe('Button Component', () => {
 - **Test Pass Rate**: > 95%
 
 ### Performance Metrics
-- **Bundle Size**: < 500KB (gzipped) - See `src/constants/performance.ts`
-- **First Contentful Paint**: < 1.2s (realistic native-first target)
+- **Bundle Size**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size-targets)
+- **First Contentful Paint**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance)
 - **Largest Contentful Paint**: < 2.5s
 - **Cumulative Layout Shift**: < 0.1
 - **Error Rate**: < 1% (tracked via Sentry)
@@ -268,7 +268,7 @@ describe('Button Component', () => {
 - **Animation Frame Time**: < 16ms (60fps)
 
 ### Native-First Performance Standards
-- **Instant Loading**: < 1.2s First Contentful Paint
+- **Instant Loading**: See [Performance Targets](standards/PERFORMANCE_TARGETS.md#loading-performance)
 - **Smooth Animations**: 60fps animations with < 16ms frame time
 - **Aggressive Caching**: Service worker cache hit rate > 80%
 - **Offline Capability**: Core functionality works offline

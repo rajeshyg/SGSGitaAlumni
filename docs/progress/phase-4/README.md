@@ -1,67 +1,86 @@
 # Phase 4: Backend Integration
 
-**Status:** 🟡 Ready to Start
+**Status:** ⏸️ On Hold (AWS Access Required)
 **Progress:** 0%
-**Planning Phase:** Backend integration and API development
+**Planning Phase:** Backend integration and API development (pending AWS admin permissions)
 
 ## Overview
-FastAPI backend integration with existing database infrastructure for the SGSGitaAlumni application.
+Express.js backend deployment with MySQL RDS and S3 file storage for the SGSGitaAlumni application, focusing on user privacy and data security.
 
 ## Key Objectives
-- Backend API development for alumni data operations
-- Database connection optimization and MySQL integration
-- Frontend-backend integration with existing React components
-- Authentication system implementation
-- Security implementation and data protection
-- Performance optimization and monitoring
+- Backend API development for alumni data operations with file upload capabilities
+- Database connection optimization and MySQL integration with privacy considerations
+- S3 file storage setup for user-generated content (profile pictures, attachments, social content)
+- Frontend-backend integration with file upload and secure access features
+- Authentication system implementation with user privacy protection
+- Security implementation focusing on data protection and user privacy
+- Performance optimization and monitoring with comprehensive logging
 
 ## Tasks
 
 ### [Task 4.1: Backend Architecture Analysis](./task-4.1-backend-architecture.md)
-- **Status:** 🟡 Ready
-- **Description:** Review existing FastAPI setup and database schema
+- **Status:** ⏸️ On Hold
+- **Description:** Review existing Express.js setup and database schema
 
-### [Task 4.2: API Development](./task-4.2-api-development.md)
-- **Status:** 🟡 Ready
-- **Description:** Create RESTful APIs for alumni data operations
+### [Task 4.2: AWS Services Setup (Must-Have)](./task-4.2-api-development.md)
+- **Status:** ⏸️ On Hold
+- **Description:** Configure must-have AWS services: Elastic Beanstalk, S3, RDS, CloudWatch
 
-### [Task 4.3: Database Integration](./task-4.3-database-integration.md)
-- **Status:** 🟡 Ready
-- **Description:** Optimize MySQL connections and implement data operations
+### [Task 4.3: S3 File Storage Integration](./task-4.3-database-integration.md)
+- **Status:** ⏸️ On Hold
+- **Description:** Set up S3 buckets for profile pictures, attachments, and social content with secure access
 
-### [Task 4.4: Authentication System](./task-4.4-authentication.md)
-- **Status:** 🟡 Ready
-- **Description:** Implement secure authentication and authorization
+### [Task 4.4: Express.js Deployment](./task-4.4-authentication.md)
+- **Status:** ⏸️ On Hold
+- **Description:** Deploy Express.js server to Elastic Beanstalk
 
 ### [Task 4.5: Frontend-Backend Integration](./task-4.5-frontend-backend.md)
-- **Status:** 🟡 Ready
-- **Description:** Connect React frontend to FastAPI backend
+- **Status:** ⏸️ On Hold
+- **Description:** Connect React frontend to deployed Express.js backend
 
 ### [Task 4.6: Security Implementation](./task-4.6-security.md)
-- **Status:** 🟡 Ready
+- **Status:** ⏸️ On Hold
 - **Description:** Add security measures and data protection
 
 ### [Task 4.7: Testing & Validation](./task-4.7-testing-validation.md)
-- **Status:** 🟡 Ready
+- **Status:** ⏸️ On Hold
 - **Description:** Comprehensive testing of backend integration
 
 ### [Task 4.8: Performance Optimization](./task-4.8-performance.md)
-- **Status:** 🟡 Ready
+- **Status:** ⏸️ On Hold
 - **Description:** Backend performance monitoring and optimization
 
 ## Expected Outcomes
-- ✅ Complete FastAPI backend with alumni data APIs
-- ✅ Optimized MySQL database integration
-- ✅ Secure authentication and authorization system
-- ✅ Seamless frontend-backend communication
-- ✅ Comprehensive security implementation
-- ✅ Performance-optimized backend operations
+- ✅ Express.js backend deployed to AWS Elastic Beanstalk
+- ✅ MySQL RDS database configured and optimized with privacy protection
+- ✅ S3 file storage configured for profile pictures, attachments, and social content
+- ✅ Secure file upload and access system with presigned URLs
+- ✅ Secure authentication and authorization system with user privacy focus
+- ✅ Seamless frontend-backend communication with file upload capabilities
+- ✅ Comprehensive security implementation with data protection and privacy
+- ✅ Performance-optimized application operations with monitoring
+
+## AWS Service Priorities
+
+### Must-Have Services (Priority 1 - Required for Core Functionality)
+1. **Elastic Beanstalk**: Deploy Node.js/Express.js backend API server
+2. **S3 (Simple Storage Service)**: Store user-generated content including:
+   - Profile pictures and user avatars
+   - File attachments and documents
+   - Social posts related media content
+3. **RDS (MySQL)**: Relational database for alumni data storage
+4. **CloudWatch**: Basic logging and metrics for monitoring backend performance
+
+### Good-to-Have Services (Priority 2 - Can Wait)
+1. **API Gateway**: Rate limiting and API management
+2. **ECS Fargate**: Alternative deployment option if outgrowing Elastic Beanstalk
+3. **CloudWatch Advanced**: Custom dashboards and detailed performance metrics
 
 ## Dependencies
 - Phase 1 frontend completion with working components
-- Existing FastAPI server setup (server.js, server-package.json)
+- Existing Express.js server setup (server.js, server-package.json)
 - MySQL database access and schema
-- AWS services configuration (DynamoDB, Lambda)
+- AWS services configuration (Elastic Beanstalk, RDS)
 
 ## Timeline Estimate
 - **Duration:** 2-3 weeks
