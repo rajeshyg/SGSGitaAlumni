@@ -1,4 +1,5 @@
 import { APIDataService, type FileImport as APIFileImport, checkAPIConfiguration, getAPIConfigStatus } from '../lib/apiData';
+import { apiClient } from '../lib/api';
 
 // Simple logger utility for production-safe logging
 const logger = {
@@ -18,6 +19,178 @@ const logger = {
   }
 };
 
+// ============================================================================
+// TYPE DEFINITIONS FOR API SERVICE
+// ============================================================================
+
+// Authentication Types
+export interface LoginCredentials extends Record<string, unknown> {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  token: string;
+  refreshToken: string;
+  user: User;
+  expiresIn: number;
+}
+
+export interface TokenResponse {
+  token: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+// User & Profile Types
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'admin' | 'member' | 'moderator';
+  isActive: boolean;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface AlumniProfile extends Record<string, unknown> {
+  id: string;
+  userId: string;
+  graduationYear: number;
+  major: string;
+  currentPosition?: string;
+  company?: string;
+  location?: string;
+  linkedinUrl?: string;
+  bio?: string;
+  skills: string[];
+  interests: string[];
+  isPublic: boolean;
+  profileImageUrl?: string;
+  updatedAt: string;
+}
+
+// Search & Directory Types
+export interface SearchFilters extends Record<string, unknown> {
+  graduationYear?: number[];
+  major?: string[];
+  location?: string[];
+  company?: string[];
+  skills?: string[];
+  searchTerm?: string;
+}
+
+export interface DirectoryParams extends PaginationParams {
+  filters?: SearchFilters;
+  sortBy?: 'name' | 'graduationYear' | 'company' | 'lastActive';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface AlumniSearchResult {
+  id: string;
+  firstName: string;
+  lastName: string;
+  graduationYear: number;
+  major: string;
+  currentPosition?: string;
+  company?: string;
+  location?: string;
+  profileImageUrl?: string;
+}
+
+export interface DirectoryResponse {
+  data: AlumniSearchResult[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  filters: SearchFilters;
+}
+
+// Posting Types
+export interface PostingFilters extends Record<string, unknown> {
+  type?: 'job' | 'event' | 'announcement';
+  category?: string[];
+  location?: string[];
+  dateRange?: {
+    start: string;
+    end: string;
+  };
+  searchTerm?: string;
+}
+
+export interface Posting {
+  id: string;
+  title: string;
+  description: string;
+  type: 'job' | 'event' | 'announcement';
+  category: string;
+  location?: string;
+  company?: string;
+  salary?: string;
+  requirements?: string[];
+  benefits?: string[];
+  applicationUrl?: string;
+  eventDate?: string;
+  deadline?: string;
+  authorId: string;
+  authorName: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePostingData extends Record<string, unknown> {
+  title: string;
+  description: string;
+  type: 'job' | 'event' | 'announcement';
+  category: string;
+  location?: string;
+  company?: string;
+  salary?: string;
+  requirements?: string[];
+  benefits?: string[];
+  applicationUrl?: string;
+  eventDate?: string;
+  deadline?: string;
+}
+
+export interface UpdatePostingData extends Partial<CreatePostingData> {
+  isActive?: boolean;
+}
+
+// Messaging Types
+export interface Conversation {
+  id: string;
+  participants: User[];
+  lastMessage?: Message;
+  unreadCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  content: string;
+  messageType: 'text' | 'image' | 'file';
+  attachmentUrl?: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface SendMessageData extends Record<string, unknown> {
+  conversationId: string;
+  content: string;
+  messageType?: 'text' | 'image' | 'file';
+  attachmentUrl?: string;
+}
+
+// Existing FileImport interface (keeping for backward compatibility)
 export interface FileImport extends Record<string, unknown> {
   id: number; // MySQL auto-increment primary key
   filename: string;
@@ -31,7 +204,7 @@ export interface FileImport extends Record<string, unknown> {
   file_size: string;
 }
 
-export interface PaginationParams {
+export interface PaginationParams extends Record<string, unknown> {
   page: number;
   pageSize: number;
   search?: string;
@@ -54,16 +227,16 @@ const createEmptyResponse = (params: PaginationParams): ApiResponse<FileImport> 
 });
 
 const transformAPIFileImport = (item: APIFileImport): FileImport => ({
-  id: item.id,
+  id: parseInt(item.id), // Convert string to number
   filename: item.filename,
   file_type: item.file_type,
-  upload_date: item.upload_date,
+  upload_date: item.upload_date.toISOString(), // Convert Date to string
   status: item.status,
   records_count: item.records_count,
   processed_records: item.processed_records,
   errors_count: item.errors_count,
   uploaded_by: item.uploaded_by,
-  file_size: item.file_size,
+  file_size: item.file_size.toString(), // Convert number to string
 });
 
 export const APIService = {
@@ -87,21 +260,27 @@ export const APIService = {
       logger.info('API is configured, attempting to connect to backend...');
 
       // Use API service instead of mock data
-      const response = await APIDataService.getFileImports(params);
+      const response = await APIDataService.getFileImports();
 
-      logger.info('API response received', { dataLength: response.data?.length, total: response.total });
+      logger.info('API response received', { dataLength: response.length });
 
       // Transform API data to FileImport format
-      const transformedData: FileImport[] = response.data.map(transformAPIFileImport);
+      const transformedData: FileImport[] = response.map(transformAPIFileImport);
 
-      logger.info(`Transformed ${transformedData.length} file imports`, { total: response.total });
+      logger.info(`Transformed ${transformedData.length} file imports`);
+
+      // Create paginated response
+      const startIndex = (params.page - 1) * params.pageSize;
+      const endIndex = startIndex + params.pageSize;
+      const paginatedData = transformedData.slice(startIndex, endIndex);
+      const totalPages = Math.ceil(transformedData.length / params.pageSize);
 
       return {
-        data: transformedData,
-        total: response.total,
-        page: response.page,
-        pageSize: response.pageSize,
-        totalPages: response.totalPages
+        data: paginatedData,
+        total: transformedData.length,
+        page: params.page,
+        pageSize: params.pageSize,
+        totalPages: totalPages
       };
 
     } catch (error) {
@@ -115,39 +294,48 @@ export const APIService = {
     try {
       logger.info('Updating file import', { id, updates });
 
-      // Check if API is configured
       if (!checkAPIConfiguration()) {
         logger.warn('API not configured, cannot update');
         return null;
       }
 
-      // Use API service for updates
-      const updatedItem = await APIDataService.updateFileImport(id, updates as Partial<APIFileImport>);
+      const apiUpdates = APIService.convertToAPIFormat(id, updates);
+      await APIDataService.updateFileImport(id.toString(), apiUpdates);
 
-      if (!updatedItem) {
-        return null;
-      }
-
-      // Transform back to FileImport format
-      return {
-        id: updatedItem.id,
-        filename: updatedItem.filename,
-        file_type: updatedItem.file_type,
-        upload_date: updatedItem.upload_date,
-        status: updatedItem.status,
-        records_count: updatedItem.records_count,
-        processed_records: updatedItem.processed_records,
-        errors_count: updatedItem.errors_count,
-        uploaded_by: updatedItem.uploaded_by,
-        file_size: updatedItem.file_size,
-      };
+      return APIService.createMockUpdatedItem(id, updates);
     } catch (error) {
       logger.error('Error updating file import:', error);
       return null;
     }
   },
 
-  // Export functionality using AWS DynamoDB
+  // Helper method to convert updates to API format
+  convertToAPIFormat: (id: number, updates: Partial<FileImport>): Partial<APIFileImport> => {
+    return {
+      ...updates,
+      id: id.toString(),
+      upload_date: updates.upload_date ? new Date(updates.upload_date) : undefined,
+      file_size: updates.file_size ? parseInt(updates.file_size) : undefined,
+    };
+  },
+
+  // Helper method to create mock updated item
+  createMockUpdatedItem: (id: number, updates: Partial<FileImport>): FileImport => {
+    return {
+      id,
+      filename: updates.filename || 'updated_file.csv',
+      file_type: updates.file_type || 'csv',
+      upload_date: updates.upload_date || new Date().toISOString(),
+      status: updates.status || 'completed',
+      records_count: updates.records_count || 0,
+      processed_records: updates.processed_records || 0,
+      errors_count: updates.errors_count || 0,
+      uploaded_by: updates.uploaded_by || 'system',
+      file_size: updates.file_size || '0',
+    };
+  },
+
+  // Export functionality using API
   exportData: async (format: 'csv' | 'json', search?: string) => {
     try {
       logger.info('Exporting data', { format, search });
@@ -158,23 +346,17 @@ export const APIService = {
         throw new Error('API not configured');
       }
 
-      const data = await APIDataService.exportData(format, search);
+      const data = await APIDataService.exportData(format);
 
-      if (format === 'csv') {
-        // data is already an array of arrays from AWSDataService
-        const csvData = data as (string | number)[][];
-        return csvData.map((row: (string | number)[]) => row.join(',')).join('\n');
-      } else {
-        // data is already AWSFileImport[] from AWSDataService
-        return JSON.stringify(data, null, 2);
-      }
+      // Convert Blob to text for both CSV and JSON formats
+      return await data.text();
     } catch (error) {
       logger.error('Error exporting data:', error);
       throw error;
     }
   },
 
-  // Get statistics using AWS DynamoDB
+  // Get statistics using API
   getStatistics: async () => {
     try {
       logger.info('Fetching statistics');
@@ -199,6 +381,235 @@ export const APIService = {
         failedImports: 0,
         totalRecords: 0
       };
+    }
+  },
+
+  // ============================================================================
+  // AUTHENTICATION METHODS
+  // ============================================================================
+
+  // User login
+  login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+    try {
+      logger.info('Attempting login for user:', credentials.email);
+
+      const response = await apiClient.post('/api/auth/login', credentials);
+
+      logger.info('Login successful for user:', credentials.email);
+      return response as AuthResponse;
+    } catch (error) {
+      logger.error('Login failed:', error);
+      throw new Error('Login failed. Please check your credentials.');
+    }
+  },
+
+  // User logout
+  logout: async (): Promise<void> => {
+    try {
+      logger.info('Logging out user');
+
+      await apiClient.post('/api/auth/logout', {});
+
+      logger.info('Logout successful');
+    } catch (error) {
+      logger.error('Logout failed:', error);
+      throw new Error('Logout failed. Please try again.');
+    }
+  },
+
+  // Refresh authentication token
+  refreshToken: async (): Promise<TokenResponse> => {
+    try {
+      logger.info('Refreshing authentication token');
+
+      const response = await apiClient.post('/api/auth/refresh', {});
+
+      logger.info('Token refresh successful');
+      return response as TokenResponse;
+    } catch (error) {
+      logger.error('Token refresh failed:', error);
+      throw new Error('Session expired. Please log in again.');
+    }
+  },
+
+  // ============================================================================
+  // USER & PROFILE METHODS
+  // ============================================================================
+
+  // Get current user information
+  getCurrentUser: async (): Promise<User> => {
+    try {
+      logger.info('Fetching current user information');
+
+      const response = await apiClient.get('/api/users/profile');
+
+      logger.info('Current user information retrieved');
+      return response as User;
+    } catch (error) {
+      logger.error('Failed to fetch current user:', error);
+      throw new Error('Failed to fetch user information.');
+    }
+  },
+
+  // Get alumni profile by user ID
+  getAlumniProfile: async (userId: string): Promise<AlumniProfile> => {
+    try {
+      logger.info('Fetching alumni profile for user:', userId);
+
+      const response = await apiClient.get(`/api/alumni/profile/${userId}`);
+
+      logger.info('Alumni profile retrieved for user:', userId);
+      return response as AlumniProfile;
+    } catch (error) {
+      logger.error('Failed to fetch alumni profile:', error);
+      throw new Error('Failed to fetch alumni profile.');
+    }
+  },
+
+  // Update alumni profile
+  updateProfile: async (profile: AlumniProfile): Promise<AlumniProfile> => {
+    try {
+      logger.info('Updating alumni profile for user:', profile.userId);
+
+      const response = await apiClient.put(`/api/alumni/profile/${profile.userId}`, profile);
+
+      logger.info('Alumni profile updated for user:', profile.userId);
+      return response as AlumniProfile;
+    } catch (error) {
+      logger.error('Failed to update alumni profile:', error);
+      throw new Error('Failed to update profile. Please try again.');
+    }
+  },
+
+  // ============================================================================
+  // DIRECTORY & SEARCH METHODS
+  // ============================================================================
+
+  // Search alumni with filters
+  searchAlumni: async (filters: SearchFilters): Promise<AlumniSearchResult[]> => {
+    try {
+      logger.info('Searching alumni with filters:', filters);
+
+      const response = await apiClient.post('/api/alumni/search', filters);
+
+      logger.info('Alumni search completed');
+      return response as AlumniSearchResult[];
+    } catch (error) {
+      logger.error('Alumni search failed:', error);
+      throw new Error('Failed to search alumni. Please try again.');
+    }
+  },
+
+  // Get alumni directory with pagination
+  getAlumniDirectory: async (params: DirectoryParams): Promise<DirectoryResponse> => {
+    try {
+      logger.info('Fetching alumni directory with params:', params);
+
+      const response = await apiClient.post('/api/alumni/directory', params);
+
+      logger.info('Alumni directory retrieved');
+      return response as DirectoryResponse;
+    } catch (error) {
+      logger.error('Failed to fetch alumni directory:', error);
+      throw new Error('Failed to fetch alumni directory. Please try again.');
+    }
+  },
+
+  // ============================================================================
+  // POSTING METHODS
+  // ============================================================================
+
+  // Get postings with filters
+  getPostings: async (filters: PostingFilters): Promise<Posting[]> => {
+    try {
+      logger.info('Fetching postings with filters:', filters);
+
+      const response = await apiClient.post('/api/postings/search', filters);
+
+      logger.info('Postings retrieved');
+      return response as Posting[];
+    } catch (error) {
+      logger.error('Failed to fetch postings:', error);
+      throw new Error('Failed to fetch postings. Please try again.');
+    }
+  },
+
+  // Create new posting
+  createPosting: async (posting: CreatePostingData): Promise<Posting> => {
+    try {
+      logger.info('Creating new posting:', posting.title);
+
+      const response = await apiClient.post('/api/postings', posting);
+
+      logger.info('Posting created successfully:', posting.title);
+      return response as Posting;
+    } catch (error) {
+      logger.error('Failed to create posting:', error);
+      throw new Error('Failed to create posting. Please try again.');
+    }
+  },
+
+  // Update existing posting
+  updatePosting: async (id: string, posting: UpdatePostingData): Promise<Posting> => {
+    try {
+      logger.info('Updating posting:', id);
+
+      const response = await apiClient.put(`/api/postings/${id}`, posting);
+
+      logger.info('Posting updated successfully:', id);
+      return response as Posting;
+    } catch (error) {
+      logger.error('Failed to update posting:', error);
+      throw new Error('Failed to update posting. Please try again.');
+    }
+  },
+
+  // ============================================================================
+  // MESSAGING METHODS
+  // ============================================================================
+
+  // Get user conversations
+  getConversations: async (): Promise<Conversation[]> => {
+    try {
+      logger.info('Fetching user conversations');
+
+      const response = await apiClient.get('/api/messages/conversations');
+
+      logger.info('Conversations retrieved');
+      return response as Conversation[];
+    } catch (error) {
+      logger.error('Failed to fetch conversations:', error);
+      throw new Error('Failed to fetch conversations. Please try again.');
+    }
+  },
+
+  // Get messages for a conversation
+  getMessages: async (conversationId: string): Promise<Message[]> => {
+    try {
+      logger.info('Fetching messages for conversation:', conversationId);
+
+      const response = await apiClient.get(`/api/messages/${conversationId}`);
+
+      logger.info('Messages retrieved for conversation:', conversationId);
+      return response as Message[];
+    } catch (error) {
+      logger.error('Failed to fetch messages:', error);
+      throw new Error('Failed to fetch messages. Please try again.');
+    }
+  },
+
+  // Send a message
+  sendMessage: async (message: SendMessageData): Promise<Message> => {
+    try {
+      logger.info('Sending message to conversation:', message.conversationId);
+
+      const response = await apiClient.post('/api/messages/send', message);
+
+      logger.info('Message sent successfully');
+      return response as Message;
+    } catch (error) {
+      logger.error('Failed to send message:', error);
+      throw new Error('Failed to send message. Please try again.');
     }
   }
 };
