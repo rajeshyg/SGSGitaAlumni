@@ -115,6 +115,7 @@ export class UserAnalytics {
         })
       })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn('Failed to report analytics event:', error)
     }
   }

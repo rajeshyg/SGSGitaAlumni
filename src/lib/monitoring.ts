@@ -21,6 +21,7 @@ export function initializeMonitoring() {
 
 export const logger = {
   info: (message: string, ...args: unknown[]) => {
+    // eslint-disable-next-line no-console
     console.log(`[INFO] ${message}`, ...args)
     if (config.sentryDsn) {
       Sentry.addBreadcrumb({
@@ -31,6 +32,7 @@ export const logger = {
     }
   },
   warn: (message: string, ...args: unknown[]) => {
+    // eslint-disable-next-line no-console
     console.warn(`[WARN] ${message}`, ...args)
     if (config.sentryDsn) {
       Sentry.addBreadcrumb({
@@ -41,6 +43,7 @@ export const logger = {
     }
   },
   error: (message: string, ...args: unknown[]) => {
+    // eslint-disable-next-line no-console
     console.error(`[ERROR] ${message}`, ...args)
     if (config.sentryDsn) {
       Sentry.captureMessage(message, {
@@ -52,6 +55,7 @@ export const logger = {
 }
 
 export function logError(error: Error, context?: Record<string, any>) {
+  // eslint-disable-next-line no-console
   console.error('Application Error:', error)
   if (config.sentryDsn) {
     Sentry.captureException(error, { extra: context })
@@ -59,6 +63,7 @@ export function logError(error: Error, context?: Record<string, any>) {
 }
 
 export function logEvent(event: string, properties?: Record<string, any>) {
+  // eslint-disable-next-line no-console
   console.log(`Event: ${event}`, properties)
   if (config.sentryDsn) {
     Sentry.addBreadcrumb({

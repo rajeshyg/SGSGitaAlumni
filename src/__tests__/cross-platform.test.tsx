@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
+import { vi } from 'vitest'
 import { deviceDetector } from '@/lib/device-detection'
 import { performanceOptimizer } from '@/lib/performance-optimization'
 import { TouchButton } from '@/components/touch-optimized/TouchButton'
@@ -6,33 +7,33 @@ import { useSwipeGesture } from '@/hooks/useSwipeGesture'
 import { AdaptiveLayout } from '@/components/layout/AdaptiveLayout'
 
 // Mock device detection
-jest.mock('@/lib/device-detection', () => ({
+vi.mock('@/lib/device-detection', () => ({
   deviceDetector: {
-    getCapabilities: jest.fn(),
-    onCapabilitiesChange: jest.fn(() => jest.fn())
+    getCapabilities: vi.fn(),
+    onCapabilitiesChange: vi.fn(() => vi.fn())
   }
 }))
 
 // Mock performance optimizer
-jest.mock('@/lib/performance-optimization', () => ({
+vi.mock('@/lib/performance-optimization', () => ({
   performanceOptimizer: {
-    getConfig: jest.fn(),
-    optimizeImage: jest.fn(),
-    getAnimationDuration: jest.fn(),
-    shouldPreload: jest.fn(),
-    shouldUseLazyLoading: jest.fn(),
-    getImageLoadingStrategy: jest.fn()
+    getConfig: vi.fn(),
+    optimizeImage: vi.fn(),
+    getAnimationDuration: vi.fn(),
+    shouldPreload: vi.fn(),
+    shouldUseLazyLoading: vi.fn(),
+    getImageLoadingStrategy: vi.fn()
   }
 }))
 
 describe('Cross-Platform Components', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('TouchButton', () => {
     it('renders with mobile optimizations', () => {
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'mobile',
         touchSupport: true,
         screenWidth: 375,
@@ -48,7 +49,7 @@ describe('Cross-Platform Components', () => {
     })
 
     it('renders with desktop optimizations', () => {
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'desktop',
         touchSupport: false,
         screenWidth: 1920,
@@ -64,12 +65,12 @@ describe('Cross-Platform Components', () => {
     })
 
     it('handles touch events on touch devices', () => {
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'mobile',
         touchSupport: true
       })
 
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       render(<TouchButton onClick={handleClick}>Click me</TouchButton>)
 
       const button = screen.getByRole('button')
@@ -87,12 +88,12 @@ describe('Cross-Platform Components', () => {
     })
 
     it('handles mouse events on desktop', () => {
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'desktop',
         touchSupport: false
       })
 
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       render(<TouchButton onClick={handleClick}>Click me</TouchButton>)
 
       const button = screen.getByRole('button')
@@ -105,7 +106,7 @@ describe('Cross-Platform Components', () => {
     })
 
     it('respects disabled state', () => {
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       render(<TouchButton onClick={handleClick} disabled>Click me</TouchButton>)
 
       const button = screen.getByRole('button')
@@ -165,7 +166,7 @@ describe('Cross-Platform Components', () => {
 
   describe('Performance Optimization', () => {
     it('optimizes for mobile devices', () => {
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'mobile',
         touchSupport: true
       })
@@ -177,7 +178,7 @@ describe('Cross-Platform Components', () => {
     })
 
     it('optimizes for desktop devices', () => {
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'desktop',
         touchSupport: false
       })
@@ -192,18 +193,18 @@ describe('Cross-Platform Components', () => {
       const baseUrl = 'https://example.com/image.jpg'
 
       // Mobile optimization
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'mobile'
       })
-      ;(performanceOptimizer.optimizeImage as jest.Mock).mockReturnValue(`${baseUrl}?quality=80`)
+      ;(performanceOptimizer.optimizeImage as any).mockReturnValue(`${baseUrl}?quality=80`)
 
       expect(performanceOptimizer.optimizeImage(baseUrl)).toContain('quality=80')
 
       // Desktop optimization
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'desktop'
       })
-      ;(performanceOptimizer.optimizeImage as jest.Mock).mockReturnValue(`${baseUrl}?quality=100`)
+      ;(performanceOptimizer.optimizeImage as any).mockReturnValue(`${baseUrl}?quality=100`)
 
       expect(performanceOptimizer.optimizeImage(baseUrl)).toContain('quality=100')
     })
@@ -215,7 +216,7 @@ describe('Cross-Platform Components', () => {
     const DesktopLayout = () => <div>Desktop Layout</div>
 
     it('renders mobile layout for mobile devices', () => {
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'mobile'
       })
 
@@ -229,7 +230,7 @@ describe('Cross-Platform Components', () => {
     })
 
     it('renders desktop layout for desktop devices', () => {
-      (deviceDetector.getCapabilities as jest.Mock).mockReturnValue({
+      (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'desktop'
       })
 
@@ -245,7 +246,7 @@ describe('Cross-Platform Components', () => {
 
   describe('Swipe Gesture Hook', () => {
     it('detects swipe left', () => {
-      const onSwipeLeft = jest.fn()
+      const onSwipeLeft = vi.fn()
       const { onTouchStart, onTouchEnd } = useSwipeGesture({ onSwipeLeft })
 
       // Simulate touch start
@@ -264,7 +265,7 @@ describe('Cross-Platform Components', () => {
     })
 
     it('detects swipe right', () => {
-      const onSwipeRight = jest.fn()
+      const onSwipeRight = vi.fn()
       const { onTouchStart, onTouchEnd } = useSwipeGesture({ onSwipeRight })
 
       // Simulate touch start

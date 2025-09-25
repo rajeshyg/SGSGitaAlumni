@@ -83,6 +83,7 @@ export class PerformanceMonitor {
         clsObserver.observe({ entryTypes: ['layout-shift'] })
 
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.warn('Performance monitoring setup failed:', error)
       }
     }
@@ -108,6 +109,7 @@ export class PerformanceMonitor {
         })
         fcpObserver.observe({ entryTypes: ['paint'] })
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.warn('FCP monitoring setup failed:', error)
       }
     }
@@ -242,6 +244,7 @@ export class PerformanceMonitor {
         body: JSON.stringify(metric)
       })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn('Failed to report performance metric:', error)
     }
   }

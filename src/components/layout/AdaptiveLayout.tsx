@@ -24,8 +24,7 @@ export function AdaptiveLayout({
 
     updateLayout()
 
-    const unsubscribe = deviceDetector.onCapabilitiesChange(updateLayout)
-    return unsubscribe
+    return deviceDetector.onCapabilitiesChange(updateLayout)
   }, [])
 
   const LayoutComponent = layouts[currentLayout]
@@ -44,8 +43,7 @@ export function useAdaptiveLayout() {
 
     updateLayout()
 
-    const unsubscribe = deviceDetector.onCapabilitiesChange(updateLayout)
-    return unsubscribe
+    return deviceDetector.onCapabilitiesChange(updateLayout)
   }, [])
 
   return layout

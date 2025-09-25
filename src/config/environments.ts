@@ -19,8 +19,8 @@ const configs: Record<string, EnvironmentConfig> = {
   staging: {
     apiUrl: 'https://api-staging.sgs-gita-alumni.com',
     environment: 'staging',
-    sentryDsn: process.env.VITE_SENTRY_DSN_STAGING,
-    analyticsId: process.env.VITE_ANALYTICS_ID_STAGING,
+    sentryDsn: import.meta.env.VITE_SENTRY_DSN_STAGING,
+    analyticsId: import.meta.env.VITE_ANALYTICS_ID_STAGING,
     featureFlags: {
       debugMode: false,
       analytics: true,
@@ -30,8 +30,8 @@ const configs: Record<string, EnvironmentConfig> = {
   production: {
     apiUrl: 'https://api.sgs-gita-alumni.com',
     environment: 'production',
-    sentryDsn: process.env.VITE_SENTRY_DSN_PRODUCTION,
-    analyticsId: process.env.VITE_ANALYTICS_ID_PRODUCTION,
+    sentryDsn: import.meta.env.VITE_SENTRY_DSN_PRODUCTION,
+    analyticsId: import.meta.env.VITE_ANALYTICS_ID_PRODUCTION,
     featureFlags: {
       debugMode: false,
       analytics: true,
@@ -41,7 +41,7 @@ const configs: Record<string, EnvironmentConfig> = {
 }
 
 export function getEnvironmentConfig(): EnvironmentConfig {
-  const env = process.env.VITE_ENVIRONMENT || 'development'
+  const env = import.meta.env.VITE_ENVIRONMENT || 'development'
   return configs[env] || configs.development
 }
 

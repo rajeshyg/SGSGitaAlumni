@@ -497,6 +497,7 @@ class RegulationEngine {
 class AuditEngine {
   async logComplianceCheck(result: ComplianceResult): Promise<void> {
     // Mock audit logging
+    // eslint-disable-next-line no-console
     console.log(`Compliance check logged for ${result.regulation.name}`);
   }
 }

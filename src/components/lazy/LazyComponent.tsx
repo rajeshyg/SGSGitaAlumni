@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, ComponentType, useState, useEffect } from 'react'
+import React, { ComponentType, useState, useEffect } from 'react'
 import { performanceOptimizer } from '@/lib/performance-optimization'
 import { deviceDetector } from '@/lib/device-detection'
 
@@ -23,8 +23,8 @@ export function LazyComponent({
       try {
         const module = await importFunc()
         setLazyLoadedComponent(() => module.default)
-      } catch (error) {
-        console.error('Failed to load component:', error)
+      } catch {
+        // Handle component loading error silently
       } finally {
         setIsLoading(false)
       }
@@ -52,10 +52,9 @@ export function useLazyPerformance() {
   const [config, setConfig] = useState(performanceOptimizer.getConfig())
 
   useEffect(() => {
-    const unsubscribe = deviceDetector.onCapabilitiesChange(() => {
+    return deviceDetector.onCapabilitiesChange(() => {
       setConfig(performanceOptimizer.getConfig())
     })
-    return unsubscribe
   }, [])
 
   return {

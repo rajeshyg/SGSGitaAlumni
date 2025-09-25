@@ -56,6 +56,7 @@ export function PerformanceDashboard({ system, timeRange }: PerformanceDashboard
         lastUpdated: new Date()
       });
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to load performance analysis:', error);
     } finally {
       setLoading(false);

@@ -5,7 +5,7 @@ import Badge from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Shield, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Shield, AlertTriangle, XCircle } from 'lucide-react';
 import { ThreatModelingEngine, type ApplicationArchitecture } from '@/lib/security/ThreatModelingEngine';
 import { VulnerabilityPredictionEngine, type Codebase } from '@/lib/security/VulnerabilityPredictionEngine';
 import { ZeroTrustEngine, type SystemArchitecture } from '@/lib/security/ZeroTrustEngine';
@@ -95,6 +95,7 @@ export function SecurityDashboard({
 
       setSecurityAssessment(assessment);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to load security assessment:', error);
     } finally {
       setLoading(false);
