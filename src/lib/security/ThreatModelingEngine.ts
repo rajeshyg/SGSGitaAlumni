@@ -200,7 +200,7 @@ export class ThreatModelingEngine {
     return distribution;
   }
 
-  private generateRiskTrends(threats: ThreatScenario[]): RiskTrend[] {
+  private generateRiskTrends(_threats: ThreatScenario[]): RiskTrend[] {
     // Generate mock trend data - in real implementation, this would use historical data
     return [
       { period: 'Last Month', riskLevel: 0.3, change: -0.1 },
@@ -241,6 +241,7 @@ export class ThreatModelingEngine {
     return Math.min(likelihood, 1);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private assessImpact(threat: any, architecture: ArchitectureAnalysis): number {
     // Simplified impact assessment
     let impact = 0.5; // Base impact
@@ -259,7 +260,7 @@ export class ThreatModelingEngine {
 
 // Mock implementations for dependencies
 class AIEngine {
-  async generateContextualThreats(architecture: ArchitectureAnalysis): Promise<any[]> {
+  async generateContextualThreats(_architecture: ArchitectureAnalysis): Promise<any[]> {
     return [
       {
         title: 'API Injection Attack',
@@ -278,7 +279,7 @@ class AIEngine {
     ];
   }
 
-  async generateMitigation(threat: ThreatScenario, architecture: ArchitectureAnalysis): Promise<any> {
+  async generateMitigation(threat: ThreatScenario, _architecture: ArchitectureAnalysis): Promise<any> {
     return {
       strategy: `Implement comprehensive ${threat.category} protection`,
       controls: ['Input validation', 'Output encoding', 'Access controls'],

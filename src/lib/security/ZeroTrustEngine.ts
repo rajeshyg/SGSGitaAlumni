@@ -419,7 +419,7 @@ class ContextEngine {
 }
 
 class ValidationEngine {
-  async analyzeContinuousValidation(system: SystemArchitecture): Promise<any> {
+  async analyzeContinuousValidation(_system: SystemArchitecture): Promise<any> {
     return {
       realtimeMonitoring: true, // Assume monitoring is active
       adaptiveControls: false, // Not implemented in mock

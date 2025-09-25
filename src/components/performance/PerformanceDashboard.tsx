@@ -1,5 +1,5 @@
 // src/components/performance/PerformanceDashboard.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Badge from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -25,45 +25,45 @@ export function PerformanceDashboard({ system, timeRange }: PerformanceDashboard
   const predictiveEngine = new PredictivePerformanceEngine();
   const anomalyEngine = new AnomalyDetectionEngine();
 
-  useEffect(() => {
-    loadPerformanceAnalysis();
-  }, [system, timeRange]);
+ const loadPerformanceAnalysis = useCallback(async () => {
+   try {
+     setLoading(true);
 
-  const loadPerformanceAnalysis = async () => {
-    try {
-      setLoading(true);
+     // Get historical metrics (mock data for now)
+     const historicalMetrics = generateMockMetrics(timeRange);
 
-      // Get historical metrics (mock data for now)
-      const historicalMetrics = generateMockMetrics(timeRange);
+     // Generate performance predictions
+     const predictions = await predictiveEngine.predictPerformanceTrends(historicalMetrics, system);
 
-      // Generate performance predictions
-      const predictions = await predictiveEngine.predictPerformanceTrends(historicalMetrics, system);
+     // Detect anomalies
+     const baseline = {
+       responseTime: { mean: 500, stdDev: 100 },
+       throughput: { mean: 100, stdDev: 20 },
+       errorRate: { mean: 0.01, threshold: 0.05 },
+       resourceUsage: { cpu: 70, memory: 80 }
+     };
 
-      // Detect anomalies
-      const baseline = {
-        responseTime: { mean: 500, stdDev: 100 },
-        throughput: { mean: 100, stdDev: 20 },
-        errorRate: { mean: 0.01, threshold: 0.05 },
-        resourceUsage: { cpu: 70, memory: 80 }
-      };
+     const anomalies = await anomalyEngine.detectPerformanceAnomalies(historicalMetrics, baseline);
 
-      const anomalies = await anomalyEngine.detectPerformanceAnomalies(historicalMetrics, baseline);
+     setPerformanceAnalysis({
+       predictions,
+       anomalies,
+       overallScore: calculateOverallPerformanceScore({ predictions, anomalies }),
+       lastUpdated: new Date()
+     });
+   } catch (error) {
+     // eslint-disable-next-line no-console
+     console.error('Failed to load performance analysis:', error);
+   } finally {
+     setLoading(false);
+   }
+ }, [system, timeRange]);
 
-      setPerformanceAnalysis({
-        predictions,
-        anomalies,
-        overallScore: calculateOverallPerformanceScore({ predictions, anomalies }),
-        lastUpdated: new Date()
-      });
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to load performance analysis:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+ useEffect(() => {
+   loadPerformanceAnalysis();
+ }, [loadPerformanceAnalysis]);
 
-  if (loading) {
+ if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-lg">Analyzing performance metrics...</div>

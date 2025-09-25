@@ -405,23 +405,19 @@ export class SecurityChaosEngine {
   }
 
   private analyzeFailurePatterns(results: ChaosResult[]): any {
-    const patterns = {
+    return {
       networkFailures: results.filter(r => r.experiment.type === 'network' && !r.success).length,
       authFailures: results.filter(r => r.experiment.type === 'authentication' && !r.success).length,
       authzFailures: results.filter(r => r.experiment.type === 'authorization' && !r.success).length,
       longRecoveryTimes: results.filter(r => r.recoveryResult.duration > 300).length
     };
-
-    return patterns;
   }
 
   private identifyMonitoringGaps(results: ChaosResult[]): any {
-    const gaps = {
+    return {
       missingAlerts: results.filter(r => r.monitoringResult.anomalies.length > 0 && r.monitoringResult.alertsTriggered === 0).length,
       insufficientCoverage: results.filter(r => r.monitoringResult.monitoringPoints.length < 5).length
     };
-
-    return gaps;
   }
 
   private identifyRecoveryIssues(results: ChaosResult[]): any {
@@ -530,7 +526,7 @@ class MonitoringEngine {
     return { experimentId: experiment.id, monitoringPoints: [] };
   }
 
-  async monitorResponse(setup: any): Promise<MonitoringResult> {
+  async monitorResponse(_setup: any): Promise<MonitoringResult> {
     return {
       alertsTriggered: Math.floor(Math.random() * 3),
       monitoringPoints: [],

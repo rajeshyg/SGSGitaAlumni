@@ -280,7 +280,7 @@ export class PrivacyAssessmentEngine {
     return distribution;
   }
 
-  private generatePrivacyTrends(highRiskAreas: PrivacyRiskArea[]): PrivacyRiskTrend[] {
+  private generatePrivacyTrends(_highRiskAreas: PrivacyRiskArea[]): PrivacyRiskTrend[] {
     // Generate mock trend data
     return [
       { period: 'Last Month', riskLevel: 0.4, change: -0.1, factors: ['Improved encryption'] },

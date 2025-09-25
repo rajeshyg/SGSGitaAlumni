@@ -1,5 +1,5 @@
 // src/components/security/SecurityDashboard.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import Badge from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -50,11 +50,7 @@ export function SecurityDashboard({
   const privacyEngine = new PrivacyAssessmentEngine();
   const complianceEngine = new ComplianceAutomationEngine();
 
-  useEffect(() => {
-    loadSecurityAssessment();
-  }, [system, codebase, applicationArchitecture, timeRange]);
-
-  const loadSecurityAssessment = async () => {
+  const loadSecurityAssessment = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -100,7 +96,11 @@ export function SecurityDashboard({
     } finally {
       setLoading(false);
     }
-  };
+  }, [system, codebase, applicationArchitecture, timeRange]);
+
+  useEffect(() => {
+    loadSecurityAssessment();
+  }, [loadSecurityAssessment]);
 
   const runNewAssessment = async () => {
     setRunningAssessment(true);

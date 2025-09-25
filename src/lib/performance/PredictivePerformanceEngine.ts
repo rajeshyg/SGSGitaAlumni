@@ -171,7 +171,7 @@ export class PredictivePerformanceEngine {
 
   private async identifyPotentialBottlenecks(
     forecasts: PerformanceForecasts,
-    system: SystemArchitecture
+    _system: SystemArchitecture
   ): Promise<PerformanceBottleneck[]> {
     const bottlenecks: PerformanceBottleneck[] = [];
 
@@ -315,7 +315,7 @@ export class PredictivePerformanceEngine {
     const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
     const stdDev = Math.sqrt(values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length);
 
-    data.forEach((point, index) => {
+    data.forEach((point, _index) => {
       const deviation = Math.abs(point.value - mean) / stdDev;
 
       if (deviation > 2) { // 2 standard deviations
@@ -333,7 +333,7 @@ export class PredictivePerformanceEngine {
     return anomalies;
   }
 
-  private calculatePredictionConfidence(forecasts: PerformanceForecasts): number {
+  private calculatePredictionConfidence(_forecasts: PerformanceForecasts): number {
     // Simplified confidence calculation based on historical accuracy
     const responseTimeConfidence = 0.85;
     const throughputConfidence = 0.80;
@@ -351,7 +351,7 @@ export class PredictivePerformanceEngine {
 
 // Mock implementations for dependencies
 class MLEngine {
-  async analyzeTimeSeries(data: TimeSeriesPoint[], metric: string): Promise<TrendData> {
+  async analyzeTimeSeries(data: TimeSeriesPoint[], _metric: string): Promise<TrendData> {
     const values = data.map(d => d.value);
     const slope = this.calculateSlope(values);
     const volatility = this.calculateVolatility(values);
@@ -376,7 +376,6 @@ class MLEngine {
 
   private calculateSlope(values: number[]): number {
     if (values.length < 2) return 0;
-    const n = values.length;
     const lastN = values.slice(-10); // Use last 10 points
     return (lastN[lastN.length - 1] - lastN[0]) / lastN.length;
   }
@@ -401,7 +400,7 @@ class MLEngine {
 }
 
 class ForecastingModel {
-  async predict(trend: TrendData, periods: number, system: SystemArchitecture): Promise<ForecastData> {
+  async predict(trend: TrendData, periods: number, _system: SystemArchitecture): Promise<ForecastData> {
     const current = trend.data[trend.data.length - 1]?.value || 0;
     const predicted = trend.forecast.slice(0, periods);
     const confidence = Array(periods).fill(0.8);
@@ -419,7 +418,7 @@ class ForecastingModel {
 }
 
 class PerformanceAnalyzer {
-  async identifyBottlenecks(analysis: any): Promise<PerformanceBottleneck[]> {
+  async identifyBottlenecks(_analysis: any): Promise<PerformanceBottleneck[]> {
     // Implementation would analyze the performance data to identify bottlenecks
     return [];
   }
