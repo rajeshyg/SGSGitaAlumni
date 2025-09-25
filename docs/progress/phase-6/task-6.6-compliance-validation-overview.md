@@ -1,3 +1,8 @@
+---
+status: Pending
+doc-type: implementation
+---
+
 # Task 6.6: Documentation & Compliance Validation - Overview
 
 ## Overview
@@ -55,10 +60,10 @@ This task is split into focused phases for better organization:
 - ✅ Production readiness assessment complete
 - ✅ Knowledge transfer documentation complete
 
-## Quality Requirements
+-## Quality Requirements
 - **Compliance Rate:** > 95% of requirements met
 - **Documentation Completeness:** > 90% of docs complete
-- **Test Coverage:** > 90% of compliance requirements tested
+- **Test Coverage:** See [Quality Metrics](../../standards/QUALITY_METRICS.md#testing-standards)
 - **Audit Score:** > 95% for security and accessibility
 - **Performance Compliance:** 100% of performance targets met
 - **Cross-Platform Coverage:** 100% of target platforms validated

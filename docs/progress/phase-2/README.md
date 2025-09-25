@@ -169,7 +169,7 @@ Policy
 - CI guardrails: Block nested dev/build scripts, duplicate index.html/Vite entries, and Tailwind/PostCSS configs outside root.
 
 Dependencies
-- Requires completion of [Task 1.9: Frontend Consolidation and Redundancy Removal](SGSGitaAlumni/docs/progress/phase-1/task-1.9-frontend-consolidation.md:1).
+- Requires completion of [Task 1.9: Frontend Consolidation and Redundancy Removal](../phase-1/task-1.9-frontend-consolidation.md).
 
 Acceptance Criteria
 - Running SGSGitaAlumni › npm run dev starts a single root dev server.

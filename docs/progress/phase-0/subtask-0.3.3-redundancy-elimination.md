@@ -54,7 +54,7 @@ The documentation consistency checker and manual review identified significant d
 ## Redundancy Elimination Plan
 
 ### 1. Theme System Consolidation
-**Primary Document:** `docs/development/THEME_SYSTEM.md` (to be created)
+**Primary Document:** `../../development/THEME_SYSTEM.md` (to be created)
 
 #### Content to Consolidate:
 - CSS variable management rules
@@ -72,11 +72,11 @@ The documentation consistency checker and manual review identified significant d
 ```markdown
 ❌ REMOVE: Detailed theme implementation from multiple files
 ✅ CREATE: Comprehensive theme guide in single location
-✅ REFERENCE: "Theme system: See [Theme System Guide](docs/development/THEME_SYSTEM.md)"
+✅ REFERENCE: "Theme system: See [Theme System Guide](../../development/THEME_SYSTEM.md)"
 ```
 
 ### 2. Testing Guidelines Consolidation
-**Primary Document:** `docs/development/TESTING_GUIDE.md` (to be created)
+**Primary Document:** `../../development/TESTING_GUIDE.md` (to be created)
 
 #### Content to Consolidate:
 - Vitest configuration and setup
@@ -93,7 +93,7 @@ The documentation consistency checker and manual review identified significant d
 ```markdown
 ❌ REMOVE: Testing implementation details from multiple files
 ✅ CREATE: Comprehensive testing guide
-✅ REFERENCE: "Testing standards: See [Testing Guide](docs/development/TESTING_GUIDE.md)"
+✅ REFERENCE: "Testing standards: See [Testing Guide](../../development/TESTING_GUIDE.md)"
 ```
 
 ### 3. Performance Standards Consolidation
@@ -156,20 +156,20 @@ The documentation consistency checker and manual review identified significant d
 ### Standardized Reference Format
 ```markdown
 ## Quick Reference
-- Theme System: → [Theme System Guide](docs/development/THEME_SYSTEM.md)
-- Testing Standards: → [Testing Guide](docs/development/TESTING_GUIDE.md)
-- Performance Targets: → [Performance Targets](docs/standards/PERFORMANCE_TARGETS.md)
-- Accessibility: → [Accessibility Compliance](docs/standards/ACCESSIBILITY_COMPLIANCE.md)
+- Theme System: → [Theme System Guide](../../development/THEME_SYSTEM.md)
+- Testing Standards: → [Testing Guide](../../development/TESTING_GUIDE.md)
+- Performance Targets: → [Performance Targets](../../standards/PERFORMANCE_TARGETS.md)
+- Accessibility: → [Accessibility Compliance](../../standards/ACCESSIBILITY_COMPLIANCE.md)
 ```
 
-### Bidirectional References
+## Bidirectional References
 Primary documents will include "Referenced By" sections:
 ```markdown
 ## Referenced By
 This document is referenced by:
-- [Development Guidelines](../DEVELOPMENT_GUIDELINES.md#theme-system)
-- [Quality Standards](../QUALITY_STANDARDS.md#theme-performance)
-- [README](../../README.md#theme-features)
+- [Theme System Guide](../../development/THEME_SYSTEM.md#css-variables)
+- [Performance Targets](../../standards/PERFORMANCE_TARGETS.md#loading-performance)
+- [Theme Features (summary)](../../development/THEME_SYSTEM.md#performance-requirements)
 
 ⚠️ **Update Notice**: Changes here affect multiple documents.
 ```
@@ -178,7 +178,7 @@ This document is referenced by:
 ```markdown
 ## Theme Performance
 For complete theme performance requirements and implementation details, see:
-→ [Theme System Guide](docs/development/THEME_SYSTEM.md#performance-requirements)
+→ [Theme System Guide](../../development/THEME_SYSTEM.md#performance-requirements)
 
 ### Key Points (Summary Only)
 - Theme switch time: < 200ms

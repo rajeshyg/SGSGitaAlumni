@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gita Connect - Complete Database Schema Overview</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .mermaid {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        /* Dark mode for Mermaid */
+        :root {
+            --mermaid-bg: #1a1a1a;
+            --mermaid-node-bg: #2d2d2d;
+            --mermaid-node-border: #555555;
+            --mermaid-text-color: #ffffff;
+            --mermaid-edge-color: #888888;
+            --mermaid-label-bg: #333333;
+        }
+        .module-links {
+            margin: 20px 0;
+            padding: 20px;
+            background: #2d2d2d;
+            border-radius: 8px;
+        }
+        .module-links h3 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        .module-links ul {
+            list-style: none;
+            padding: 0;
+        }
+        .module-links li {
+            margin: 10px 0;
+        }
+        .module-links a {
+            color: #2196F3;
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .module-links a:hover {
+            background: #404040;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gita Connect - Complete Database Schema Overview</h1>
+
+    <div class="module-links">
+        <h3>📊 Database Schema Modules</h3>
+        <p>Review each module separately for detailed analysis:</p>
+        <ul>
+            <li><a href="core-authentication.html" target="_blank">🔐 Core Authentication & User Management</a></li>
+            <li><a href="alumni-domain-expertise.html" target="_blank">🎓 Alumni Domain Expertise & Profiles</a></li>
+            <li><a href="postings-content-management.html" target="_blank">📝 Postings & Content Management</a></li>
+            <li><a href="chat-communication-system.html" target="_blank">💬 Chat & Communication System</a></li>
+            <li><a href="moderation-analytics.html" target="_blank">🛡️ Moderation & Analytics System</a></li>
+        </ul>
+    </div>
+
+    <p><strong>Key Features:</strong></p>
+    <ul>
+        <li><strong>Multi-role Support</strong> - Member, Moderator, Admin roles with flexible permissions</li>
+        <li><strong>Family Tree Support</strong> - Multiple profiles can share credentials (Member role only)</li>
+        <li><strong>Hierarchical Domain Structure</strong> - Top-level domains with sub-categories and specializations</li>
+        <li><strong>Specialized Postings</strong> - Offer support vs Seek support with contact validation and expiration logic</li>
+        <li><strong>Help Request Workflow</strong> - Complete lifecycle from interest to resolution with ratings</li>
+        <li><strong>Real-time Chat</strong> - Post-linked conversations with encryption and idle timeout</li>
+        <li><strong>Advanced Moderation</strong> - Review queue, spam detection, duplicate monitoring, user management</li>
+        <li><strong>Comprehensive Analytics</strong> - Category-specific metrics, success tracking, moderator reports</li>
+        <li><strong>Complete Audit Trail</strong> - Password changes, posting activities, help interactions</li>
+        <li><strong>Secure Password Reset</strong> - Email links with user ID display on reset page</li>
+    </ul>
+
+    <div class="mermaid">
+erDiagram
+    %% ========================================
+    %% GITA CONNECT - COMPLETE DATABASE SCHEMA
+    %% ========================================
+    %% Based on Requirements Document Analysis
+    %% Supports: Member, Moderator, Admin workflows
+    %% Includes: Family tree, Domain expertise, Posting system
+    %% Features: Chat, Moderation, Analytics, Audit trails
+
+    %% ========================================
+    %% CORE USER MANAGEMENT & AUTHENTICATION
+    %% ========================================
+    USERS ||--o{ USER_PROFILES : has
+    USERS ||--o{ USER_ROLES : assigned_to
+    USERS ||--o{ USER_SESSIONS : creates
+    USERS ||--o{ AUDIT_LOGS : generates
+    USERS ||--o{ PASSWORD_RESETS : requests
+    USERS ||--o{ USER_PREFERENCES : has
+
+    ROLES ||--|{ USER_ROLES : defines
+    ROLES ||--o{ ROLE_PERMISSIONS : has
+    PERMISSIONS ||--|{ ROLE_PERMISSIONS : assigned_to
+    PERMISSIONS ||--o{ USER_PERMISSIONS : overrides_for
+    USERS ||--o{ USER_PERMISSIONS : has
+
+    %% ========================================
+    %% ALUMNI PROFILES & FAMILY TREE
+    %% ========================================
+    USER_PROFILES ||--|| ALUMNI_PROFILES : extends
+    ALUMNI_PROFILES ||--o{ EDUCATION_HISTORY : has
+    ALUMNI_PROFILES ||--o{ CAREER_HISTORY : has
+    ALUMNI_PROFILES ||--o{ ACHIEVEMENTS : has
+    ALUMNI_PROFILES ||--o{ ALUMNI_SKILLS : has
+    ALUMNI_PROFILES ||--o{ ALUMNI_DOMAINS : specializes_in
+
+    %% Family Tree Support - Multiple profiles can share credentials (Member role only)
+    USERS ||--o{ FAMILY_MEMBERS : owns
+    FAMILY_MEMBERS ||--|| USER_PROFILES : is
+
+    %% ========================================
+    %% POSTINGS & CONTENT MANAGEMENT
+    %% ========================================
+    USERS ||--o{ POSTINGS : creates
+    POSTINGS ||--o{ POSTING_ATTACHMENTS : contains
+    POSTINGS ||--o{ POSTING_INTERESTS : receives
+    POSTINGS ||--o{ POSTING_CATEGORIES : categorized_as
+    POSTINGS ||--o{ POSTING_DOMAINS : belongs_to
+    POSTINGS ||--o{ MODERATION_DECISIONS : reviewed_by
+    POSTINGS ||--o{ AUDIT_LOGS : tracked_in
+
+    %% Interest & Help Requests
+    USERS ||--o{ POSTING_INTERESTS : expresses
+    POSTING_INTERESTS ||--o{ INTEREST_CONFIRMATIONS : receives
+    POSTING_INTERESTS ||--o{ HELP_REQUESTS : creates
+    HELP_REQUESTS ||--o{ HELP_RESPONSES : receives
+    HELP_REQUESTS ||--o{ HELPER_RATINGS : rated_by
+
+    %% ========================================
+    %% CHAT & MESSAGING SYSTEM
+    %% ========================================
+    USERS ||--o{ CONVERSATIONS : participates_in
+    USERS ||--o{ MESSAGES : sends
+    USERS ||--o{ USER_TYPING : indicates_typing
+    USERS ||--o{ NOTIFICATIONS : receives
+
+    CONVERSATIONS ||--o{ CONVERSATION_PARTICIPANTS : has
+    CONVERSATIONS ||--o{ MESSAGES : contains
+    CONVERSATIONS ||--o{ USER_TYPING : tracks_typing
+    CONVERSATIONS ||--o{ POSTING_CONVERSATIONS : linked_to
+
+    MESSAGES ||--o{ MESSAGE_ATTACHMENTS : contains
+    MESSAGES ||--o{ MESSAGE_REACTIONS : has
+
+    %% Post-Linked Conversations
+    POSTINGS ||--o{ POSTING_CONVERSATIONS : initiates
+    POSTING_CONVERSATIONS ||--|| CONVERSATIONS : creates
+
+    %% ========================================
+    %% MODERATION & ADMINISTRATION
+    %% ========================================
+    USERS ||--o{ MODERATION_DECISIONS : makes
+    MODERATION_DECISIONS ||--o{ MODERATION_ACTIONS : triggers
+    MODERATION_DECISIONS ||--o{ AUDIT_LOGS : logged_in
+
+    %% Spam Detection & Analytics
+    POSTINGS ||--o{ SPAM_FLAGS : flagged_as
+    USERS ||--o{ USER_BLOCKS : blocked_by
+    POSTINGS ||--o{ ANALYTICS_EVENTS : tracked_in
+
+    %% ========================================
+    %% ANALYTICS & REPORTING
+    %% ========================================
+    POSTINGS ||--o{ POSTING_ANALYTICS : analyzed_in
+    USERS ||--o{ USER_ANALYTICS : tracked_in
+    CONVERSATIONS ||--o{ CONVERSATION_ANALYTICS : analyzed_in
+    ANALYTICS_EVENTS ||--o{ ANALYTICS_REPORTS : generates
+
+    %% ========================================
+    %% ENTITY DEFINITIONS (SUMMARY)
+    %% ========================================
+
+    USERS {
+        uuid id PK
+        string email UK
+        string password_hash
+        enum status "active,inactive,suspended"
+        enum user_type "individual,family"
+        timestamp created_at
+        timestamp updated_at
+        timestamp last_login
+        json preferences
+        boolean is_email_verified
+        timestamp email_verified_at
+    }
+
+    ROLES {
+        uuid id PK
+        string name UK "member,moderator,admin"
+        string description
+        boolean is_active
+        timestamp created_at
+    }
+
+    POSTINGS {
+        uuid id PK
+        uuid author_id FK
+        string title
+        text content
+        enum posting_type "offer_support,seek_support"
+        enum urgency_level "low,medium,high,critical"
+        json tags
+        timestamp expires_at
+        enum status "draft,pending_review,approved,rejected,expired,active"
+        integer view_count
+        integer interest_count
+        timestamp published_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CONVERSATIONS {
+        uuid id PK
+        string name
+        text description
+        boolean is_group
+        uuid creator_id FK
+        enum conversation_type "direct,group,post_linked"
+        uuid linked_posting_id FK
+        timestamp created_at
+        timestamp last_activity
+        timestamp expires_at
+    }
+
+    MESSAGES {
+        uuid id PK
+        uuid conversation_id FK
+        uuid sender_id FK
+        text content
+        enum message_type "text,image,file,link"
+        enum status "sent,delivered,read"
+        boolean is_encrypted
+        timestamp sent_at
+        timestamp delivered_at
+        timestamp read_at
+        timestamp expires_at
+    }
+
+    MODERATION_DECISIONS {
+        uuid id PK
+        uuid posting_id FK
+        uuid moderator_id FK
+        enum decision "approve,reject,request_changes"
+        text moderator_comments
+        json requested_changes
+        enum priority "low,medium,high"
+        timestamp decided_at
+        timestamp created_at
+    }
+
+    ANALYTICS_EVENTS {
+        uuid id PK
+        string event_type "posting_view,posting_interest,chat_message,help_request"
+        uuid user_id FK
+        uuid resource_id FK
+        json event_data
+        timestamp event_time
+        string session_id
+    }
+    </div>
+</body>
+</html>

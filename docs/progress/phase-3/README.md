@@ -25,7 +25,7 @@ Backend integration with existing FastAPI infrastructure, database optimization,
 
 ## Consolidation Prerequisite
 
-This phase must start only after [Task 1.9: Frontend Consolidation and Redundancy Removal](SGSGitaAlumni/docs/progress/phase-1/task-1.9-frontend-consolidation.md:1) is complete to ensure a single serving root and centralized Tailwind/PostCSS.
+This phase must start only after [Task 1.9: Frontend Consolidation and Redundancy Removal](../phase-1/task-1.9-frontend-consolidation.md) is complete to ensure a single serving root and centralized Tailwind/PostCSS.
 
 Checks
 - Single app root: dev/build run only from SGSGitaAlumni.
@@ -59,53 +59,11 @@ Impact on backend integration
 
 ## Tasks
 
-### [Task 3.1: Backend Architecture Analysis](./task-3.1-backend-analysis.md)
-- **Status:** 🟡 Ready to Start
-- **Description:** Analyze existing FastAPI backend and database schema
-- **Duration:** 2-3 days
-- **Dependencies:** None
+### Phase 3 Tasks
 
-### [Task 3.2: API Development](./task-3.2-api-development.md)
-- **Status:** 🟡 Ready to Start
-- **Description:** Develop RESTful APIs for alumni data management
-- **Duration:** 1 week
-- **Dependencies:** Task 3.1
+For task-level details see the Phase 3 task tracker in this folder. If individual task files are missing they will be added as stubs during the backlog triage.
 
-### [Task 3.3: Database Integration](./task-3.3-database-integration.md)
-- **Status:** 🟡 Ready to Start
-- **Description:** Optimize database connections and query performance
-- **Duration:** 3-4 days
-- **Dependencies:** Task 3.1
-
-### [Task 3.4: Authentication System](./task-3.4-authentication.md)
-- **Status:** 🟡 Ready to Start
-- **Description:** Implement secure authentication and authorization
-- **Duration:** 4-5 days
-- **Dependencies:** Task 3.1
-
-### [Task 3.5: Frontend-Backend Integration](./task-3.5-frontend-backend.md)
-- **Status:** 🟡 Ready to Start
-- **Description:** Establish reliable frontend-backend communication
-- **Duration:** 1 week
-- **Dependencies:** Tasks 3.2, 3.3, 3.4
-
-### [Task 3.6: Security Implementation](./task-3.6-security.md)
-- **Status:** 🟡 Ready to Start
-- **Description:** Implement security measures and data protection
-- **Duration:** 3-4 days
-- **Dependencies:** Task 3.4
-
-### [Task 3.7: Testing & Validation](./task-3.7-testing-validation.md)
-- **Status:** 🟡 Ready to Start
-- **Description:** Comprehensive testing of backend integration
-- **Duration:** 4-5 days
-- **Dependencies:** Task 3.5
-
-### [Task 3.8: Performance Optimization](./task-3.8-performance.md)
-- **Status:** 🟡 Ready to Start
-- **Description:** Optimize backend performance and monitoring
-- **Duration:** 3-4 days
-- **Dependencies:** Task 3.7
+See the Phase 3 overview and tasks in this folder for more information.
 
 ## Expected Outcomes
 

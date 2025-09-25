@@ -46,19 +46,19 @@ Prevention policy
 
 ## Tasks
 
-### [Task 1.1: Remove Existing Components](./task-1.1-remove-existing.md)
+-### [Task 1.1: Project Foundation Setup](./task-1.1-project-foundation.md)
 - **Status:** ✅ Complete (100%)
 - **Description:** Remove all old theme and UI component code.
 
-### [Task 1.2: Import Theme System](./task-1.2-import-theme.md)
+### [Task 1.2: Advanced Theme System](./task-1.2-advanced-theme-system.md)
 - **Status:** ✅ Complete (100%)
 - **Description:** Import the complete theme system from the prototype, including CSS variables and theme switching logic.
 
-### [Task 1.3: Import Reusable Components](./task-1.3-import-components.md)
+### [Task 1.3: shadcn Integration](./task-1.3-shadcn-integration.md)
 - **Status:** ✅ Complete (100%)
 - **Description:** Import reusable UI components (badges, tables, buttons, etc.) from the prototype.
 
-### [Task 1.4: Analyze Prototype for Best Practices](./task-1.4-analyze-samples.md)
+### [Task 1.4: Theme Performance](./task-1.4-theme-performance.md)
 - **Status:** ✅ Complete (100%)
 - **Description:** Review `member-dashboard.tsx` and `TanStackTableDemo.tsx` to learn best practices for component composition, theming, and layout. Do **not** copy their mock data or business logic.
 
@@ -70,13 +70,9 @@ Prevention policy
 - **Status:** ✅ Complete (100%)
 - **Description:** Ensure all UI follows the imported theme and component guidelines. No mock/demo logic from the prototype.
 
-### [Task 1.7: Remove Mock Data and Fake Implementations](./task-1.7-remove-mock-data.md)
-- **Status:** ✅ Complete (100%)
-- **Description:** Replace Math.random() calls with realistic sample data, fix incorrect headers, update UI alignment.
+### Phase 1 Tasks
 
-### [Task 1.8: Implement Dashboard Layout Pattern](./task-1.8-dashboard-layout.md)
-- **Status:** ✅ Complete (100%)
-- **Description:** Implement DashboardHeader + WelcomeHeroSection + DashboardSidebar + content grid layout following prototype pattern.
+See the Phase 1 task list in this folder for detailed task files. Missing task files will be added as stubs during backlog triage.
 
 ### [Task 1.9: Frontend Consolidation and Redundancy Removal](./task-1.9-frontend-consolidation.md)
 - **Status:** ✅ Complete (100%)

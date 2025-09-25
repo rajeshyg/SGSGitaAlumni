@@ -2,6 +2,10 @@
 
 This document outlines the theme development guidelines, CSS variable management, and performance requirements for the SGSGita Alumni project's theming system.
 
+<!-- Anchors used by cross-doc links -->
+<a id="css-variables"></a>
+<a id="performance-requirements"></a>
+
 ## 🎨 CSS Variable Strategy
 
 ### Essential Variables Only

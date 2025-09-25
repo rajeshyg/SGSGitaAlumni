@@ -372,15 +372,15 @@ EOF
 [High-level overview only]
 
 ## 📋 Detailed Phase Progress
-### [Phase 0: Planning & Documentation](./docs/progress/phase-0/README.md) ✅ Complete
+### [Phase 0: Planning & Documentation](../phase-0/README.md) ✅ Complete
 **Status:** 100% Complete
 **Key Achievements:**
 - ✅ Comprehensive project documentation structure
 - ✅ Technical architecture planning
 
 **Tasks:**
-- [Task 0.1: Project Structure & Documentation](./docs/progress/phase-0/task-0.1-project-structure.md) ✅
-- [Task 0.2: Technical Architecture Planning](./docs/progress/phase-0/task-0.2-technical-architecture.md) ✅
+- [Task 0.1: Project Structure & Documentation](../phase-0/task-0.1-project-structure.md) ✅
+- [Task 0.2: Technical Architecture Planning](../phase-0/task-0.2-technical-architecture.md) ✅
 
 > **Note:** For detailed task-level status and progress, see individual phase documentation linked above.
 ```

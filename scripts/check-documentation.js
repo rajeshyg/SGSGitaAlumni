@@ -57,12 +57,27 @@ class DocumentationChecker {
       return false;
     }
 
-    // Look for completed status indicators
+    // Prefer YAML front-matter 'status' field if present
+    const frontMatterMatch = file.content.match(/^---\n([\s\S]*?)\n---/);
+    if (frontMatterMatch) {
+      const fm = frontMatterMatch[1];
+      const statusMatch = fm.match(/status:\s*(.+)/i);
+      if (statusMatch) {
+        const statusValue = statusMatch[1].toLowerCase();
+        if (statusValue.includes('completed') || statusValue.includes('complete') || statusValue.includes('done')) {
+          return true;
+        }
+      }
+    }
+
+    // Fallback: Look for completed status indicators in content
     const completedPatterns = [
       /\*\*Status:\*\*\s*✅\s*Complete/i,
       /Status:\s*✅\s*Complete/i,
       /\*\*Status:\*\*\s*🟢\s*Complete/i,
-      /Status:\s*🟢\s*Complete/i
+      /Status:\s*🟢\s*Complete/i,
+      /Status:\s*Completed/i,
+      /\bcompleted\b/i
     ];
 
     return completedPatterns.some(pattern => pattern.test(file.content));

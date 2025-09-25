@@ -11,7 +11,7 @@ Prepare, deploy, and validate the SGSGitaAlumni application for production. This
 This phase may start only after consolidation is complete.
 
 Prerequisite
-- Complete [Task 1.9: Frontend Consolidation and Redundancy Removal](SGSGitaAlumni/docs/progress/phase-1/task-1.9-frontend-consolidation.md:1).
+- Complete [Task 1.9: Frontend Consolidation and Redundancy Removal](../phase-1/task-1.9-frontend-consolidation.md).
 
 Must be true before starting:
 - Single serving root: Dev/build run only from SGSGitaAlumni (root).
@@ -64,7 +64,7 @@ Recommended pre-commit hook:
 - Block commits introducing ../frontend imports.
 
 ## Pre-Deployment Checklist
-- [ ] Consolidation complete: [Task 1.9](SGSGitaAlumni/docs/progress/phase-1/task-1.9-frontend-consolidation.md:1)
+- [ ] Consolidation complete: [Task 1.9](../phase-1/task-1.9-frontend-consolidation.md)
 - [ ] Repo search: 0 matches for ../frontend in source files
 - [ ] No Tailwind/PostCSS configs under [frontend](SGSGitaAlumni/frontend)
 - [ ] No nested package.json with dev/build/preview scripts under frontend/
@@ -85,11 +85,6 @@ Recommended pre-commit hook:
 - Post-deploy monitors and alarms wired for 5xx spikes and asset-load failures.
 
 ## Artifacts and Links
-- Root entry: [index.html](SGSGitaAlumni/index.html), [src/main.tsx](SGSGitaAlumni/src/main.tsx:1)
-- Root pipeline configs: [postcss.config.js](SGSGitaAlumni/postcss.config.js:1), [tailwind.config.js](SGSGitaAlumni/tailwind.config.js:1)
-- Consolidation task: [Task 1.9](SGSGitaAlumni/docs/progress/phase-1/task-1.9-frontend-consolidation.md:1)
-- Project progress: [PROGRESS.md](SGSGitaAlumni/PROGRESS.md:1)
+ Project progress: [PROGRESS.md](../../../PROGRESS.md)
 
-Notes
-- The production pipeline must never import CSS from a path that is not covered by the root Tailwind content globs.
 - Lock and monitor these invariants; the majority of styling regressions originate from violating them.

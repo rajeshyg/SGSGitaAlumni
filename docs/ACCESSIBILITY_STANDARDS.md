@@ -1,58 +1,15 @@
-# Accessibility Standards
+# Accessibility Standards (index)
 
-This document provides an overview of the accessibility standards and compliance requirements for the SGSGita Alumni project. For detailed requirements and implementation guidance, see the linked documents below.
+This file is a high-level pointer. The authoritative accessibility standards and implementation guidance live in the `docs/standards` folder.
 
-## 📋 Accessibility Documentation Structure
+Primary documents:
 
-This accessibility framework is organized into focused documents:
+- [Accessibility Compliance (authoritative)](standards/ACCESSIBILITY_COMPLIANCE.md) — WCAG 2.1 AA requirements, testing criteria, and compliance metrics
+- [Accessibility Implementation Guide (examples & patterns)](accessibility/IMPLEMENTATION_GUIDE.md)
 
-- **[Accessibility Compliance Standards](./standards/ACCESSIBILITY_COMPLIANCE.md)** - WCAG 2.1 AA requirements, testing criteria, and compliance metrics
-- **[Accessibility Implementation Guide](./accessibility/IMPLEMENTATION_GUIDE.md)** - Detailed code examples, patterns, and testing utilities
+If you need implementation examples or the full technical reference, open the documents above. Large implementation content has been moved to the dedicated `docs/standards/ACCESSIBILITY_COMPLIANCE.md` and `docs/progress/phase-6/task-6.9-accessibility-automation-part-a.md` / `-part-b.md` files.
 
-## 🎯 WCAG 2.1 AA Compliance Overview
-
-### Four Core Principles (POUR)
-- **Perceivable**: Information and user interface components must be presentable to users in ways they can perceive
-- **Operable**: User interface components and navigation must be operable
-- **Understandable**: Information and the operation of user interface must be understandable
-- **Robust**: Content must be robust enough that it can be interpreted reliably by a wide variety of user agents
-
-### Conformance Target
-**WCAG 2.1 AA compliance** across all components and features, ensuring applications are usable by people with diverse abilities and assistive technologies.
-
-## ♿ Quick Reference
-
-### 1. Semantic HTML & ARIA
-
-#### Proper Document Structure
-```typescript
-// ✅ Semantic HTML structure
-<article>
-  <header>
-    <h1>Page Title</h1>
-    <time dateTime="2024-01-15">January 15, 2024</time>
-  </header>
-
-  <nav aria-label="Navigation">
-    <ol>
-      <li><a href="#section1">Section 1</a></li>
-      <li><a href="#section2">Section 2</a></li>
-    </ol>
-  </nav>
-
-  <section id="section1" aria-labelledby="section1-heading">
-    <h2 id="section1-heading">Section 1</h2>
-    <p>Content...</p>
-  </section>
-
-  <section id="section2" aria-labelledby="section2-heading">
-    <h2 id="section2-heading">Section 2</h2>
-    <p>Content...</p>
-  </section>
-
-  <footer>Footer content</footer>
-</article>
-```
+For changes to the standards document, update `docs/standards/ACCESSIBILITY_COMPLIANCE.md` and then update any referencing pages.
 
 #### ARIA Labels and Descriptions
 ```typescript

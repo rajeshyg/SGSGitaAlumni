@@ -4,6 +4,11 @@
 
 ## 🎯 Core Web Vitals
 
+<!-- Anchor mappings for cross-doc links -->
+<a id="loading-performance"></a>
+<a id="bundle-size-targets"></a>
+<a id="bundle-size"></a>
+
 ### Loading Performance
 - **First Contentful Paint (FCP)**: < 1.2 seconds
 - **Largest Contentful Paint (LCP)**: < 2.5 seconds  

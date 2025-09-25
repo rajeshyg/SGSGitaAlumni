@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alumni Profiles Database Schema</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .mermaid {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        /* Dark mode for Mermaid */
+        :root {
+            --mermaid-bg: #1a1a1a;
+            --mermaid-node-bg: #2d2d2d;
+            --mermaid-node-border: #555555;
+            --mermaid-text-color: #ffffff;
+            --mermaid-edge-color: #888888;
+            --mermaid-label-bg: #333333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Alumni Profiles Database Schema</h1>
+    <div class="mermaid">
+erDiagram
+    %% Alumni-Specific
+    ALUMNI_PROFILES {
+        uuid id PK
+        uuid user_profile_id FK
+        string student_id UK
+        date graduation_date
+        string degree_type
+        string major
+        string minor
+        decimal gpa
+        enum alumni_status
+        enum mentor_status
+        uuid domain_id FK
+        json custom_fields
+        timestamp created_at
+        timestamp updated_at
+    }
+    EDUCATION_HISTORY {
+        uuid id PK
+        uuid alumni_profile_id FK
+        string institution_name
+        string degree_type
+        string field_of_study
+        date start_date
+        date end_date
+        decimal gpa
+        text description
+        boolean is_primary
+    }
+    CAREER_HISTORY {
+        uuid id PK
+        uuid alumni_profile_id FK
+        string company_name
+        string position_title
+        text job_description
+        date start_date
+        date end_date
+        string location
+        string industry
+        decimal salary_range_min
+        decimal salary_range_max
+        boolean is_current
+        enum employment_type
+    }
+    ACHIEVEMENTS {
+        uuid id PK
+        uuid alumni_profile_id FK
+        string title
+        text description
+        date achieved_date
+        string issuer
+    }
+    SKILLS {
+        uuid id PK
+        string name UK
+        string category
+        boolean is_active
+        timestamp created_at
+    }
+    ALUMNI_SKILLS {
+        uuid id PK
+        uuid alumni_profile_id FK
+        uuid skill_id FK
+        enum proficiency_level
+        timestamp acquired_at
+    }
+    DOMAINS {
+        uuid id PK
+        string name UK
+        string description
+        string color_code
+        json metadata
+        boolean is_active
+        timestamp created_at
+    }
+
+    %% Relationships
+    USER_PROFILES ||--|| ALUMNI_PROFILES : extends
+    ALUMNI_PROFILES ||--o{ EDUCATION_HISTORY : has
+    ALUMNI_PROFILES ||--o{ CAREER_HISTORY : has
+    ALUMNI_PROFILES ||--o{ ACHIEVEMENTS : has
+    ALUMNI_PROFILES ||--o{ ALUMNI_SKILLS : has
+    SKILLS ||--o{ ALUMNI_SKILLS : used_by
+    DOMAINS ||--o{ ALUMNI_PROFILES : categorizes
+    </div>
+</body>
+</html>

@@ -1,0 +1,131 @@
+erDiagram
+    %% ========================================
+    %% ALUMNI PROFILES & DOMAIN EXPERTISE
+    %% ========================================
+    %% Enhanced with domain specialization and family tree support
+
+    %% Core Alumni Profile Structure
+    ALUMNI_PROFILES {
+        uuid id PK
+        uuid user_profile_id FK
+        string student_id UK
+        date graduation_date
+        string degree_type
+        string major
+        string minor
+        decimal gpa
+        enum alumni_status "active,inactive,pending"
+        enum mentor_status "available,unavailable,mentoring"
+        json custom_fields
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% Education & Career History
+    EDUCATION_HISTORY {
+        uuid id PK
+        uuid alumni_profile_id FK
+        string institution_name
+        string degree_type
+        string field_of_study
+        date start_date
+        date end_date
+        decimal gpa
+        text description
+        boolean is_primary
+        timestamp created_at
+    }
+
+    CAREER_HISTORY {
+        uuid id PK
+        uuid alumni_profile_id FK
+        string company_name
+        string position_title
+        text job_description
+        date start_date
+        date end_date
+        string location
+        string industry
+        decimal salary_range_min
+        decimal salary_range_max
+        boolean is_current
+        enum employment_type "full_time,part_time,contract,internship"
+        timestamp created_at
+    }
+
+    ACHIEVEMENTS {
+        uuid id PK
+        uuid alumni_profile_id FK
+        string title
+        text description
+        date achieved_date
+        string issuer
+        string achievement_type "certification,award,publication,project"
+        timestamp created_at
+    }
+
+    %% Skills & Expertise
+    SKILLS {
+        uuid id PK
+        string name UK
+        string category
+        boolean is_active
+        timestamp created_at
+    }
+
+    ALUMNI_SKILLS {
+        uuid id PK
+        uuid alumni_profile_id FK
+        uuid skill_id FK
+        enum proficiency_level "beginner,intermediate,advanced,expert"
+        timestamp acquired_at
+        timestamp last_used
+    }
+
+    %% Domain Specialization (NEW - Key for Gita Connect)
+    DOMAINS {
+        uuid id PK
+        string name UK
+        string description
+        string color_code
+        json metadata
+        boolean is_active
+        timestamp created_at
+    }
+
+    ALUMNI_DOMAINS {
+        uuid id PK
+        uuid alumni_profile_id FK
+        uuid domain_id FK
+        enum expertise_level "beginner,intermediate,advanced,expert"
+        integer years_experience
+        boolean is_offering_support
+        boolean is_seeking_support
+        timestamp created_at
+    }
+
+    %% User Preferences (NEW - Required for domain selection)
+    USER_PREFERENCES {
+        uuid id PK
+        uuid user_id FK
+        uuid domain_id FK
+        enum preference_type "offer_support,seek_support,both"
+        integer max_postings "default:5"
+        json notification_settings
+        boolean is_professional
+        enum education_status "student,professional"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% Relationships
+    USER_PROFILES ||--|| ALUMNI_PROFILES : extends
+    ALUMNI_PROFILES ||--o{ EDUCATION_HISTORY : has
+    ALUMNI_PROFILES ||--o{ CAREER_HISTORY : has
+    ALUMNI_PROFILES ||--o{ ACHIEVEMENTS : has
+    ALUMNI_PROFILES ||--o{ ALUMNI_SKILLS : has
+    ALUMNI_PROFILES ||--o{ ALUMNI_DOMAINS : specializes_in
+    SKILLS ||--o{ ALUMNI_SKILLS : used_by
+    DOMAINS ||--o{ ALUMNI_DOMAINS : categorized_by
+    USERS ||--o{ USER_PREFERENCES : has
+    DOMAINS ||--o{ USER_PREFERENCES : selected_in

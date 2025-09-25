@@ -115,7 +115,7 @@ See [Quality Standards](docs/QUALITY_STANDARDS.md) for comprehensive redundancy 
 
 ## 📚 Documentation
 
-- [Architecture Overview](docs/ARCHITECTURE.md)
+- [Architecture Overview](ARCHITECTURE.md)
 - [Quality Standards](docs/QUALITY_STANDARDS.md)
 - [AI Collaboration Guidelines](docs/AI_COLLABORATION_GUIDELINES.md)
 - [Development Guidelines](docs/DEVELOPMENT_GUIDELINES.md)

@@ -107,7 +107,7 @@ Invariants (must remain true before deploy)
   - "./src/**/*.{js,ts,jsx,tsx}"
 
 Pre-deployment checklist
-- [ ] Complete [Task 1.9: Frontend Consolidation and Redundancy Removal](SGSGitaAlumni/docs/progress/phase-1/task-1.9-frontend-consolidation.md:1)
+- [ ] Complete [Task 1.9: Frontend Consolidation and Redundancy Removal](../phase-1/task-1.9-frontend-consolidation.md)
 - [ ] Repo search: 0 matches for ../frontend in source
 - [ ] No Tailwind/PostCSS configs under [frontend](SGSGitaAlumni/frontend) or any subfolder
 - [ ] No nested package.json with dev/build/preview scripts outside root

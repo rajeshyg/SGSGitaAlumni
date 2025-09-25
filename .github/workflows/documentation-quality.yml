@@ -1,0 +1,41 @@
+name: Documentation Quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  docs-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Determine changed docs
+        id: changed-docs
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+          files=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD || true)
+          docs_files=$(echo "$files" | tr '\n' ' ' | tr ' ' '\n' | grep '^docs/.*\.md$' || true)
+          docs_files_one_line=$(echo "$docs_files" | tr '\n' ' ')
+          echo "docs_files=$docs_files_one_line" >> $GITHUB_OUTPUT
+          echo "Changed docs:\n$docs_files"
+
+      - name: Run documentation checks (if docs changed)
+        if: steps.changed-docs.outputs.docs_files != ''
+        run: |
+          echo "Running documentation validators for changed docs..."
+          node scripts/check-documentation.js; rc=$?; echo "check-documentation exit=$rc"; if [ $rc -ne 0 ]; then exit $rc; fi
+          node scripts/validate-documentation-standards.js; rc2=$?; echo "validate-documentation-standards exit=$rc2"; if [ $rc2 -ne 0 ]; then exit $rc2; fi
+
+      - name: Skip when no docs changed
+        if: steps.changed-docs.outputs.docs_files == ''
+        run: |
+          echo "No documentation files changed in this PR. Skipping documentation quality checks."

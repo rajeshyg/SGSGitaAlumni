@@ -5,6 +5,8 @@ This document provides comprehensive testing standards, coverage requirements, a
 ## 🧪 Testing Standards
 
 ### Coverage Requirements
+<!-- Anchor: coverage-targets -->
+<a id="coverage-targets"></a>
 - **Unit Test Coverage**: > 80%
 - **Critical Path Coverage**: 100% for business logic
 - **Integration Test Coverage**: Key user workflows

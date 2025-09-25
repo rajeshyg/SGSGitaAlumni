@@ -166,9 +166,9 @@ export class ComplianceChecker {
 - ✅ Reporting system functional
 - ✅ Initial compliance baseline established
 
-## Quality Requirements
+### Quality Requirements
 
-- **Test Coverage:** > 90% of compliance requirements automated
+- **Test Coverage:** See [Quality Metrics](../../standards/QUALITY_METRICS.md#testing-standards)
 - **Response Time:** < 2 seconds for compliance status queries
 - **Accuracy:** > 95% accuracy in automated compliance detection
 - **Completeness:** 100% of standards covered in requirement definitions

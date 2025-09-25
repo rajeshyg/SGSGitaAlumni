@@ -72,7 +72,7 @@ This table defines the **single source of truth** for each topic area:
 ### When Referencing Content
 ```markdown
 ✅ CORRECT: Link to primary source
-See [Performance Targets](../standards/PERFORMANCE_TARGETS.md#bundle-size) for bundle size limits.
+See [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size) for bundle size limits.
 
 ❌ INCORRECT: Duplicate content
 Bundle size must be < [target] gzipped. First Contentful Paint must be < [target]...
@@ -80,7 +80,7 @@ Bundle size must be < [target] gzipped. First Contentful Paint must be < [target
 
 ### Cross-Reference Format
 ```markdown
-## Quick Reference
+- ## Quick Reference
 - Bundle Size: → [Performance Targets](standards/PERFORMANCE_TARGETS.md#bundle-size)
 - File Limits: → [Quality Metrics](standards/QUALITY_METRICS.md#file-sizes)
 - Theme Variables: → [Theme System](development/THEME_SYSTEM.md#css-variables)

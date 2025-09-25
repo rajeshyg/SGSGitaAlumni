@@ -36,12 +36,27 @@ class DocumentationStandardsValidator {
     try {
       const content = fs.readFileSync(filePath, 'utf8');
 
-      // Look for completed status indicators
+      // Prefer YAML front-matter 'status' field if present
+      const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (frontMatterMatch) {
+        const fm = frontMatterMatch[1];
+        const statusMatch = fm.match(/status:\s*(.+)/i);
+        if (statusMatch) {
+          const statusValue = statusMatch[1].toLowerCase();
+          if (statusValue.includes('completed') || statusValue.includes('complete') || statusValue.includes('done')) {
+            return true;
+          }
+        }
+      }
+
+      // Fallback: Look for completed status indicators in content
       const completedPatterns = [
         /\*\*Status:\*\*\s*✅\s*Complete/i,
         /Status:\s*✅\s*Complete/i,
         /\*\*Status:\*\*\s*🟢\s*Complete/i,
-        /Status:\s*🟢\s*Complete/i
+        /Status:\s*🟢\s*Complete/i,
+        /Status:\s*Completed/i,
+        /\bcompleted\b/i
       ];
 
       return completedPatterns.some(pattern => pattern.test(content));
@@ -163,9 +178,16 @@ class DocumentationStandardsValidator {
           }
 
           if (!validStatusPattern.test(line)) {
-            // Skip medium issues for completed tasks
+            // For completed tasks, convert to a warning (recorded in violations with 'LOW' severity)
             if (this.isTaskCompleted(file)) {
-              console.log(`  ⚠️ Ignoring status format issue in completed task: ${path.relative(this.rootDir, file)}`);
+              this.violations.push({
+                type: 'STATUS_FORMAT_VIOLATION_COMPLETED',
+                file: path.relative(this.rootDir, file),
+                description: `Status format does not match standard (completed task - warning): "${line}"`,
+                severity: 'LOW',
+                line: i + 1,
+                expected: 'Status: [emoji] [Status] ([details])'
+              });
             } else {
               this.violations.push({
                 type: 'STATUS_FORMAT_VIOLATION',
@@ -209,9 +231,15 @@ class DocumentationStandardsValidator {
         const criteriaCount = this.countCriteriaItems(criteriaSection);
 
         if (criteriaCount < 8) {
-          // Skip medium issues for completed tasks
+          // For completed tasks, record as a low-severity warning; otherwise medium violation
           if (this.isTaskCompleted(file)) {
-            console.log(`  ⚠️ Ignoring insufficient success criteria in completed task: ${relativePath}`);
+            this.violations.push({
+              type: 'INSUFFICIENT_SUCCESS_CRITERIA_COMPLETED',
+              file: relativePath,
+              description: `Only ${criteriaCount} success criteria found (minimum 8 required) - completed task (warning)`,
+              severity: 'LOW',
+              line: this.findSectionLine(content, 'Success Criteria')
+            });
           } else {
             this.violations.push({
               type: 'INSUFFICIENT_SUCCESS_CRITERIA',
@@ -222,9 +250,15 @@ class DocumentationStandardsValidator {
             });
           }
         } else if (criteriaCount > 10) {
-          // Skip low issues for completed tasks
+          // For completed tasks, record as a low-severity (already low) warning; otherwise low violation
           if (this.isTaskCompleted(file)) {
-            console.log(`  ⚠️ Ignoring excessive success criteria in completed task: ${relativePath}`);
+            this.violations.push({
+              type: 'EXCESSIVE_SUCCESS_CRITERIA_COMPLETED',
+              file: relativePath,
+              description: `${criteriaCount} success criteria found (maximum 10 recommended) - completed task (warning)`,
+              severity: 'LOW',
+              line: this.findSectionLine(content, 'Success Criteria')
+            });
           } else {
             this.violations.push({
               type: 'EXCESSIVE_SUCCESS_CRITERIA',
@@ -269,7 +303,14 @@ class DocumentationStandardsValidator {
         const hasCompletedTask = files.some(file => this.isTaskCompleted(path.join(this.rootDir, file)));
 
         if (hasCompletedTask) {
-          console.log(`  ⚠️ Ignoring redundant status in files with completed tasks: ${files.join(', ')}`);
+          // Record as a low-severity redundant-status warning for traceability
+          this.violations.push({
+            type: 'REDUNDANT_STATUS_COMPLETED',
+            file: files[0],
+            description: `Status "${status}" duplicated across ${files.length} files (includes completed tasks - warning): ${files.join(', ')}`,
+            severity: 'LOW',
+            line: 0
+          });
         } else {
           this.violations.push({
             type: 'REDUNDANT_STATUS',

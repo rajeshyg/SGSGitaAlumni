@@ -2,6 +2,13 @@
 
 **⚠️ AUTHORITATIVE DOCUMENT**: This is the single source of truth for all code quality metrics in the SGSGitaAlumni project. All other documents must reference this document, not duplicate its content.
 
+<!-- Anchor mappings for cross-doc links -->
+<a id="testing-standards"></a>
+<a id="file-size-standards"></a>
+<a id="file-sizes"></a>
+<a id="function-size-limits"></a>
+<a id="complexity-scores"></a>
+
 ## 📏 File Size Standards
 
 ### File Length Limits

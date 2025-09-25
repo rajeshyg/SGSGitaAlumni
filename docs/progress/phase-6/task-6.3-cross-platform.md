@@ -1,122 +1,18 @@
-# Task 6.3: Cross-Platform Optimization
+---
+status: Pending
+doc-type: implementation
+---
 
-## Overview
+status: Pending
+doc-type: implementation
 
-Optimize the SGSGita Alumni application for consistent performance and user experience across mobile devices, tablets, and desktop computers, ensuring accessibility and usability on all platforms.
+This index lists the parts for Task 6.3 (cross-platform). Open the part files for implementation details.
 
-## Status
-- **Status:** 🔴 Pending
-- **Estimated Effort:** 3-4 days
-- **Priority:** High
-- **Dependencies:** Task 6.1 (Quality Assurance Framework)
-
-## Objectives
-
-1. **Device Detection** - Implement robust device and platform detection
-2. **Responsive Design** - Ensure optimal layouts across all screen sizes
-3. **Touch Optimization** - Enhance touch interactions for mobile/tablet
-4. **Performance Optimization** - Platform-specific performance tuning
-5. **Cross-Browser Compatibility** - Ensure consistent behavior across browsers
-6. **Accessibility Compliance** - WCAG 2.1 AA compliance across platforms
-
-## Implementation Plan
-
-### Phase 1: Device Detection & Adaptation (Day 1)
-
-#### Advanced Device Detection System
-```typescript
-// src/lib/device-detection.ts
-export interface DeviceCapabilities {
-  type: 'mobile' | 'tablet' | 'desktop'
-  touchSupport: boolean
-  platform: string
-  browser: string
-}
-
-export class DeviceDetector {
-  private capabilities: DeviceCapabilities
-
-  constructor() {
-    this.capabilities = this.detectCapabilities()
-  }
-
-  private detectCapabilities(): DeviceCapabilities {
-    const userAgent = navigator.userAgent
-    const viewport = { width: window.innerWidth, height: window.innerHeight }
-
-    let type: 'mobile' | 'tablet' | 'desktop' = 'desktop'
-    if (viewport.width < 768) type = 'mobile'
-    else if (viewport.width < 1024) type = 'tablet'
-
-    let platform = 'unknown'
-    if (userAgent.includes('Android')) platform = 'android'
-    else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) platform = 'ios'
-    else if (userAgent.includes('Windows')) platform = 'windows'
-    else if (userAgent.includes('Mac')) platform = 'macos'
-
-    let browser = 'unknown'
-    if (userAgent.includes('Chrome')) browser = 'chrome'
-    else if (userAgent.includes('Firefox')) browser = 'firefox'
-    else if (userAgent.includes('Safari')) browser = 'safari'
-    else if (userAgent.includes('Edge')) browser = 'edge'
-
-    return {
-      type,
-      touchSupport: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
-      platform,
-      browser
-    }
-  }
-
-  public getCapabilities(): DeviceCapabilities {
-    return { ...this.capabilities }
-  }
-
-  public isMobile(): boolean { return this.capabilities.type === 'mobile' }
-  public isTablet(): boolean { return this.capabilities.type === 'tablet' }
-  public isDesktop(): boolean { return this.capabilities.type === 'desktop' }
-  public isTouchDevice(): boolean { return this.capabilities.touchSupport }
-}
-
-export const deviceDetector = new DeviceDetector()
-```
-
-#### Platform-Specific Component System
-```typescript
-// src/components/platform-adaptive/PlatformAdaptive.tsx
-import React, { useState, useEffect } from 'react'
-import { deviceDetector } from '@/lib/device-detection'
-
-interface PlatformComponents<T> {
-  mobile?: React.ComponentType<T>
-  tablet?: React.ComponentType<T>
-  desktop?: React.ComponentType<T>
-  fallback?: React.ComponentType<T>
-}
-
-export function PlatformAdaptive<T = {}>({
-  components,
-  ...props
-}: { components: PlatformComponents<T> } & T) {
-  const [deviceType, setDeviceType] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
-
-  useEffect(() => {
-    const capabilities = deviceDetector.getCapabilities()
-    setDeviceType(capabilities.type)
-  }, [])
-
-  const Component = components[deviceType] || components.fallback
-  return Component ? <Component {...(props as T)} /> : null
-}
-
-// Usage
-<PlatformAdaptive
-  components={{ mobile: MobileButton, tablet: TabletButton, desktop: DesktopButton }}
-  onClick={handleClick}
->
-  {children}
-</PlatformAdaptive>
-```
+- Overview — `task-6.3-cross-platform-overview.md`
+- Detection & Adaptation — `task-6.3-cross-platform-detection-adaptation.md`
+- Components & Hooks — `task-6.3-cross-platform-components-hooks.md`
+- Performance — `task-6.3-cross-platform-performance.md`
+- Testing & Guidelines — `task-6.3-cross-platform-testing.md`
 
 ### Phase 2: Touch & Interaction Optimization (Day 2)
 
