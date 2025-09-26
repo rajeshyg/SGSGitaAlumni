@@ -1,10 +1,16 @@
 import { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import ThemeProvider from './lib/theme/provider'
+import AuthProvider from './contexts/AuthContext'
+import { ProtectedRoute, PublicRoute, AdminRoute, ModeratorRoute } from './components/auth/ProtectedRoute'
 
 // Lazy load main page components for better performance
 const AdminPage = lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })))
 const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default: module.HomePage })))
+
+// Lazy load authentication pages
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 
 // Lazy load placeholder components with loading states
 const UploadPage = lazy(() => Promise.resolve({
@@ -97,11 +103,11 @@ const ProfileSelectionPage = lazy(() => Promise.resolve({
   )
 }))
 
-const LoginPage = lazy(() => Promise.resolve({
+const ForgotPasswordPage = lazy(() => Promise.resolve({
   default: () => (
     <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Login</h1>
-      <p className="text-muted-foreground">Login functionality coming soon...</p>
+      <h1 className="text-2xl font-bold mb-4">Forgot Password</h1>
+      <p className="text-muted-foreground">Password reset functionality coming soon...</p>
     </div>
   )
 }))
@@ -119,37 +125,107 @@ const PageLoadingFallback = () => (
 function App() {
   return (
     <ThemeProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Suspense fallback={<PageLoadingFallback />}>
-          <Routes>
-            {/* Main routes */}
-            <Route path="/" element={<Navigate to="/admin" replace />} />
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="/Admin" element={<AdminPage />} />
+      <AuthProvider>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Suspense fallback={<PageLoadingFallback />}>
+            <Routes>
+              {/* Public routes (redirect authenticated users) */}
+              <Route path="/login" element={
+                <PublicRoute>
+                  <LoginPage />
+                </PublicRoute>
+              } />
+              <Route path="/register" element={
+                <PublicRoute>
+                  <RegisterPage />
+                </PublicRoute>
+              } />
+              <Route path="/forgot-password" element={
+                <PublicRoute>
+                  <ForgotPasswordPage />
+                </PublicRoute>
+              } />
 
-            {/* Data management routes */}
-            <Route path="/upload" element={<UploadPage />} />
-            <Route path="/alumni-directory" element={<AlumniDirectoryPage />} />
-            <Route path="/reports" element={<ReportsPage />} />
-            <Route path="/data-files" element={<DataFilesPage />} />
-            <Route path="/export" element={<ExportPage />} />
+              {/* Protected main routes */}
+              <Route path="/" element={<Navigate to="/admin" replace />} />
+              <Route path="/home" element={
+                <ProtectedRoute>
+                  <HomePage />
+                </ProtectedRoute>
+              } />
 
-            {/* User & system routes */}
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/responses" element={<ResponsesPage />} />
-            <Route path="/chat" element={<ChatPage />} />
-            <Route path="/users" element={<UsersPage />} />
+              {/* Admin routes */}
+              <Route path="/admin" element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
+              } />
+              <Route path="/Admin" element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
+              } />
 
-            {/* Auth routes */}
-            <Route path="/profile-selection" element={<ProfileSelectionPage />} />
-            <Route path="/login" element={<LoginPage />} />
+              {/* Data management routes - Admin/Moderator only */}
+              <Route path="/upload" element={
+                <ModeratorRoute>
+                  <UploadPage />
+                </ModeratorRoute>
+              } />
+              <Route path="/data-files" element={
+                <ModeratorRoute>
+                  <DataFilesPage />
+                </ModeratorRoute>
+              } />
+              <Route path="/export" element={
+                <ModeratorRoute>
+                  <ExportPage />
+                </ModeratorRoute>
+              } />
+              <Route path="/users" element={
+                <AdminRoute>
+                  <UsersPage />
+                </AdminRoute>
+              } />
 
-            {/* Catch all - redirect to admin */}
-            <Route path="*" element={<Navigate to="/admin" replace />} />
-          </Routes>
-        </Suspense>
-      </Router>
+              {/* Member accessible routes */}
+              <Route path="/alumni-directory" element={
+                <ProtectedRoute>
+                  <AlumniDirectoryPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/reports" element={
+                <ProtectedRoute>
+                  <ReportsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <SettingsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/responses" element={
+                <ProtectedRoute>
+                  <ResponsesPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/chat" element={
+                <ProtectedRoute>
+                  <ChatPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile-selection" element={
+                <ProtectedRoute>
+                  <ProfileSelectionPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Catch all - redirect to login for unauthenticated, admin for authenticated */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </Suspense>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   )
 }

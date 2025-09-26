@@ -6,13 +6,56 @@ export const apiClient = {
 
   getAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('authToken');
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    const headers: Record<string, string> = {};
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
+  },
+
+  async refreshTokenIfNeeded(): Promise<void> {
+    const token = localStorage.getItem('authToken');
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    if (!token || !refreshToken) {
+      return;
+    }
+
+    // Check if token is close to expiry (implement based on your token structure)
+    // For now, we'll implement a simple refresh mechanism
+    try {
+      const response = await fetch(`${this.baseURL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${refreshToken}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('refreshToken', data.refreshToken);
+      }
+    } catch {
+      // If refresh fails, clear tokens
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+      throw new AuthenticationError('Session expired. Please log in again.');
+    }
   },
 
   async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
 
     try {
+      // Attempt to refresh token if needed (for authenticated requests)
+      if (localStorage.getItem('authToken')) {
+        await this.refreshTokenIfNeeded();
+      }
+
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
@@ -23,6 +66,27 @@ export const apiClient = {
       });
 
       if (!response.ok) {
+        // If we get a 401, try refreshing token once more
+        if (response.status === 401 && localStorage.getItem('refreshToken')) {
+          await this.refreshTokenIfNeeded();
+
+          // Retry the request with new token
+          const retryResponse = await fetch(url, {
+            headers: {
+              'Content-Type': 'application/json',
+              ...this.getAuthHeaders(),
+              ...options.headers
+            },
+            ...options
+          });
+
+          if (!retryResponse.ok) {
+            await this.handleResponseError(retryResponse);
+          }
+
+          return retryResponse.json();
+        }
+
         await this.handleResponseError(response);
       }
 

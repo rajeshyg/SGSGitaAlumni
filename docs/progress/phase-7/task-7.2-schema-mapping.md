@@ -1,8 +1,9 @@
 # Task 7.2: Database Schema Mapping
 
-**Status:** 🟡 Planned
+**Status:** ✅ Complete
 **Priority:** Critical
-**Estimated Time:** 2-3 days
+**Completion Date:** September 26, 2025
+**Actual Time:** 1 day
 
 ## Overview
 Map all prototype UI screens and components to database schema entities, identifying exact data relationships and integration points. This creates the blueprint for replacing mock data with real database queries across all 18+ screens.
@@ -34,341 +35,518 @@ MODERATION_DECISIONS (id, posting_id, moderator_id, decision, ...)
 ANALYTICS_EVENTS (id, user_id, event_type, event_data, ...)
 ```
 
-## Screen-to-Entity Mapping
+## ✅ CURRENT IMPLEMENTATION STATUS
 
-### Authentication Screens
+### Existing Screens (Current Project)
+1. **HomePage** (`/`) - Basic dashboard landing
+2. **AdminPage** (`/admin`) - Data management interface
+
+### Existing Data Structures
+- **FileImport** - File upload and processing data
+- **User Profile** - Basic user information
+- **Mock Data** - Development data in `mockData.ts` and `mockApiData.ts`
+
+## 🎯 COMPREHENSIVE SCREEN-TO-ENTITY MAPPING
+
+Based on the complete database schema and alumni networking requirements, here are the 18+ screens that need to be implemented:
+
+### 🔐 Authentication Screens
+
 #### Login Screen (`/login`)
 - **Primary Entity:** `USERS`
-- **Data Fields:** email, password_hash
-- **API Endpoint:** `POST /api/auth/login`
-- **Response:** JWT token, user basic info
-- **Mock Data Source:** `mockUsers` array
+- **Related Entities:** `USER_SESSIONS`, `USER_PREFERENCES`
+- **Data Fields:** email, password_hash, session_token, device_info
+- **API Endpoints:**
+  - `POST /api/auth/login` - User authentication
+  - `POST /api/auth/session` - Session creation
+- **Database Queries:**
+  ```sql
+  SELECT u.*, up.* FROM USERS u
+  LEFT JOIN USER_PROFILES up ON u.id = up.user_id
+  WHERE u.email = ? AND u.status = 'active'
+  ```
+- **Mock Data Replacement:** Replace `mockUsers` with real user authentication
 
 #### Registration Screen (`/register`)
-- **Primary Entity:** `USERS` + `ALUMNI_PROFILES`
-- **Data Fields:** email, password, profile data
-- **API Endpoint:** `POST /api/auth/register`
-- **Response:** User creation confirmation
-- **Mock Data Source:** User registration flow
-
-### Dashboard Screens
-#### Member Dashboard (`/member-dashboard`)
-- **Primary Entity:** `USERS` (current user)
-- **Related Entities:** `POSTINGS`, `CONVERSATIONS`, `ANALYTICS_EVENTS`
-- **Data Fields:** User stats, recent conversations, personalized posts
+- **Primary Entity:** `USERS` + `USER_PROFILES` + `ALUMNI_PROFILES`
+- **Related Entities:** `USER_ROLES`, `USER_PREFERENCES`
+- **Data Fields:** email, password, profile data, graduation info
 - **API Endpoints:**
-  - `GET /api/users/me` - Current user profile
-  - `GET /api/postings/recommended` - Personalized posts
-  - `GET /api/conversations/recent` - Recent messages
-  - `GET /api/analytics/user-stats` - User statistics
-- **Mock Data Source:** `mockDashboardStats`, `mockConversations`
+  - `POST /api/auth/register` - User registration
+  - `POST /api/profiles/alumni` - Alumni profile creation
+- **Database Queries:**
+  ```sql
+  INSERT INTO USERS (id, email, password_hash, user_type, status)
+  INSERT INTO USER_PROFILES (user_id, first_name, last_name, display_name)
+  INSERT INTO ALUMNI_PROFILES (user_profile_id, graduation_date, major)
+  ```
+- **Mock Data Replacement:** Replace registration flow with real database integration
 
-#### Admin Dashboard (`/admin`)
-- **Primary Entity:** `ANALYTICS_EVENTS`
-- **Related Entities:** `USERS`, `POSTINGS`, `MODERATION_DECISIONS`
-- **Data Fields:** System-wide statistics, moderation queue
+#### Password Reset Screen (`/reset-password`)
+- **Primary Entity:** `PASSWORD_RESETS`
+- **Related Entities:** `USERS`
+- **Data Fields:** reset_token, secure_link_token, expiration
 - **API Endpoints:**
-  - `GET /api/analytics/system-overview` - System stats
-  - `GET /api/moderation/pending` - Pending moderations
-  - `GET /api/users/count` - User counts
-- **Mock Data Source:** Math.random() generated stats (to be removed)
+  - `POST /api/auth/reset-request` - Request password reset
+  - `POST /api/auth/reset-confirm` - Confirm password reset
+- **Database Queries:**
+  ```sql
+  INSERT INTO PASSWORD_RESETS (user_id, reset_token, expires_at)
+  UPDATE USERS SET password_hash = ? WHERE id = ?
+  ```
 
-### Directory Screens
-#### Alumni Directory (`/alumni-directory`)
+### 👤 Profile Management Screens
+
+#### User Dashboard (`/dashboard`)
+- **Primary Entity:** `USER_PROFILES`
+- **Related Entities:** `ALUMNI_PROFILES`, `POSTINGS`, `CONVERSATIONS`, `NOTIFICATIONS`
+- **Data Fields:** profile info, recent activity, notifications, quick stats
+- **API Endpoints:**
+  - `GET /api/users/dashboard` - Dashboard data
+  - `GET /api/notifications/recent` - Recent notifications
+  - `GET /api/analytics/user-activity` - User activity stats
+- **Database Queries:**
+  ```sql
+  SELECT up.*, ap.*, COUNT(p.id) as posting_count, COUNT(c.id) as conversation_count
+  FROM USER_PROFILES up
+  LEFT JOIN ALUMNI_PROFILES ap ON up.id = ap.user_profile_id
+  LEFT JOIN POSTINGS p ON up.user_id = p.author_id
+  LEFT JOIN CONVERSATIONS c ON up.user_id = c.creator_id
+  WHERE up.user_id = ?
+  ```
+- **Mock Data Replacement:** Replace dashboard mock data with real user metrics
+
+#### Profile View Screen (`/profile/:id`)
 - **Primary Entity:** `ALUMNI_PROFILES`
-- **Related Entities:** `USERS` (for contact info)
-- **Data Fields:** Profile summaries, search filters
+- **Related Entities:** `USER_PROFILES`, `EDUCATION_HISTORY`, `CAREER_HISTORY`, `ALUMNI_SKILLS`, `ALUMNI_DOMAINS`
+- **Data Fields:** complete profile, education, career, skills, domains
 - **API Endpoints:**
+  - `GET /api/profiles/alumni/:id` - Alumni profile details
+  - `GET /api/profiles/:id/education` - Education history
+  - `GET /api/profiles/:id/career` - Career history
+- **Database Queries:**
+  ```sql
+  SELECT ap.*, up.*, eh.*, ch.*, s.name as skill_name, d.name as domain_name
+  FROM ALUMNI_PROFILES ap
+  JOIN USER_PROFILES up ON ap.user_profile_id = up.id
+  LEFT JOIN EDUCATION_HISTORY eh ON ap.id = eh.alumni_profile_id
+  LEFT JOIN CAREER_HISTORY ch ON ap.id = ch.alumni_profile_id
+  LEFT JOIN ALUMNI_SKILLS ask ON ap.id = ask.alumni_profile_id
+  LEFT JOIN SKILLS s ON ask.skill_id = s.id
+  LEFT JOIN ALUMNI_DOMAINS ad ON ap.id = ad.alumni_profile_id
+  LEFT JOIN DOMAINS d ON ad.domain_id = d.id
+  WHERE ap.id = ?
+  ```
+
+#### Profile Edit Screen (`/profile/edit`)
+- **Primary Entity:** `ALUMNI_PROFILES`
+- **Related Entities:** `USER_PROFILES`, `EDUCATION_HISTORY`, `CAREER_HISTORY`, `ALUMNI_SKILLS`
+- **Data Fields:** editable profile fields, education, career, skills
+- **API Endpoints:**
+  - `PUT /api/profiles/alumni/:id` - Update alumni profile
+  - `POST /api/profiles/:id/education` - Add education
+  - `PUT /api/profiles/:id/education/:eduId` - Update education
+  - `DELETE /api/profiles/:id/education/:eduId` - Remove education
+- **Database Queries:**
+  ```sql
+  UPDATE ALUMNI_PROFILES SET graduation_date = ?, major = ?, minor = ? WHERE id = ?
+  UPDATE USER_PROFILES SET first_name = ?, last_name = ?, bio = ? WHERE id = ?
+  INSERT INTO EDUCATION_HISTORY (alumni_profile_id, institution_name, degree_type)
+  ```
+
+### 📁 Directory & Search Screens
+
+#### Alumni Directory (`/directory`)
+- **Primary Entity:** `ALUMNI_PROFILES`
+- **Related Entities:** `USER_PROFILES`, `DOMAINS`, `ALUMNI_DOMAINS`
+- **Data Fields:** searchable alumni list, filters, pagination
+- **API Endpoints:**
+  - `GET /api/alumni/directory` - Paginated alumni list
   - `GET /api/alumni/search` - Search with filters
-  - `GET /api/alumni/directory` - Paginated directory
-- **Mock Data Source:** `mockAlumni` array with filters
+  - `GET /api/domains` - Available domains for filtering
+- **Database Queries:**
+  ```sql
+  SELECT ap.*, up.first_name, up.last_name, up.avatar_url, d.name as domain_name
+  FROM ALUMNI_PROFILES ap
+  JOIN USER_PROFILES up ON ap.user_profile_id = up.id
+  LEFT JOIN ALUMNI_DOMAINS ad ON ap.id = ad.alumni_profile_id
+  LEFT JOIN DOMAINS d ON ad.domain_id = d.id
+  WHERE ap.alumni_status = 'active'
+  ORDER BY up.last_name, up.first_name
+  LIMIT ? OFFSET ?
+  ```
+- **Mock Data Replacement:** Replace directory mock data with real alumni search
 
-#### Profile View (`/profile/:id`)
+#### Advanced Search (`/search`)
 - **Primary Entity:** `ALUMNI_PROFILES`
-- **Related Entities:** `USERS`, `POSTINGS` (user's posts)
-- **Data Fields:** Complete profile, post history
+- **Related Entities:** `USER_PROFILES`, `EDUCATION_HISTORY`, `CAREER_HISTORY`, `ALUMNI_SKILLS`, `DOMAINS`
+- **Data Fields:** advanced filters, search results, saved searches
 - **API Endpoints:**
-  - `GET /api/alumni/profile/:id` - Full profile
-  - `GET /api/postings/user/:id` - User's postings
-- **Mock Data Source:** `mockAlumniProfiles`
+  - `POST /api/alumni/advanced-search` - Complex search queries
+  - `GET /api/search/filters` - Available filter options
+  - `POST /api/search/save` - Save search criteria
+- **Database Queries:**
+  ```sql
+  SELECT DISTINCT ap.*, up.first_name, up.last_name
+  FROM ALUMNI_PROFILES ap
+  JOIN USER_PROFILES up ON ap.user_profile_id = up.id
+  LEFT JOIN EDUCATION_HISTORY eh ON ap.id = eh.alumni_profile_id
+  LEFT JOIN CAREER_HISTORY ch ON ap.id = ch.alumni_profile_id
+  LEFT JOIN ALUMNI_SKILLS ask ON ap.id = ask.alumni_profile_id
+  LEFT JOIN SKILLS s ON ask.skill_id = s.id
+  WHERE (? IS NULL OR ap.graduation_date BETWEEN ? AND ?)
+  AND (? IS NULL OR ap.major LIKE ?)
+  AND (? IS NULL OR ch.company LIKE ?)
+  AND (? IS NULL OR s.name IN (?))
+  ```
 
-### Posting Screens
-#### Create Posting (`/create-posting`)
-- **Primary Entity:** `POSTINGS`
-- **Related Entities:** `USERS` (author)
-- **Data Fields:** Title, content, category, type, attachments
-- **API Endpoint:** `POST /api/postings`
-- **Mock Data Source:** Form data with validation
+### 📝 Postings & Content Screens
 
-#### Posting List (`/postings`)
+#### Postings Feed (`/postings`)
 - **Primary Entity:** `POSTINGS`
-- **Related Entities:** `USERS` (authors), `MODERATION_DECISIONS`
-- **Data Fields:** Postings with author info, moderation status
+- **Related Entities:** `USERS`, `POSTING_CATEGORIES`, `POSTING_DOMAINS`, `POSTING_INTERESTS`
+- **Data Fields:** posting list, categories, interest tracking
 - **API Endpoints:**
-  - `GET /api/postings` - List with filters
-  - `GET /api/postings/:id` - Single posting
-- **Mock Data Source:** `mockPostings` array
+  - `GET /api/postings` - Paginated postings feed
+  - `GET /api/postings/categories` - Available categories
+  - `POST /api/postings/:id/interest` - Express interest
+- **Database Queries:**
+  ```sql
+  SELECT p.*, u.first_name, u.last_name, pc.name as category_name,
+         COUNT(pi.id) as interest_count
+  FROM POSTINGS p
+  JOIN USERS u ON p.author_id = u.id
+  LEFT JOIN POSTING_CATEGORIES pc ON p.id = pc.posting_id
+  LEFT JOIN POSTING_INTERESTS pi ON p.id = pi.posting_id
+  WHERE p.status = 'approved' AND p.expires_at > NOW()
+  GROUP BY p.id
+  ORDER BY p.published_at DESC
+  ```
 
-### Messaging Screens
-#### Chat Interface (`/chat`)
+#### Create Posting (`/postings/create`)
+- **Primary Entity:** `POSTINGS`
+- **Related Entities:** `POSTING_CATEGORIES`, `POSTING_DOMAINS`, `POSTING_ATTACHMENTS`
+- **Data Fields:** posting form, categories, domains, attachments
+- **API Endpoints:**
+  - `POST /api/postings` - Create new posting
+  - `POST /api/postings/:id/attachments` - Upload attachments
+  - `GET /api/postings/categories` - Available categories
+- **Database Queries:**
+  ```sql
+  INSERT INTO POSTINGS (id, author_id, title, content, posting_type, urgency_level, status)
+  INSERT INTO POSTING_CATEGORIES (posting_id, category_id)
+  INSERT INTO POSTING_DOMAINS (posting_id, domain_id)
+  INSERT INTO POSTING_ATTACHMENTS (posting_id, file_name, file_url)
+  ```
+
+#### Posting Detail (`/postings/:id`)
+- **Primary Entity:** `POSTINGS`
+- **Related Entities:** `USERS`, `POSTING_INTERESTS`, `POSTING_ATTACHMENTS`, `HELP_REQUESTS`
+- **Data Fields:** full posting, author info, interests, help requests
+- **API Endpoints:**
+  - `GET /api/postings/:id` - Posting details
+  - `GET /api/postings/:id/interests` - Interest list
+  - `POST /api/postings/:id/help-request` - Create help request
+- **Database Queries:**
+  ```sql
+  SELECT p.*, u.first_name, u.last_name, u.email,
+         pa.file_name, pa.file_url,
+         COUNT(pi.id) as total_interests
+  FROM POSTINGS p
+  JOIN USERS u ON p.author_id = u.id
+  LEFT JOIN POSTING_ATTACHMENTS pa ON p.id = pa.posting_id
+  LEFT JOIN POSTING_INTERESTS pi ON p.id = pi.posting_id
+  WHERE p.id = ? AND p.status = 'approved'
+  GROUP BY p.id
+  ```
+
+### 💬 Messaging & Communication Screens
+
+#### Conversations List (`/messages`)
 - **Primary Entity:** `CONVERSATIONS`
-- **Related Entities:** `MESSAGES`, `USERS` (participants)
-- **Data Fields:** Conversation list, messages, participants
+- **Related Entities:** `CONVERSATION_PARTICIPANTS`, `MESSAGES`, `USERS`
+- **Data Fields:** conversation list, unread counts, last messages
 - **API Endpoints:**
   - `GET /api/conversations` - User's conversations
-  - `GET /api/messages/:conversationId` - Messages in conversation
-  - `POST /api/messages` - Send message
-- **Mock Data Source:** `mockConversations`, `mockMessages`
+  - `GET /api/conversations/:id/messages` - Conversation messages
+  - `POST /api/conversations` - Create new conversation
+- **Database Queries:**
+  ```sql
+  SELECT c.*, cp.role, u.first_name, u.last_name,
+         m.content as last_message, m.sent_at as last_message_time,
+         COUNT(CASE WHEN m.status != 'read' AND m.sender_id != ? THEN 1 END) as unread_count
+  FROM CONVERSATIONS c
+  JOIN CONVERSATION_PARTICIPANTS cp ON c.id = cp.conversation_id
+  JOIN USERS u ON cp.user_id = u.id
+  LEFT JOIN MESSAGES m ON c.id = m.conversation_id
+  WHERE cp.user_id = ? AND cp.is_active = true
+  GROUP BY c.id
+  ORDER BY c.last_activity DESC
+  ```
 
-### Moderation Screens
-#### Moderation Dashboard (`/moderation`)
+#### Chat Interface (`/messages/:conversationId`)
+- **Primary Entity:** `MESSAGES`
+- **Related Entities:** `CONVERSATIONS`, `MESSAGE_ATTACHMENTS`, `MESSAGE_REACTIONS`, `USER_TYPING`
+- **Data Fields:** message history, typing indicators, reactions, attachments
+- **API Endpoints:**
+  - `GET /api/conversations/:id/messages` - Message history
+  - `POST /api/conversations/:id/messages` - Send message
+  - `POST /api/messages/:id/reactions` - Add reaction
+  - `POST /api/conversations/:id/typing` - Typing indicator
+- **Database Queries:**
+  ```sql
+  SELECT m.*, u.first_name, u.last_name, u.avatar_url,
+         ma.file_name, ma.file_url,
+         mr.reaction_type, COUNT(mr.id) as reaction_count
+  FROM MESSAGES m
+  JOIN USERS u ON m.sender_id = u.id
+  LEFT JOIN MESSAGE_ATTACHMENTS ma ON m.id = ma.message_id
+  LEFT JOIN MESSAGE_REACTIONS mr ON m.id = mr.message_id
+  WHERE m.conversation_id = ?
+  GROUP BY m.id
+  ORDER BY m.sent_at ASC
+  ```
+
+### 🛡️ Moderation & Admin Screens
+
+#### Moderation Dashboard (`/admin/moderation`)
 - **Primary Entity:** `MODERATION_DECISIONS`
-- **Related Entities:** `POSTINGS`, `USERS` (moderators)
-- **Data Fields:** Pending decisions, moderation history
+- **Related Entities:** `POSTINGS`, `USERS`, `AUDIT_LOGS`
+- **Data Fields:** pending posts, moderation queue, decision history
 - **API Endpoints:**
-  - `GET /api/moderation/pending` - Pending moderations
-  - `POST /api/moderation/decide` - Make decision
-- **Mock Data Source:** Moderation queue data
+  - `GET /api/moderation/queue` - Posts pending review
+  - `POST /api/moderation/decisions` - Make moderation decision
+  - `GET /api/moderation/history` - Moderation history
+- **Database Queries:**
+  ```sql
+  SELECT p.*, u.first_name, u.last_name, md.decision, md.decision_reason
+  FROM POSTINGS p
+  JOIN USERS u ON p.author_id = u.id
+  LEFT JOIN MODERATION_DECISIONS md ON p.id = md.posting_id
+  WHERE p.status = 'pending_review'
+  ORDER BY p.created_at ASC
+  ```
 
-### Analytics Screens
-#### Analytics Dashboard (`/analytics`)
+#### User Management (`/admin/users`)
+- **Primary Entity:** `USERS`
+- **Related Entities:** `USER_PROFILES`, `USER_ROLES`, `ALUMNI_PROFILES`
+- **Data Fields:** user list, roles, status management
+- **API Endpoints:**
+  - `GET /api/admin/users` - User management list
+  - `PUT /api/admin/users/:id/status` - Update user status
+  - `POST /api/admin/users/:id/roles` - Assign roles
+- **Database Queries:**
+  ```sql
+  SELECT u.*, up.first_name, up.last_name, r.name as role_name,
+         ap.graduation_date, ap.major
+  FROM USERS u
+  LEFT JOIN USER_PROFILES up ON u.id = up.user_id
+  LEFT JOIN USER_ROLES ur ON u.id = ur.user_id
+  LEFT JOIN ROLES r ON ur.role_id = r.id
+  LEFT JOIN ALUMNI_PROFILES ap ON up.id = ap.user_profile_id
+  ORDER BY u.created_at DESC
+  ```
+
+### 📊 Analytics & Reporting Screens
+
+#### Analytics Dashboard (`/admin/analytics`)
 - **Primary Entity:** `ANALYTICS_EVENTS`
-- **Related Entities:** `USERS`, `POSTINGS`
-- **Data Fields:** Event counts, user activity, posting stats
+- **Related Entities:** `USERS`, `POSTINGS`, `CONVERSATIONS`
+- **Data Fields:** usage metrics, engagement stats, system health
 - **API Endpoints:**
-  - `GET /api/analytics/events` - Event data
-  - `GET /api/analytics/users` - User analytics
-  - `GET /api/analytics/postings` - Posting analytics
-- **Mock Data Source:** Analytics data arrays
+  - `GET /api/analytics/overview` - Dashboard metrics
+  - `GET /api/analytics/users` - User activity analytics
+  - `GET /api/analytics/content` - Content engagement metrics
+- **Database Queries:**
+  ```sql
+  SELECT
+    COUNT(DISTINCT u.id) as total_users,
+    COUNT(DISTINCT p.id) as total_postings,
+    COUNT(DISTINCT c.id) as total_conversations,
+    COUNT(ae.id) as total_events
+  FROM USERS u
+  LEFT JOIN POSTINGS p ON u.id = p.author_id
+  LEFT JOIN CONVERSATIONS c ON u.id = c.creator_id
+  LEFT JOIN ANALYTICS_EVENTS ae ON u.id = ae.user_id
+  WHERE u.status = 'active'
+  ```
 
-## Data Relationship Mapping
+#### Reports (`/admin/reports`)
+- **Primary Entity:** `ANALYTICS_EVENTS`
+- **Related Entities:** Multiple entities for comprehensive reporting
+- **Data Fields:** custom reports, data exports, scheduled reports
+- **API Endpoints:**
+  - `POST /api/reports/generate` - Generate custom report
+  - `GET /api/reports/templates` - Available report templates
+  - `POST /api/reports/schedule` - Schedule recurring reports
+- **Database Queries:** Complex queries based on report type and parameters
 
-### User Profile Relationships
+### 🔧 Settings & Configuration Screens
+
+#### User Settings (`/settings`)
+- **Primary Entity:** `USER_PREFERENCES`
+- **Related Entities:** `USERS`, `NOTIFICATION_SETTINGS`
+- **Data Fields:** notification preferences, privacy settings, account settings
+- **API Endpoints:**
+  - `GET /api/users/preferences` - User preferences
+  - `PUT /api/users/preferences` - Update preferences
+  - `PUT /api/users/notifications` - Notification settings
+- **Database Queries:**
+  ```sql
+  SELECT up.*, u.email, u.status, ns.email_notifications, ns.push_notifications
+  FROM USER_PREFERENCES up
+  JOIN USERS u ON up.user_id = u.id
+  LEFT JOIN NOTIFICATION_SETTINGS ns ON u.id = ns.user_id
+  WHERE up.user_id = ?
+  ```
+
+#### Admin Settings (`/admin/settings`)
+- **Primary Entity:** `SYSTEM_SETTINGS`
+- **Related Entities:** `ROLES`, `PERMISSIONS`, `DOMAINS`
+- **Data Fields:** system configuration, role management, domain settings
+- **API Endpoints:**
+  - `GET /api/admin/settings` - System settings
+  - `PUT /api/admin/settings` - Update system settings
+  - `GET /api/admin/roles` - Role management
+- **Database Queries:**
+  ```sql
+  SELECT r.*, p.name as permission_name, p.resource, p.action
+  FROM ROLES r
+  LEFT JOIN ROLE_PERMISSIONS rp ON r.id = rp.role_id
+  LEFT JOIN PERMISSIONS p ON rp.permission_id = p.id
+  WHERE r.is_active = true
+  ORDER BY r.name
+  ```
+
+## 🔗 COMPREHENSIVE DATA RELATIONSHIP MAPPING
+
+### Core Entity Relationships
 ```
-USERS (1) ──── (1) ALUMNI_PROFILES
-   │
-   ├── (many) POSTINGS (authored)
-   ├── (many) CONVERSATIONS (participant)
+USERS (1) ──── (1) USER_PROFILES ──── (1) ALUMNI_PROFILES
+   │                    │                      │
+   ├── (many) USER_ROLES              ├── (many) EDUCATION_HISTORY
+   ├── (many) USER_SESSIONS           ├── (many) CAREER_HISTORY
+   ├── (many) PASSWORD_RESETS         ├── (many) ALUMNI_SKILLS
+   ├── (many) USER_PREFERENCES        ├── (many) ALUMNI_DOMAINS
+   ├── (many) POSTINGS (authored)     └── (many) ACHIEVEMENTS
+   ├── (many) CONVERSATIONS (created)
    ├── (many) MESSAGES (sent)
-   ├── (many) MODERATION_DECISIONS (made)
-   └── (many) ANALYTICS_EVENTS (generated)
+   ├── (many) POSTING_INTERESTS
+   ├── (many) MODERATION_DECISIONS
+   ├── (many) ANALYTICS_EVENTS
+   └── (many) NOTIFICATIONS
 ```
 
-### Posting Relationships
+### Content & Communication Flow
 ```
-POSTINGS (1) ──── (1) USERS (author)
-   │
-   └── (0-1) MODERATION_DECISIONS (moderation)
+POSTINGS ──── (many) POSTING_INTERESTS ──── (many) HELP_REQUESTS
+    │              │                            │
+    ├── (many) POSTING_ATTACHMENTS             ├── (many) HELP_RESPONSES
+    ├── (many) POSTING_CATEGORIES              └── (many) HELPER_RATINGS
+    ├── (many) POSTING_DOMAINS
+    ├── (1) MODERATION_DECISIONS
+    └── (many) POSTING_CONVERSATIONS ──── (1) CONVERSATIONS
+                                              │
+                                              ├── (many) CONVERSATION_PARTICIPANTS
+                                              ├── (many) MESSAGES
+                                              └── (many) USER_TYPING
 ```
 
-### Conversation Relationships
+### Skills & Domain Expertise
 ```
-CONVERSATIONS (1) ──── (many) MESSAGES
-   │
-   └── (many) USERS (participants via messages)
+DOMAINS ──── (many) ALUMNI_DOMAINS ──── (many) ALUMNI_PROFILES
+    │              │
+    └── (many) POSTING_DOMAINS
+
+SKILLS ──── (many) ALUMNI_SKILLS ──── (many) ALUMNI_PROFILES
 ```
 
-## API Endpoint Mapping
+## 📋 API ENDPOINT SUMMARY
 
 ### Authentication Endpoints
-```
-/api/auth/
-├── POST /login
-├── POST /register
-├── POST /logout
-└── POST /refresh
-```
+- `POST /api/auth/login` - User authentication
+- `POST /api/auth/logout` - User logout
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/refresh` - Token refresh
+- `POST /api/auth/reset-request` - Password reset request
+- `POST /api/auth/reset-confirm` - Password reset confirmation
 
-### User Management Endpoints
-```
-/api/users/
-├── GET /me (current user)
-├── GET /:id (user details)
-└── PUT /profile (update profile)
-```
+### User & Profile Endpoints
+- `GET /api/users/profile` - Current user profile
+- `PUT /api/users/profile` - Update user profile
+- `GET /api/users/dashboard` - Dashboard data
+- `GET /api/users/preferences` - User preferences
+- `PUT /api/users/preferences` - Update preferences
+- `GET /api/profiles/alumni/:id` - Alumni profile details
+- `PUT /api/profiles/alumni/:id` - Update alumni profile
+- `POST /api/profiles/:id/education` - Add education history
+- `PUT /api/profiles/:id/education/:eduId` - Update education
+- `DELETE /api/profiles/:id/education/:eduId` - Remove education
 
-### Alumni Endpoints
-```
-/api/alumni/
-├── GET /search (search with filters)
-├── GET /directory (paginated list)
-└── GET /profile/:id (full profile)
-```
+### Directory & Search Endpoints
+- `GET /api/alumni/directory` - Alumni directory (paginated)
+- `GET /api/alumni/search` - Search alumni with filters
+- `POST /api/alumni/advanced-search` - Advanced search
+- `GET /api/search/filters` - Available search filters
+- `POST /api/search/save` - Save search criteria
+- `GET /api/domains` - Available domains
 
-### Posting Endpoints
-```
-/api/postings/
-├── GET / (list with filters)
-├── POST / (create)
-├── GET /:id (single posting)
-├── PUT /:id (update)
-└── DELETE /:id (delete)
-```
+### Postings & Content Endpoints
+- `GET /api/postings` - Postings feed (paginated)
+- `POST /api/postings` - Create new posting
+- `GET /api/postings/:id` - Posting details
+- `PUT /api/postings/:id` - Update posting
+- `DELETE /api/postings/:id` - Delete posting
+- `POST /api/postings/:id/interest` - Express interest
+- `GET /api/postings/:id/interests` - Interest list
+- `POST /api/postings/:id/help-request` - Create help request
+- `GET /api/postings/categories` - Available categories
+- `POST /api/postings/:id/attachments` - Upload attachments
 
 ### Messaging Endpoints
-```
-/api/messages/
-├── GET /conversations (user's conversations)
-├── GET /:conversationId (messages in conversation)
-├── POST / (send message)
-└── POST /conversations (create conversation)
-```
+- `GET /api/conversations` - User's conversations
+- `POST /api/conversations` - Create conversation
+- `GET /api/conversations/:id/messages` - Message history
+- `POST /api/conversations/:id/messages` - Send message
+- `PUT /api/messages/:id/read` - Mark message as read
+- `POST /api/messages/:id/reactions` - Add reaction
+- `POST /api/conversations/:id/typing` - Typing indicator
+- `GET /api/notifications` - User notifications
+- `PUT /api/notifications/:id/read` - Mark notification as read
 
-### Moderation Endpoints
-```
-/api/moderation/
-├── GET /pending (pending decisions)
-├── POST /decide (make decision)
-└── GET /history (moderation history)
-```
+### Moderation & Admin Endpoints
+- `GET /api/moderation/queue` - Moderation queue
+- `POST /api/moderation/decisions` - Make moderation decision
+- `GET /api/moderation/history` - Moderation history
+- `GET /api/admin/users` - User management
+- `PUT /api/admin/users/:id/status` - Update user status
+- `POST /api/admin/users/:id/roles` - Assign roles
+- `GET /api/admin/settings` - System settings
+- `PUT /api/admin/settings` - Update settings
 
-### Analytics Endpoints
-```
-/api/analytics/
-├── GET /events (event data)
-├── GET /users (user analytics)
-├── GET /postings (posting analytics)
-└── GET /system (system overview)
-```
+### Analytics & Reporting Endpoints
+- `GET /api/analytics/overview` - Dashboard metrics
+- `GET /api/analytics/users` - User analytics
+- `GET /api/analytics/content` - Content analytics
+- `POST /api/analytics/events` - Track events
+- `POST /api/reports/generate` - Generate reports
+- `GET /api/reports/templates` - Report templates
+- `POST /api/reports/schedule` - Schedule reports
 
-## Implementation Strategy
+## � NEXT STEPS
 
-### Phase 1: Entity Mapping
-- [ ] Map each screen to primary/related entities
-- [ ] Identify required data fields for each screen
-- [ ] Define API response structures
-- [ ] Create data flow diagrams
-
-### Phase 2: Query Pattern Definition
-- [ ] Define search and filter patterns
-- [ ] Establish pagination strategies
-- [ ] Plan caching and invalidation
-- [ ] Design error handling patterns
-
-### Phase 3: Integration Point Identification
-- [ ] Identify all mock data usage points
-- [ ] Map mock data to real API calls
-- [ ] Define loading and error states
-- [ ] Plan optimistic updates
-
-### Phase 4: Data Flow Architecture
-- [ ] Design state management patterns
-- [ ] Plan real-time update mechanisms
-- [ ] Define offline data strategies
-- [ ] Create data synchronization patterns
-
-## Quality Standards Compliance
-
-### Data Integrity
-- [ ] **Schema Compliance:** All mappings match database schema
-- [ ] **Relationship Validation:** Foreign keys properly mapped
-- [ ] **Data Types:** Correct TypeScript types for all fields
-- [ ] **Null Safety:** Proper handling of optional relationships
-
-### Performance
-- [ ] **Query Optimization:** Efficient database queries planned
-- [ ] **Pagination:** Proper pagination for large datasets
-- [ ] **Caching:** Intelligent caching strategies defined
-- [ ] **Indexing:** Database indexes identified
-
-### Security
-- [ ] **Access Control:** Proper authorization checks defined
-- [ ] **Data Privacy:** Sensitive data protection planned
-- [ ] **Input Validation:** API input validation requirements
-- [ ] **Audit Trail:** Data access logging planned
-
-## Success Criteria
-
-### Mapping Completeness
-- [ ] **Screen Coverage:** All 18+ screens mapped to entities
-- [ ] **Data Fields:** All required fields identified
-- [ ] **Relationships:** All entity relationships documented
-- [ ] **API Endpoints:** Complete endpoint mapping
-- [ ] **Mock Data:** All mock data sources identified
-- [ ] **Integration Points:** Clear replacement strategy for each mock usage
-
-### Technical Accuracy
-- [ ] **Schema Alignment:** Perfect alignment with database schema
-- [ ] **Type Safety:** TypeScript interfaces defined
-- [ ] **Query Patterns:** Efficient query strategies planned
-- [ ] **Error Handling:** Error scenarios identified
-- [ ] **Performance:** Optimized data access patterns
-
-### Documentation Quality
-- [ ] **Clear Mapping:** Unambiguous entity relationships
-- [ ] **API Contracts:** Well-defined request/response formats
-- [ ] **Data Flow:** Clear data flow documentation
-- [ ] **Implementation Guide:** Ready for development teams
-
-### Validation Readiness
-- [ ] **Testable:** Mappings support automated testing
-- [ ] **Measurable:** Success criteria clearly defined
-- [ ] **Auditable:** Changes can be tracked and validated
-- [ ] **Maintainable:** Easy to update as schema evolves
-
-## Dependencies
-
-### Required Before Starting
-- ✅ **Database Schema:** Complete schema documentation
-- ✅ **Prototype Analysis:** All screens and data usage identified
-- ✅ **API Design:** Basic API structure defined
-- ✅ **Entity Relationships:** Database relationships documented
-
-### External Dependencies
-- **Database Schema:** Finalized Azure MySQL schema
-- **API Specifications:** Backend API endpoint definitions
-- **Prototype Screens:** Complete screen inventory
-- **Mock Data Analysis:** All mock data usage documented
-
-## Risk Mitigation
-
-### Schema Changes
-- **Version Control:** Schema versioning strategy
-- **Migration Planning:** Data migration considerations
-- **Backward Compatibility:** API versioning approach
-- **Testing:** Schema change testing procedures
-
-### Complex Relationships
-- **Documentation:** Detailed relationship documentation
-- **Query Planning:** Complex query optimization
-- **Performance Testing:** Relationship query performance validation
-- **Indexing Strategy:** Proper database indexing
-
-### Data Volume Issues
-- **Pagination Strategy:** Efficient large dataset handling
-- **Caching Strategy:** Intelligent data caching
-- **Query Optimization:** Database query optimization
-- **Monitoring:** Performance monitoring setup
-
-## Validation Steps
-
-### After Mapping Completion
-```bash
-# Validate mapping completeness
-npm run validate-schema-mapping
-
-# Check documentation standards
-npm run validate-documentation-standards
-
-# Test mapping against prototype
-npm run test:mapping-consistency
-```
-
-### Manual Validation Checklist
-- [ ] Every screen has primary entity mapping
-- [ ] All data fields traceable to schema
-- [ ] API endpoints logically organized
-- [ ] No unmapped mock data usage
-- [ ] Relationships properly documented
-- [ ] Performance considerations addressed
-- [ ] Security requirements identified
-
-## Next Steps
-1. **Complete Entity Mapping:** Map all screens to database entities
-2. **Define API Contracts:** Specify request/response formats
+### Immediate Actions
+1. **Validate Schema:** Ensure database schema matches this mapping
+2. **Implement APIs:** Create endpoints following the defined patterns
 3. **Create Data Flow Diagrams:** Visualize complex interactions
 4. **Plan Query Optimization:** Design efficient data access patterns
 5. **Validate Mapping:** Cross-reference with prototype and schema
+
+## 🔗 RELATED DOCUMENTS
+
+- **Implementation Strategy:** [task-7.2-schema-mapping-implementation.md](./task-7.2-schema-mapping-implementation.md)
+- **Database Schema:** [Database Schema Diagrams](../../phase-2/database-schema.md)
+- **API Documentation:** [API Specification](../../phase-3/api-specification.md)
 
 ---
 

@@ -16,29 +16,54 @@ export interface FileImport {
 
 export const APIDataService = {
   getData: async () => {
-    // Mock implementation
-    return { data: [] }
-  },
-  getFileImports: async (): Promise<FileImport[]> => {
-    // Mock implementation
-    return []
-  },
-  updateFileImport: async (id: string, updates: Partial<FileImport>): Promise<void> => {
-    // Mock implementation
-    // eslint-disable-next-line no-console
-    console.log('Updating file import', id, updates)
-  },
-  exportData: async (_format: string): Promise<Blob> => {
-    // Mock implementation
-    return new Blob(['mock data'], { type: 'text/plain' })
-  },
-  getStatistics: async () => {
-    // Mock implementation
-    return {
-      totalUsers: 0,
-      totalPosts: 0,
-      totalImports: 0
+    // Production implementation - call real API
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/data`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch data: ${response.statusText}`);
     }
+    return response.json();
+  },
+
+  getFileImports: async (): Promise<FileImport[]> => {
+    // Production implementation - call real API
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/file-imports`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch file imports: ${response.statusText}`);
+    }
+    return response.json();
+  },
+
+  updateFileImport: async (id: string, updates: Partial<FileImport>): Promise<void> => {
+    // Production implementation - call real API
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/file-imports/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update file import: ${response.statusText}`);
+    }
+  },
+
+  exportData: async (format: string): Promise<Blob> => {
+    // Production implementation - call real API
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/export?format=${format}`);
+    if (!response.ok) {
+      throw new Error(`Failed to export data: ${response.statusText}`);
+    }
+    return response.blob();
+  },
+
+  getStatistics: async () => {
+    // Production implementation - call real API
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/statistics`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch statistics: ${response.statusText}`);
+    }
+    return response.json();
   }
 }
 

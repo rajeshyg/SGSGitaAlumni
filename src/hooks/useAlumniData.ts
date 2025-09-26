@@ -1,13 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { APIService } from '../services/APIService';
-import type {
-  AlumniProfile,
-  SearchFilters,
-  DirectoryParams,
-  DirectoryResponse,
-  Posting,
-  PostingFilters
-} from '../services/APIService';
+import { APIService, type AlumniProfile, type SearchFilters, type DirectoryParams, type DirectoryResponse, type Posting, type PostingFilters } from '../services/APIService';
 
 // ============================================================================
 // ALUMNI PROFILE HOOKS

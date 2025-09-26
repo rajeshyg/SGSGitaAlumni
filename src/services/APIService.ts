@@ -1,4 +1,5 @@
 import { APIDataService, type FileImport as APIFileImport, checkAPIConfiguration, getAPIConfigStatus } from '../lib/apiData';
+import { MockAPIDataService, shouldUseMockData } from '../lib/mockApiData';
 import { apiClient } from '../lib/api';
 
 // Simple logger utility for production-safe logging
@@ -19,6 +20,16 @@ const logger = {
   }
 };
 
+// Helper function to get the appropriate data service based on environment
+const getDataService = () => {
+  if (shouldUseMockData()) {
+    logger.info('Using mock data service for development');
+    return MockAPIDataService;
+  }
+  logger.info('Using production API data service');
+  return APIDataService;
+};
+
 // ============================================================================
 // TYPE DEFINITIONS FOR API SERVICE
 // ============================================================================
@@ -27,6 +38,22 @@ const logger = {
 export interface LoginCredentials extends Record<string, unknown> {
   email: string;
   password: string;
+}
+
+export interface RegisterData extends Record<string, unknown> {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  graduationYear: number;
+  major: string;
+  currentPosition?: string;
+  company?: string;
+  location?: string;
+  linkedinUrl?: string;
+  bio?: string;
+  skills?: string[];
+  interests?: string[];
 }
 
 export interface AuthResponse {
@@ -192,7 +219,7 @@ export interface SendMessageData extends Record<string, unknown> {
 
 // Existing FileImport interface (keeping for backward compatibility)
 export interface FileImport extends Record<string, unknown> {
-  id: number; // MySQL auto-increment primary key
+  id: string; // UUID - aligned with database schema
   filename: string;
   file_type: string;
   upload_date: string;
@@ -227,7 +254,7 @@ const createEmptyResponse = (params: PaginationParams): ApiResponse<FileImport> 
 });
 
 const transformAPIFileImport = (item: APIFileImport): FileImport => ({
-  id: parseInt(item.id), // Convert string to number
+  id: item.id, // Keep as string UUID
   filename: item.filename,
   file_type: item.file_type,
   upload_date: item.upload_date.toISOString(), // Convert Date to string
@@ -259,8 +286,9 @@ export const APIService = {
 
       logger.info('API is configured, attempting to connect to backend...');
 
-      // Use API service instead of mock data
-      const response = await APIDataService.getFileImports();
+      // Use appropriate data service based on environment
+      const dataService = getDataService();
+      const response = await dataService.getFileImports();
 
       logger.info('API response received', { dataLength: response.length });
 
@@ -290,7 +318,7 @@ export const APIService = {
   },
 
   // Update functionality using MySQL
-  updateFileImport: async (id: number, updates: Partial<FileImport>): Promise<FileImport | null> => {
+  updateFileImport: async (id: string, updates: Partial<FileImport>): Promise<FileImport | null> => {
     try {
       logger.info('Updating file import', { id, updates });
 
@@ -300,7 +328,8 @@ export const APIService = {
       }
 
       const apiUpdates = APIService.convertToAPIFormat(id, updates);
-      await APIDataService.updateFileImport(id.toString(), apiUpdates);
+      const dataService = getDataService();
+      await dataService.updateFileImport(id, apiUpdates);
 
       return APIService.createMockUpdatedItem(id, updates);
     } catch (error) {
@@ -310,17 +339,17 @@ export const APIService = {
   },
 
   // Helper method to convert updates to API format
-  convertToAPIFormat: (id: number, updates: Partial<FileImport>): Partial<APIFileImport> => {
+  convertToAPIFormat: (id: string, updates: Partial<FileImport>): Partial<APIFileImport> => {
     return {
       ...updates,
-      id: id.toString(),
+      id: id,
       upload_date: updates.upload_date ? new Date(updates.upload_date) : undefined,
       file_size: updates.file_size ? parseInt(updates.file_size) : undefined,
     };
   },
 
   // Helper method to create mock updated item
-  createMockUpdatedItem: (id: number, updates: Partial<FileImport>): FileImport => {
+  createMockUpdatedItem: (id: string, updates: Partial<FileImport>): FileImport => {
     return {
       id,
       filename: updates.filename || 'updated_file.csv',
@@ -346,7 +375,8 @@ export const APIService = {
         throw new Error('API not configured');
       }
 
-      const data = await APIDataService.exportData(format);
+      const dataService = getDataService();
+      const data = await dataService.exportData(format);
 
       // Convert Blob to text for both CSV and JSON formats
       return await data.text();
@@ -372,7 +402,8 @@ export const APIService = {
         };
       }
 
-      return await APIDataService.getStatistics();
+      const dataService = getDataService();
+      return await dataService.getStatistics();
     } catch (error) {
       logger.error('Error fetching statistics:', error);
       return {
@@ -429,6 +460,21 @@ export const APIService = {
     } catch (error) {
       logger.error('Token refresh failed:', error);
       throw new Error('Session expired. Please log in again.');
+    }
+  },
+
+  // User registration
+  register: async (userData: RegisterData): Promise<AuthResponse> => {
+    try {
+      logger.info('Attempting user registration for:', userData.email);
+
+      const response = await apiClient.post('/api/auth/register', userData);
+
+      logger.info('Registration successful for user:', userData.email);
+      return response as AuthResponse;
+    } catch (error) {
+      logger.error('Registration failed:', error);
+      throw new Error('Registration failed. Please check your information and try again.');
     }
   },
 

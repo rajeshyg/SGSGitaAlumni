@@ -1,10 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { APIService } from '../services/APIService';
-import type {
-  User,
-  LoginCredentials,
-  AuthResponse
-} from '../services/APIService';
+import { APIService, type User, type LoginCredentials, type AuthResponse } from '../services/APIService';
 
 // ============================================================================
 // AUTHENTICATION HOOKS
@@ -102,7 +97,7 @@ export function useAuth() {
             isLoading: false,
             error: null
           });
-        } catch (authError) {
+        } catch {
           // Token might be expired, try to refresh
           try {
             await refreshToken();
@@ -113,7 +108,7 @@ export function useAuth() {
               isLoading: false,
               error: null
             });
-          } catch (refreshError) {
+          } catch {
             // Refresh failed, clear auth state
             await logout();
           }
