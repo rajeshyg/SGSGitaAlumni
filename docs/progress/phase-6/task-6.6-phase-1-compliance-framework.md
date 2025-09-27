@@ -137,7 +137,7 @@ export class ComplianceChecker {
 ### Reporting System
 
 #### Compliance Dashboard
-- **Real-time Status:** Live compliance status tracking
+- **Status:** 🟢 Operational (Live compliance status tracking)
 - **Category Breakdown:** Compliance by category and standard
 - **Trend Analysis:** Compliance trends over time
 - **Risk Assessment:** Risk-based compliance prioritization

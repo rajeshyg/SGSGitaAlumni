@@ -25,11 +25,44 @@ This document serves as the **master control document** for all documentation in
 - **Standards Documents**: 700-900 lines maximum (increased from 450)
 - **Code Examples**: 50 lines maximum (link to full examples in separate files)
 
+### Content Length Limits for Code Snippets
+- **Inline Code Snippets**: Maximum 30 lines per snippet
+- **Multiple Snippets**: Maximum 3-5 related snippets per section
+- **Total Code Content**: Code should not exceed 40% of total document length
+- **Code Organization**: Use collapsible sections or external links for lengthy examples
+
 ### Content Organization
 - **Clear Hierarchy**: Use consistent heading structure (H1 → H2 → H3)
 - **Logical Flow**: Overview → Details → Implementation → References
 - **Scannable Format**: Use bullets, tables, and code blocks effectively
 - **Cross-References**: Link to related content instead of duplicating
+
+## 🔗 Linking Structure Standards
+
+### Hierarchical Linking Rules
+- **Project Level**: PROGRESS.md links to phase READMEs (e.g., `docs/progress/phase-6/README.md`)
+- **Phase Level**: Phase READMEs link to individual task documents (e.g., `task-6.1-qa-framework.md`)
+- **Task Level**: Task documents link to related standards or implementation details
+- **No Task-to-Task Links**: Avoid direct task-to-task links; use phase README as navigation hub
+
+### Link Format Standards
+- **Relative Paths**: Use relative paths from project root (e.g., `docs/progress/phase-6/README.md`)
+- **Descriptive Text**: Link text should clearly indicate destination
+- **Consistent Anchors**: Use standard anchor formats (e.g., `#section-name`)
+
+## 📁 File Organization Standards
+
+### Task Documentation Structure
+- **Single File per Task**: Maximum 1 primary file per task (exceptions for complex multi-part tasks)
+- **File Naming**: `task-{phase}.{task}-{description}.md` format
+- **Maximum Files per Task**: 3 files maximum (main + 2 supporting files)
+- **Consolidation Rule**: Merge related files when total exceeds 3 or when content is closely coupled
+
+### Status Consistency Rules
+- **Single Source of Truth**: Each task has one authoritative status location
+- **Format Standardization**: `Status: [emoji] [Status] ([details])`
+- **Consistency Across Files**: Status must match between PROGRESS.md, phase README, and task document
+- **Update Propagation**: Status changes must be reflected in all referencing documents
 
 ## 🔗 Content Ownership Matrix
 

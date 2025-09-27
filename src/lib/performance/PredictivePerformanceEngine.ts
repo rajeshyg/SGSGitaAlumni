@@ -98,6 +98,58 @@ export interface PerformancePredictions {
   timeHorizon: number;
 }
 
+export interface PerformanceAnalysis {
+  predictions: PerformancePredictions;
+  anomalies: any;
+  uxCorrelation: any;
+  overallScore: number;
+  bottlenecks: PerformanceBottleneck[];
+}
+
+export interface SystemConstraints {
+  budget: number;
+  timeline: number;
+  technical: string[];
+  operational: string[];
+}
+
+export interface BusinessPriorities {
+  userExperience: number;
+  costOptimization: number;
+  performance: number;
+  availability: number;
+}
+
+export interface ResourceCapacity {
+  cpu: number;
+  memory: number;
+  storage: number;
+  network: number;
+}
+
+export interface BusinessGrowthProjection {
+  currentUsers: number;
+  projectedGrowth: number;
+  marketFactors: string[];
+  seasonalTrends: string[];
+}
+
+export interface BudgetConstraints {
+  totalBudget: number;
+  monthlyBudget: number;
+  costCenters: string[];
+  approvalRequired: boolean;
+}
+
+export interface PerformanceBaseline {
+  responseTime: { mean: number; stdDev: number; };
+  throughput: { mean: number; stdDev: number; };
+  resourceUsage: { mean: number; stdDev: number; };
+  errorRate: { mean: number; stdDev: number; };
+}
+
+export type AnomalySensitivity = 'low' | 'medium' | 'high';
+
 export class PredictivePerformanceEngine {
   private mlEngine: MLEngine;
   private forecastingModel: ForecastingModel;
