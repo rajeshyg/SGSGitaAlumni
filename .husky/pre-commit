@@ -18,6 +18,17 @@ npm run lint
 echo "🔍 Checking for redundancy..."
 npm run check-redundancy
 
+# 🚫 ZERO TOLERANCE: Check for mock data usage
+echo "🚫 Checking for mock data violations..."
+npm run detect-mock-data
+
+# If mock data check fails, exit
+if [ $? -ne 0 ]; then
+  echo "❌ Mock data detected! Zero tolerance policy violation. Commit blocked."
+  echo "Please remove all mock data and use real API endpoints instead."
+  exit 1
+fi
+
 # Run tests
 # Temporarily disabled due to test failures - will re-enable after deployment validation
 # echo "🧪 Running tests..."

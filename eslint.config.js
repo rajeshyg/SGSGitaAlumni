@@ -6,6 +6,9 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 
+// Import custom mock data prevention rules
+import { noMockDataRule, noMockImportsRule, noHardcodedMockDataRule } from './eslint-rules/no-mock-data.js';
+
 export default [
   {
     ignores: ['dist/**', 'node_modules/**', 'server.js', 'server-package.json']
@@ -43,7 +46,14 @@ export default [
       '@typescript-eslint': tseslint,
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
-      sonarjs: sonarjs
+      sonarjs: sonarjs,
+      'custom': {
+        rules: {
+          'no-mock-data': noMockDataRule,
+          'no-mock-imports': noMockImportsRule,
+          'no-hardcoded-mock-data': noHardcodedMockDataRule
+        }
+      }
     },
     rules: {
       // TypeScript rules
@@ -85,6 +95,11 @@ export default [
 
       // Import rules
       'no-unused-vars': 'off', // Let TypeScript handle this
+
+      // 🚫 MOCK DATA PREVENTION RULES - ZERO TOLERANCE
+      'custom/no-mock-data': 'error',
+      'custom/no-mock-imports': 'error',
+      'custom/no-hardcoded-mock-data': 'error',
     }
   },
   // Component files override (allow up to 500 lines for complex components)

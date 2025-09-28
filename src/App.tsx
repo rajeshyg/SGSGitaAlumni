@@ -11,6 +11,7 @@ const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default
 // Lazy load authentication pages
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const InvitationAcceptancePage = lazy(() => import('./pages/InvitationAcceptancePage'))
 
 // Lazy load placeholder components with loading states
 const UploadPage = lazy(() => Promise.resolve({
@@ -143,6 +144,11 @@ function App() {
               <Route path="/forgot-password" element={
                 <PublicRoute>
                   <ForgotPasswordPage />
+                </PublicRoute>
+              } />
+              <Route path="/invitation/:token" element={
+                <PublicRoute>
+                  <InvitationAcceptancePage />
                 </PublicRoute>
               } />
 

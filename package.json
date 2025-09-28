@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run detect-mock-data && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest",
@@ -14,10 +14,14 @@
     "prepare": "husky",
     "check-redundancy": "jscpd",
     "analyze-bundle": "ANALYZE=true npm run build",
-    "quality-check": "npm run lint && npm run check-redundancy",
+    "quality-check": "npm run lint && npm run check-redundancy && npm run detect-mock-data",
     "validate-docs": "node scripts/validate-documentation-standards.js",
     "validate-docs-standards": "node scripts/validate-documentation-standards.js",
-    "validate-deployment": "node scripts/deployment-validation.js"
+    "validate-deployment": "node scripts/deployment-validation.js",
+    "detect-mock-data": "node scripts/detect-mock-data.js",
+    "scan-mock-data": "node scripts/detect-mock-data.js",
+    "audit-mock-data": "node scripts/detect-mock-data.js",
+    "validate-no-mock-usage": "node scripts/detect-mock-data.js"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.883.0",
