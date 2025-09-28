@@ -921,6 +921,204 @@ function generateOTPCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// ============================================================================
+// DASHBOARD API ENDPOINTS
+// ============================================================================
+
+// Get current user
+app.get('/api/users/current', async (req, res) => {
+  try {
+    // In a real implementation, this would get the user from the session/JWT
+    // For now, return a mock user based on auth token or create a default user
+    const mockUser = {
+      id: 'user-123',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      graduationYear: 2020,
+      program: 'Computer Science',
+      currentPosition: 'Software Engineer',
+      bio: 'Passionate about technology and community building.',
+      isActive: true,
+      createdAt: new Date('2020-01-01'),
+      updatedAt: new Date()
+    };
+
+    res.json(mockUser);
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    res.status(500).json({ error: 'Failed to fetch current user' });
+  }
+});
+
+// Get user stats
+app.get('/api/users/:userId/stats', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Mock stats - in real implementation, this would query the database
+    const mockStats = {
+      totalConnections: Math.floor(Math.random() * 150) + 50,
+      activePostings: Math.floor(Math.random() * 10) + 2,
+      unreadMessages: Math.floor(Math.random() * 5),
+      profileViews: Math.floor(Math.random() * 100) + 20
+    };
+
+    res.json(mockStats);
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ error: 'Failed to fetch user stats' });
+  }
+});
+
+// Get recent conversations
+app.get('/api/conversations/recent', async (req, res) => {
+  try {
+    const { userId, limit = 5 } = req.query;
+
+    // Mock conversations - in real implementation, this would query the database
+    const mockConversations = [
+      {
+        id: 'conv-1',
+        participants: ['John Doe', 'Jane Smith'],
+        lastMessage: 'Thanks for the update!',
+        lastMessageTime: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+        unreadCount: 2,
+        avatar: '/api/placeholder/32/32'
+      },
+      {
+        id: 'conv-2',
+        participants: ['John Doe', 'Mike Johnson'],
+        lastMessage: 'Looking forward to the event',
+        lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+        unreadCount: 0,
+        avatar: '/api/placeholder/32/32'
+      },
+      {
+        id: 'conv-3',
+        participants: ['John Doe', 'Sarah Wilson'],
+        lastMessage: 'How is the new project going?',
+        lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+        unreadCount: 1,
+        avatar: '/api/placeholder/32/32'
+      }
+    ].slice(0, parseInt(limit));
+
+    res.json(mockConversations);
+  } catch (error) {
+    console.error('Error fetching recent conversations:', error);
+    res.status(500).json({ error: 'Failed to fetch recent conversations' });
+  }
+});
+
+// Get personalized posts
+app.get('/api/posts/personalized', async (req, res) => {
+  try {
+    const { userId, limit = 10 } = req.query;
+
+    // Mock personalized posts - in real implementation, this would query the database
+    const mockPosts = [
+      {
+        id: 'post-1',
+        title: 'Alumni Networking Event - Fall 2025',
+        content: 'Join us for our annual alumni networking event featuring keynote speakers from top tech companies.',
+        author: 'Alumni Association',
+        publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
+        tags: ['networking', 'event', 'career'],
+        relevanceScore: 0.95,
+        type: 'event'
+      },
+      {
+        id: 'post-2',
+        title: 'Mentorship Program Applications Open',
+        content: 'The new mentorship program is now accepting applications for both mentors and mentees.',
+        author: 'Career Services',
+        publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 12), // 12 hours ago
+        tags: ['mentorship', 'career', 'program'],
+        relevanceScore: 0.88,
+        type: 'announcement'
+      },
+      {
+        id: 'post-3',
+        title: 'Tech Industry Job Opportunities',
+        content: 'Latest job postings from our alumni network partners.',
+        author: 'Job Board',
+        publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+        tags: ['jobs', 'technology', 'opportunities'],
+        relevanceScore: 0.82,
+        type: 'job'
+      },
+      {
+        id: 'post-4',
+        title: 'Class of 2020 Reunion Planning',
+        content: 'Help us plan the upcoming reunion event. Share your ideas!',
+        author: 'Class Rep',
+        publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 36), // 1.5 days ago
+        tags: ['reunion', 'class-of-2020', 'planning'],
+        relevanceScore: 0.75,
+        type: 'discussion'
+      }
+    ].slice(0, parseInt(limit));
+
+    res.json(mockPosts);
+  } catch (error) {
+    console.error('Error fetching personalized posts:', error);
+    res.status(500).json({ error: 'Failed to fetch personalized posts' });
+  }
+});
+
+// Get notifications
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const { userId, limit = 5 } = req.query;
+
+    // Mock notifications - in real implementation, this would query the database
+    const mockNotifications = [
+      {
+        id: 'notif-1',
+        type: 'message',
+        title: 'New Message',
+        message: 'You have a new message from Jane Smith',
+        isRead: false,
+        createdAt: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
+        actionUrl: '/messages/conv-1'
+      },
+      {
+        id: 'notif-2',
+        type: 'connection',
+        title: 'New Connection',
+        message: 'Mike Johnson accepted your connection request',
+        isRead: false,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+        actionUrl: '/profile/mike-johnson'
+      },
+      {
+        id: 'notif-3',
+        type: 'event',
+        title: 'Event Reminder',
+        message: 'Alumni Networking Event starts in 2 hours',
+        isRead: true,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
+        actionUrl: '/events/networking-2025'
+      },
+      {
+        id: 'notif-4',
+        type: 'job',
+        title: 'Job Match Found',
+        message: 'A new job posting matches your profile',
+        isRead: true,
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+        actionUrl: '/jobs/software-engineer-123'
+      }
+    ].slice(0, parseInt(limit));
+
+    res.json(mockNotifications);
+  } catch (error) {
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
 // Quality metrics endpoints
 app.get('/api/quality/code-metrics', async (req, res) => {
   try {

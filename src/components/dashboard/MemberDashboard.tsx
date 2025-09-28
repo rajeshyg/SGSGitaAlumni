@@ -32,22 +32,22 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
             Welcome back, {data.user.firstName}!
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-sm sm:text-base text-gray-600 mt-2">
             Here's what's happening in your alumni network
           </p>
         </div>
 
         {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
           {/* Main Content Column */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-4 sm:space-y-6 order-2 xl:order-1">
             {/* Stats Overview */}
             <StatsOverview stats={data.stats} />
 
@@ -59,7 +59,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
           </div>
 
           {/* Sidebar Column */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6 order-1 xl:order-2">
             {/* Quick Actions */}
             <QuickActions actions={data.quickActions} />
 

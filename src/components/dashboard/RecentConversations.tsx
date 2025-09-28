@@ -13,11 +13,11 @@ export const RecentConversations: React.FC<RecentConversationsProps> = ({ conver
   if (conversations.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Conversations</CardTitle>
+        <CardHeader className="pb-3 sm:pb-6">
+          <CardTitle className="text-lg sm:text-xl">Recent Conversations</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-500 text-center py-8">
+          <p className="text-gray-500 text-center py-6 sm:py-8 text-sm sm:text-base">
             No recent conversations
           </p>
         </CardContent>
@@ -27,73 +27,49 @@ export const RecentConversations: React.FC<RecentConversationsProps> = ({ conver
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Recent Conversations</CardTitle>
+      <CardHeader className="pb-3 sm:pb-6">
+        <CardTitle className="text-lg sm:text-xl">Recent Conversations</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
+      <CardContent className="pt-0">
+        <div className="space-y-3 sm:space-y-4">
           {conversations.map((conversation) => (
             <div
               key={conversation.id}
-              className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+              className="flex items-center space-x-3 p-2 sm:p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors active:bg-gray-100 touch-manipulation"
               onClick={() => {
                 // Navigate to conversation
                 window.location.href = `/messages/${conversation.id}`;
               }}
             >
-              {/* Avatar Group for Multiple Participants */}
-              <div className="relative">
-                {conversation.participants.slice(0, 2).map((participant, index) => (
-                  <Avatar
-                    key={participant.id}
-                    className={`h-10 w-10 border-2 border-white ${
-                      index > 0 ? '-ml-2' : ''
-                    }`}
-                  >
-                    <AvatarImage src={`/api/placeholder/avatar/${participant.id}`} />
-                    <AvatarFallback>
-                      {participant.firstName[0]}{participant.lastName[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-                {conversation.participants.length > 2 && (
-                  <div className="h-10 w-10 -ml-2 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium">
-                    +{conversation.participants.length - 2}
-                  </div>
-                )}
-              </div>
+              {/* Avatar */}
+              <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                <AvatarImage src={conversation.avatar} />
+                <AvatarFallback className="text-xs sm:text-sm">
+                  {conversation.participants[0]?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
 
               {/* Conversation Details */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-900 truncate">
-                    {conversation.participants.length === 1
-                      ? `${conversation.participants[0].firstName} ${conversation.participants[0].lastName}`
-                      : `${conversation.participants.length} participants`
-                    }
+                  <h4 className="font-medium text-gray-900 truncate text-sm sm:text-base">
+                    {conversation.participants.join(', ')}
                   </h4>
-                  <div className="flex items-center space-x-2">
-                    {conversation.isOnline && (
-                      <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                    )}
+                  <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
                     {conversation.unreadCount > 0 && (
-                      <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
+                      <Badge variant="destructive" className="text-xs px-1.5 py-0.5 h-5">
                         {conversation.unreadCount}
                       </Badge>
                     )}
                   </div>
                 </div>
 
-                <p className="text-sm text-gray-600 truncate mt-1">
-                  <span className="font-medium">
-                    {conversation.lastMessage.sender.firstName}:
-                  </span>
-                  {' '}
-                  {conversation.lastMessage.content}
+                <p className="text-xs sm:text-sm text-gray-600 truncate mt-1">
+                  {conversation.lastMessage}
                 </p>
 
                 <p className="text-xs text-gray-500 mt-1">
-                  {new Date(conversation.lastMessage.timestamp).toLocaleDateString()}
+                  {new Date(conversation.lastMessageTime).toLocaleDateString()}
                 </p>
               </div>
             </div>
@@ -101,9 +77,9 @@ export const RecentConversations: React.FC<RecentConversationsProps> = ({ conver
         </div>
 
         {/* View All Link */}
-        <div className="mt-4 pt-4 border-t">
+        <div className="mt-4 pt-3 sm:pt-4 border-t">
           <button
-            className="w-full text-center text-primary hover:text-primary/80 font-medium"
+            className="w-full text-center text-primary hover:text-primary/80 font-medium text-sm sm:text-base py-2 touch-manipulation"
             onClick={() => {
               window.location.href = '/messages';
             }}

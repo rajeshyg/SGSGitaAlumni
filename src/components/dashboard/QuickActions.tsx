@@ -21,20 +21,22 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ actions }) => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Quick Actions</CardTitle>
+      <CardHeader className="pb-3 sm:pb-6">
+        <CardTitle className="text-lg sm:text-xl">Quick Actions</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-3">
+      <CardContent className="pt-0">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {actions.map((action) => (
             <Button
               key={action.id}
               variant="outline"
-              className="h-16 flex flex-col items-center justify-center space-y-1 p-2"
+              className="h-14 sm:h-16 flex flex-col items-center justify-center space-y-1 p-2 touch-manipulation active:scale-95 transition-transform"
               onClick={action.action}
             >
-              <span className="text-lg">{getIcon(action.icon)}</span>
-              <span className="text-xs text-center leading-tight">
+              <span className="text-base sm:text-lg" role="img" aria-label={action.label}>
+                {getIcon(action.icon)}
+              </span>
+              <span className="text-xs text-center leading-tight px-1">
                 {action.label}
               </span>
             </Button>

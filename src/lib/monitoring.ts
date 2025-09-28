@@ -8,10 +8,8 @@ export function initializeMonitoring() {
       environment: config.environment,
       tracesSampleRate: config.environment === 'production' ? 0.1 : 1.0,
       integrations: [
-        new Sentry.BrowserTracing({
-          tracePropagationTargets: ['localhost', /^https:\/\/.*\.sgs-gita-alumni\.com/],
-        }),
-        new Sentry.Replay(),
+        // BrowserTracing and Replay integrations removed due to version compatibility
+        // These can be added back when Sentry packages are updated
       ],
       replaysSessionSampleRate: 0.1,
       replaysOnErrorSampleRate: 1.0,
