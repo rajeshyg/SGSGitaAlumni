@@ -275,6 +275,8 @@ export interface InvitationServiceInterface {
   revokeInvitation(invitationId: string): Promise<void>;
   getInvitationStatus(token: string): Promise<Invitation>;
   listInvitations(filters?: InvitationFilters): Promise<Invitation[]>;
+  validateFamilyInvitation(token: string): Promise<FamilyInvitation>;
+  acceptFamilyInvitation(token: string, profileId: string, userData: UserRegistrationData): Promise<User>;
 }
 
 export interface OTPServiceInterface {
@@ -363,5 +365,5 @@ export class AgeVerificationError extends Error {
   }
 }
 
-// Re-export User type from existing auth types
-export type { User } from './auth';
+// Re-export User type from APIService
+export type { User } from '../services/APIService';

@@ -11,7 +11,9 @@ import {
   InvitationError,
   UserRegistrationData,
   InvitationFilters,
-  PaginatedResponse
+  PaginatedResponse,
+  FamilyInvitation,
+  ChildProfile
 } from '../types/invitation';
 import { User } from './APIService';
 import { apiClient } from '../lib/api';
@@ -433,6 +435,113 @@ export class InvitationService implements InvitationServiceInterface {
       throw new InvitationError(
         'Failed to list invitations',
         'INVITATION_LIST_FAILED',
+        500
+      );
+    }
+  }
+
+  // ============================================================================
+  // FAMILY INVITATION METHODS
+  // ============================================================================
+
+  async validateFamilyInvitation(token: string): Promise<FamilyInvitation> {
+    try {
+      const response = await apiClient.get(`/api/invitations/family/validate/${token}`);
+      return response.data.familyInvitation;
+    } catch (error) {
+      throw new InvitationError(
+        'Failed to validate family invitation',
+        'FAMILY_INVITATION_VALIDATION_FAILED',
+        500
+      );
+    }
+  }
+
+  async acceptFamilyInvitation(token: string, profileId: string, userData: UserRegistrationData): Promise<User> {
+    try {
+      // Validate invitation first
+      const familyInvitation = await this.validateFamilyInvitation(token);
+
+      // Find the specific child profile
+      const childProfile = familyInvitation.childrenProfiles.find(profile => profile.id === profileId);
+      if (!childProfile) {
+        throw new InvitationError(
+          'Child profile not found in family invitation',
+          'CHILD_PROFILE_NOT_FOUND',
+          404
+        );
+      }
+
+      // Perform age verification
+      const ageVerification = await this.ageVerificationService.verifyAge(childProfile.birthDate);
+
+      if (!ageVerification.isValid) {
+        throw new InvitationError(
+          ageVerification.errors.join(', '),
+          'AGE_VERIFICATION_FAILED',
+          400
+        );
+      }
+
+      // Handle parent consent if required
+      if (ageVerification.requiresParentConsent) {
+        if (!userData.parentEmail || !userData.parentConsentToken) {
+          throw new InvitationError(
+            'Parent consent is required for users under 18',
+            'PARENT_CONSENT_REQUIRED',
+            400
+          );
+        }
+
+        const consentValid = await this.ageVerificationService.validateParentConsent(
+          userData.parentConsentToken
+        );
+
+        if (!consentValid) {
+          throw new InvitationError(
+            'Invalid or expired parent consent',
+            'INVALID_PARENT_CONSENT',
+            400
+          );
+        }
+      }
+
+      // Create user account for the child profile
+      const userCreationData = {
+        ...userData,
+        email: familyInvitation.parentEmail, // Use parent email for child accounts
+        invitationId: familyInvitation.id,
+        profileId: profileId,
+        requiresOtp: true,
+        ageVerified: true,
+        parentConsentRequired: ageVerification.requiresParentConsent,
+        parentConsentGiven: ageVerification.requiresParentConsent
+      };
+
+      const userResponse = await apiClient.post('/api/auth/register-from-family-invitation', userCreationData);
+      const user: User = userResponse.data.user;
+
+      // Update family invitation status
+      await apiClient.request(`/api/invitations/family/${familyInvitation.id}/accept-profile`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          profileId: profileId,
+          acceptedBy: user.id
+        })
+      });
+
+      // Log family invitation acceptance
+      await this.logInvitationAction(familyInvitation.id, 'family_profile_accepted', user.id);
+
+      return user;
+
+    } catch (error) {
+      if (error instanceof InvitationError) {
+        throw error;
+      }
+      throw new InvitationError(
+        'Failed to accept family invitation',
+        'FAMILY_INVITATION_ACCEPTANCE_FAILED',
         500
       );
     }

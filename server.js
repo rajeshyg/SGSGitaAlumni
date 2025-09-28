@@ -460,6 +460,137 @@ app.get('/api/export', async (req, res) => {
 // INVITATION SYSTEM API ENDPOINTS
 // ============================================================================
 
+// Create family invitation
+app.post('/api/invitations/family', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { parentEmail, childrenData, invitedBy, expiresInDays = 7 } = req.body;
+
+    const familyInvitation = {
+      id: generateUUID(),
+      parentEmail,
+      childrenProfiles: JSON.stringify(childrenData),
+      invitationToken: generateSecureToken(),
+      status: 'pending',
+      sentAt: new Date(),
+      expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000),
+      invitedBy,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const query = `
+      INSERT INTO FAMILY_INVITATIONS (
+        id, parent_email, children_profiles, invitation_token, status,
+        sent_at, expires_at, invited_by, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await connection.execute(query, [
+      familyInvitation.id,
+      familyInvitation.parentEmail,
+      familyInvitation.childrenProfiles,
+      familyInvitation.invitationToken,
+      familyInvitation.status,
+      familyInvitation.sentAt,
+      familyInvitation.expiresAt,
+      familyInvitation.invitedBy,
+      familyInvitation.createdAt,
+      familyInvitation.updatedAt
+    ]);
+
+    connection.release();
+
+    res.status(201).json(familyInvitation);
+  } catch (error) {
+    console.error('Error creating family invitation:', error);
+    res.status(500).json({ error: 'Failed to create family invitation' });
+  }
+});
+
+// Validate family invitation token
+app.get('/api/invitations/family/validate/:token', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { token } = req.params;
+
+    const query = `
+      SELECT * FROM FAMILY_INVITATIONS
+      WHERE invitation_token = ? AND status IN ('pending', 'partially_accepted')
+      AND expires_at > NOW()
+    `;
+
+    const [rows] = await connection.execute(query, [token]);
+    connection.release();
+
+    if (rows.length > 0) {
+      const row = rows[0];
+      const familyInvitation = {
+        id: row.id,
+        parentEmail: row.parent_email,
+        childrenProfiles: JSON.parse(row.children_profiles || '[]'),
+        invitationToken: row.invitation_token,
+        status: row.status,
+        sentAt: row.sent_at,
+        expiresAt: row.expires_at,
+        invitedBy: row.invited_by,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+
+      res.json({ familyInvitation });
+    } else {
+      res.json({ familyInvitation: null });
+    }
+  } catch (error) {
+    console.error('Error validating family invitation:', error);
+    res.status(500).json({ error: 'Failed to validate family invitation' });
+  }
+});
+
+// Accept family invitation profile
+app.patch('/api/invitations/family/:id/accept-profile', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { id } = req.params;
+    const { profileId, acceptedBy } = req.body;
+
+    // Get current family invitation
+    const [rows] = await connection.execute('SELECT * FROM FAMILY_INVITATIONS WHERE id = ?', [id]);
+    if (rows.length === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'Family invitation not found' });
+    }
+
+    const row = rows[0];
+    const childrenProfiles = JSON.parse(row.children_profiles || '[]');
+
+    // Update the specific profile as accepted
+    const updatedProfiles = childrenProfiles.map(profile =>
+      profile.id === profileId
+        ? { ...profile, isAccepted: true, acceptedAt: new Date() }
+        : profile
+    );
+
+    // Check if all profiles are now accepted
+    const allAccepted = updatedProfiles.every(profile => profile.isAccepted);
+    const newStatus = allAccepted ? 'completed' : 'partially_accepted';
+
+    // Update the invitation
+    await connection.execute(
+      'UPDATE FAMILY_INVITATIONS SET children_profiles = ?, status = ?, updated_at = NOW() WHERE id = ?',
+      [JSON.stringify(updatedProfiles), newStatus, id]
+    );
+
+    connection.release();
+
+    res.json({ success: true, status: newStatus });
+  } catch (error) {
+    console.error('Error accepting family invitation profile:', error);
+    res.status(500).json({ error: 'Failed to accept family invitation profile' });
+  }
+});
+
 // Create invitation
 app.post('/api/invitations', async (req, res) => {
   try {
@@ -606,6 +737,93 @@ app.post('/api/otp/generate', async (req, res) => {
   } catch (error) {
     console.error('Error generating OTP:', error);
     res.status(500).json({ error: 'Failed to generate OTP' });
+  }
+});
+
+// ============================================================================
+// AUTHENTICATION ENDPOINTS
+// ============================================================================
+
+// Register from family invitation
+app.post('/api/auth/register-from-family-invitation', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const {
+      firstName,
+      lastName,
+      birthDate,
+      graduationYear,
+      program,
+      currentPosition,
+      bio,
+      email,
+      invitationId,
+      profileId,
+      requiresOtp,
+      ageVerified,
+      parentConsentRequired,
+      parentConsentGiven
+    } = req.body;
+
+    // Create user account
+    const userId = generateUUID();
+    const user = {
+      id: userId,
+      firstName,
+      lastName,
+      email,
+      birthDate: new Date(birthDate),
+      graduationYear,
+      program,
+      currentPosition,
+      bio,
+      invitationId,
+      profileId,
+      isActive: true,
+      ageVerified,
+      parentConsentRequired,
+      parentConsentGiven,
+      requiresOtp,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const query = `
+      INSERT INTO USERS (
+        id, first_name, last_name, email, birth_date, graduation_year,
+        program, current_position, bio, invitation_id, profile_id,
+        is_active, age_verified, parent_consent_required, parent_consent_given,
+        requires_otp, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await connection.execute(query, [
+      user.id,
+      user.firstName,
+      user.lastName,
+      user.email,
+      user.birthDate,
+      user.graduationYear,
+      user.program,
+      user.currentPosition || null,
+      user.bio || null,
+      user.invitationId,
+      user.profileId,
+      user.isActive,
+      user.ageVerified,
+      user.parentConsentRequired,
+      user.parentConsentGiven,
+      user.requiresOtp,
+      user.createdAt,
+      user.updatedAt
+    ]);
+
+    connection.release();
+
+    res.status(201).json({ user });
+  } catch (error) {
+    console.error('Error registering from family invitation:', error);
+    res.status(500).json({ error: 'Failed to register from family invitation' });
   }
 });
 
