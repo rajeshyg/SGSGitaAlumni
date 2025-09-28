@@ -23,11 +23,16 @@ Map all prototype UI screens and components to database schema entities, identif
 
 ## Database Schema Entities
 
-### Core Entities
+### Core Entities (Updated for Invitation-Based System)
 ```sql
--- From existing Mermaid schema
-USERS (id, email, password_hash, role, created_at, updated_at)
+-- Core Authentication (Updated for Phase 8 Requirements)
+USERS (id, email, password_hash, role, invitation_id, requires_otp, ...)
 ALUMNI_PROFILES (user_id, first_name, last_name, graduation_year, ...)
+USER_INVITATIONS (id, email, invitation_token, invited_by, status, ...)
+OTP_TOKENS (id, email, otp_code, token_type, expires_at, ...)
+FAMILY_INVITATIONS (id, parent_email, children_profiles, status, ...)
+
+-- Business Features
 POSTINGS (id, author_id, type, title, content, status, ...)
 CONVERSATIONS (id, type, created_at, updated_at)
 MESSAGES (id, conversation_id, sender_id, content, ...)

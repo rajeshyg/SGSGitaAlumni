@@ -77,23 +77,28 @@ export function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    console.log('Login form submitted with:', formData);
+
     if (!validateForm()) {
+      console.log('Form validation failed');
       return;
     }
 
+    console.log('Form validation passed, attempting login');
     setIsSubmitting(true);
-    
+
     try {
+      console.log('Calling login function...');
       await login({
         email: formData.email,
         password: formData.password
       });
-      
+
+      console.log('Login function completed successfully');
       // Navigation will be handled by the useEffect above
     } catch (loginError) {
       // Error is handled by the auth context
-      // eslint-disable-next-line no-console
       console.error('Login failed:', loginError);
     } finally {
       setIsSubmitting(false);

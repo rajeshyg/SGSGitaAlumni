@@ -1,18 +1,22 @@
-# Task 7.3: Authentication System
+# Task 7.3: Invitation-Based Authentication System
 
 **Status:** 🟡 Planned
 **Priority:** Critical
-**Estimated Time:** 3-4 days
+**Estimated Time:** 1-2 weeks
+**Dependencies:** Task 7.2 (Database Schema), Task 8.1 (Age Verification)
 
 ## Overview
-Implement complete authentication system by migrating the prototype's login/registration screens and replacing mock authentication with real API integration. This establishes secure user sessions and access control for all business features.
+Implement comprehensive invitation-based authentication system with OTP verification, family invitation support, and COPPA compliance. This replaces traditional registration with a secure, invitation-only access model that meets business requirements for 14+ age restriction and parent consent.
+
+## ⚠️ **CRITICAL CHANGE**: Merged with Phase 8 Requirements
+This task now incorporates Phase 8 invitation system requirements as they represent **fundamental business requirements**, not optional features.
 
 ## Objectives
-- Migrate login and registration UI from prototype
-- Implement real authentication API integration
-- Create session management and token handling
-- Add route protection and access control
-- Establish user role-based permissions
+- Implement invitation-based registration (no public registration)
+- Create OTP authentication system for secure access
+- Add family invitation support for multiple children
+- Integrate age verification and COPPA compliance
+- Establish secure session management and role-based access
 
 ## Prototype Reference
 **Source:** `C:\React-Projects\SGSDataMgmtCore\prototypes\react-shadcn-platform`
@@ -23,22 +27,33 @@ Implement complete authentication system by migrating the prototype's login/regi
 
 ## Technical Requirements
 
-### Authentication Flow
+### Invitation-Based Authentication Flow
 ```typescript
-// src/lib/auth.ts - Authentication utilities
+// src/lib/auth.ts - Invitation-based authentication utilities
 interface AuthState {
   user: User | null
   token: string | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
+  pendingInvitation: Invitation | null
+  requiresOTP: boolean
 }
 
 interface AuthActions {
-  login: (credentials: LoginCredentials) => Promise<void>
-  register: (userData: RegisterData) => Promise<void>
+  validateInvitation: (token: string) => Promise<InvitationValidation>
+  acceptInvitation: (token: string, userData: UserData) => Promise<void>
+  requestOTP: (email: string) => Promise<void>
+  verifyOTP: (email: string, otpCode: string) => Promise<void>
   logout: () => Promise<void>
   refreshToken: () => Promise<void>
+}
+
+interface InvitationValidation {
+  isValid: boolean
+  invitation: Invitation | null
+  requiresParentConsent: boolean
+  errors: string[]
 }
 ```
 
@@ -79,41 +94,47 @@ export function useAuth() {
 
 ## Implementation Steps
 
-### Step 1: Migrate Authentication UI
-- [ ] Copy login screen from prototype to production
-- [ ] Adapt registration form with real validation
-- [ ] Update styling to match production theme
-- [ ] Remove all mock data references
+### Step 1: Database Schema Implementation
+- [ ] Create `USER_INVITATIONS` table with token management
+- [ ] Create `OTP_TOKENS` table with expiration and rate limiting
+- [ ] Create `FAMILY_INVITATIONS` table for multi-child support
+- [ ] Modify `USERS` table to add invitation and OTP fields
+- [ ] Update existing authentication tables for invitation flow
 
-### Step 2: Implement Auth Context & Hooks
-- [ ] Create authentication context provider
-- [ ] Implement useAuth hook with real API calls
-- [ ] Add token storage and refresh logic
-- [ ] Create session persistence
+### Step 2: Core Services Development
+- [ ] Implement `InvitationService` for invitation management
+- [ ] Implement `OTPService` for secure OTP generation/validation
+- [ ] Implement `FamilyInvitationService` for multi-child invitations
+- [ ] Implement `AgeVerificationService` for COPPA compliance
+- [ ] Create email service for invitation and OTP delivery
 
-### Step 3: Route Protection System
-- [ ] Create ProtectedRoute component
-- [ ] Implement role-based access control
-- [ ] Add route guards for authenticated areas
-- [ ] Create public/private route separation
+### Step 3: Authentication UI Components
+- [ ] Create invitation acceptance page with validation
+- [ ] Create OTP verification page with resend functionality
+- [ ] Create family profile selection page
+- [ ] Create age verification and parent consent forms
+- [ ] Update existing login page for OTP-based access
 
 ### Step 4: API Integration
-- [ ] Connect login to `/api/auth/login` endpoint
-- [ ] Connect registration to `/api/auth/register` endpoint
-- [ ] Implement token refresh mechanism
-- [ ] Add logout API integration
+- [ ] Create `/api/invitations` endpoints for invitation management
+- [ ] Create `/api/otp` endpoints for OTP generation/validation
+- [ ] Create `/api/family-invitations` for family invitation flow
+- [ ] Update `/api/auth` endpoints for invitation-based authentication
+- [ ] Implement secure token and OTP validation
 
-### Step 5: Error Handling & UX
-- [ ] Add comprehensive error messages
-- [ ] Implement loading states
-- [ ] Add form validation feedback
-- [ ] Create user-friendly error displays
+### Step 5: Security & Compliance Implementation
+- [ ] Implement COPPA-compliant age verification
+- [ ] Add parent consent collection and tracking
+- [ ] Implement invitation token security with expiration
+- [ ] Add OTP rate limiting and anti-abuse measures
+- [ ] Create audit logging for all invitation activities
 
-### Step 6: Security Implementation
-- [ ] Secure token storage (httpOnly cookies)
-- [ ] Implement CSRF protection
-- [ ] Add rate limiting for auth endpoints
-- [ ] Secure logout with token blacklisting
+### Step 6: Email Integration & Templates
+- [ ] Set up reliable email service (SendGrid/AWS SES)
+- [ ] Create responsive invitation email templates
+- [ ] Create OTP delivery email templates
+- [ ] Create family invitation email templates
+- [ ] Implement email delivery tracking and monitoring
 
 ## User Roles & Permissions
 

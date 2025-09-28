@@ -1,4 +1,5 @@
 import React from 'react'
+import { useAuth } from '../../contexts/AuthContext'
 import { DashboardHeader } from '../dashboard/DashboardHeader'
 import { WelcomeHeroSection } from '../dashboard/WelcomeHeroSection'
 import { DashboardSidebar } from '../dashboard/DashboardSidebar'
@@ -31,13 +32,26 @@ export function MainLayout({
   stats,
   children
 }: MainLayoutProps) {
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.error('Logout failed:', error);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <DashboardHeader
         currentProfile={currentProfile}
         stats={stats}
         onSwitchProfile={() => {}}
-        onLogout={() => {}}
+        onLogout={handleLogout}
       />
 
       <WelcomeHeroSection

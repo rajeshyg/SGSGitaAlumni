@@ -32,9 +32,13 @@ export default defineConfig({
         "..",
       ],
     },
-    // Backend proxy removed - using mock data layer instead
-    // Previous configuration:
-    // '/api': { target: 'http://localhost:8000', changeOrigin: true, secure: false },
-    // '/health': { target: 'http://localhost:8000', changeOrigin: true, secure: false }
+    // Proxy API requests to the backend server
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   },
 })

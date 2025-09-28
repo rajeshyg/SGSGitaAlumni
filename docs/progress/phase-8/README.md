@@ -101,14 +101,16 @@ npm run test:accessibility     # WCAG 2.1 AA compliance
 ### Phase 8A: Foundation & Legal Compliance
 
 #### [Task 8.1: Age Verification & COPPA Compliance](./task-8.1-age-verification-coppa.md)
-- **Status:** 🟡 Planned
+- **Status:** 🔄 Merged into Phase 7.3
 - **Description:** Implement 14+ age restriction with parent consent system
 - **Duration:** 1 week
+- **⚠️ MERGED:** Now part of Task 7.3 Invitation-Based Authentication System
 
 #### [Task 8.2: Invitation System Implementation](./task-8.2-invitation-system.md)
-- **Status:** 🟡 Planned
+- **Status:** 🔄 Merged into Phase 7.3
 - **Description:** Token-based registration with email verification
 - **Duration:** 1 week
+- **⚠️ MERGED:** Core functionality moved to Task 7.3 for unified authentication
 
 ### Phase 8B: Rating & Recognition System
 

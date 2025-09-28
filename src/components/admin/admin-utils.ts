@@ -48,7 +48,7 @@ export function calculateStats(fileImportData: FileImport[]) {
 // Helper function to get current user profile
 export function getCurrentProfile() {
   const storedProfile = localStorage.getItem('currentProfile');
-  return storedProfile ? JSON.parse(storedProfile) : {
+  const profile = storedProfile ? JSON.parse(storedProfile) : {
     id: 1,
     name: 'Administrator',
     role: 'admin',
@@ -57,4 +57,10 @@ export function getCurrentProfile() {
       professionalStatus: 'Administrator'
     }
   };
+
+  if (import.meta.env.DEV) {
+    logger.info('getCurrentProfile returning:', profile);
+  }
+
+  return profile;
 }

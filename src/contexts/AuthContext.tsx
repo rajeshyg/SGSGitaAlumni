@@ -58,9 +58,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const response: AuthResponse = await APIService.login(credentials);
 
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthContext] Login response user:', response.user);
+      }
+
       // Store tokens securely
       localStorage.setItem('authToken', response.token);
       localStorage.setItem('refreshToken', response.refreshToken);
+
+      // Store user profile in localStorage for admin components
+      const profile = {
+        id: typeof response.user.id === 'string' ? parseInt(response.user.id) || 1 : response.user.id,
+        name: `${response.user.firstName} ${response.user.lastName}`,
+        role: response.user.role,
+        avatar: null,
+        preferences: {
+          professionalStatus: response.user.role === 'admin' ? 'Administrator' :
+                             response.user.role === 'moderator' ? 'Moderator' : 'Member'
+        }
+      };
+      localStorage.setItem('currentProfile', JSON.stringify(profile));
+
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthContext] Login successful, stored profile:', profile);
+      }
 
       setAuthState({
         user: response.user,
@@ -124,9 +147,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error('Logout error:', logoutError);
       }
     } finally {
-      // Clear tokens and state regardless of API call success
+      // Clear tokens, profile, and state regardless of API call success
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('currentProfile');
       setAuthState({
         user: null,
         isAuthenticated: false,
@@ -173,43 +197,81 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // AUTHENTICATION CHECK ON MOUNT
   // ============================================================================
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        try {
-          const user = await APIService.getCurrentUser();
-          setAuthState({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-            authError: null
-          });
-        } catch {
-          // Token might be expired, try to refresh
-          try {
-            await refreshToken();
-            const user = await APIService.getCurrentUser();
-            setAuthState({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-              authError: null
-            });
-          } catch {
-            // Refresh failed, clear auth state
-            await logout();
-          }
-        }
-      } else {
-        setAuthState(prev => ({ ...prev, isLoading: false }));
-      }
-    };
+   useEffect(() => {
+     const checkAuth = async () => {
+       const token = localStorage.getItem('authToken');
+       if (token) {
+         try {
+           const user = await APIService.getCurrentUser();
 
-    checkAuth();
-  }, []);
+           // Store user profile in localStorage for admin components
+           const profile = {
+             id: typeof user.id === 'string' ? parseInt(user.id) || 1 : user.id,
+             name: `${user.firstName} ${user.lastName}`,
+             role: user.role,
+             avatar: null,
+             preferences: {
+               professionalStatus: user.role === 'admin' ? 'Administrator' :
+                                  user.role === 'moderator' ? 'Moderator' : 'Member'
+             }
+           };
+           localStorage.setItem('currentProfile', JSON.stringify(profile));
+
+           if (import.meta.env.DEV) {
+             // eslint-disable-next-line no-console
+             console.log('[AuthContext] Restored auth, stored profile:', profile);
+           }
+
+           setAuthState({
+             user,
+             isAuthenticated: true,
+             isLoading: false,
+             error: null,
+             authError: null
+           });
+         } catch {
+           // Token might be expired, try to refresh
+           try {
+             await refreshToken();
+             const user = await APIService.getCurrentUser();
+
+             // Store user profile in localStorage for admin components
+             const profile = {
+               id: typeof user.id === 'string' ? parseInt(user.id) || 1 : user.id,
+               name: `${user.firstName} ${user.lastName}`,
+               role: user.role,
+               avatar: null,
+               preferences: {
+                 professionalStatus: user.role === 'admin' ? 'Administrator' :
+                                    user.role === 'moderator' ? 'Moderator' : 'Member'
+               }
+             };
+             localStorage.setItem('currentProfile', JSON.stringify(profile));
+
+             if (import.meta.env.DEV) {
+               // eslint-disable-next-line no-console
+               console.log('[AuthContext] Refreshed auth, stored profile:', profile);
+             }
+
+             setAuthState({
+               user,
+               isAuthenticated: true,
+               isLoading: false,
+               error: null,
+               authError: null
+             });
+           } catch {
+             // Refresh failed, clear auth state
+             await logout();
+           }
+         }
+       } else {
+         setAuthState(prev => ({ ...prev, isLoading: false }));
+       }
+     };
+
+     checkAuth();
+   }, []);
 
   // ============================================================================
   // CONTEXT VALUE

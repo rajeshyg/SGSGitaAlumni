@@ -94,10 +94,11 @@ npm run test:desktop           # Desktop compatibility
 - **Description:** Map all prototype screens to database entities
 - **Prototype Reference:** All 18+ screens and data structures
 
-#### [Task 7.3: Authentication System](./task-7.3-authentication-system.md)
-- **Status:** 🟡 Planned
-- **Description:** Implement login, registration, and session management
-- **Prototype Reference:** Login screen and auth flows
+#### [Task 7.3: Invitation-Based Authentication System](./task-7.3-authentication-system.md)
+- **Status:** 🟡 Planned (Updated to include Phase 8 requirements)
+- **Description:** Implement invitation-based authentication with OTP, family invitations, and COPPA compliance
+- **Prototype Reference:** Login screen adapted for invitation-based flow
+- **⚠️ CRITICAL CHANGE:** Merged with Phase 8 invitation system requirements
 
 ### Phase 7B: Core Features
 
@@ -173,8 +174,9 @@ npm run test:desktop           # Desktop compatibility
 - [ ] **Security:** Full security requirements implementation
 - [ ] **Accessibility:** WCAG 2.1 AA compliance across all screens
 
-### Business Functionality
-- [ ] **Authentication:** Secure login and session management
+### Business Functionality (Updated for Invitation-Based System)
+- [ ] **Authentication:** Invitation-based authentication with OTP and family support
+- [ ] **Age Verification:** COPPA-compliant 14+ age restriction with parent consent
 - [ ] **Directory:** Functional alumni search and profile browsing
 - [ ] **Profiles:** Complete profile management and editing
 - [ ] **Postings:** Full job posting and opportunity system

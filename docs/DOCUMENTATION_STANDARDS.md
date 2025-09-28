@@ -58,6 +58,13 @@ This document serves as the **master control document** for all documentation in
 - **Maximum Files per Task**: 3 files maximum (main + 2 supporting files)
 - **Consolidation Rule**: Merge related files when total exceeds 3 or when content is closely coupled
 
+### Sub-Task Documentation Structure
+- **Sub-Task Files**: For tasks with sub-tasks, use `task-{phase}.{task}.{subtask}-{description}.md` format
+- **Linking Hierarchy**: Sub-task documents are linked ONLY from their parent task document
+- **Phase README Exclusion**: Sub-task documents are NOT linked from phase READMEs
+- **Navigation Flow**: PROGRESS.md → Phase README → Task Document → Sub-Task Documents
+- **Implementation Scope**: Apply only to pending tasks; completed tasks maintain existing structure
+
 ### Status Consistency Rules
 - **Single Source of Truth**: Each task has one authoritative status location
 - **Format Standardization**: `Status: [emoji] [Status] ([details])`

@@ -1,5 +1,6 @@
 import { DataTableSection } from './DataTableSection'
 import { MainLayout } from './MainLayout'
+import { QualityDashboard } from '../dashboard/QualityDashboard'
 import type { FileImport } from '../../services/APIService'
 
 interface APIConfigStatus {
@@ -53,17 +54,27 @@ export function AdminContent({
 }: AdminContentProps) {
   return (
     <MainLayout currentProfile={currentProfile} stats={stats}>
-      <DataTableSection
-        fileImportData={fileImportData}
-        apiConfig={apiConfig}
-        navigate={navigate}
-        total={total}
-        page={page}
-        pageSize={pageSize}
-        hasMore={hasMore}
-        handlePageChange={handlePageChange}
-        refresh={refresh}
-      />
+      <div className="space-y-8">
+        {/* AI Quality Orchestration Dashboard */}
+        <QualityDashboard
+          projectId="sgs-gita-alumni"
+          timeRange="30d"
+          onRefresh={() => {}}
+        />
+
+        {/* Data Management Section */}
+        <DataTableSection
+          fileImportData={fileImportData}
+          apiConfig={apiConfig}
+          navigate={navigate}
+          total={total}
+          page={page}
+          pageSize={pageSize}
+          hasMore={hasMore}
+          handlePageChange={handlePageChange}
+          refresh={refresh}
+        />
+      </div>
     </MainLayout>
   )
 }

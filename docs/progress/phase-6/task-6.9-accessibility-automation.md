@@ -1,16 +1,20 @@
 ---
-status: Completed
+status: Pending
 doc-type: implementation
 ---
 
-# Task 6.9: Accessibility Automation (Split)
+# Task 6.9: Accessibility Automation
 
-This task was split into two parts to improve maintainability and satisfy documentation size limits. See the parts below:
+## Status
+- **Status:** ⚠️ Pending
+- **Estimated Effort:** 4-5 days
+- **Priority:** High
+- **Dependencies:** Tasks 6.1, 6.3 (Foundation and Cross-Platform)
+- **Sub-tasks:**
+  - [Task 6.9.1: Accessibility Automation - Overview & Engines](./task-6.9.1-accessibility-automation-part-a.md)
+  - [Task 6.9.2: Accessibility Automation - CI Integration, Reporting & Metrics](./task-6.9.2-accessibility-automation-part-b.md)
 
-- Part A — Overview & Engines: `task-6.9-accessibility-automation-part-a.md`
-- Part B — CI Integration, Reporting & Metrics: `task-6.9-accessibility-automation-part-b.md`
-
-If you need to propose further splits or create issues for trimming, use the backlog at `OVERSIZED_COMPLETED_DOCS_BACKLOG.md`.
+This task implements comprehensive accessibility automation framework with WCAG 2.1 AA compliance validation, multi-modal testing, and assistive technology compatibility. The implementation is split into sub-tasks for better organization and maintainability.
 
 #### Cognitive Load Analysis Engine
 ```typescript
