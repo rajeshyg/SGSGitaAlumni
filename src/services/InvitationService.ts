@@ -17,14 +17,17 @@ import { User } from './APIService';
 import { apiClient } from '../lib/api';
 import { AgeVerificationService } from './AgeVerificationService';
 import { OTPService } from './OTPService';
+import { EmailService } from './EmailService';
 
 export class InvitationService implements InvitationServiceInterface {
   private ageVerificationService: AgeVerificationService;
   private otpService: OTPService;
+  private emailService: EmailService;
 
   constructor() {
     this.ageVerificationService = new AgeVerificationService();
     this.otpService = new OTPService();
+    this.emailService = new EmailService();
   }
 
   // ============================================================================
@@ -115,8 +118,8 @@ export class InvitationService implements InvitationServiceInterface {
         );
       }
 
-      // TODO: Send invitation email - EmailService to be implemented
-      // await this.emailService.sendInvitationEmail(invitation);
+      // Send invitation email
+      await this.emailService.sendInvitationEmail(invitation);
 
       // Update invitation sent timestamp
       await apiClient.request(`/api/invitations/${invitationId}`, {
@@ -328,8 +331,8 @@ export class InvitationService implements InvitationServiceInterface {
         );
       }
 
-      // TODO: Send invitation email - EmailService to be implemented
-      // await this.emailService.sendInvitationEmail(invitation);
+      // Resend invitation email
+      await this.emailService.sendInvitationEmail(invitation);
 
       // Update resend count
       await apiClient.request(`/api/invitations/${invitationId}`, {

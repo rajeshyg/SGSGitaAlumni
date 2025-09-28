@@ -11,11 +11,13 @@ import { Input } from '../components/ui/input';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { InvitationService } from '../services/InvitationService';
 import { AgeVerificationService } from '../services/AgeVerificationService';
-import { 
-  Invitation, 
-  InvitationValidation, 
+import { OTPService } from '../services/OTPService';
+import {
+  Invitation,
+  InvitationValidation,
   UserRegistrationData,
-  AgeVerificationResult 
+  AgeVerificationResult,
+  OTPValidation
 } from '../types/invitation';
 
 interface InvitationAcceptancePageProps {

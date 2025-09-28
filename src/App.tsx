@@ -12,6 +12,8 @@ const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const InvitationAcceptancePage = lazy(() => import('./pages/InvitationAcceptancePage'))
+const OTPVerificationPage = lazy(() => import('./pages/OTPVerificationPage'))
+const FamilyProfileSelectionPage = lazy(() => import('./pages/FamilyProfileSelectionPage'))
 
 // Lazy load placeholder components with loading states
 const UploadPage = lazy(() => Promise.resolve({
@@ -149,6 +151,16 @@ function App() {
               <Route path="/invitation/:token" element={
                 <PublicRoute>
                   <InvitationAcceptancePage />
+                </PublicRoute>
+              } />
+              <Route path="/verify-otp/:email?" element={
+                <PublicRoute>
+                  <OTPVerificationPage />
+                </PublicRoute>
+              } />
+              <Route path="/family-invitation/:token" element={
+                <PublicRoute>
+                  <FamilyProfileSelectionPage />
                 </PublicRoute>
               } />
 

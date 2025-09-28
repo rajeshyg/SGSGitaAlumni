@@ -91,10 +91,14 @@ export type FamilyInvitationStatus = 'pending' | 'partially_accepted' | 'complet
 
 export interface ChildProfile {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   graduationYear: number;
   program: string;
-  isAvailable: boolean;
+  relationship: string;
+  birthDate: Date;
+  isEligible: boolean;
+  requiresParentConsent: boolean;
   isAccepted?: boolean;
   acceptedAt?: Date;
 }
