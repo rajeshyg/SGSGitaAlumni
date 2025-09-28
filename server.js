@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 // Load environment variables
 dotenv.config();
@@ -31,6 +33,11 @@ const DB_CONFIG = {
   timeout: 60000,
 };
 
+// JWT Configuration
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+
 // MySQL connection pool - Temporarily disabled for testing
 let pool = null;
 
@@ -40,6 +47,51 @@ const getPool = () => {
     console.log('MySQL: Connection pool created');
   }
   return pool;
+};
+
+// ============================================================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================================================
+
+// Middleware to verify JWT token
+const authenticateToken = async (req, res, next) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) {
+      return res.status(401).json({ error: 'Access token required' });
+    }
+
+    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ error: 'Invalid or expired token' });
+      }
+
+      try {
+        // Verify user still exists and is active
+        const connection = await getPool().getConnection();
+        const [rows] = await connection.execute(
+          'SELECT id, email, role, is_active FROM app_users WHERE id = ? AND is_active = true',
+          [decoded.userId]
+        );
+        connection.release();
+
+        if (rows.length === 0) {
+          return res.status(401).json({ error: 'User not found or inactive' });
+        }
+
+        req.user = rows[0];
+        next();
+      } catch (dbError) {
+        console.error('Database error in auth middleware:', dbError);
+        return res.status(500).json({ error: 'Authentication database error' });
+      }
+    });
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({ error: 'Authentication error' });
+  }
 };
 
 // Routes
@@ -591,22 +643,91 @@ app.patch('/api/invitations/family/:id/accept-profile', async (req, res) => {
   }
 });
 
-// Create invitation
+// Create invitation (supports both email and userId based invitations)
 app.post('/api/invitations', async (req, res) => {
   try {
     const connection = await getPool().getConnection();
-    const { email, invitedBy, invitationType, invitationData, expiresAt } = req.body;
+    const { email, userId, invitedBy, invitationType, invitationData, expiresAt, expiresInDays } = req.body;
+
+    // Validate that either email or userId is provided
+    if (!email && !userId) {
+      connection.release();
+      return res.status(400).json({ error: 'Either email or userId must be provided' });
+    }
+
+    if (email && userId) {
+      connection.release();
+      return res.status(400).json({ error: 'Cannot provide both email and userId' });
+    }
+
+    let targetEmail = email;
+    let targetUserId = userId;
+
+    // If userId is provided, get the email from the user record
+    if (userId) {
+      const [userRows] = await connection.execute(
+        'SELECT email FROM app_users WHERE id = ? AND is_active = true',
+        [userId]
+      );
+
+      if (userRows.length === 0) {
+        connection.release();
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      targetEmail = userRows[0].email;
+      targetUserId = userId;
+    }
+
+    // Check if user already exists (for email-based invitations)
+    if (email && !userId) {
+      const [existingUserRows] = await connection.execute(
+        'SELECT id FROM app_users WHERE email = ? AND is_active = true',
+        [email]
+      );
+
+      if (existingUserRows.length > 0) {
+        targetUserId = existingUserRows[0].id;
+      }
+    }
+
+    // Check for existing pending invitation
+    let existingCheckQuery = 'SELECT id FROM USER_INVITATIONS WHERE status = "pending" AND email = ?';
+    let existingCheckParams = [targetEmail];
+
+    if (targetUserId) {
+      existingCheckQuery += ' AND user_id = ?';
+      existingCheckParams.push(targetUserId);
+    }
+
+    const [existingRows] = await connection.execute(existingCheckQuery, existingCheckParams);
+
+    if (existingRows.length > 0) {
+      connection.release();
+      return res.status(409).json({ error: 'User already has a pending invitation' });
+    }
+
+    // Calculate expiration date
+    let expiresAtDate;
+    if (expiresAt) {
+      expiresAtDate = new Date(expiresAt);
+    } else if (expiresInDays) {
+      expiresAtDate = new Date(Date.now() + parseInt(expiresInDays) * 24 * 60 * 60 * 1000);
+    } else {
+      expiresAtDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Default 7 days
+    }
 
     const invitation = {
       id: generateUUID(),
-      email,
+      email: targetEmail,
+      userId: targetUserId,
       invitationToken: generateSecureToken(),
       invitedBy,
-      invitationType,
-      invitationData: JSON.stringify(invitationData),
+      invitationType: invitationType || 'alumni',
+      invitationData: JSON.stringify(invitationData || {}),
       status: 'pending',
       sentAt: new Date(),
-      expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: expiresAtDate,
       isUsed: false,
       resendCount: 0,
       createdAt: new Date(),
@@ -615,15 +736,16 @@ app.post('/api/invitations', async (req, res) => {
 
     const query = `
       INSERT INTO USER_INVITATIONS (
-        id, email, invitation_token, invited_by, invitation_type,
+        id, email, user_id, invitation_token, invited_by, invitation_type,
         invitation_data, status, sent_at, expires_at, is_used,
         resend_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await connection.execute(query, [
       invitation.id,
       invitation.email,
+      invitation.userId,
       invitation.invitationToken,
       invitation.invitedBy,
       invitation.invitationType,
@@ -643,6 +765,137 @@ app.post('/api/invitations', async (req, res) => {
   } catch (error) {
     console.error('Error creating invitation:', error);
     res.status(500).json({ error: 'Failed to create invitation' });
+  }
+});
+
+// Create bulk invitations
+app.post('/api/invitations/bulk', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { invitations, invitedBy, invitationType, expiresInDays = 7 } = req.body;
+
+    if (!Array.isArray(invitations) || invitations.length === 0) {
+      connection.release();
+      return res.status(400).json({ error: 'Invitations array is required' });
+    }
+
+    if (invitations.length > 50) {
+      connection.release();
+      return res.status(400).json({ error: 'Maximum 50 invitations allowed per bulk request' });
+    }
+
+    const createdInvitations = [];
+    const errors = [];
+
+    // Calculate expiration date
+    const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+
+    for (const invitationData of invitations) {
+      try {
+        const { userId, email } = invitationData;
+
+        if (!userId && !email) {
+          errors.push({ invitationData, error: 'Either userId or email must be provided' });
+          continue;
+        }
+
+        let targetEmail = email;
+        let targetUserId = userId;
+
+        // If userId is provided, get the email from the user record
+        if (userId) {
+          const [userRows] = await connection.execute(
+            'SELECT email FROM app_users WHERE id = ? AND is_active = true',
+            [userId]
+          );
+
+          if (userRows.length === 0) {
+            errors.push({ invitationData, error: 'User not found' });
+            continue;
+          }
+
+          targetEmail = userRows[0].email;
+          targetUserId = userId;
+        }
+
+        // Check for existing pending invitation
+        let existingCheckQuery = 'SELECT id FROM USER_INVITATIONS WHERE status = "pending" AND email = ?';
+        let existingCheckParams = [targetEmail];
+
+        if (targetUserId) {
+          existingCheckQuery += ' AND user_id = ?';
+          existingCheckParams.push(targetUserId);
+        }
+
+        const [existingRows] = await connection.execute(existingCheckQuery, existingCheckParams);
+
+        if (existingRows.length > 0) {
+          errors.push({ invitationData, error: 'User already has a pending invitation' });
+          continue;
+        }
+
+        const invitation = {
+          id: generateUUID(),
+          email: targetEmail,
+          userId: targetUserId,
+          invitationToken: generateSecureToken(),
+          invitedBy,
+          invitationType: invitationType || 'profile_completion',
+          invitationData: JSON.stringify(invitationData.invitationData || {}),
+          status: 'pending',
+          sentAt: new Date(),
+          expiresAt,
+          isUsed: false,
+          resendCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        const insertQuery = `
+          INSERT INTO USER_INVITATIONS (
+            id, email, user_id, invitation_token, invited_by, invitation_type,
+            invitation_data, status, sent_at, expires_at, is_used,
+            resend_count, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        await connection.execute(insertQuery, [
+          invitation.id,
+          invitation.email,
+          invitation.userId,
+          invitation.invitationToken,
+          invitation.invitedBy,
+          invitation.invitationType,
+          invitation.invitationData,
+          invitation.status,
+          invitation.sentAt,
+          invitation.expiresAt,
+          invitation.isUsed,
+          invitation.resendCount,
+          invitation.createdAt,
+          invitation.updatedAt
+        ]);
+
+        createdInvitations.push(invitation);
+
+      } catch (invitationError) {
+        console.error('Error creating individual invitation:', invitationError);
+        errors.push({ invitationData, error: invitationError.message });
+      }
+    }
+
+    connection.release();
+
+    res.status(201).json({
+      success: createdInvitations.length,
+      errors: errors.length,
+      invitations: createdInvitations,
+      failedInvitations: errors
+    });
+
+  } catch (error) {
+    console.error('Error creating bulk invitations:', error);
+    res.status(500).json({ error: 'Failed to create bulk invitations' });
   }
 });
 
@@ -685,6 +938,110 @@ app.get('/api/invitations/validate/:token', async (req, res) => {
   } catch (error) {
     console.error('Error validating invitation:', error);
     res.status(500).json({ error: 'Failed to validate invitation' });
+  }
+});
+
+// Update invitation status
+app.patch('/api/invitations/:id', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Build dynamic update query
+    const updateFields = [];
+    const updateValues = [];
+
+    if (updates.status !== undefined) {
+      updateFields.push('status = ?');
+      updateValues.push(updates.status);
+    }
+
+    if (updates.isUsed !== undefined) {
+      updateFields.push('is_used = ?');
+      updateValues.push(updates.isUsed);
+    }
+
+    if (updates.usedAt !== undefined) {
+      updateFields.push('used_at = ?');
+      updateValues.push(new Date(updates.usedAt));
+    }
+
+    if (updates.acceptedBy !== undefined) {
+      updateFields.push('accepted_by = ?');
+      updateValues.push(updates.acceptedBy);
+    }
+
+    if (updates.userId !== undefined) {
+      updateFields.push('user_id = ?');
+      updateValues.push(updates.userId);
+    }
+
+    if (updates.sentAt !== undefined) {
+      updateFields.push('sent_at = ?');
+      updateValues.push(new Date(updates.sentAt));
+    }
+
+    if (updates.resendCount !== undefined) {
+      updateFields.push('resend_count = ?');
+      updateValues.push(updates.resendCount);
+    }
+
+    if (updates.lastResentAt !== undefined) {
+      updateFields.push('last_resent_at = ?');
+      updateValues.push(new Date(updates.lastResentAt));
+    }
+
+    if (updateFields.length === 0) {
+      connection.release();
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    updateFields.push('updated_at = NOW()');
+
+    const query = `
+      UPDATE USER_INVITATIONS
+      SET ${updateFields.join(', ')}
+      WHERE id = ?
+    `;
+
+    updateValues.push(id);
+
+    const [result] = await connection.execute(query, updateValues);
+
+    if (result.affectedRows === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    // Get updated invitation
+    const [rows] = await connection.execute('SELECT * FROM USER_INVITATIONS WHERE id = ?', [id]);
+    connection.release();
+
+    const invitation = rows[0];
+    res.json({
+      id: invitation.id,
+      email: invitation.email,
+      userId: invitation.user_id,
+      invitationToken: invitation.invitation_token,
+      invitedBy: invitation.invited_by,
+      invitationType: invitation.invitation_type,
+      invitationData: JSON.parse(invitation.invitation_data || '{}'),
+      status: invitation.status,
+      sentAt: invitation.sent_at,
+      expiresAt: invitation.expires_at,
+      isUsed: invitation.is_used,
+      usedAt: invitation.used_at,
+      acceptedBy: invitation.accepted_by,
+      resendCount: invitation.resend_count,
+      lastResentAt: invitation.last_resent_at,
+      createdAt: invitation.created_at,
+      updatedAt: invitation.updated_at
+    });
+
+  } catch (error) {
+    console.error('Error updating invitation:', error);
+    res.status(500).json({ error: 'Failed to update invitation' });
   }
 });
 
@@ -744,6 +1101,406 @@ app.post('/api/otp/generate', async (req, res) => {
 // AUTHENTICATION ENDPOINTS
 // ============================================================================
 
+// User login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    const connection = await getPool().getConnection();
+
+    // Find user by email
+    const [rows] = await connection.execute(
+      'SELECT id, email, password_hash, role, is_active, created_at FROM app_users WHERE email = ?',
+      [email]
+    );
+
+    if (rows.length === 0) {
+      connection.release();
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = rows[0];
+
+    // Check if user is active
+    if (!user.is_active) {
+      connection.release();
+      return res.status(401).json({ error: 'Account is disabled' });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      connection.release();
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    connection.release();
+
+    // Generate tokens
+    const tokenPayload = {
+      userId: user.id,
+      email: user.email,
+      role: user.role
+    };
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+
+    // Return user data (without password hash)
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isActive: user.is_active,
+      createdAt: user.created_at
+    };
+
+    res.json({
+      success: true,
+      token,
+      refreshToken,
+      user: userResponse,
+      expiresIn: 3600 // 1 hour in seconds
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// User logout
+app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+  try {
+    // In a more sophisticated implementation, you might want to blacklist the token
+    // For now, we'll just return success since the client will remove the token
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+// Refresh token
+app.post('/api/auth/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: 'Refresh token required' });
+    }
+
+    jwt.verify(refreshToken, JWT_SECRET, async (err, decoded) => {
+      if (err) {
+        return res.status(403).json({ error: 'Invalid refresh token' });
+      }
+
+      try {
+        // Verify user still exists
+        const connection = await getPool().getConnection();
+        const [rows] = await connection.execute(
+          'SELECT id, email, role, is_active FROM app_users WHERE id = ? AND is_active = true',
+          [decoded.userId]
+        );
+        connection.release();
+
+        if (rows.length === 0) {
+          return res.status(401).json({ error: 'User not found or inactive' });
+        }
+
+        const user = rows[0];
+
+        // Generate new tokens
+        const tokenPayload = {
+          userId: user.id,
+          email: user.email,
+          role: user.role
+        };
+
+        const newToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        const newRefreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+
+        res.json({
+          token: newToken,
+          refreshToken: newRefreshToken,
+          expiresIn: 3600
+        });
+
+      } catch (dbError) {
+        console.error('Database error in token refresh:', dbError);
+        return res.status(500).json({ error: 'Token refresh database error' });
+      }
+    });
+
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(500).json({ error: 'Token refresh failed' });
+  }
+});
+
+// Get current user profile
+app.get('/api/users/profile', authenticateToken, async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const userId = req.user.id;
+
+    // Get complete user profile with alumni data
+    const query = `
+      SELECT
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.status,
+        u.is_active,
+        u.birth_date,
+        u.phone,
+        u.profile_image_url,
+        u.bio,
+        u.linkedin_url,
+        u.current_position,
+        u.company,
+        u.location,
+        u.email_verified,
+        u.email_verified_at,
+        u.last_login_at,
+        u.created_at,
+        u.updated_at,
+        am.family_name,
+        am.father_name,
+        am.batch as graduation_year,
+        am.center_name as program,
+        am.result as alumni_position,
+        am.category as alumni_category,
+        am.phone as alumni_phone,
+        am.email as alumni_email,
+        am.student_id,
+        am.status as alumni_status
+      FROM app_users u
+      LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
+      WHERE u.id = ? AND u.is_active = true
+    `;
+
+    const [rows] = await connection.execute(query, [userId]);
+    connection.release();
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const row = rows[0];
+
+    // Build comprehensive user profile with proper fallbacks
+    const userProfile = {
+      id: row.id,
+      firstName: row.first_name || row.father_name || 'Unknown',
+      lastName: row.last_name || row.family_name || 'Unknown',
+      email: row.email,
+      role: row.role,
+      status: row.status,
+      isActive: row.is_active,
+      birthDate: row.birth_date,
+      phone: row.phone || row.alumni_phone,
+      profileImageUrl: row.profile_image_url,
+      bio: row.bio,
+      linkedinUrl: row.linkedin_url,
+      currentPosition: row.current_position || row.alumni_position,
+      company: row.company || row.alumni_category,
+      location: row.location || row.program,
+      graduationYear: row.graduation_year,
+      program: row.program,
+      emailVerified: !!row.email_verified,
+      emailVerifiedAt: row.email_verified_at,
+      lastLoginAt: row.last_login_at,
+      isProfileComplete: !!(row.first_name && row.last_name) || !!(row.father_name && row.family_name),
+      ageVerified: false, // TODO: Add to schema if needed
+      parentConsentRequired: false, // TODO: Add to schema if needed
+      parentConsentGiven: false, // TODO: Add to schema if needed
+      alumniProfile: row.alumni_member_id ? {
+        familyName: row.family_name,
+        fatherName: row.father_name,
+        batch: row.graduation_year,
+        centerName: row.program,
+        result: row.alumni_position,
+        category: row.alumni_category,
+        phone: row.alumni_phone,
+        email: row.alumni_email,
+        studentId: row.student_id,
+        status: row.alumni_status
+      } : null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+
+    res.json(userProfile);
+  } catch (error) {
+    console.error('Get current user error:', error);
+    res.status(500).json({ error: 'Failed to get user profile' });
+  }
+});
+
+// Register from invitation (handles both email-based and user-linked invitations)
+app.post('/api/auth/register-from-invitation', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const {
+      firstName,
+      lastName,
+      birthDate,
+      graduationYear,
+      program,
+      currentPosition,
+      bio,
+      email,
+      invitationId,
+      requiresOtp,
+      ageVerified,
+      parentConsentRequired,
+      parentConsentGiven
+    } = req.body;
+
+    // First, get the invitation to check if it's user-linked
+    const [invitationRows] = await connection.execute(
+      'SELECT user_id, invitation_type FROM USER_INVITATIONS WHERE id = ?',
+      [invitationId]
+    );
+
+    if (invitationRows.length === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    const invitation = invitationRows[0];
+    const isUserLinked = !!invitation.user_id;
+
+    if (isUserLinked) {
+      // Update existing user profile
+      const updateQuery = `
+        UPDATE app_users SET
+          first_name = ?,
+          last_name = ?,
+          birth_date = ?,
+          graduation_year = ?,
+          program = ?,
+          current_position = ?,
+          bio = ?,
+          age_verified = ?,
+          parent_consent_required = ?,
+          parent_consent_given = ?,
+          requires_otp = ?,
+          updated_at = NOW()
+        WHERE id = ?
+      `;
+
+      await connection.execute(updateQuery, [
+        firstName,
+        lastName,
+        new Date(birthDate),
+        graduationYear,
+        program,
+        currentPosition || null,
+        bio || null,
+        ageVerified,
+        parentConsentRequired,
+        parentConsentGiven,
+        requiresOtp,
+        invitation.user_id
+      ]);
+
+      // Get updated user
+      const [userRows] = await connection.execute(
+        'SELECT * FROM app_users WHERE id = ?',
+        [invitation.user_id]
+      );
+
+      connection.release();
+
+      const user = userRows[0];
+      res.status(200).json({
+        user: {
+          id: user.id,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          email: user.email,
+          graduationYear: user.graduation_year,
+          program: user.program,
+          currentPosition: user.current_position,
+          bio: user.bio,
+          isActive: user.is_active,
+          ageVerified: user.age_verified,
+          parentConsentRequired: user.parent_consent_required,
+          parentConsentGiven: user.parent_consent_given,
+          createdAt: user.created_at,
+          updatedAt: user.updated_at
+        }
+      });
+    } else {
+      // Create new user account (email-based invitation)
+      const userId = generateUUID();
+      const user = {
+        id: userId,
+        firstName,
+        lastName,
+        email,
+        birthDate: new Date(birthDate),
+        graduationYear,
+        program,
+        currentPosition,
+        bio,
+        invitationId,
+        isActive: true,
+        ageVerified,
+        parentConsentRequired,
+        parentConsentGiven,
+        requiresOtp,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      const insertQuery = `
+        INSERT INTO app_users (
+          id, first_name, last_name, email, birth_date, graduation_year,
+          program, current_position, bio, invitation_id,
+          is_active, age_verified, parent_consent_required, parent_consent_given,
+          requires_otp, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      await connection.execute(insertQuery, [
+        user.id,
+        user.firstName,
+        user.lastName,
+        user.email,
+        user.birthDate,
+        user.graduationYear,
+        user.program,
+        user.currentPosition || null,
+        user.bio || null,
+        user.invitationId,
+        user.isActive,
+        user.ageVerified,
+        user.parentConsentRequired,
+        user.parentConsentGiven,
+        user.requiresOtp,
+        user.createdAt,
+        user.updatedAt
+      ]);
+
+      connection.release();
+
+      res.status(201).json({ user });
+    }
+  } catch (error) {
+    console.error('Error registering from invitation:', error);
+    res.status(500).json({ error: 'Failed to register from invitation' });
+  }
+});
+
 // Register from family invitation
 app.post('/api/auth/register-from-family-invitation', async (req, res) => {
   try {
@@ -789,7 +1546,7 @@ app.post('/api/auth/register-from-family-invitation', async (req, res) => {
     };
 
     const query = `
-      INSERT INTO USERS (
+      INSERT INTO app_users (
         id, first_name, last_name, email, birth_date, graduation_year,
         program, current_position, bio, invitation_id, profile_id,
         is_active, age_verified, parent_consent_required, parent_consent_given,
@@ -920,6 +1677,605 @@ function generateSecureToken() {
 function generateOTPCode() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
+
+
+// ============================================================================
+// USER MANAGEMENT API ENDPOINTS
+// ============================================================================
+
+// Update user attributes
+app.put('/api/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { id } = req.params;
+    const updates = req.body;
+
+    // Build dynamic update query for users table
+    const userUpdateFields = [];
+    const userUpdateValues = [];
+
+    // Editable user fields
+    const editableUserFields = [
+      'first_name', 'last_name', 'email', 'birth_date', 'graduation_year',
+      'program', 'current_position', 'bio', 'linkedin_url', 'company',
+      'location', 'age_verified', 'parent_consent_required', 'parent_consent_given',
+      'requires_otp'
+    ];
+
+    editableUserFields.forEach(field => {
+      if (updates[field] !== undefined) {
+        userUpdateFields.push(`${field} = ?`);
+        userUpdateValues.push(updates[field]);
+      }
+    });
+
+    // Update user record if there are changes
+    if (userUpdateFields.length > 0) {
+      userUpdateFields.push('updated_at = NOW()');
+
+      const userQuery = `
+        UPDATE app_users
+        SET ${userUpdateFields.join(', ')}
+        WHERE id = ?
+      `;
+
+      userUpdateValues.push(id);
+      await connection.execute(userQuery, userUpdateValues);
+    }
+
+    // Update alumni_profiles if profile data is provided
+    if (updates.alumniProfile) {
+      const profileUpdates = updates.alumniProfile;
+      const profileUpdateFields = [];
+      const profileUpdateValues = [];
+
+      const editableProfileFields = [
+        'family_name', 'father_name', 'batch', 'center_name', 'result',
+        'category', 'phone', 'email', 'student_id'
+      ];
+
+      editableProfileFields.forEach(field => {
+        if (profileUpdates[field] !== undefined) {
+          profileUpdateFields.push(`${field} = ?`);
+          profileUpdateValues.push(profileUpdates[field]);
+        }
+      });
+
+      if (profileUpdateFields.length > 0) {
+        profileUpdateFields.push('updated_at = NOW()');
+
+        const profileQuery = `
+          UPDATE alumni_members
+          SET ${profileUpdateFields.join(', ')}
+          WHERE id = ?
+        `;
+
+        profileUpdateValues.push(id);
+        await connection.execute(profileQuery, profileUpdateValues);
+      }
+    }
+
+    // Get updated user data
+    const [userRows] = await connection.execute(`
+      SELECT
+        u.*,
+        am.family_name, am.father_name, am.batch, am.center_name,
+        am.result, am.category, am.phone as alumni_phone, am.email as alumni_email,
+        am.student_id
+      FROM app_users u
+      LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
+      WHERE u.id = ? AND u.is_active = true
+    `, [id]);
+
+    connection.release();
+
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userRows[0];
+    const userResponse = {
+      id: user.id,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      email: user.email,
+      birthDate: user.birth_date,
+      graduationYear: user.graduation_year,
+      program: user.program,
+      currentPosition: user.current_position,
+      bio: user.bio,
+      linkedinUrl: user.linkedin_url,
+      company: user.company,
+      location: user.location,
+      ageVerified: user.age_verified,
+      parentConsentRequired: user.parent_consent_required,
+      parentConsentGiven: user.parent_consent_given,
+      requiresOtp: user.requires_otp,
+      alumniProfile: {
+        familyName: user.family_name,
+        fatherName: user.father_name,
+        batch: user.batch,
+        centerName: user.center_name,
+        result: user.result,
+        category: user.category,
+        phone: user.alumni_phone,
+        email: user.alumni_email,
+        studentId: user.student_id
+      },
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
+
+    res.json({ user: userResponse });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Send invitation to user
+app.post('/api/users/:id/send-invitation', authenticateToken, async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { id } = req.params;
+    const { invitationType = 'profile_completion', expiresInDays = 7 } = req.body;
+    const invitedBy = req.user.id;
+
+    // Get user details
+    const [userRows] = await connection.execute(
+      'SELECT email, first_name, last_name FROM app_users WHERE id = ? AND is_active = true',
+      [id]
+    );
+
+    if (userRows.length === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userRows[0];
+
+    // Check for existing pending invitation
+    const [existingRows] = await connection.execute(
+      'SELECT id FROM USER_INVITATIONS WHERE user_id = ? AND status = "pending"',
+      [id]
+    );
+
+    if (existingRows.length > 0) {
+      connection.release();
+      return res.status(409).json({ error: 'User already has a pending invitation' });
+    }
+
+    // Create invitation
+    const invitation = {
+      id: generateUUID(),
+      email: user.email,
+      userId: id,
+      invitationToken: generateSecureToken(),
+      invitedBy,
+      invitationType,
+      invitationData: JSON.stringify({
+        firstName: user.first_name,
+        lastName: user.last_name,
+        invitationType
+      }),
+      status: 'pending',
+      sentAt: new Date(),
+      expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000),
+      isUsed: false,
+      resendCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const insertQuery = `
+      INSERT INTO USER_INVITATIONS (
+        id, email, user_id, invitation_token, invited_by, invitation_type,
+        invitation_data, status, sent_at, expires_at, is_used,
+        resend_count, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await connection.execute(insertQuery, [
+      invitation.id,
+      invitation.email,
+      invitation.userId,
+      invitation.invitationToken,
+      invitation.invitedBy,
+      invitation.invitationType,
+      invitation.invitationData,
+      invitation.status,
+      invitation.sentAt,
+      invitation.expiresAt,
+      invitation.isUsed,
+      invitation.resendCount,
+      invitation.createdAt,
+      invitation.updatedAt
+    ]);
+
+    connection.release();
+
+    res.status(201).json({
+      invitation,
+      message: `Invitation sent to ${user.first_name} ${user.last_name} (${user.email})`
+    });
+  } catch (error) {
+    console.error('Error sending invitation:', error);
+    res.status(500).json({ error: 'Failed to send invitation' });
+  }
+});
+
+// ============================================================================
+// USER SEARCH & PROFILE API ENDPOINTS
+// ============================================================================
+
+// Search users for invitations
+app.get('/api/users/search', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { query = '', limit = 10, graduationYear, program } = req.query;
+
+    // Build search query - join app_users and alumni_members tables
+    let whereClause = 'WHERE u.is_active = true';
+    const queryParams = [];
+
+    if (query) {
+      whereClause += ' AND (COALESCE(am.family_name, \'\') LIKE ? OR COALESCE(am.father_name, \'\') LIKE ? OR u.email LIKE ?)';
+      queryParams.push(`%${query}%`, `%${query}%`, `%${query}%`);
+    }
+
+    if (graduationYear) {
+      whereClause += ' AND am.batch = ?';
+      queryParams.push(graduationYear);
+    }
+
+    if (program) {
+      whereClause += ' AND am.center_name LIKE ?';
+      queryParams.push(`%${program}%`);
+    }
+
+    const searchQuery = `
+      SELECT
+        u.id,
+        COALESCE(u.first_name, am.father_name, 'Unknown') as firstName,
+        COALESCE(u.last_name, am.family_name, 'Unknown') as lastName,
+        u.email,
+        u.status,
+        u.email_verified,
+        u.current_position,
+        u.company,
+        u.location,
+        am.batch as graduationYear,
+        am.center_name as program,
+        am.result as alumni_position,
+        am.category as alumni_category,
+        u.created_at,
+        CASE WHEN (u.first_name IS NOT NULL AND u.last_name IS NOT NULL) OR (am.student_id IS NOT NULL AND am.batch IS NOT NULL) THEN 1 ELSE 0 END as isProfileComplete
+      FROM app_users u
+      LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
+      ${whereClause}
+      ORDER BY COALESCE(u.last_name, am.family_name, 'Unknown'), COALESCE(u.first_name, am.father_name, 'Unknown')
+      LIMIT ${parseInt(limit)}
+    `;
+
+    const [rows] = await connection.execute(searchQuery, queryParams);
+    connection.release();
+
+    // Transform results to match expected interface
+    const users = rows.map(row => ({
+      id: row.id,
+      firstName: row.firstName || 'Unknown',
+      lastName: row.lastName || 'Unknown',
+      email: row.email,
+      status: row.status,
+      emailVerified: !!row.email_verified,
+      graduationYear: row.graduationYear,
+      program: row.program,
+      currentPosition: row.current_position || row.alumni_position,
+      company: row.company || row.alumni_category,
+      location: row.location || row.program,
+      profileImageUrl: null, // Not available in current schema
+      isProfileComplete: !!row.isProfileComplete,
+      ageVerified: false, // Not available in current schema
+      parentConsentRequired: false, // Not available in current schema
+      createdAt: row.created_at
+    }));
+
+    res.json({
+      users,
+      total: users.length,
+      query,
+      limit: parseInt(limit)
+    });
+
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+});
+
+// Get user profile details for invitation
+app.get('/api/users/:id/profile', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { id } = req.params;
+
+    console.log('[API] Fetching user profile for ID:', id);
+
+    const query = `
+      SELECT
+        u.id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.role,
+        u.status,
+        u.is_active,
+        u.birth_date,
+        u.phone,
+        u.profile_image_url,
+        u.bio,
+        u.linkedin_url,
+        u.current_position,
+        u.company,
+        u.location,
+        u.email_verified,
+        u.email_verified_at,
+        u.last_login_at,
+        u.created_at,
+        u.updated_at,
+        am.family_name,
+        am.father_name,
+        am.batch as graduation_year,
+        am.center_name as program,
+        am.result as alumni_position,
+        am.category as alumni_category,
+        am.phone as alumni_phone,
+        am.email as alumni_email,
+        am.student_id,
+        am.status as alumni_status
+      FROM app_users u
+      LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
+      WHERE u.id = ? AND u.is_active = true
+    `;
+
+    const [rows] = await connection.execute(query, [id]);
+    connection.release();
+
+    console.log('[API] Query result rows:', rows.length);
+    if (rows.length > 0) {
+      console.log('[API] User data found:', { id: rows[0].id, email: rows[0].email, is_active: rows[0].is_active });
+    }
+
+    if (rows.length === 0) {
+      console.log('[API] No user found for ID:', id);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const row = rows[0];
+
+    // Build comprehensive user profile with proper fallbacks
+    const userProfile = {
+      id: row.id,
+      firstName: row.first_name || row.father_name || 'Unknown',
+      lastName: row.last_name || row.family_name || 'Unknown',
+      email: row.email,
+      role: row.role,
+      status: row.status,
+      birthDate: row.birth_date,
+      phone: row.phone || row.alumni_phone,
+      profileImageUrl: row.profile_image_url,
+      bio: row.bio,
+      linkedinUrl: row.linkedin_url,
+      currentPosition: row.current_position || row.alumni_position,
+      company: row.company || row.alumni_category,
+      location: row.location || row.program,
+      graduationYear: row.graduation_year,
+      program: row.program,
+      emailVerified: !!row.email_verified,
+      emailVerifiedAt: row.email_verified_at,
+      lastLoginAt: row.last_login_at,
+      isProfileComplete: !!(row.first_name && row.last_name) || !!(row.father_name && row.family_name),
+      ageVerified: false, // TODO: Add to schema if needed
+      parentConsentRequired: false, // TODO: Add to schema if needed
+      parentConsentGiven: false, // TODO: Add to schema if needed
+      alumniProfile: row.alumni_member_id ? {
+        familyName: row.family_name,
+        fatherName: row.father_name,
+        batch: row.graduation_year,
+        centerName: row.program,
+        result: row.alumni_position,
+        category: row.alumni_category,
+        phone: row.alumni_phone,
+        email: row.alumni_email,
+        studentId: row.student_id,
+        status: row.alumni_status
+      } : null,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+
+    res.json({ user: userProfile });
+
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ error: 'Failed to fetch user profile' });
+  }
+});
+
+// ============================================================================
+// ANALYTICS API ENDPOINTS
+// ============================================================================
+
+// Get user invitation history
+app.get('/api/analytics/user-invitations/:userId', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { userId } = req.params;
+
+    const query = `
+      SELECT
+        ui.*,
+        u.first_name,
+        u.last_name,
+        u.email as user_email,
+        u.graduation_year,
+        u.program
+      FROM USER_INVITATIONS ui
+      LEFT JOIN app_users u ON ui.user_id = u.id
+      WHERE ui.user_id = ?
+      ORDER BY ui.created_at DESC
+    `;
+
+    const [rows] = await connection.execute(query, [userId]);
+    connection.release();
+
+    const invitations = rows.map(row => ({
+      id: row.id,
+      email: row.email,
+      userId: row.user_id,
+      invitationToken: row.invitation_token,
+      invitedBy: row.invited_by,
+      invitationType: row.invitation_type,
+      invitationData: JSON.parse(row.invitation_data || '{}'),
+      status: row.status,
+      sentAt: row.sent_at,
+      expiresAt: row.expires_at,
+      isUsed: row.is_used,
+      usedAt: row.used_at,
+      acceptedBy: row.accepted_by,
+      resendCount: row.resend_count,
+      lastResentAt: row.last_resent_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      user: {
+        firstName: row.first_name,
+        lastName: row.last_name,
+        email: row.user_email,
+        graduationYear: row.graduation_year,
+        program: row.program
+      }
+    }));
+
+    res.json({ invitations });
+  } catch (error) {
+    console.error('Error fetching user invitation history:', error);
+    res.status(500).json({ error: 'Failed to fetch user invitation history' });
+  }
+});
+
+// Get invitation analytics summary
+app.get('/api/analytics/invitations/summary', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+
+    // Profile completion success rate
+    const profileCompletionQuery = `
+      SELECT
+        COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted,
+        COUNT(*) as total,
+        ROUND(
+          (COUNT(CASE WHEN status = 'accepted' THEN 1 END) * 100.0) / COUNT(*),
+          2
+        ) as success_rate
+      FROM USER_INVITATIONS
+      WHERE invitation_type = 'profile_completion' AND user_id IS NOT NULL
+    `;
+
+    // Invitation funnel analytics
+    const funnelQuery = `
+      SELECT
+        status,
+        COUNT(*) as count,
+        AVG(
+          CASE
+            WHEN used_at IS NOT NULL AND sent_at IS NOT NULL
+            THEN TIMESTAMPDIFF(HOUR, sent_at, used_at)
+            ELSE NULL
+          END
+        ) as avg_response_time_hours
+      FROM USER_INVITATIONS
+      WHERE user_id IS NOT NULL
+      GROUP BY status
+    `;
+
+    // Overall invitation statistics
+    const overallQuery = `
+      SELECT
+        COUNT(*) as total_invitations,
+        COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted_invitations,
+        COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending_invitations,
+        COUNT(CASE WHEN status = 'expired' THEN 1 END) as expired_invitations,
+        COUNT(CASE WHEN user_id IS NOT NULL THEN 1 END) as user_linked_invitations,
+        ROUND(
+          (COUNT(CASE WHEN status = 'accepted' THEN 1 END) * 100.0) / COUNT(*),
+          2
+        ) as overall_conversion_rate
+      FROM USER_INVITATIONS
+    `;
+
+    const [profileCompletionRows] = await connection.execute(profileCompletionQuery);
+    const [funnelRows] = await connection.execute(funnelQuery);
+    const [overallRows] = await connection.execute(overallQuery);
+
+    connection.release();
+
+    const profileCompletion = profileCompletionRows[0];
+    const funnel = funnelRows.map(row => ({
+      status: row.status,
+      count: row.count,
+      avgResponseTimeHours: row.avg_response_time_hours
+    }));
+    const overall = overallRows[0];
+
+    res.json({
+      profileCompletion,
+      funnel,
+      overall
+    });
+  } catch (error) {
+    console.error('Error fetching invitation analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch invitation analytics' });
+  }
+});
+
+// Get invitation conversion rates over time
+app.get('/api/analytics/invitations/conversion-trends', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { days = 30 } = req.query;
+
+    const query = `
+      SELECT
+        DATE(created_at) as date,
+        COUNT(*) as total_sent,
+        COUNT(CASE WHEN status = 'accepted' THEN 1 END) as accepted,
+        ROUND(
+          (COUNT(CASE WHEN status = 'accepted' THEN 1 END) * 100.0) / COUNT(*),
+          2
+        ) as conversion_rate
+      FROM USER_INVITATIONS
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+        AND user_id IS NOT NULL
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+    `;
+
+    const [rows] = await connection.execute(query, [days]);
+    connection.release();
+
+    const trends = rows.map(row => ({
+      date: row.date,
+      totalSent: row.total_sent,
+      accepted: row.accepted,
+      conversionRate: row.conversion_rate
+    }));
+
+    res.json({ trends });
+  } catch (error) {
+    console.error('Error fetching conversion trends:', error);
+    res.status(500).json({ error: 'Failed to fetch conversion trends' });
+  }
+});
 
 // ============================================================================
 // DASHBOARD API ENDPOINTS

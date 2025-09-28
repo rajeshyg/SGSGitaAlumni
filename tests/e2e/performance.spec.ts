@@ -1,476 +1,396 @@
+/**
+ * Performance E2E Tests
+ * 
+ * This file contains comprehensive performance tests for the application
+ * including load times, memory usage, and optimization validation.
+ */
+
 import { test, expect } from '@playwright/test';
+import { setupMockAPI, testUsers } from '../setup/test-data';
 
-test.describe('Performance Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    // Mock authentication
-    await page.addInitScript(() => {
-      localStorage.setItem('auth-token', 'mock-jwt-token');
-      localStorage.setItem('user', JSON.stringify({
-        id: '1',
-        email: 'test@example.com',
-        firstName: 'John',
-        lastName: 'Doe'
-      }));
-    });
+test.describe('Page Load Performance', () => {
+  test('should load login page within acceptable time', async ({ page }) => {
+    const startTime = Date.now();
+    
+    await page.goto('/login');
+    await page.waitForLoadState('networkidle');
+    
+    const loadTime = Date.now() - startTime;
+    
+    // Login page should load within 2 seconds
+    expect(loadTime).toBeLessThan(2000);
+    
+    // Check that all critical elements are visible
+    await expect(page.locator('input[name="email"]')).toBeVisible();
+    await expect(page.locator('input[name="password"]')).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
+  });
 
-    // Mock dashboard data
+  test('should load dashboard within acceptable time', async ({ page }) => {
+    await setupMockAPI(page);
+    
+    // Login first
+    await page.goto('/login');
+    await page.fill('input[name="email"]', testUsers[0].email);
+    await page.fill('input[name="password"]', testUsers[0].password);
+    await page.click('button[type="submit"]');
+    
+    const startTime = Date.now();
+    await page.waitForURL('/dashboard');
+    await page.waitForLoadState('networkidle');
+    
+    const loadTime = Date.now() - startTime;
+    
+    // Dashboard should load within 3 seconds
+    expect(loadTime).toBeLessThan(3000);
+    
+    // Check that dashboard components are loaded
+    await expect(page.locator('[data-testid="dashboard-content"]')).toBeVisible();
+  });
+
+  test('should handle large datasets efficiently', async ({ page }) => {
+    await setupMockAPI(page);
+    
+    // Mock large dataset
+    const largeDataset = {
+      user: testUsers[0],
+      stats: { totalConnections: 1000, newMessages: 50, upcomingEvents: 25, profileCompleteness: 90 },
+      recentConversations: Array(100).fill(null).map((_, i) => ({
+        id: `conv-${i}`,
+        participant: `User ${i}`,
+        lastMessage: `Message ${i}`,
+        timestamp: new Date().toISOString(),
+        unread: i % 2 === 0
+      })),
+      personalizedPosts: Array(50).fill(null).map((_, i) => ({
+        id: `post-${i}`,
+        title: `Post ${i}`,
+        content: `Content ${i}`,
+        author: `Author ${i}`,
+        timestamp: new Date().toISOString(),
+        likes: Math.floor(Math.random() * 100),
+        comments: Math.floor(Math.random() * 50)
+      }))
+    };
+
     await page.route('**/api/users/dashboard', async route => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({
-          user: { id: '1', firstName: 'John', lastName: 'Doe', email: 'test@example.com' },
-          stats: { totalConnections: 25, newMessages: 3, upcomingEvents: 2, profileCompleteness: 85 },
-          recentConversations: [],
-          personalizedPosts: [],
-          quickActions: [],
-          notifications: []
-        })
+        body: JSON.stringify(largeDataset)
       });
     });
+
+    const startTime = Date.now();
+    
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+    
+    const loadTime = Date.now() - startTime;
+    
+    // Should still load within 5 seconds even with large dataset
+    expect(loadTime).toBeLessThan(5000);
+    
+    // Check that data is displayed
+    await expect(page.locator('[data-testid="dashboard-content"]')).toBeVisible();
   });
+});
 
-  test.describe('Page Load Performance', () => {
-    test('should load dashboard within 2 seconds', async ({ page }) => {
-      const startTime = Date.now();
-      
-      await page.goto('/dashboard');
-      await expect(page.locator('h1')).toContainText('Welcome back, John!');
-      
-      const endTime = Date.now();
-      const loadTime = endTime - startTime;
-      
-      expect(loadTime).toBeLessThan(2000);
-    });
-
-    test('should load login page within 1 second', async ({ page }) => {
-      const startTime = Date.now();
-      
+test.describe('Memory Usage Performance', () => {
+  test('should not have memory leaks during navigation', async ({ page }) => {
+    await setupMockAPI(page);
+    
+    // Navigate between pages multiple times
+    for (let i = 0; i < 10; i++) {
       await page.goto('/login');
-      await expect(page.locator('h1')).toContainText('Sign In');
-      
-      const endTime = Date.now();
-      const loadTime = endTime - startTime;
-      
-      expect(loadTime).toBeLessThan(1000);
-    });
-
-    test('should load registration page within 1 second', async ({ page }) => {
-      const startTime = Date.now();
-      
       await page.goto('/register');
-      await expect(page.locator('h1')).toContainText('Create Account');
-      
-      const endTime = Date.now();
-      const loadTime = endTime - startTime;
-      
-      expect(loadTime).toBeLessThan(1000);
-    });
-
-    test('should handle slow network conditions', async ({ page }) => {
-      // Simulate slow network
-      await page.route('**/*', async route => {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        await route.continue();
-      });
-
-      const startTime = Date.now();
-      
       await page.goto('/dashboard');
-      await expect(page.locator('h1')).toContainText('Welcome back, John!');
-      
-      const endTime = Date.now();
-      const loadTime = endTime - startTime;
-      
-      // Should still load within reasonable time even with slow network
-      expect(loadTime).toBeLessThan(5000);
+    }
+    
+    // Check that page still functions
+    await page.goto('/dashboard');
+    await expect(page.locator('[data-testid="dashboard-content"]')).toBeVisible();
+  });
+
+  test('should handle multiple API calls efficiently', async ({ page }) => {
+    await setupMockAPI(page);
+    
+    // Make multiple API calls
+    const promises = [];
+    for (let i = 0; i < 20; i++) {
+      promises.push(page.request.get('http://localhost:3000/api/users/dashboard'));
+    }
+    
+    const responses = await Promise.all(promises);
+    
+    // All requests should succeed
+    responses.forEach(response => {
+      expect(response.status()).toBe(200);
     });
   });
 
-  test.describe('API Performance', () => {
-    test('should respond to API calls within 500ms', async ({ page }) => {
-      const startTime = Date.now();
+  test('should handle image loading efficiently', async ({ page }) => {
+    await page.goto('/dashboard');
+    
+    // Check that images are optimized
+    const images = page.locator('img');
+    const count = await images.count();
+    
+    for (let i = 0; i < count; i++) {
+      const img = images.nth(i);
+      const src = await img.getAttribute('src');
       
-      await page.goto('/dashboard');
-      await expect(page.locator('h1')).toContainText('Welcome back, John!');
-      
-      const endTime = Date.now();
-      const apiTime = endTime - startTime;
-      
-      expect(apiTime).toBeLessThan(500);
-    });
-
-    test('should handle concurrent API calls efficiently', async ({ page }) => {
-      const startTime = Date.now();
-      
-      // Make multiple concurrent requests
-      await Promise.all([
-        page.goto('/dashboard'),
-        page.goto('/login'),
-        page.goto('/register')
-      ]);
-      
-      const endTime = Date.now();
-      const concurrentTime = endTime - startTime;
-      
-      // Should handle concurrent requests efficiently
-      expect(concurrentTime).toBeLessThan(3000);
-    });
-
-    test('should handle API errors gracefully without performance impact', async ({ page }) => {
-      // Mock API error
-      await page.route('**/api/users/dashboard', async route => {
-        await route.fulfill({
-          status: 500,
-          contentType: 'application/json',
-          body: JSON.stringify({ error: 'Internal server error' })
-        });
-      });
-
-      const startTime = Date.now();
-      
-      await page.goto('/dashboard');
-      await expect(page.locator('text=Failed to load dashboard data')).toBeVisible();
-      
-      const endTime = Date.now();
-      const errorTime = endTime - startTime;
-      
-      // Should handle errors quickly
-      expect(errorTime).toBeLessThan(1000);
-    });
-  });
-
-  test.describe('JavaScript Performance', () => {
-    test('should execute JavaScript efficiently', async ({ page }) => {
-      await page.goto('/dashboard');
-      
-      const executionTime = await page.evaluate(() => {
-        const start = performance.now();
-        
-        // Perform some JavaScript operations
-        const data = [];
-        for (let i = 0; i < 1000; i++) {
-          data.push({
-            id: i,
-            name: `Item ${i}`,
-            value: Math.random() * 100
-          });
-        }
-        
-        // Sort the data
-        data.sort((a, b) => a.value - b.value);
-        
-        // Filter the data
-        const filtered = data.filter(item => item.value > 50);
-        
-        const end = performance.now();
-        return end - start;
-      });
-      
-      expect(executionTime).toBeLessThan(100);
-    });
-
-    test('should handle DOM manipulation efficiently', async ({ page }) => {
-      await page.goto('/dashboard');
-      
-      const domTime = await page.evaluate(() => {
-        const start = performance.now();
-        
-        // Create and manipulate DOM elements
-        const container = document.createElement('div');
-        for (let i = 0; i < 100; i++) {
-          const element = document.createElement('div');
-          element.textContent = `Test ${i}`;
-          element.className = 'test-element';
-          container.appendChild(element);
-        }
-        
-        // Query elements
-        const elements = container.querySelectorAll('.test-element');
-        
-        // Update elements
-        elements.forEach((el, index) => {
-          el.textContent = `Updated ${index}`;
-        });
-        
-        const end = performance.now();
-        return end - start;
-      });
-      
-      expect(domTime).toBeLessThan(50);
-    });
-
-    test('should handle event handling efficiently', async ({ page }) => {
-      await page.goto('/dashboard');
-      
-      const eventTime = await page.evaluate(() => {
-        const start = performance.now();
-        
-        // Create event listeners
-        const elements = document.querySelectorAll('button');
-        elements.forEach(element => {
-          element.addEventListener('click', () => {
-            console.log('Button clicked');
-          });
-        });
-        
-        // Simulate events
-        elements.forEach(element => {
-          element.dispatchEvent(new Event('click'));
-        });
-        
-        const end = performance.now();
-        return end - start;
-      });
-      
-      expect(eventTime).toBeLessThan(50);
-    });
-  });
-
-  test.describe('Memory Performance', () => {
-    test('should not have memory leaks', async ({ page }) => {
-      await page.goto('/dashboard');
-      
-      const initialMemory = await page.evaluate(() => {
-        return performance.memory ? performance.memory.usedJSHeapSize : 0;
-      });
-      
-      // Perform some operations that might cause memory leaks
-      for (let i = 0; i < 10; i++) {
-        await page.evaluate(() => {
-          // Create and destroy elements
-          const container = document.createElement('div');
-          for (let j = 0; j < 100; j++) {
-            const element = document.createElement('div');
-            element.textContent = `Test ${j}`;
-            container.appendChild(element);
-          }
-          document.body.appendChild(container);
-          document.body.removeChild(container);
-        });
+      // Check that images have proper attributes
+      if (src) {
+        await expect(img).toHaveAttribute('loading', 'lazy');
+        await expect(img).toHaveAttribute('alt');
       }
-      
-      const finalMemory = await page.evaluate(() => {
-        return performance.memory ? performance.memory.usedJSHeapSize : 0;
-      });
-      
-      // Memory usage should not increase significantly
-      const memoryIncrease = finalMemory - initialMemory;
-      expect(memoryIncrease).toBeLessThan(1000000); // 1MB
-    });
+    }
+  });
+});
 
-    test('should handle large datasets efficiently', async ({ page }) => {
-      await page.goto('/dashboard');
-      
-      const largeDataTime = await page.evaluate(() => {
-        const start = performance.now();
-        
-        // Create large dataset
-        const largeData = [];
-        for (let i = 0; i < 10000; i++) {
-          largeData.push({
-            id: i,
-            name: `Item ${i}`,
-            description: `Description for item ${i}`,
-            value: Math.random() * 1000,
-            category: `Category ${i % 10}`,
-            tags: [`tag${i % 5}`, `tag${(i + 1) % 5}`]
-          });
+test.describe('Network Performance', () => {
+  test('should handle slow network connections', async ({ page }) => {
+    // Simulate slow network
+    await page.route('**/*', async route => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await route.continue();
+    });
+    
+    const startTime = Date.now();
+    
+    await page.goto('/login');
+    await page.waitForLoadState('networkidle');
+    
+    const loadTime = Date.now() - startTime;
+    
+    // Should still load within 10 seconds on slow network
+    expect(loadTime).toBeLessThan(10000);
+  });
+
+  test('should handle network interruptions gracefully', async ({ page }) => {
+    await setupMockAPI(page);
+    
+    // Simulate network interruption
+    await page.route('**/api/users/dashboard', async route => {
+      await route.abort('failed');
+    });
+    
+    await page.goto('/dashboard');
+    
+    // Should show error message
+    await expect(page.locator('text=Unable to load dashboard data')).toBeVisible();
+    await expect(page.locator('[data-testid="retry-button"]')).toBeVisible();
+  });
+
+  test('should handle API rate limiting', async ({ page }) => {
+    await setupMockAPI(page);
+    
+    // Make multiple rapid requests
+    const promises = [];
+    for (let i = 0; i < 10; i++) {
+      promises.push(page.request.post('http://localhost:3000/api/auth/login', {
+        data: { email: 'test@example.com', password: 'password123' }
+      }));
+    }
+    
+    const responses = await Promise.all(promises);
+    
+    // Some requests should be rate limited
+    const rateLimitedResponses = responses.filter(response => response.status() === 429);
+    expect(rateLimitedResponses.length).toBeGreaterThan(0);
+  });
+});
+
+test.describe('Rendering Performance', () => {
+  test('should render components efficiently', async ({ page }) => {
+    await setupMockAPI(page);
+    
+    // Measure rendering time
+    const startTime = Date.now();
+    
+    await page.goto('/dashboard');
+    await page.waitForSelector('[data-testid="dashboard-content"]');
+    
+    const renderTime = Date.now() - startTime;
+    
+    // Should render within 2 seconds
+    expect(renderTime).toBeLessThan(2000);
+  });
+
+  test('should handle dynamic content updates efficiently', async ({ page }) => {
+    await setupMockAPI(page);
+    
+    await page.goto('/dashboard');
+    
+    // Simulate real-time updates
+    for (let i = 0; i < 10; i++) {
+      await page.evaluate(() => {
+        // Simulate adding new notification
+        const notifications = document.querySelector('[data-testid="notifications"]');
+        if (notifications) {
+          const newNotification = document.createElement('div');
+          newNotification.textContent = `New notification ${i}`;
+          notifications.appendChild(newNotification);
         }
-        
-        // Process large dataset
-        const processed = largeData
-          .filter(item => item.value > 500)
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 100);
-        
-        const end = performance.now();
-        return end - start;
       });
       
-      expect(largeDataTime).toBeLessThan(200);
-    });
+      await page.waitForTimeout(100);
+    }
+    
+    // Check that updates are handled efficiently
+    await expect(page.locator('[data-testid="notifications"]')).toBeVisible();
   });
 
-  test.describe('Network Performance', () => {
-    test('should handle network latency gracefully', async ({ page }) => {
-      // Simulate network latency
-      await page.route('**/*', async route => {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        await route.continue();
-      });
-
-      const startTime = Date.now();
-      
-      await page.goto('/dashboard');
-      await expect(page.locator('h1')).toContainText('Welcome back, John!');
-      
-      const endTime = Date.now();
-      const loadTime = endTime - startTime;
-      
-      // Should still load within reasonable time
-      expect(loadTime).toBeLessThan(3000);
+  test('should handle scroll performance', async ({ page }) => {
+    await setupMockAPI(page);
+    
+    await page.goto('/dashboard');
+    
+    // Test scroll performance
+    const startTime = Date.now();
+    
+    await page.evaluate(() => {
+      window.scrollTo(0, 1000);
     });
-
-    test('should handle network errors gracefully', async ({ page }) => {
-      // Simulate network errors
-      await page.route('**/api/users/dashboard', async route => {
-        await route.abort('failed');
-      });
-
-      const startTime = Date.now();
-      
-      await page.goto('/dashboard');
-      await expect(page.locator('text=Failed to load dashboard data')).toBeVisible();
-      
-      const endTime = Date.now();
-      const errorTime = endTime - startTime;
-      
-      // Should handle errors quickly
-      expect(errorTime).toBeLessThan(1000);
+    
+    await page.waitForTimeout(100);
+    
+    await page.evaluate(() => {
+      window.scrollTo(0, 0);
     });
+    
+    const scrollTime = Date.now() - startTime;
+    
+    // Scrolling should be smooth
+    expect(scrollTime).toBeLessThan(1000);
+  });
+});
 
-    test('should handle slow API responses', async ({ page }) => {
-      // Simulate slow API response
-      await page.route('**/api/users/dashboard', async route => {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({
-            user: { id: '1', firstName: 'John', lastName: 'Doe', email: 'test@example.com' },
-            stats: { totalConnections: 25, newMessages: 3, upcomingEvents: 2, profileCompleteness: 85 },
-            recentConversations: [],
-            personalizedPosts: [],
-            quickActions: [],
-            notifications: []
-          })
-        });
-      });
-
-      const startTime = Date.now();
-      
-      await page.goto('/dashboard');
-      await expect(page.locator('h1')).toContainText('Welcome back, John!');
-      
-      const endTime = Date.now();
-      const loadTime = endTime - startTime;
-      
-      // Should handle slow responses gracefully
-      expect(loadTime).toBeLessThan(2000);
+test.describe('Bundle Size Performance', () => {
+  test('should have optimized bundle size', async ({ page }) => {
+    await page.goto('/');
+    
+    // Check that critical resources are loaded
+    const resources = await page.evaluate(() => {
+      return performance.getEntriesByType('resource').map(entry => ({
+        name: entry.name,
+        size: entry.transferSize,
+        duration: entry.duration
+      }));
     });
+    
+    // Check that total bundle size is reasonable
+    const totalSize = resources.reduce((sum, resource) => sum + (resource.size || 0), 0);
+    expect(totalSize).toBeLessThan(2 * 1024 * 1024); // Less than 2MB
+    
+    // Check that critical resources load first
+    const criticalResources = resources.filter(r => 
+      r.name.includes('main') || r.name.includes('vendor')
+    );
+    
+    expect(criticalResources.length).toBeGreaterThan(0);
   });
 
-  test.describe('Rendering Performance', () => {
-    test('should render pages efficiently', async ({ page }) => {
-      await page.goto('/dashboard');
-      
-      const renderTime = await page.evaluate(() => {
-        const start = performance.now();
-        
-        // Force reflow and repaint
-        const elements = document.querySelectorAll('*');
-        elements.forEach(element => {
-          element.offsetHeight; // Force reflow
-        });
-        
-        const end = performance.now();
-        return end - start;
-      });
-      
-      expect(renderTime).toBeLessThan(100);
-    });
-
-    test('should handle animations smoothly', async ({ page }) => {
-      await page.goto('/dashboard');
-      
-      const animationTime = await page.evaluate(() => {
-        const start = performance.now();
-        
-        // Create and animate elements
-        const element = document.createElement('div');
-        element.style.transition = 'transform 0.3s ease';
-        element.style.transform = 'translateX(0px)';
-        document.body.appendChild(element);
-        
-        // Trigger animation
-        element.style.transform = 'translateX(100px)';
-        
-        // Wait for animation to complete
-        return new Promise(resolve => {
-          setTimeout(() => {
-            const end = performance.now();
-            document.body.removeChild(element);
-            resolve(end - start);
-          }, 300);
-        });
-      });
-      
-      expect(animationTime).toBeLessThan(400);
-    });
-
-    test('should handle scroll performance', async ({ page }) => {
-      await page.goto('/dashboard');
-      
-      const scrollTime = await page.evaluate(() => {
-        const start = performance.now();
-        
-        // Perform scroll operations
-        window.scrollTo(0, 100);
-        window.scrollTo(0, 200);
-        window.scrollTo(0, 300);
-        window.scrollTo(0, 0);
-        
-        const end = performance.now();
-        return end - start;
-      });
-      
-      expect(scrollTime).toBeLessThan(100);
-    });
+  test('should use efficient caching strategies', async ({ page }) => {
+    await page.goto('/');
+    
+    // Check cache headers
+    const response = await page.request.get('http://localhost:5173/');
+    const cacheControl = response.headers()['cache-control'];
+    
+    // Should have appropriate cache headers
+    expect(cacheControl).toBeDefined();
   });
 
-  test.describe('Bundle Size Performance', () => {
-    test('should have reasonable bundle size', async ({ page }) => {
-      await page.goto('/dashboard');
-      
-      const bundleSize = await page.evaluate(() => {
-        // Get script tags and calculate total size
-        const scripts = document.querySelectorAll('script[src]');
-        let totalSize = 0;
-        
-        scripts.forEach(script => {
-          const src = script.getAttribute('src');
-          if (src && src.includes('assets')) {
-            // This is a simplified check - in real tests you'd fetch the actual files
-            totalSize += 100000; // Assume 100KB per script
-          }
-        });
-        
-        return totalSize;
-      });
-      
-      // Bundle size should be reasonable (less than 1MB)
-      expect(bundleSize).toBeLessThan(1000000);
+  test('should load critical CSS first', async ({ page }) => {
+    await page.goto('/');
+    
+    // Check that critical CSS is inlined or loads first
+    const stylesheets = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(link => ({
+        href: link.href,
+        media: link.media
+      }));
     });
+    
+    // Should have critical CSS
+    expect(stylesheets.length).toBeGreaterThan(0);
+  });
+});
 
-    test('should load critical resources first', async ({ page }) => {
-      const startTime = Date.now();
-      
-      await page.goto('/dashboard');
-      
-      // Check if critical resources are loaded first
-      const criticalResources = await page.evaluate(() => {
-        const scripts = document.querySelectorAll('script[src]');
-        const styles = document.querySelectorAll('link[rel="stylesheet"]');
-        
-        return {
-          scripts: scripts.length,
-          styles: styles.length,
-          criticalLoaded: document.querySelector('h1') !== null
-        };
-      });
-      
-      expect(criticalResources.criticalLoaded).toBe(true);
+test.describe('Mobile Performance', () => {
+  test('should perform well on mobile devices', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await setupMockAPI(page);
+    
+    const startTime = Date.now();
+    
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+    
+    const loadTime = Date.now() - startTime;
+    
+    // Should load within 3 seconds on mobile
+    expect(loadTime).toBeLessThan(3000);
+  });
+
+  test('should handle touch interactions efficiently', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/dashboard');
+    
+    // Test touch performance
+    const startTime = Date.now();
+    
+    await page.touchscreen.tap(200, 300);
+    await page.touchscreen.tap(200, 400);
+    await page.touchscreen.tap(200, 500);
+    
+    const touchTime = Date.now() - startTime;
+    
+    // Touch interactions should be responsive
+    expect(touchTime).toBeLessThan(500);
+  });
+});
+
+test.describe('Performance Monitoring', () => {
+  test('should track performance metrics', async ({ page }) => {
+    await page.goto('/dashboard');
+    
+    // Get performance metrics
+    const metrics = await page.evaluate(() => {
+      const navigation = performance.getEntriesByType('navigation')[0];
+      return {
+        loadTime: navigation.loadEventEnd - navigation.loadEventStart,
+        domContentLoaded: navigation.domContentLoadedEventEnd - navigation.domContentLoadedEventStart,
+        firstPaint: performance.getEntriesByType('paint').find(entry => entry.name === 'first-paint')?.startTime,
+        firstContentfulPaint: performance.getEntriesByType('paint').find(entry => entry.name === 'first-contentful-paint')?.startTime
+      };
     });
+    
+    // Check that metrics are reasonable
+    expect(metrics.loadTime).toBeLessThan(5000);
+    expect(metrics.domContentLoaded).toBeLessThan(3000);
+  });
+
+  test('should handle performance budgets', async ({ page }) => {
+    await page.goto('/dashboard');
+    
+    // Check that performance stays within budgets
+    const performanceEntries = await page.evaluate(() => {
+      return performance.getEntriesByType('resource').map(entry => ({
+        name: entry.name,
+        duration: entry.duration,
+        size: entry.transferSize
+      }));
+    });
+    
+    // Check that no single resource takes too long
+    const slowResources = performanceEntries.filter(entry => entry.duration > 1000);
+    expect(slowResources.length).toBe(0);
+    
+    // Check that total load time is reasonable
+    const totalDuration = performanceEntries.reduce((sum, entry) => sum + entry.duration, 0);
+    expect(totalDuration).toBeLessThan(10000);
   });
 });

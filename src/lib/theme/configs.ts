@@ -129,6 +129,12 @@ export const defaultTheme: ThemeConfiguration = {
       borderColor: '#e5e7eb',
       groupHeaderBg: '#f9fafb',
     },
+    button: {
+      borderRadius: '0.375rem'
+    },
+    card: {
+      borderRadius: '0.5rem'
+    }
   },
 };
 
@@ -244,6 +250,12 @@ export const darkTheme: ThemeConfiguration = {
       borderColor: '#374151',
       groupHeaderBg: '#111827',
     },
+    button: {
+      borderRadius: '0.375rem'
+    },
+    card: {
+      borderRadius: '0.5rem'
+    }
   },
 };
 
@@ -359,6 +371,12 @@ export const gitaTheme: ThemeConfiguration = {
       borderColor: '#fed7aa',
       groupHeaderBg: '#fff7ed',
     },
+    button: {
+      borderRadius: '0.375rem'
+    },
+    card: {
+      borderRadius: '0.5rem'
+    }
   },
 };
 
@@ -468,12 +486,18 @@ export const professionalTheme: ThemeConfiguration = {
   },
   componentOverrides: {
     table: {
-      borderRadius: '0.75rem',
+      borderRadius: '0.5rem',
       headerBg: '#ffffff',
       rowHoverBg: 'rgba(37, 99, 235, 0.05)',
       borderColor: '#e2e8f0',
       groupHeaderBg: '#f8fafc',
     },
+    button: {
+      borderRadius: '0.375rem'
+    },
+    card: {
+      borderRadius: '0.5rem'
+    }
   },
 };
 

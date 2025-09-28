@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { APIService, type User, type LoginCredentials, type AuthResponse } from '../services/APIService';
+import { apiClient } from '../lib/api';
 
 // ============================================================================
 // AUTHENTICATION HOOKS
@@ -29,7 +30,10 @@ export function useAuth() {
       // Store tokens in localStorage (in production, consider more secure storage)
       localStorage.setItem('authToken', response.token);
       localStorage.setItem('refreshToken', response.refreshToken);
-      
+
+      // Initialize API client with auth tokens
+      apiClient.initializeAuth(response.token, response.refreshToken);
+
       setAuthState({
         user: response.user,
         isAuthenticated: true,
@@ -62,6 +66,7 @@ export function useAuth() {
       // Clear tokens and state regardless of API call success
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
+      apiClient.clearAuth();
       setAuthState({
         user: null,
         isAuthenticated: false,
@@ -76,6 +81,8 @@ export function useAuth() {
       const response = await APIService.refreshToken();
       localStorage.setItem('authToken', response.token);
       localStorage.setItem('refreshToken', response.refreshToken);
+      // Update API client with new tokens
+      apiClient.initializeAuth(response.token, response.refreshToken);
       return response;
     } catch (error) {
       // If refresh fails, logout user

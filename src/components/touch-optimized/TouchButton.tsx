@@ -62,7 +62,7 @@ export function TouchButton({
     if (capabilities.type === 'mobile') {
       return {
         sm: 'min-h-[44px] min-w-[44px] px-4 py-3 text-base',
-        md: 'min-h-[48px] min-w-[48px] px-5 py-4 text-base',
+        md: 'min-h-[44px] min-w-[44px] px-5 py-4 text-base',
         lg: 'min-h-[52px] min-w-[52px] px-6 py-5 text-lg'
       }[size]
     }

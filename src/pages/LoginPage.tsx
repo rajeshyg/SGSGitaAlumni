@@ -216,15 +216,9 @@ export function LoginPage() {
                 Forgot your password?
               </Link>
             </div>
-            
+
             <div className="text-sm text-muted-foreground">
-              Don't have an account?{' '}
-              <Link
-                to="/register"
-                className="text-primary hover:text-primary/80 font-medium"
-              >
-                Sign up here
-              </Link>
+              New to SGSGita Alumni? Contact an administrator for an invitation.
             </div>
           </div>
         </Card>

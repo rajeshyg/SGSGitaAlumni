@@ -30,7 +30,7 @@ import { AccessControlService } from './AccessControlService';
 export const encryptionService = new EncryptionService();
 
 // Global secure API client instance
-export const secureAPIClient = new SecureAPIClient(process.env.REACT_APP_API_URL || 'http://localhost:3001');
+export const secureAPIClient = new SecureAPIClient(import.meta.env.VITE_API_URL || 'http://localhost:3001');
 
 // Global input validator instance
 export const inputValidator = new InputValidator();

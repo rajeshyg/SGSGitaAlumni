@@ -2,223 +2,297 @@
 
 ## 🎯 Overview
 
-This document outlines the comprehensive testing strategy for the SGSGitaAlumni application, including manual testing, automated testing, and quality assurance processes.
+This document outlines the comprehensive testing strategy for the SGSGitaAlumni application, covering manual testing, automated testing, and quality assurance processes.
 
-## 📋 Testing Approach
+## 📋 Testing Pyramid
 
-### 1. Manual Testing
-- **Purpose**: Human validation of user experience and edge cases
-- **Scope**: All user-facing features and workflows
-- **Frequency**: Before each release and after major changes
-- **Documentation**: [Manual Testing Guide](./MANUAL_TESTING_GUIDE.md)
+### 1. Unit Tests (Foundation)
+- **Coverage**: Individual components and functions
+- **Tools**: Vitest, React Testing Library
+- **Focus**: Component logic, utility functions, hooks
+- **Target**: 80%+ code coverage
 
-### 2. Automated Testing
-- **Purpose**: Consistent validation of functionality and regression prevention
-- **Scope**: Unit tests, integration tests, E2E tests, API tests
-- **Frequency**: Continuous integration and before deployments
-- **Tools**: Playwright, Vitest, React Testing Library
+### 2. Integration Tests (Middle Layer)
+- **Coverage**: Component interactions, API integrations
+- **Tools**: Playwright, API testing
+- **Focus**: Data flow, component communication
+- **Target**: Critical user journeys
 
-### 3. Performance Testing
-- **Purpose**: Ensure application meets performance requirements
-- **Scope**: Load times, API response times, memory usage
-- **Frequency**: Before major releases and performance-critical changes
+### 3. E2E Tests (Top Layer)
+- **Coverage**: Complete user workflows
+- **Tools**: Playwright, Cross-browser testing
+- **Focus**: Real user scenarios, cross-platform compatibility
+- **Target**: All major user paths
 
-## 🧪 Test Categories
+## 🔧 Testing Framework Architecture
 
-### Authentication & Authorization
-- **Login Flow**: Email/password validation, OTP verification
-- **Registration Flow**: Form validation, email verification
-- **Family Invitations**: Token validation, profile acceptance
-- **Session Management**: Token refresh, logout, timeout
+### Manual Testing
+- **Purpose**: Exploratory testing, usability validation
+- **Scope**: User experience, accessibility, edge cases
+- **Frequency**: Before each release, after major changes
+- **Documentation**: Comprehensive test cases and results
 
-### Dashboard & User Interface
-- **Member Dashboard**: Data display, interactions, responsiveness
-- **Admin Dashboard**: Administrative functions, data management
-- **Navigation**: Route protection, user role access
-- **Forms**: Validation, submission, error handling
+### Automated Testing
+- **Purpose**: Regression prevention, continuous validation
+- **Scope**: Critical paths, API endpoints, cross-browser compatibility
+- **Frequency**: On every commit, scheduled runs
+- **Coverage**: All environments (DEV, STAGING, PROD)
 
-### API Integration
-- **Authentication Endpoints**: Login, registration, OTP
-- **User Management**: Profile CRUD, preferences
-- **Dashboard Data**: Stats, conversations, posts
-- **Invitation System**: Family invitations, validation
+## 🎯 Testing Objectives
 
-### Cross-Platform Compatibility
-- **Browser Support**: Chrome, Firefox, Safari, Edge
-- **Device Support**: Desktop, tablet, mobile
-- **Responsive Design**: Various screen sizes and orientations
-- **Accessibility**: Screen readers, keyboard navigation
+### Functional Testing
+- ✅ **Authentication Flows**: Login, registration, OTP verification
+- ✅ **Dashboard Functionality**: Data display, interactions, real-time updates
+- ✅ **Family Invitations**: Creation, validation, acceptance workflows
+- ✅ **API Integration**: All endpoints, error handling, performance
+- ✅ **Cross-Platform**: Desktop, tablet, mobile compatibility
 
-### Performance & Security
-- **Load Times**: Page load, API response times
-- **Memory Usage**: Memory leaks, large dataset handling
-- **Security**: Authentication, authorization, data protection
-- **Error Handling**: Graceful degradation, user-friendly messages
+### Non-Functional Testing
+- ✅ **Performance**: Load times, memory usage, scalability
+- ✅ **Security**: Authentication, authorization, data protection
+- ✅ **Accessibility**: Screen readers, keyboard navigation, WCAG compliance
+- ✅ **Usability**: User experience, interface design, responsiveness
 
-## 🛠️ Testing Tools & Framework
+## 🚀 Testing Implementation
 
-### Playwright (E2E Testing)
-```bash
-# Install Playwright
-npm install --save-dev @playwright/test
-npx playwright install
+### 1. Test Data Management
+```typescript
+// Centralized test data with realistic scenarios
+export const testUsers = [
+  { id: '1', email: 'john.doe@example.com', role: 'member' },
+  { id: '2', email: 'admin@example.com', role: 'admin' }
+];
 
-# Run E2E tests
-npm run test:e2e
-npm run test:e2e:ui
-npm run test:e2e:headed
+export const testInvitations = [
+  { token: 'valid-token-123', expiresAt: '2024-12-31' },
+  { token: 'expired-token-456', expiresAt: '2024-01-01' }
+];
 ```
 
-### Vitest (Unit Testing)
-```bash
-# Run unit tests
-npm run test
-npm run test:ui
-npm run test:run
+### 2. Environment Configuration
+```typescript
+// Environment-specific test configuration
+export const testConfig = {
+  baseURL: process.env.BASE_URL || 'http://localhost:5173',
+  apiURL: process.env.API_URL || 'http://localhost:3000',
+  timeout: 30000,
+  retries: 3
+};
 ```
 
-### API Testing
-```bash
-# Run API tests
-npm run test:api
-npm run test:auth
-npm run test:dashboard
+### 3. Mock API Setup
+```typescript
+// Consistent API mocking for reliable tests
+export const setupMockAPI = async (page: any) => {
+  await page.route('**/api/auth/login', async route => {
+    // Mock login responses
+  });
+  
+  await page.route('**/api/users/dashboard', async route => {
+    // Mock dashboard data
+  });
+};
 ```
 
-### Performance Testing
+## 📊 Test Coverage Strategy
+
+### Critical Paths (100% Coverage)
+- User authentication and authorization
+- Dashboard data loading and display
+- Family invitation workflows
+- API error handling
+- Security validations
+
+### High Priority (90% Coverage)
+- User profile management
+- Notification systems
+- Cross-browser compatibility
+- Responsive design
+- Performance optimization
+
+### Medium Priority (80% Coverage)
+- Analytics and reporting
+- Settings management
+- Data validation
+- Error recovery
+- Accessibility features
+
+## 🔄 Continuous Testing Process
+
+### 1. Pre-Commit Testing
 ```bash
-# Run performance tests
-npm run test:performance
+# Run unit tests and linting
+npm run test:unit
+npm run lint
+
+# Run quick E2E tests
+npm run test:e2e:quick
 ```
 
-## 📊 Test Execution
-
-### Local Development
+### 2. Pull Request Testing
 ```bash
-# Run all tests
+# Run full test suite
 npm run test:all
 
-# Run specific test suites
-npm run test:auth
-npm run test:dashboard
-npm run test:responsive
-npm run test:cross-browser
+# Run performance tests
 npm run test:performance
-```
 
-### Continuous Integration
-```bash
-# CI test execution
-npm run test:ci
+# Generate test reports
 npm run test:report
 ```
 
-### Test Reports
-- **HTML Reports**: Generated in `test-results/` directory
-- **JSON Reports**: For CI/CD integration
-- **JUnit Reports**: For test result aggregation
+### 3. Release Testing
+```bash
+# Run comprehensive test suite
+npm run test:comprehensive
 
-## 🎯 Test Data Management
+# Run cross-browser tests
+npm run test:cross-browser
 
-### Test Users
-- **Admin User**: Full system access
-- **Member User**: Standard user access
-- **Moderator User**: Content moderation access
-- **Inactive User**: Deactivated account testing
+# Run security tests
+npm run test:security
+```
 
-### Test Scenarios
-- **Valid Data**: Successful operations
-- **Invalid Data**: Error handling
-- **Edge Cases**: Boundary conditions
-- **Error Conditions**: Network failures, server errors
+## 🎯 Quality Gates
 
-### Environment Configuration
-- **Development**: Local testing with mock data
-- **Staging**: Pre-production validation
-- **Production**: Live system monitoring
+### Code Quality
+- ✅ **Linting**: No ESLint errors or warnings
+- ✅ **Type Safety**: TypeScript strict mode compliance
+- ✅ **Code Coverage**: Minimum 80% overall coverage
+- ✅ **Performance**: No performance regressions
 
-## 📈 Quality Metrics
+### Functional Quality
+- ✅ **Critical Paths**: All authentication and dashboard flows work
+- ✅ **API Integration**: All endpoints respond correctly
+- ✅ **Cross-Browser**: Consistent behavior across all browsers
+- ✅ **Responsive Design**: Works on all device sizes
 
-### Test Coverage
-- **Unit Tests**: > 80% code coverage
-- **Integration Tests**: All API endpoints
-- **E2E Tests**: Critical user journeys
-- **Performance Tests**: Response time benchmarks
+### Security Quality
+- ✅ **Authentication**: Secure login and session management
+- ✅ **Authorization**: Proper access control
+- ✅ **Data Protection**: Sensitive data handling
+- ✅ **Input Validation**: All inputs properly validated
 
-### Success Criteria
-- **Functional**: All features work as expected
-- **Performance**: Page load < 2 seconds, API response < 500ms
-- **Accessibility**: WCAG 2.1 AA compliance
-- **Security**: No critical vulnerabilities
-- **Compatibility**: All supported browsers and devices
+## 📈 Test Metrics and Reporting
 
-## 🔄 Continuous Testing
+### Coverage Metrics
+- **Unit Test Coverage**: Target 80%+
+- **Integration Test Coverage**: Target 70%+
+- **E2E Test Coverage**: Target 60%+
+- **API Test Coverage**: Target 90%+
 
-### Pre-commit Hooks
-- **Linting**: Code quality checks
-- **Unit Tests**: Fast feedback loop
-- **Security**: Vulnerability scanning
+### Performance Metrics
+- **Page Load Time**: < 2 seconds
+- **API Response Time**: < 1 second
+- **Memory Usage**: < 100MB
+- **Bundle Size**: < 500KB gzipped (see [Performance Targets](../standards/PERFORMANCE_TARGETS.md))
 
-### CI/CD Pipeline
-- **Build Validation**: Compilation and bundling
-- **Test Execution**: All test suites
-- **Quality Gates**: Coverage and performance metrics
-- **Deployment**: Automated testing in staging
+### Quality Metrics
+- **Bug Escape Rate**: < 5%
+- **Test Pass Rate**: > 95%
+- **Test Execution Time**: < 10 minutes
+- **Test Maintenance**: < 20% effort
 
-### Monitoring
-- **Real-time**: Application performance monitoring
-- **Error Tracking**: Sentry integration
-- **User Analytics**: Usage patterns and issues
+## 🛠️ Testing Tools and Technologies
+
+### Frontend Testing
+- **Playwright**: E2E testing, cross-browser testing
+- **Vitest**: Unit testing, component testing
+- **React Testing Library**: Component testing utilities
+- **Jest**: Test runner and assertions
+
+### API Testing
+- **Playwright API**: HTTP request testing
+- **Postman**: Manual API testing
+- **curl**: Command-line API testing
+- **Custom Scripts**: Automated API validation
+
+### Performance Testing
+- **Playwright Performance**: Load time measurement
+- **Lighthouse**: Performance auditing
+- **Web Vitals**: Core web vitals monitoring
+- **Bundle Analyzer**: Bundle size analysis
+
+### Accessibility Testing
+- **axe-core**: Automated accessibility testing
+- **Screen Reader Testing**: Manual accessibility validation
+- **Keyboard Navigation**: Manual keyboard testing
+- **Color Contrast**: Visual accessibility validation
+
+## 🔍 Test Execution Strategy
+
+### 1. Smoke Testing (Daily)
+- Critical authentication flows
+- Basic dashboard functionality
+- API health checks
+- Cross-browser compatibility
+
+### 2. Regression Testing (Weekly)
+- Full test suite execution
+- Performance benchmarking
+- Security validation
+- Accessibility compliance
+
+### 3. Release Testing (Per Release)
+- Comprehensive test coverage
+- Cross-platform validation
+- Performance optimization
+- Security audit
 
 ## 📝 Test Documentation
 
-### Test Cases
-- **Manual Testing**: Step-by-step instructions
-- **Automated Tests**: Self-documenting code
-- **API Tests**: Request/response examples
-- **Performance Tests**: Benchmark results
-
-### Reporting
-- **Test Results**: Pass/fail status with details
-- **Coverage Reports**: Code coverage analysis
-- **Performance Reports**: Load time and memory usage
-- **Security Reports**: Vulnerability assessments
-
-## 🚀 Best Practices
-
-### Test Design
-- **Independent**: Tests don't depend on each other
-- **Repeatable**: Consistent results across runs
-- **Fast**: Quick feedback for developers
-- **Maintainable**: Easy to update and extend
-
-### Test Execution
-- **Parallel**: Run tests concurrently when possible
-- **Isolated**: Clean state between tests
-- **Reliable**: Minimal flaky tests
-- **Comprehensive**: Cover all scenarios
+### Test Case Documentation
+- **Manual Test Cases**: Step-by-step instructions
+- **Automated Test Cases**: Code documentation
+- **Test Data**: Realistic test scenarios
+- **Test Results**: Detailed reporting
 
 ### Test Maintenance
-- **Regular Updates**: Keep tests current with code changes
-- **Refactoring**: Improve test structure and readability
-- **Documentation**: Clear test descriptions and purposes
-- **Monitoring**: Track test performance and reliability
+- **Test Updates**: Regular test maintenance
+- **Test Refactoring**: Code quality improvement
+- **Test Optimization**: Performance enhancement
+- **Test Documentation**: Up-to-date documentation
 
-## 🎯 Success Metrics
+## 🎯 Success Criteria
 
-### Quality Indicators
-- **Test Pass Rate**: > 95% for all test suites
-- **Code Coverage**: > 80% for critical components
-- **Performance**: < 2s page load, < 500ms API response
-- **Accessibility**: WCAG 2.1 AA compliance
-- **Security**: Zero critical vulnerabilities
+### Functional Success
+- ✅ All critical user journeys work correctly
+- ✅ API endpoints respond as expected
+- ✅ Cross-browser compatibility confirmed
+- ✅ Responsive design functions properly
 
-### Continuous Improvement
-- **Test Feedback**: Regular review of test results
-- **Process Optimization**: Streamline test execution
-- **Tool Updates**: Keep testing tools current
-- **Training**: Team knowledge and skills development
+### Quality Success
+- ✅ Performance requirements met
+- ✅ Security standards achieved
+- ✅ Accessibility compliance confirmed
+- ✅ User experience optimized
+
+### Process Success
+- ✅ Test automation coverage > 80%
+- ✅ Test execution time < 10 minutes
+- ✅ Bug detection rate > 95%
+- ✅ Test maintenance effort < 20%
+
+## 🚀 Continuous Improvement
+
+### Test Optimization
+- Regular test performance analysis
+- Test execution time optimization
+- Test coverage enhancement
+- Test maintenance reduction
+
+### Process Enhancement
+- Test automation improvement
+- Test reporting enhancement
+- Test data management optimization
+- Test environment standardization
+
+### Quality Improvement
+- Bug prevention strategies
+- Test effectiveness measurement
+- Quality gate optimization
+- Continuous learning integration
 
 ---
 
-**Note**: This testing strategy should be regularly reviewed and updated to ensure it remains effective and aligned with the application's evolution and business requirements.
+**Note**: This testing strategy is designed to ensure the highest quality of the SGSGitaAlumni application while maintaining efficient testing processes and continuous improvement.

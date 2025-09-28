@@ -262,7 +262,7 @@ export class InvitationService implements InvitationServiceInterface {
         }
       }
 
-      // Create user account
+      // Create or update user account
       const userCreationData = {
         ...userData,
         email: validation.invitation.email,
@@ -276,14 +276,15 @@ export class InvitationService implements InvitationServiceInterface {
       const userResponse = await apiClient.post('/api/auth/register-from-invitation', userCreationData);
       const user: User = userResponse.data.user;
 
-      // Mark invitation as used
+      // Mark invitation as used and link to user
       await apiClient.request(`/api/invitations/${validation.invitation.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
           status: 'accepted',
           isUsed: true,
           usedAt: new Date().toISOString(),
-          acceptedBy: user.id
+          acceptedBy: user.id,
+          userId: user.id // Ensure user_id is set for tracking
         })
       });
 

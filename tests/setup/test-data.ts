@@ -309,7 +309,7 @@ export const testAPIResponses = {
 // Test Environment Configuration
 export const testConfig = {
   baseURL: 'http://localhost:5173',
-  apiURL: 'http://localhost:3000',
+  apiURL: 'http://localhost:3001',
   timeout: 30000,
   retries: 3,
   viewports: {

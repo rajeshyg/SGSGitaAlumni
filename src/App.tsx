@@ -10,7 +10,6 @@ const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default
 
 // Lazy load authentication pages
 const LoginPage = lazy(() => import('./pages/LoginPage'))
-const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const InvitationAcceptancePage = lazy(() => import('./pages/InvitationAcceptancePage'))
 const OTPVerificationPage = lazy(() => import('./pages/OTPVerificationPage'))
 const FamilyProfileSelectionPage = lazy(() => import('./pages/FamilyProfileSelectionPage'))
@@ -137,11 +136,6 @@ function App() {
               <Route path="/login" element={
                 <PublicRoute>
                   <LoginPage />
-                </PublicRoute>
-              } />
-              <Route path="/register" element={
-                <PublicRoute>
-                  <RegisterPage />
                 </PublicRoute>
               } />
               <Route path="/forgot-password" element={

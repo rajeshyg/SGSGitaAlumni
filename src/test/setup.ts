@@ -29,3 +29,19 @@ Object.defineProperty(window, 'matchMedia', {
   unobserve: vi.fn(),
   disconnect: vi.fn(),
 }))
+
+// Provide Touch constructor shim for tests that create Touch objects
+class MockTouch {
+  identifier: number
+  target: EventTarget
+  clientX: number
+  clientY: number
+  constructor(init: { identifier: number; target: EventTarget; clientX: number; clientY: number }) {
+    this.identifier = init.identifier
+    this.target = init.target
+    this.clientX = init.clientX
+    this.clientY = init.clientY
+  }
+}
+
+;(globalThis as any).Touch = MockTouch

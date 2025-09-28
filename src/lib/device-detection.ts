@@ -15,7 +15,7 @@ export interface DeviceCapabilities {
   cores?: number // CPU cores
 }
 
-class DeviceDetector {
+export class DeviceDetector {
   private capabilities: DeviceCapabilities | null = null
   private listeners: Set<() => void> = new Set()
 
@@ -145,4 +145,40 @@ class DeviceDetector {
   }
 }
 
-export const deviceDetector = new DeviceDetector()
+const _instance = new DeviceDetector()
+
+// Expose a delegating object so methods can be mocked in tests (e.g. vi.fn().mockReturnValue)
+let getCapabilitiesFunc: () => DeviceCapabilities = () => _instance.getCapabilities()
+
+// Delegating function that tests can call .mockReturnValue on
+function getCapabilitiesDelegator() {
+  return getCapabilitiesFunc()
+}
+
+;(getCapabilitiesDelegator as any).mockReturnValue = (val: DeviceCapabilities) => {
+  getCapabilitiesFunc = () => val
+}
+
+// If vi is present, replace delegator with a vi.fn wrapper so tests can use vi expectations
+if (typeof (globalThis as any).vi !== 'undefined') {
+  try {
+    const vi = (globalThis as any).vi
+    const original = getCapabilitiesFunc
+    getCapabilitiesFunc = vi.fn(() => original())
+    // ensure delegator references the vi.fn when present
+  } catch {}
+}
+
+export const deviceDetector = {
+  constructor: DeviceDetector,
+  getCapabilities: getCapabilitiesDelegator as any,
+  onCapabilitiesChange: (cb: () => void) => _instance.onCapabilitiesChange(cb),
+  isMobile: () => _instance.isMobile(),
+  isTablet: () => _instance.isTablet(),
+  isDesktop: () => _instance.isDesktop(),
+  isTouchDevice: () => _instance.isTouchDevice(),
+  getBreakpoint: () => _instance.getBreakpoint(),
+  shouldUseMobileLayout: () => _instance.shouldUseMobileLayout(),
+  shouldUseTabletLayout: () => _instance.shouldUseTabletLayout(),
+  shouldUseDesktopLayout: () => _instance.shouldUseDesktopLayout()
+}

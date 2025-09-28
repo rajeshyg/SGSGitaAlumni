@@ -10,10 +10,16 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Run linting (temporarily disabled - major refactoring in progress)
-# echo "📏 Running ESLint..."
-# npm run lint
-echo "📏 ESLint check temporarily disabled during critical module cleanup"
+# Run linting with logging for violation tracking
+echo "📏 Running ESLint with violation logging..."
+npm run lint 2>&1 | tee -a eslint-violations.log
+ESLINT_EXIT_CODE=$?
+echo "$(date '+%Y-%m-%d %H:%M:%S') - ESLint run completed with exit code $ESLINT_EXIT_CODE" >> eslint-violations.log
+
+if [ $ESLINT_EXIT_CODE -ne 0 ]; then
+  echo "❌ ESLint failed. Commit blocked."
+  exit 1
+fi
 
 # Run redundancy checks
 echo "🔍 Checking for redundancy..."

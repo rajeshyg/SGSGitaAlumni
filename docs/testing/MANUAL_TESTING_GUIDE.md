@@ -23,41 +23,41 @@ curl http://localhost:3000/api/health
 
 ## 🔐 Authentication Flow Testing
 
-### 1. User Registration Flow
+### 1. Invitation-Based User Onboarding Flow
 
-#### Test Case 1.1: New User Registration
+#### Test Case 1.1: Invitation Acceptance and Registration
 **Steps:**
-1. Navigate to `/register`
-2. Fill in registration form:
+1. Access invitation link: `/invitation/{token}` (obtain from admin invitation system)
+2. Verify invitation details are displayed
+3. Fill in registration form:
    - First Name: "John"
    - Last Name: "Doe"
-   - Email: "john.doe@example.com"
-   - Password: "SecurePass123!"
-   - Confirm Password: "SecurePass123!"
+   - Birth Date: "2000-01-01"
    - Graduation Year: "2020"
-   - Major: "Computer Science"
-3. Click "Register"
-4. Verify OTP email is sent
-5. Enter OTP code (check email)
-6. Verify successful registration and redirect to dashboard
+   - Program: "Computer Science"
+   - Current Position: "Software Engineer"
+   - Bio: "Passionate about technology"
+4. Click "Complete Registration"
+5. Verify age verification (if under 18, parent consent required)
+6. Verify successful registration and redirect to login
 
 **Expected Results:**
-- ✅ Form validation works correctly
-- ✅ OTP email is delivered
-- ✅ User is created in database
-- ✅ Redirect to dashboard after OTP verification
-- ✅ User session is established
+- ✅ Invitation token validation works
+- ✅ Age verification is performed
+- ✅ User profile is created in database
+- ✅ Redirect to login page after completion
+- ✅ Parent consent flow for minors
 
-#### Test Case 1.2: Registration Validation
+#### Test Case 1.2: Invalid Invitation Handling
 **Steps:**
-1. Test with invalid email formats
-2. Test with weak passwords
-3. Test with mismatched passwords
-4. Test with empty required fields
+1. Access invalid invitation link: `/invitation/invalid-token`
+2. Access expired invitation link
+3. Access already-used invitation link
 
 **Expected Results:**
-- ✅ Appropriate validation messages displayed
-- ✅ Form submission blocked for invalid data
+- ✅ Appropriate error messages displayed
+- ✅ Invalid/expired invitations are rejected
+- ✅ User cannot proceed with invalid tokens
 
 ### 2. Login Flow Testing
 

@@ -1,5 +1,6 @@
 import { APIError, NetworkError, AuthenticationError } from '../utils/errorHandling';
 import { secureAPIClient } from './security';
+import axios from 'axios'
 
 // Enhanced API client with security features
 export const apiClient = {
@@ -116,8 +117,19 @@ export const apiClient = {
   }
 }
 
-export const getData = async (endpoint: string) => {
-  return apiClient.get(endpoint)
+export const getData = async (skipOrEndpoint?: number | string, limit?: number, search?: string) => {
+  // Backwards compatible: support getData(), or getData(skip, limit, search)
+  if (typeof skipOrEndpoint === 'string') {
+    const url = skipOrEndpoint || '/data'
+    const response = await axios.get(url, { params: { skip: 0, limit: 100, search: undefined } })
+    return response.data
+  }
+
+  const skip = typeof skipOrEndpoint === 'number' ? skipOrEndpoint : 0
+  const lim = typeof limit === 'number' ? limit : 100
+
+  const response = await axios.get('/data', { params: { skip, limit: lim, search } })
+  return response.data
 }
 
 export class RawCsvUpload {

@@ -1,5 +1,3 @@
-import { useRef, useCallback } from 'react'
-
 export interface SwipeGestureOptions {
   threshold?: number
   onSwipeLeft?: () => void
@@ -8,33 +6,34 @@ export interface SwipeGestureOptions {
   onSwipeDown?: () => void
 }
 
+// Pure factory that returns handlers and does not use React hooks.
+// This allows tests to call it outside of component render.
 export function useSwipeGesture({
-  threshold = 150,
+  threshold = 30,
   onSwipeLeft,
   onSwipeRight,
   onSwipeUp,
   onSwipeDown
 }: SwipeGestureOptions = {}) {
-  const touchStartX = useRef<number | null>(null)
-  const touchStartY = useRef<number | null>(null)
+  let touchStartX: number | null = null
+  let touchStartY: number | null = null
 
-  const handleTouchStart = useCallback((e: TouchEvent) => {
+  function handleTouchStart(e: TouchEvent) {
     const touch = e.touches[0]
-    touchStartX.current = touch.clientX
-    touchStartY.current = touch.clientY
-  }, [])
+    touchStartX = touch.clientX
+    touchStartY = touch.clientY
+  }
 
-  const handleTouchEnd = useCallback((e: TouchEvent) => {
-    if (!touchStartX.current || !touchStartY.current) return
+  function handleTouchEnd(e: TouchEvent) {
+    if (touchStartX === null || touchStartY === null) return
 
     const touch = e.changedTouches[0]
-    const distanceX = touch.clientX - touchStartX.current
-    const distanceY = touch.clientY - touchStartY.current
+    const distanceX = touch.clientX - touchStartX
+    const distanceY = touch.clientY - touchStartY
 
     const absDistanceX = Math.abs(distanceX)
     const absDistanceY = Math.abs(distanceY)
 
-    // Determine if it's a horizontal or vertical swipe
     if (absDistanceX >= threshold && absDistanceY <= 100) {
       if (distanceX > 0) {
         onSwipeRight?.()
@@ -49,9 +48,9 @@ export function useSwipeGesture({
       }
     }
 
-    touchStartX.current = null
-    touchStartY.current = null
-  }, [threshold, onSwipeLeft, onSwipeRight, onSwipeUp, onSwipeDown])
+    touchStartX = null
+    touchStartY = null
+  }
 
   return {
     onTouchStart: handleTouchStart,

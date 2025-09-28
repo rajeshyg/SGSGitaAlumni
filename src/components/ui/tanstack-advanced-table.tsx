@@ -107,21 +107,29 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
   onRowClick,
   exportable = false,
   exportFilename = "table-data",
-  compactMode = true
+  compactMode = true,
+  externalRowSelection,
+  onRowSelectionChange
 }: AdvancedDataTableProps<T> & {
   frozenColumns?: FrozenColumnsConfig
+  externalRowSelection?: RowSelectionState
+  onRowSelectionChange?: (updaterOrValue: RowSelectionState | ((old: RowSelectionState) => RowSelectionState)) => void
 }) {
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+  const [internalRowSelection, setInternalRowSelection] = React.useState<RowSelectionState>({})
   const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>([])
   const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({})
   const [columnPinning, setColumnPinning] = React.useState<ColumnPinningState>({})
   const [globalFilter, setGlobalFilter] = React.useState('')
   const [editingCell, setEditingCell] = React.useState<EditingCell | null>(null)
+
+  // Use external row selection if provided, otherwise use internal
+  const rowSelection = externalRowSelection !== undefined ? externalRowSelection : internalRowSelection
+  const handleRowSelectionChange = onRowSelectionChange || setInternalRowSelection
   // Initialize column pinning for frozen columns
   React.useEffect(() => {
     const leftPinnedColumns: string[] = []
@@ -152,7 +160,7 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: handleRowSelectionChange,
     onColumnOrderChange: setColumnOrder,
     onColumnSizingChange: setColumnSizing,
     onColumnPinningChange: setColumnPinning,

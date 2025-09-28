@@ -6,26 +6,6 @@ import { TouchButton } from '@/components/touch-optimized/TouchButton'
 import { useSwipeGesture } from '@/hooks/useSwipeGesture'
 import { AdaptiveLayout } from '@/components/layout/AdaptiveLayout'
 
-// Mock device detection
-vi.mock('@/lib/device-detection', () => ({
-  deviceDetector: {
-    getCapabilities: vi.fn(),
-    onCapabilitiesChange: vi.fn(() => vi.fn())
-  }
-}))
-
-// Mock performance optimizer
-vi.mock('@/lib/performance-optimization', () => ({
-  performanceOptimizer: {
-    getConfig: vi.fn(),
-    optimizeImage: vi.fn(),
-    getAnimationDuration: vi.fn(),
-    shouldPreload: vi.fn(),
-    shouldUseLazyLoading: vi.fn(),
-    getImageLoadingStrategy: vi.fn()
-  }
-}))
-
 describe('Cross-Platform Components', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -196,7 +176,7 @@ describe('Cross-Platform Components', () => {
       (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'mobile'
       })
-      ;(performanceOptimizer.optimizeImage as any).mockReturnValue(`${baseUrl}?quality=80`)
+      performanceOptimizer.optimizeImage = vi.fn().mockReturnValue(`${baseUrl}?quality=80`)
 
       expect(performanceOptimizer.optimizeImage(baseUrl)).toContain('quality=80')
 
@@ -204,7 +184,7 @@ describe('Cross-Platform Components', () => {
       (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'desktop'
       })
-      ;(performanceOptimizer.optimizeImage as any).mockReturnValue(`${baseUrl}?quality=100`)
+      performanceOptimizer.optimizeImage = vi.fn().mockReturnValue(`${baseUrl}?quality=100`)
 
       expect(performanceOptimizer.optimizeImage(baseUrl)).toContain('quality=100')
     })

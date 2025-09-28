@@ -39,6 +39,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    exclude: ['tests/**', 'tests/**/**', 'playwright.config.*'],
 
     // Advanced testing will be configured programmatically
     // See src/lib/testing/ for framework implementations

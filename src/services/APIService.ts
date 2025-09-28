@@ -493,6 +493,21 @@ export const APIService = {
     }
   },
 
+  // Get user profile by user ID (for admin editing)
+  getUserById: async (userId: string): Promise<any> => {
+    try {
+      logger.info('Fetching user profile for user:', userId);
+
+      const response = await apiClient.get(`/api/users/${userId}/profile`);
+
+      logger.info('User profile retrieved for user:', userId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to fetch user profile:', error);
+      throw new Error('Failed to fetch user profile.');
+    }
+  },
+
   // Get alumni profile by user ID
   getAlumniProfile: async (userId: string): Promise<AlumniProfile> => {
     try {
@@ -652,6 +667,135 @@ export const APIService = {
     } catch (error) {
       logger.error('Failed to send message:', error);
       throw new Error('Failed to send message. Please try again.');
+    }
+  },
+
+  // ============================================================================
+  // INVITATION METHODS
+  // ============================================================================
+
+  // Create individual invitation
+  createInvitation: async (invitationData: {
+    email: string;
+    invitedBy: string;
+    invitationType: string;
+    invitationData: any;
+    expiresAt: string;
+  }): Promise<any> => {
+    try {
+      logger.info('Creating invitation for:', invitationData.email);
+
+      const response = await apiClient.post('/api/invitations', invitationData);
+
+      logger.info('Invitation created successfully for:', invitationData.email);
+      return response;
+    } catch (error) {
+      logger.error('Failed to create invitation:', error);
+      throw new Error('Failed to create invitation. Please try again.');
+    }
+  },
+
+  // Create family invitation
+  createFamilyInvitation: async (invitationData: {
+    parentEmail: string;
+    childrenData: any[];
+    invitedBy: string;
+    expiresInDays: number;
+  }): Promise<any> => {
+    try {
+      logger.info('Creating family invitation for:', invitationData.parentEmail);
+
+      const response = await apiClient.post('/api/invitations/family', invitationData);
+
+      logger.info('Family invitation created successfully for:', invitationData.parentEmail);
+      return response;
+    } catch (error) {
+      logger.error('Failed to create family invitation:', error);
+      throw new Error('Failed to create family invitation. Please try again.');
+    }
+  },
+
+  // Create bulk invitations for existing users
+  createBulkInvitations: async (invitations: {
+    userId: string;
+    invitationType: string;
+    expiresAt: string;
+    invitedBy: string;
+  }[]): Promise<any> => {
+    try {
+      logger.info('Creating bulk invitations for users:', invitations.length);
+
+      const response = await apiClient.post('/api/invitations/bulk', { invitations });
+
+      logger.info('Bulk invitations created successfully');
+      return response;
+    } catch (error) {
+      logger.error('Failed to create bulk invitations:', error);
+      throw new Error('Failed to create bulk invitations. Please try again.');
+    }
+  },
+
+  // ============================================================================
+  // USER MANAGEMENT METHODS
+  // ============================================================================
+
+  // Update user attributes
+  updateUser: async (userId: string, updates: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    birthDate?: string;
+    graduationYear?: number;
+    program?: string;
+    currentPosition?: string;
+    bio?: string;
+    linkedinUrl?: string;
+    company?: string;
+    location?: string;
+    ageVerified?: boolean;
+    parentConsentRequired?: boolean;
+    parentConsentGiven?: boolean;
+    requiresOtp?: boolean;
+    alumniProfile?: {
+      familyName?: string;
+      fatherName?: string;
+      batch?: number;
+      centerName?: string;
+      result?: string;
+      category?: string;
+      phone?: string;
+      email?: string;
+      studentId?: string;
+    };
+  }): Promise<any> => {
+    try {
+      logger.info('Updating user attributes for user:', userId);
+
+      const response = await apiClient.put(`/api/users/${userId}`, updates);
+
+      logger.info('User attributes updated successfully for user:', userId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to update user attributes:', error);
+      throw new Error('Failed to update user attributes. Please try again.');
+    }
+  },
+
+  // Send invitation to user
+  sendInvitationToUser: async (userId: string, invitationType: string = 'profile_completion', expiresInDays: number = 7): Promise<any> => {
+    try {
+      logger.info('Sending invitation to user:', userId);
+
+      const response = await apiClient.post(`/api/users/${userId}/send-invitation`, {
+        invitationType,
+        expiresInDays
+      });
+
+      logger.info('Invitation sent successfully to user:', userId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to send invitation to user:', error);
+      throw new Error('Failed to send invitation. Please try again.');
     }
   }
 };

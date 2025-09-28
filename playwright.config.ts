@@ -15,14 +15,19 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
-    ['html'],
+    ['html', { outputFolder: 'playwright-report' }],
     ['json', { outputFile: 'test-results/results.json' }],
-    ['junit', { outputFile: 'test-results/results.xml' }]
+    ['junit', { outputFile: 'test-results/results.xml' }],
+    ['line'],
+    ['allure-playwright', { outputFolder: 'test-results/allure-results' }]
   ],
+  /* Global setup and teardown */
+  globalSetup: './tests/setup/global-setup.ts',
+  globalTeardown: './tests/setup/global-teardown.ts',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env.BASE_URL || 'http://localhost:5173',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     /* Take screenshot on failure */
@@ -33,6 +38,14 @@ export default defineConfig({
     actionTimeout: 10000,
     /* Global timeout for navigation */
     navigationTimeout: 30000,
+    /* Ignore HTTPS errors */
+    ignoreHTTPSErrors: true,
+    /* Bypass Content Security Policy for testing */
+    bypassCSP: true,
+    /* Extra HTTP headers */
+    extraHTTPHeaders: {
+      'Accept-Language': 'en-US,en;q=0.9'
+    }
   },
 
   /* Configure projects for major browsers */

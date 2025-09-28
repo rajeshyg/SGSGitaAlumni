@@ -1,72 +1,138 @@
 // Mock data for development
-export const mockUsers = [
-  { id: 1, name: 'John Doe', email: 'john@example.com' },
-  { id: 2, name: 'Jane Smith', email: 'jane@example.com' }
+// Simple mock dataset for file imports used in tests
+const initialFileImports = [
+  {
+    id: '1',
+    filename: 'alumni_list.csv',
+    file_type: 'csv',
+    uploaded_by: 'admin',
+    status: 'pending',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: '2',
+    filename: 'donations_alumni.json',
+    file_type: 'json',
+    uploaded_by: 'user1',
+    status: 'completed',
+    created_at: new Date().toISOString()
+  }
 ]
 
-export const mockPosts = [
-  { id: 1, title: 'Hello World', content: 'This is a test post' },
-  { id: 2, title: 'Another Post', content: 'More content here' }
-]
+// In-memory store backed by localStorage for persistence in tests
+const STORAGE_KEY = 'mock_file_imports'
 
-export const getMockData = (type: string) => {
-  switch (type) {
-    case 'users':
-      return mockUsers
-    case 'posts':
-      return mockPosts
-    default:
-      return []
+function ensureInitialData() {
+  const existing = LocalStorageService.get(STORAGE_KEY)
+  if (!existing || !Array.isArray(existing) || existing.length === 0) {
+    LocalStorageService.set(STORAGE_KEY, initialFileImports.slice())
   }
 }
 
 export const MockAPIService = {
-  get: (_url: string) => Promise.resolve({ data: [] }),
-  post: (_url: string, _data: unknown) => Promise.resolve({ data: _data }),
-  put: (_url: string, _data: unknown) => Promise.resolve({ data: _data }),
-  delete: (_url: string) => Promise.resolve({ data: null }),
-  clearData: () => Promise.resolve(true),
-  getFileImports: () => Promise.resolve([]),
-  loadData: () => Promise.resolve([]),
-  updateFileImport: (_id: string, _updates: unknown) => Promise.resolve({}),
-  exportData: (_format: string) => Promise.resolve(new Blob())
+  async get(url: string) {
+    const data = LocalStorageService.loadData()
+    return { data }
+  },
+  async post(_url: string, _data: unknown) {
+    return { data: _data }
+  },
+  async put(_url: string, _data: unknown) {
+    return { data: _data }
+  },
+  async delete(_url: string) {
+    return { data: null }
+  },
+  async clearData() {
+    LocalStorageService.clearData()
+    return true
+  },
+  async getFileImports({ page = 0, pageSize = 10, search }: { page?: number; pageSize?: number; search?: string } = {}) {
+    ensureInitialData()
+    const all = LocalStorageService.loadData()
+    let filtered = all
+    if (search) {
+      const term = search.toLowerCase()
+      filtered = all.filter((item: any) => (
+        (item.filename || '').toLowerCase().includes(term) ||
+        (item.file_type || '').toLowerCase().includes(term) ||
+        (item.uploaded_by || '').toLowerCase().includes(term)
+      ))
+    }
+
+    const total = filtered.length
+    const start = page * pageSize
+    const data = filtered.slice(start, start + pageSize)
+
+    return { data, total }
+  },
+  loadData() {
+    ensureInitialData()
+    return LocalStorageService.get(STORAGE_KEY) || []
+  },
+  async updateFileImport(id: string, updates: Partial<any>) {
+    ensureInitialData()
+    const all = LocalStorageService.get(STORAGE_KEY) || []
+    const idx = all.findIndex((i: any) => i.id === id)
+    if (idx === -1) throw new Error('Not found')
+    const updated = { ...all[idx], ...updates }
+    all[idx] = updated
+    LocalStorageService.set(STORAGE_KEY, all)
+    return updated
+  },
+  async exportData(format: 'csv' | 'json' = 'csv') {
+    ensureInitialData()
+    const data = LocalStorageService.get(STORAGE_KEY) || []
+    if (format === 'json') return data
+
+    // CSV export
+    const headers = ['ID', 'Filename', 'FileType', 'UploadedBy', 'Status']
+    const lines = data.map((d: any) => `${d.id},${d.filename},${d.file_type},${d.uploaded_by},${d.status}`)
+    return `${headers.join(',')}\n${lines.join('\n')}`
+  }
 }
 
 export const LocalStorageService = {
-  get: (key: string) => {
+  get(key: string) {
     try {
-      const item = localStorage.getItem(key)
+      const item = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null
       return item ? JSON.parse(item) : null
     } catch {
       return null
     }
   },
-  set: (key: string, value: unknown) => {
+  set(key: string, value: unknown) {
     try {
-      localStorage.setItem(key, JSON.stringify(value))
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, JSON.stringify(value))
+      }
       return true
     } catch {
       return false
     }
   },
-  remove: (key: string) => {
+  remove(key: string) {
     try {
-      localStorage.removeItem(key)
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key)
+      }
       return true
     } catch {
       return false
     }
   },
-  clearData: () => {
+  clearData() {
     try {
-      localStorage.clear()
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY)
+      }
       return true
     } catch {
       return false
     }
   },
-  loadData: () => {
-    // Mock implementation
-    return []
+  loadData() {
+    ensureInitialData()
+    return LocalStorageService.get(STORAGE_KEY) || []
   }
 }

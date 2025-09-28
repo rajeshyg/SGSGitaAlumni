@@ -1,22 +1,23 @@
 import { test, expect } from '@playwright/test';
+import { setupMockAPI } from '../setup/test-data';
 
 test.describe('Authentication Flow', () => {
   test.beforeEach(async ({ page }) => {
+    // Setup API mocks
+    await setupMockAPI(page);
     await page.goto('/');
   });
 
   test('should display login page by default', async ({ page }) => {
     await expect(page).toHaveURL('/login');
-    await expect(page.locator('h1')).toContainText('Sign In');
+    await expect(page.locator('h1')).toContainText('Welcome Back');
     await expect(page.locator('input[name="email"]')).toBeVisible();
     await expect(page.locator('input[name="password"]')).toBeVisible();
     await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
-  test('should navigate to registration page', async ({ page }) => {
-    await page.click('text=Create an account');
-    await expect(page).toHaveURL('/register');
-    await expect(page.locator('h1')).toContainText('Create Account');
+  test('should show invitation-only message', async ({ page }) => {
+    await expect(page.locator('text=New to SGSGita Alumni? Contact an administrator for an invitation.')).toBeVisible();
   });
 
   test('should show validation errors for empty form submission', async ({ page }) => {
@@ -110,60 +111,90 @@ test.describe('Authentication Flow', () => {
   });
 });
 
-test.describe('Registration Flow', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/register');
-  });
+test.describe('Invitation-Based Onboarding Flow', () => {
+  test('should display invitation acceptance page', async ({ page }) => {
+    await page.goto('/invitation/valid-token');
 
-  test('should display registration form', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('Create Account');
+    await expect(page.locator('h1')).toContainText('Complete Your Registration');
     await expect(page.locator('input[name="firstName"]')).toBeVisible();
     await expect(page.locator('input[name="lastName"]')).toBeVisible();
-    await expect(page.locator('input[name="email"]')).toBeVisible();
-    await expect(page.locator('input[name="password"]')).toBeVisible();
-    await expect(page.locator('input[name="confirmPassword"]')).toBeVisible();
+    await expect(page.locator('input[name="birthDate"]')).toBeVisible();
+    await expect(page.locator('input[name="graduationYear"]')).toBeVisible();
   });
 
-  test('should validate registration form', async ({ page }) => {
+  test('should validate invitation form', async ({ page }) => {
+    await page.goto('/invitation/valid-token');
     await page.click('button[type="submit"]');
-    
-    // Check for validation messages
-    await expect(page.locator('text=First name is required')).toBeVisible();
-    await expect(page.locator('text=Last name is required')).toBeVisible();
-    await expect(page.locator('text=Email is required')).toBeVisible();
-    await expect(page.locator('text=Password is required')).toBeVisible();
+
+    // Check for validation messages - form should require fields
+    await expect(page.locator('input[name="firstName"]:invalid')).toBeVisible();
+    await expect(page.locator('input[name="lastName"]:invalid')).toBeVisible();
   });
 
-  test('should validate password confirmation', async ({ page }) => {
-    await page.fill('input[name="password"]', 'password123');
-    await page.fill('input[name="confirmPassword"]', 'different123');
-    await page.click('button[type="submit"]');
-    
-    await expect(page.locator('text=Passwords do not match')).toBeVisible();
-  });
-
-  test('should handle successful registration', async ({ page }) => {
-    // Mock successful registration response
-    await page.route('**/api/auth/register', async route => {
+  test('should handle successful invitation acceptance', async ({ page }) => {
+    // Mock successful invitation validation and acceptance
+    await page.route('**/api/invitations/validate/*', async route => {
       await route.fulfill({
-        status: 201,
+        status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          success: true,
-          message: 'Registration successful'
+          isValid: true,
+          invitation: {
+            id: '1',
+            token: 'valid-token',
+            email: 'john.doe@example.com',
+            expiresAt: new Date(Date.now() + 86400000).toISOString()
+          }
         })
       });
     });
 
+    await page.route('**/api/invitations/*/accept', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          user: {
+            id: '1',
+            email: 'john.doe@example.com',
+            firstName: 'John',
+            lastName: 'Doe'
+          }
+        })
+      });
+    });
+
+    await page.goto('/invitation/valid-token');
+
     await page.fill('input[name="firstName"]', 'John');
     await page.fill('input[name="lastName"]', 'Doe');
-    await page.fill('input[name="email"]', 'john.doe@example.com');
-    await page.fill('input[name="password"]', 'password123');
-    await page.fill('input[name="confirmPassword"]', 'password123');
+    await page.fill('input[name="birthDate"]', '2000-01-01');
+    await page.fill('input[name="graduationYear"]', '2020');
+    await page.fill('input[name="program"]', 'Computer Science');
     await page.click('button[type="submit"]');
-    
-    // Should show success message or redirect
-    await expect(page.locator('text=Registration successful')).toBeVisible();
+
+    // Should redirect to login page
+    await expect(page).toHaveURL('/login');
+  });
+
+  test('should handle invalid invitation token', async ({ page }) => {
+    // Mock invalid invitation response
+    await page.route('**/api/invitations/validate/*', async route => {
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          isValid: false,
+          errors: ['Invalid or expired invitation token']
+        })
+      });
+    });
+
+    await page.goto('/invitation/invalid-token');
+
+    // Should show error message
+    await expect(page.locator('text=Invalid or expired invitation token')).toBeVisible();
   });
 });
 
