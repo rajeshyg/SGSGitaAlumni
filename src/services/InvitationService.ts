@@ -13,20 +13,18 @@ import {
   InvitationFilters,
   PaginatedResponse
 } from '../types/invitation';
-import { User } from '../types/auth';
+import { User } from './APIService';
 import { apiClient } from '../lib/api';
-// Note: These services will be implemented next
-// import { AgeVerificationService } from './AgeVerificationService';
-// import { EmailService } from './EmailService';
+import { AgeVerificationService } from './AgeVerificationService';
+import { OTPService } from './OTPService';
 
 export class InvitationService implements InvitationServiceInterface {
-  // Note: These services will be implemented next
-  // private ageVerificationService: AgeVerificationService;
-  // private emailService: EmailService;
+  private ageVerificationService: AgeVerificationService;
+  private otpService: OTPService;
 
   constructor() {
-    // this.ageVerificationService = new AgeVerificationService();
-    // this.emailService = new EmailService();
+    this.ageVerificationService = new AgeVerificationService();
+    this.otpService = new OTPService();
   }
 
   // ============================================================================
@@ -117,14 +115,17 @@ export class InvitationService implements InvitationServiceInterface {
         );
       }
 
-      // Send invitation email
-      await this.emailService.sendInvitationEmail(invitation);
+      // TODO: Send invitation email - EmailService to be implemented
+      // await this.emailService.sendInvitationEmail(invitation);
 
       // Update invitation sent timestamp
-      await apiClient.patch(`/api/invitations/${invitationId}`, {
-        sentAt: new Date().toISOString(),
-        resendCount: invitation.resendCount + 1,
-        lastResentAt: new Date().toISOString()
+      await apiClient.request(`/api/invitations/${invitationId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          sentAt: new Date().toISOString(),
+          resendCount: invitation.resendCount + 1,
+          lastResentAt: new Date().toISOString()
+        })
       });
 
       // Log invitation sent
@@ -271,11 +272,14 @@ export class InvitationService implements InvitationServiceInterface {
       const user: User = userResponse.data.user;
 
       // Mark invitation as used
-      await apiClient.patch(`/api/invitations/${validation.invitation.id}`, {
-        status: 'accepted',
-        isUsed: true,
-        usedAt: new Date().toISOString(),
-        acceptedBy: user.id
+      await apiClient.request(`/api/invitations/${validation.invitation.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'accepted',
+          isUsed: true,
+          usedAt: new Date().toISOString(),
+          acceptedBy: user.id
+        })
       });
 
       // Log invitation acceptance
@@ -324,13 +328,16 @@ export class InvitationService implements InvitationServiceInterface {
         );
       }
 
-      // Send invitation email
-      await this.emailService.sendInvitationEmail(invitation);
+      // TODO: Send invitation email - EmailService to be implemented
+      // await this.emailService.sendInvitationEmail(invitation);
 
       // Update resend count
-      await apiClient.patch(`/api/invitations/${invitationId}`, {
-        resendCount: invitation.resendCount + 1,
-        lastResentAt: new Date().toISOString()
+      await apiClient.request(`/api/invitations/${invitationId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          resendCount: invitation.resendCount + 1,
+          lastResentAt: new Date().toISOString()
+        })
       });
 
       // Log resend action
@@ -369,8 +376,11 @@ export class InvitationService implements InvitationServiceInterface {
       }
 
       // Update invitation status
-      await apiClient.patch(`/api/invitations/${invitationId}`, {
-        status: 'revoked'
+      await apiClient.request(`/api/invitations/${invitationId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'revoked'
+        })
       });
 
       // Log revocation
@@ -401,10 +411,10 @@ export class InvitationService implements InvitationServiceInterface {
     }
   }
 
-  async listInvitations(filters?: InvitationFilters): Promise<PaginatedResponse<Invitation>> {
+  async listInvitations(filters?: InvitationFilters): Promise<Invitation[]> {
     try {
       const params = new URLSearchParams();
-      
+
       if (filters) {
         Object.entries(filters).forEach(([key, value]) => {
           if (value !== undefined) {
@@ -414,7 +424,8 @@ export class InvitationService implements InvitationServiceInterface {
       }
 
       const response = await apiClient.get(`/api/invitations?${params.toString()}`);
-      return response.data;
+      // Return just the data array to match the interface
+      return response.data.data || response.data;
     } catch (error) {
       throw new InvitationError(
         'Failed to list invitations',

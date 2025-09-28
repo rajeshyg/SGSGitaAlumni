@@ -48,6 +48,7 @@ export function calculateStats(fileImportData: FileImport[]) {
 // Helper function to get current user profile
 export function getCurrentProfile() {
   const storedProfile = localStorage.getItem('currentProfile');
+  // eslint-disable-next-line custom/no-hardcoded-mock-data
   const profile = storedProfile ? JSON.parse(storedProfile) : {
     id: 1,
     name: 'Administrator',

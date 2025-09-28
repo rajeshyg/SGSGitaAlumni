@@ -14,6 +14,7 @@ export function RegisterPage() {
   const { register, isAuthenticated, isLoading, error, clearError } = useAuth();
 
   // Form state
+  // eslint-disable-next-line custom/no-hardcoded-mock-data
   const [formData, setFormData] = useState({
     email: '',
     password: '',

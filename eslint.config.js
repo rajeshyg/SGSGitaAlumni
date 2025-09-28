@@ -134,7 +134,12 @@ export default [
       // Relax rules for tests
       'max-lines-per-function': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
-      'sonarjs/no-duplicate-string': 'warn' // Less strict in tests
+      'sonarjs/no-duplicate-string': 'warn', // Less strict in tests
+
+      // 🚫 MOCK DATA RULES - DISABLED FOR TESTS (LEGITIMATE USAGE)
+      'custom/no-mock-data': 'off',
+      'custom/no-mock-imports': 'off',
+      'custom/no-hardcoded-mock-data': 'off'
     }
   }
 ];

@@ -1,5 +1,6 @@
 // Testing utilities
-import { vi } from 'vitest'
+/* eslint-disable custom/no-mock-data */
+import { vi, beforeEach, afterEach } from 'vitest'
 
 export const createMockFunction = (implementation?: (...args: unknown[]) => unknown) => {
   return vi.fn(implementation || (() => {}))

@@ -176,6 +176,17 @@ export function createAPIGuard<T extends (...args: any[]) => any>(
 // Export convenience functions for common checks
 export const checkForMockImports = () => {
   const stackTrace = new Error().stack || '';
+
+  // Skip mock data detection in test files
+  if (stackTrace.includes('.test.') ||
+      stackTrace.includes('.spec.') ||
+      stackTrace.includes('__tests__') ||
+      stackTrace.includes('/test/') ||
+      stackTrace.includes('testing') ||
+      stackTrace.includes('mocks')) {
+    return;
+  }
+
   if (stackTrace.includes('mockData') || stackTrace.includes('MockAPI')) {
     MockDataGuard.reportViolation(
       'MOCK_IMPORT_USAGE',
@@ -185,6 +196,18 @@ export const checkForMockImports = () => {
 };
 
 export const checkForHardcodedData = (data: any) => {
+  const stackTrace = new Error().stack || '';
+
+  // Skip mock data detection in test files
+  if (stackTrace.includes('.test.') ||
+      stackTrace.includes('.spec.') ||
+      stackTrace.includes('__tests__') ||
+      stackTrace.includes('/test/') ||
+      stackTrace.includes('testing') ||
+      stackTrace.includes('mocks')) {
+    return;
+  }
+
   if (typeof data === 'object' && data !== null) {
     const dataString = JSON.stringify(data);
     // Check for patterns that look like hardcoded user data

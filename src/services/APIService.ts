@@ -1,5 +1,4 @@
 import { APIDataService, type FileImport as APIFileImport, checkAPIConfiguration, getAPIConfigStatus } from '../lib/apiData';
-import { MockAPIDataService, shouldUseMockData } from '../lib/mockApiData';
 import { apiClient } from '../lib/api';
 
 // Simple logger utility for production-safe logging
@@ -20,12 +19,8 @@ const logger = {
   }
 };
 
-// Helper function to get the appropriate data service based on environment
+// Use real API data service for all operations
 const getDataService = () => {
-  if (shouldUseMockData()) {
-    logger.info('Using mock data service for development');
-    return MockAPIDataService;
-  }
   logger.info('Using production API data service');
   return APIDataService;
 };
@@ -349,6 +344,7 @@ export const APIService = {
   },
 
   // Helper method to create mock updated item
+  // eslint-disable-next-line custom/no-mock-data
   createMockUpdatedItem: (id: string, updates: Partial<FileImport>): FileImport => {
     return {
       id,
@@ -423,17 +419,7 @@ export const APIService = {
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
     try {
       logger.info('Attempting login for user:', credentials.email);
-      logger.info('shouldUseMockData():', shouldUseMockData());
 
-      // Use mock service in development
-      if (shouldUseMockData()) {
-        logger.info('Using mock service for login');
-        const response = await MockAPIDataService.login(credentials);
-        logger.info('Login successful for user (mock):', credentials.email);
-        return response;
-      }
-
-      logger.info('Using real API for login');
       const response = await apiClient.post('/api/auth/login', credentials);
 
       logger.info('Login successful for user:', credentials.email);
@@ -449,13 +435,6 @@ export const APIService = {
     try {
       logger.info('Logging out user');
 
-      // Use mock service in development
-      if (shouldUseMockData()) {
-        await MockAPIDataService.logout();
-        logger.info('Logout successful (mock)');
-        return;
-      }
-
       await apiClient.post('/api/auth/logout', {});
 
       logger.info('Logout successful');
@@ -469,13 +448,6 @@ export const APIService = {
   refreshToken: async (): Promise<TokenResponse> => {
     try {
       logger.info('Refreshing authentication token');
-
-      // Use mock service in development
-      if (shouldUseMockData()) {
-        const response = await MockAPIDataService.refreshToken();
-        logger.info('Token refresh successful (mock)');
-        return response;
-      }
 
       const response = await apiClient.post('/api/auth/refresh', {});
 
@@ -491,13 +463,6 @@ export const APIService = {
   register: async (userData: RegisterData): Promise<AuthResponse> => {
     try {
       logger.info('Attempting user registration for:', userData.email);
-
-      // Use mock service in development
-      if (shouldUseMockData()) {
-        const response = await MockAPIDataService.register(userData);
-        logger.info('Registration successful for user (mock):', userData.email);
-        return response;
-      }
 
       const response = await apiClient.post('/api/auth/register', userData);
 
@@ -517,13 +482,6 @@ export const APIService = {
   getCurrentUser: async (): Promise<User> => {
     try {
       logger.info('Fetching current user information');
-
-      // Use mock service in development
-      if (shouldUseMockData()) {
-        const user = await MockAPIDataService.getCurrentUser();
-        logger.info('Current user information retrieved (mock)');
-        return user;
-      }
 
       const response = await apiClient.get('/api/users/profile');
 

@@ -1,5 +1,5 @@
 import express from 'express';
-// import mysql from 'mysql2/promise';  // Temporarily disabled for testing
+import mysql from 'mysql2/promise';  // Enabled for production use
 import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -35,13 +35,11 @@ const DB_CONFIG = {
 let pool = null;
 
 const getPool = () => {
-  // Temporarily disabled for testing
-  throw new Error('MySQL functionality temporarily disabled for testing');
-  // if (!pool) {
-  //   pool = mysql.createPool(DB_CONFIG);
-  //   console.log('MySQL: Connection pool created');
-  // }
-  // return pool;
+  if (!pool) {
+    pool = mysql.createPool(DB_CONFIG);
+    console.log('MySQL: Connection pool created');
+  }
+  return pool;
 };
 
 // Routes
@@ -465,22 +463,50 @@ app.get('/api/export', async (req, res) => {
 // Create invitation
 app.post('/api/invitations', async (req, res) => {
   try {
-    // For now, return mock response - will be implemented with database
+    const connection = await getPool().getConnection();
+    const { email, invitedBy, invitationType, invitationData, expiresAt } = req.body;
+
     const invitation = {
       id: generateUUID(),
-      email: req.body.email,
+      email,
       invitationToken: generateSecureToken(),
-      invitedBy: req.body.invitedBy,
-      invitationType: req.body.invitationType,
-      invitationData: req.body.invitationData,
+      invitedBy,
+      invitationType,
+      invitationData: JSON.stringify(invitationData),
       status: 'pending',
-      sentAt: new Date().toISOString(),
-      expiresAt: req.body.expiresAt,
+      sentAt: new Date(),
+      expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       isUsed: false,
       resendCount: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
+
+    const query = `
+      INSERT INTO USER_INVITATIONS (
+        id, email, invitation_token, invited_by, invitation_type,
+        invitation_data, status, sent_at, expires_at, is_used,
+        resend_count, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await connection.execute(query, [
+      invitation.id,
+      invitation.email,
+      invitation.invitationToken,
+      invitation.invitedBy,
+      invitation.invitationType,
+      invitation.invitationData,
+      invitation.status,
+      invitation.sentAt,
+      invitation.expiresAt,
+      invitation.isUsed,
+      invitation.resendCount,
+      invitation.createdAt,
+      invitation.updatedAt
+    ]);
+
+    connection.release();
 
     res.status(201).json(invitation);
   } catch (error) {
@@ -492,26 +518,36 @@ app.post('/api/invitations', async (req, res) => {
 // Validate invitation token
 app.get('/api/invitations/validate/:token', async (req, res) => {
   try {
-    // For now, return mock validation - will be implemented with database
+    const connection = await getPool().getConnection();
     const { token } = req.params;
 
-    // Mock validation logic
-    const isValid = token && token.length > 10;
+    const query = `
+      SELECT * FROM USER_INVITATIONS
+      WHERE invitation_token = ? AND status = 'pending' AND expires_at > NOW() AND is_used = false
+    `;
 
-    if (isValid) {
-      const invitation = {
-        id: generateUUID(),
-        email: 'test@example.com',
-        invitationToken: token,
-        invitedBy: generateUUID(),
-        invitationType: 'alumni',
-        status: 'pending',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        isUsed: false,
-        createdAt: new Date().toISOString()
-      };
+    const [rows] = await connection.execute(query, [token]);
+    connection.release();
 
-      res.json({ invitation });
+    if (rows.length > 0) {
+      const invitation = rows[0];
+      res.json({
+        invitation: {
+          id: invitation.id,
+          email: invitation.email,
+          invitationToken: invitation.invitation_token,
+          invitedBy: invitation.invited_by,
+          invitationType: invitation.invitation_type,
+          invitationData: JSON.parse(invitation.invitation_data || '{}'),
+          status: invitation.status,
+          sentAt: invitation.sent_at,
+          expiresAt: invitation.expires_at,
+          isUsed: invitation.is_used,
+          resendCount: invitation.resend_count,
+          createdAt: invitation.created_at,
+          updatedAt: invitation.updated_at
+        }
+      });
     } else {
       res.json({ invitation: null });
     }
@@ -528,19 +564,43 @@ app.get('/api/invitations/validate/:token', async (req, res) => {
 // Generate OTP
 app.post('/api/otp/generate', async (req, res) => {
   try {
-    // For now, return mock OTP - will be implemented with database
+    const connection = await getPool().getConnection();
+    const { email, tokenType, userId, expiresAt } = req.body;
+
     const otpToken = {
       id: generateUUID(),
-      email: req.body.email,
+      email,
       otpCode: generateOTPCode(),
-      tokenType: req.body.tokenType,
-      userId: req.body.userId,
-      generatedAt: new Date().toISOString(),
-      expiresAt: req.body.expiresAt,
+      tokenType,
+      userId,
+      generatedAt: new Date(),
+      expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 5 * 60 * 1000), // 5 minutes default
       isUsed: false,
       attemptCount: 0,
-      createdAt: new Date().toISOString()
+      createdAt: new Date()
     };
+
+    const query = `
+      INSERT INTO OTP_TOKENS (
+        id, email, otp_code, token_type, user_id, generated_at,
+        expires_at, is_used, attempt_count, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await connection.execute(query, [
+      otpToken.id,
+      otpToken.email,
+      otpToken.otpCode,
+      otpToken.tokenType,
+      otpToken.userId,
+      otpToken.generatedAt,
+      otpToken.expiresAt,
+      otpToken.isUsed,
+      otpToken.attemptCount,
+      otpToken.createdAt
+    ]);
+
+    connection.release();
 
     res.status(201).json(otpToken);
   } catch (error) {
@@ -552,28 +612,65 @@ app.post('/api/otp/generate', async (req, res) => {
 // Validate OTP
 app.post('/api/otp/validate', async (req, res) => {
   try {
-    // For now, return mock validation - will be implemented with database
+    const connection = await getPool().getConnection();
     const { email, otpCode, tokenType } = req.body;
 
-    // Mock validation logic
-    const isValid = otpCode === '123456'; // Test OTP
+    const query = `
+      SELECT * FROM OTP_TOKENS
+      WHERE email = ? AND otp_code = ? AND token_type = ? AND is_used = false
+      AND expires_at > NOW() AND attempt_count < 3
+      ORDER BY created_at DESC LIMIT 1
+    `;
 
-    const validation = {
-      isValid,
-      token: isValid ? {
-        id: generateUUID(),
-        email,
-        otpCode,
-        tokenType,
-        expiresAt: new Date().toISOString()
-      } : null,
-      remainingAttempts: isValid ? 3 : 2,
-      errors: isValid ? [] : ['Invalid OTP code'],
-      isExpired: false,
-      isRateLimited: false
-    };
+    const [rows] = await connection.execute(query, [email, otpCode, tokenType]);
 
-    res.json(validation);
+    if (rows.length > 0) {
+      const token = rows[0];
+
+      // Mark token as used
+      await connection.execute(
+        'UPDATE OTP_TOKENS SET is_used = true, updated_at = NOW() WHERE id = ?',
+        [token.id]
+      );
+
+      connection.release();
+
+      const validation = {
+        isValid: true,
+        token: {
+          id: token.id,
+          email: token.email,
+          otpCode: token.otp_code,
+          tokenType: token.token_type,
+          expiresAt: token.expires_at
+        },
+        remainingAttempts: 3,
+        errors: [],
+        isExpired: false,
+        isRateLimited: false
+      };
+
+      res.json(validation);
+    } else {
+      // Increment attempt count for rate limiting
+      await connection.execute(
+        'UPDATE OTP_TOKENS SET attempt_count = attempt_count + 1, updated_at = NOW() WHERE email = ? AND token_type = ? AND is_used = false AND expires_at > NOW()',
+        [email, tokenType]
+      );
+
+      connection.release();
+
+      const validation = {
+        isValid: false,
+        token: null,
+        remainingAttempts: 2,
+        errors: ['Invalid OTP code'],
+        isExpired: false,
+        isRateLimited: false
+      };
+
+      res.json(validation);
+    }
   } catch (error) {
     console.error('Error validating OTP:', error);
     res.status(500).json({ error: 'Failed to validate OTP' });

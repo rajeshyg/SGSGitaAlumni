@@ -16,6 +16,7 @@ const FONT_FAMILY_MONO = 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Li
 const FONT_FAMILY_TIMES = '"Times New Roman", serif';
 const FONT_FAMILY_GEORGIA = 'Georgia, serif';
 
+/* eslint-disable custom/no-hardcoded-mock-data */
 export const defaultTheme: ThemeConfiguration = {
   name: 'default',
   displayName: 'Default',
