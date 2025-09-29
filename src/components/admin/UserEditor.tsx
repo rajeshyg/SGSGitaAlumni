@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -6,7 +6,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Checkbox } from '../ui/checkbox';
 import { Alert, AlertDescription } from '../ui/alert';
-import { User, Edit, Save, X, Send, Mail, Phone, MapPin, Calendar, Briefcase, GraduationCap, FileText, CheckCircle } from 'lucide-react';
+import { User, Edit, Save, X, Send, Mail, Briefcase, GraduationCap, FileText, CheckCircle } from 'lucide-react';
 import { APIService } from '../../services/APIService';
 
 interface UserProfile {
@@ -94,13 +94,10 @@ export function UserEditor({ userId, onClose, onSave }: UserEditorProps) {
   const loadUser = async () => {
     setLoading(true);
     try {
-      console.log('[UserEditor] Loading user data for userId:', userId);
-      // Fetch real user data from API
-      const response = await APIService.getUserById(userId);
-      console.log('[UserEditor] API response:', response);
-
-      const apiUser = response.user;
-      console.log('[UserEditor] API user data:', apiUser);
+  console.log('[UserEditor] Loading user data for userId:', userId);
+  // Fetch real user data from API (admin user fetch)
+  const apiUser = await APIService.getAppUser(userId);
+  console.log('[UserEditor] API user data:', apiUser);
 
       // The API response already includes both user and alumni data
       const user: UserProfile = {

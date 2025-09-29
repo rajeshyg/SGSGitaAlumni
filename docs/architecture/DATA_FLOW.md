@@ -63,7 +63,13 @@ class MockDataService {
 ```
 User Interaction → Component → Hook → API Service → Express.js API → MySQL Database
                                 ↓
-                           Component Update ← Cache Layer ← Response Processing
+                            Component Update ← Cache Layer ← Response Processing
+
+Data Separation Architecture:
+├── Alumni Members (Source Data) → alumni_members table
+├── App Users (Authenticated) → users table
+├── User Profiles (Extended) → user_profiles table
+└── Invitations (Access Control) → user_invitations table
 ```
 
 #### API Service Implementation
@@ -72,45 +78,78 @@ class APIService {
   private baseURL = process.env.VITE_API_BASE_URL
   private cache = new Map<string, CacheEntry>()
 
-  async getAlumni(filters?: AlumniFilters): Promise<Alumni[]> {
-    const cacheKey = this.generateCacheKey('alumni', filters)
-    
-    // Check cache first
+  // Alumni Members (source data from CSV uploads)
+  async searchAlumniMembers(query: string = '', limit: number = 50): Promise<AlumniMember[]> {
+    const cacheKey = this.generateCacheKey('alumni-members', { query, limit })
+
     const cached = this.getFromCache(cacheKey)
     if (cached) return cached
 
-    // Make API request
-    const response = await fetch(`${this.baseURL}/api/alumni`, {
+    const response = await fetch(`${this.baseURL}/api/alumni-members?search=${encodeURIComponent(query)}&limit=${limit}`, {
       method: 'GET',
-      headers: this.getHeaders(),
-      body: filters ? JSON.stringify(filters) : undefined
+      headers: this.getHeaders()
     })
 
     if (!response.ok) {
-      throw new APIError(`Failed to fetch alumni: ${response.statusText}`)
+      throw new APIError(`Failed to fetch alumni members: ${response.statusText}`)
     }
 
     const data = await response.json()
     this.setCache(cacheKey, data)
-    
     return data
   }
 
-  async saveAlumni(alumni: Alumni): Promise<Alumni> {
-    const response = await fetch(`${this.baseURL}/api/alumni`, {
-      method: 'POST',
+  async updateAlumniMember(id: string, updates: Partial<AlumniMember>): Promise<AlumniMember> {
+    const response = await fetch(`${this.baseURL}/api/alumni-members/${id}`, {
+      method: 'PUT',
       headers: this.getHeaders(),
-      body: JSON.stringify(alumni)
+      body: JSON.stringify(updates)
     })
 
     if (!response.ok) {
-      throw new APIError(`Failed to save alumni: ${response.statusText}`)
+      throw new APIError(`Failed to update alumni member: ${response.statusText}`)
     }
 
-    const saved = await response.json()
-    this.invalidateCache('alumni')
-    
-    return saved
+    const updated = await response.json()
+    this.invalidateCache('alumni-members')
+    return updated
+  }
+
+  // App Users (authenticated platform users)
+  async searchAppUsers(query: string = '', limit: number = 50): Promise<AppUser[]> {
+    const cacheKey = this.generateCacheKey('app-users', { query, limit })
+
+    const cached = this.getFromCache(cacheKey)
+    if (cached) return cached
+
+    const response = await fetch(`${this.baseURL}/api/users?search=${encodeURIComponent(query)}&limit=${limit}`, {
+      method: 'GET',
+      headers: this.getHeaders()
+    })
+
+    if (!response.ok) {
+      throw new APIError(`Failed to fetch app users: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    this.setCache(cacheKey, data)
+    return data
+  }
+
+  async updateAppUser(id: string, updates: Partial<AppUser>): Promise<AppUser> {
+    const response = await fetch(`${this.baseURL}/api/users/${id}`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(updates)
+    })
+
+    if (!response.ok) {
+      throw new APIError(`Failed to update app user: ${response.statusText}`)
+    }
+
+    const updated = await response.json()
+    this.invalidateCache('app-users')
+    return updated
   }
 
   private getHeaders(): Record<string, string> {

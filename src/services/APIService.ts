@@ -475,15 +475,70 @@ export const APIService = {
   },
 
   // ============================================================================
-  // USER & PROFILE METHODS
+  // ALUMNI MEMBERS METHODS (Source Data Management)
   // ============================================================================
 
-  // Get current user information
+  // Get alumni member by ID (source data from raw CSV)
+  getAlumniMember: async (memberId: string): Promise<any> => {
+    try {
+      logger.info('Fetching alumni member source data:', memberId);
+
+      const response = await apiClient.get(`/api/alumni-members/${memberId}`);
+
+      logger.info('Alumni member source data retrieved:', memberId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to fetch alumni member:', error);
+      throw new Error('Failed to fetch alumni member data.');
+    }
+  },
+
+  // Search alumni members (for admin contact editing)
+  searchAlumniMembers: async (query: string, limit: number = 50): Promise<any[]> => {
+    try {
+      logger.info('Searching alumni members:', query);
+
+      const response = await apiClient.get(`/api/alumni-members/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+
+      logger.info('Alumni members search completed');
+      return response as any[];
+    } catch (error) {
+      logger.error('Failed to search alumni members:', error);
+      throw new Error('Failed to search alumni members.');
+    }
+  },
+
+  // Update alumni member contact information (admin only)
+  updateAlumniMember: async (memberId: string, updates: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  }): Promise<any> => {
+    try {
+      logger.info('Updating alumni member contact info:', memberId);
+
+      const response = await apiClient.put(`/api/alumni-members/${memberId}`, updates);
+
+      logger.info('Alumni member contact info updated:', memberId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to update alumni member:', error);
+      throw new Error('Failed to update alumni member contact information.');
+    }
+  },
+
+  // ============================================================================
+  // APP USERS METHODS (Authenticated Platform Users)
+  // ============================================================================
+
+  // Get current authenticated user information
   getCurrentUser: async (): Promise<User> => {
     try {
-      logger.info('Fetching current user information');
+      logger.info('Fetching current authenticated user information');
 
-      const response = await apiClient.get('/api/users/profile');
+      const response = await apiClient.get('/api/users/me');
 
       logger.info('Current user information retrieved');
       return response as User;
@@ -493,12 +548,64 @@ export const APIService = {
     }
   },
 
-  // Get user profile by user ID (for admin editing)
-  getUserById: async (userId: string): Promise<any> => {
+  // Get app user by ID (for admin user management)
+  getAppUser: async (userId: string): Promise<any> => {
+    try {
+      logger.info('Fetching app user for admin:', userId);
+
+      const response = await apiClient.get(`/api/users/${userId}`);
+
+      logger.info('App user retrieved for admin:', userId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to fetch app user:', error);
+      throw new Error('Failed to fetch app user.');
+    }
+  },
+
+  // Search app users (for admin user management)
+  searchAppUsers: async (query: string, limit: number = 50): Promise<any[]> => {
+    try {
+      logger.info('Searching app users:', query);
+
+      const response = await apiClient.get(`/api/users/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+
+      logger.info('App users search completed');
+      return response as any[];
+    } catch (error) {
+      logger.error('Failed to search app users:', error);
+      throw new Error('Failed to search app users.');
+    }
+  },
+
+  // Update app user (admin only - status, permissions, etc.)
+  updateAppUser: async (userId: string, updates: {
+    status?: 'active' | 'inactive' | 'suspended';
+    email?: string;
+  }): Promise<any> => {
+    try {
+      logger.info('Updating app user admin settings:', userId);
+
+      const response = await apiClient.put(`/api/users/${userId}`, updates);
+
+      logger.info('App user admin settings updated:', userId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to update app user:', error);
+      throw new Error('Failed to update app user.');
+    }
+  },
+
+  // ============================================================================
+  // USER PROFILES METHODS (Extended User Information)
+  // ============================================================================
+
+  // Get user profile (extended information for authenticated users)
+  getUserProfile: async (userId: string): Promise<any> => {
     try {
       logger.info('Fetching user profile for user:', userId);
 
-      const response = await apiClient.get(`/api/users/${userId}/profile`);
+      const response = await apiClient.get(`/api/user-profiles/${userId}`);
 
       logger.info('User profile retrieved for user:', userId);
       return response;
@@ -508,33 +615,35 @@ export const APIService = {
     }
   },
 
-  // Get alumni profile by user ID
-  getAlumniProfile: async (userId: string): Promise<AlumniProfile> => {
+  // Update user profile (for profile completion)
+  updateUserProfile: async (userId: string, profile: any): Promise<any> => {
     try {
-      logger.info('Fetching alumni profile for user:', userId);
+      logger.info('Updating user profile for user:', userId);
 
-      const response = await apiClient.get(`/api/alumni/profile/${userId}`);
+      const response = await apiClient.put(`/api/user-profiles/${userId}`, profile);
 
-      logger.info('Alumni profile retrieved for user:', userId);
-      return response as AlumniProfile;
+      logger.info('User profile updated for user:', userId);
+      return response;
     } catch (error) {
-      logger.error('Failed to fetch alumni profile:', error);
-      throw new Error('Failed to fetch alumni profile.');
+      logger.error('Failed to update user profile:', error);
+      throw new Error('Failed to update profile. Please try again.');
     }
   },
 
-  // Update alumni profile
-  updateProfile: async (profile: AlumniProfile): Promise<AlumniProfile> => {
+  // Link user profile to alumni member (for invitation acceptance)
+  linkUserToAlumniMember: async (userId: string, alumniMemberId: string): Promise<any> => {
     try {
-      logger.info('Updating alumni profile for user:', profile.userId);
+      logger.info('Linking user profile to alumni member:', { userId, alumniMemberId });
 
-      const response = await apiClient.put(`/api/alumni/profile/${profile.userId}`, profile);
+      const response = await apiClient.post(`/api/user-profiles/${userId}/link-alumni`, {
+        alumniMemberId
+      });
 
-      logger.info('Alumni profile updated for user:', profile.userId);
-      return response as AlumniProfile;
+      logger.info('User profile linked to alumni member successfully');
+      return response;
     } catch (error) {
-      logger.error('Failed to update alumni profile:', error);
-      throw new Error('Failed to update profile. Please try again.');
+      logger.error('Failed to link user to alumni member:', error);
+      throw new Error('Failed to link user profile to alumni data.');
     }
   },
 
@@ -796,6 +905,94 @@ export const APIService = {
     } catch (error) {
       logger.error('Failed to send invitation to user:', error);
       throw new Error('Failed to send invitation. Please try again.');
+    }
+  },
+
+  // Send invitation to alumni member (creates invitation for alumni source data)
+  sendInvitationToAlumniMember: async (alumniMemberId: string, invitationType: string = 'alumni', expiresInDays: number = 7): Promise<any> => {
+    try {
+      logger.info('Sending invitation to alumni member:', alumniMemberId);
+
+      const response = await apiClient.post(`/api/alumni-members/${alumniMemberId}/send-invitation`, {
+        invitationType,
+        expiresInDays
+      });
+
+      logger.info('Invitation sent successfully to alumni member:', alumniMemberId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to send invitation to alumni member:', error);
+      throw new Error('Failed to send invitation to alumni member. Please try again.');
+    }
+  },
+
+  // Get all invitations (for admin management)
+  getInvitations: async (params: { page?: number; pageSize?: number; status?: string } = {}): Promise<any[]> => {
+    try {
+      logger.info('Fetching invitations for admin management');
+
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append('page', params.page.toString());
+      if (params.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+      if (params.status) queryParams.append('status', params.status);
+
+      const response = await apiClient.get(`/api/invitations?${queryParams.toString()}`);
+
+      logger.info('Invitations fetched successfully');
+      return response as any[];
+    } catch (error) {
+      logger.error('Failed to fetch invitations:', error);
+      throw new Error('Failed to fetch invitations. Please try again.');
+    }
+  },
+
+  // Get family invitations (for admin management)
+  getFamilyInvitations: async (params: { page?: number; pageSize?: number; status?: string } = {}): Promise<any[]> => {
+    try {
+      logger.info('Fetching family invitations for admin management');
+
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append('page', params.page.toString());
+      if (params.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+      if (params.status) queryParams.append('status', params.status);
+
+      const response = await apiClient.get(`/api/invitations/family?${queryParams.toString()}`);
+
+      logger.info('Family invitations fetched successfully');
+      return response as any[];
+    } catch (error) {
+      logger.error('Failed to fetch family invitations:', error);
+      throw new Error('Failed to fetch family invitations. Please try again.');
+    }
+  },
+
+  // Resend invitation
+  resendInvitation: async (invitationId: string): Promise<any> => {
+    try {
+      logger.info('Resending invitation:', invitationId);
+
+      const response = await apiClient.post(`/api/invitations/${invitationId}/resend`, {});
+
+      logger.info('Invitation resent successfully:', invitationId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to resend invitation:', error);
+      throw new Error('Failed to resend invitation. Please try again.');
+    }
+  },
+
+  // Revoke invitation
+  revokeInvitation: async (invitationId: string): Promise<any> => {
+    try {
+      logger.info('Revoking invitation:', invitationId);
+
+      const response = await apiClient.put(`/api/invitations/${invitationId}/revoke`, {});
+
+      logger.info('Invitation revoked successfully:', invitationId);
+      return response;
+    } catch (error) {
+      logger.error('Failed to revoke invitation:', error);
+      throw new Error('Failed to revoke invitation. Please try again.');
     }
   }
 };

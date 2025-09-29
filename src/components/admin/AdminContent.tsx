@@ -3,6 +3,9 @@ import { MainLayout } from './MainLayout'
 import { QualityDashboard } from '../dashboard/QualityDashboard'
 import { InvitationSection } from './InvitationSection'
 import { AnalyticsDashboard } from './AnalyticsDashboard'
+import { AlumniMemberManagement } from './AlumniMemberManagement'
+import { AppUserManagement } from './AppUserManagement'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import type { FileImport } from '../../services/APIService'
 
 interface APIConfigStatus {
@@ -64,24 +67,38 @@ export function AdminContent({
           onRefresh={() => {}}
         />
 
-        {/* Invitation Management Section */}
-        <InvitationSection />
+        {/* Main Admin Management Tabs */}
+        <Tabs defaultValue="alumni-hub" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="alumni-hub">Alumni Hub</TabsTrigger>
+            <TabsTrigger value="data-imports">Data Imports</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="quality">Quality</TabsTrigger>
+          </TabsList>
 
-        {/* Analytics Dashboard */}
-        <AnalyticsDashboard />
+          <TabsContent value="alumni-hub" className="space-y-6">
+            {/* Consolidated hub: members + invitations + users */}
+            <InvitationSection />
+          </TabsContent>
 
-        {/* Data Management Section */}
-        <DataTableSection
-          fileImportData={fileImportData}
-          apiConfig={apiConfig}
-          navigate={navigate}
-          total={total}
-          page={page}
-          pageSize={pageSize}
-          hasMore={hasMore}
-          handlePageChange={handlePageChange}
-          refresh={refresh}
-        />
+          <TabsContent value="data-imports" className="space-y-6">
+            <DataTableSection
+              fileImportData={fileImportData}
+              apiConfig={apiConfig}
+              navigate={navigate}
+              total={total}
+              page={page}
+              pageSize={pageSize}
+              hasMore={hasMore}
+              handlePageChange={handlePageChange}
+              refresh={refresh}
+            />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <AnalyticsDashboard />
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   )

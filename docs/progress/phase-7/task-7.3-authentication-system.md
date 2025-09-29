@@ -3,7 +3,7 @@
 **Status:** 🟡 Planned
 **Priority:** Critical
 **Estimated Time:** 1-2 weeks
-**Dependencies:** Task 7.2 (Database Schema), Task 8.1 (Age Verification)
+**Dependencies:** Task 7.2 (Database Schema), Task 8.0 (Database Design Corrections)
 
 ## Overview
 Implement comprehensive invitation-based authentication system with OTP verification, family invitation support, and COPPA compliance. This replaces traditional registration with a secure, invitation-only access model that meets business requirements for 14+ age restriction and parent consent.
