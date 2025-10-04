@@ -1,3 +1,4 @@
+// Debug: InvitationSection starting
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -5,9 +6,11 @@ import { Input } from '../ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import Badge from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Mail, Users, RefreshCw, Search } from 'lucide-react';
+import { Mail, Users, RefreshCw, Search, Edit, Save, X, GraduationCap, Phone } from 'lucide-react';
 import AdminListItem from './AdminListItem';
 import { APIService } from '../../services/APIService';
+import { TanStackAdvancedTable } from '../ui/tanstack-advanced-table';
+import { ColumnDef } from '@tanstack/react-table';
 
 type Invitation = any;
 
@@ -39,6 +42,144 @@ export function InvitationSection() {
   // Search
   const [memberSearch, setMemberSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
+  const [hasSearchedMembers, setHasSearchedMembers] = useState(false);
+
+  // Define columns for the alumni members table
+  const memberColumns: ColumnDef<AlumniMember>[] = [
+    {
+      accessorKey: 'firstName',
+      header: 'First Name',
+      size: 120,
+      cell: ({ row }) => (
+        editingMemberId === row.original.id ? (
+          <Input
+            value={memberForm.firstName || ''}
+            onChange={(e) => setMemberForm(prev => ({ ...prev, firstName: e.target.value }))}
+            className="h-8"
+          />
+        ) : (
+          <span className="font-medium">{row.original.firstName}</span>
+        )
+      ),
+    },
+    {
+      accessorKey: 'lastName',
+      header: 'Last Name',
+      size: 120,
+      cell: ({ row }) => (
+        editingMemberId === row.original.id ? (
+          <Input
+            value={memberForm.lastName || ''}
+            onChange={(e) => setMemberForm(prev => ({ ...prev, lastName: e.target.value }))}
+            className="h-8"
+          />
+        ) : (
+          <span className="font-medium">{row.original.lastName}</span>
+        )
+      ),
+    },
+    {
+      accessorKey: 'email',
+      header: 'Email',
+      size: 200,
+      cell: ({ row }) => (
+        editingMemberId === row.original.id ? (
+          <Input
+            type="email"
+            value={memberForm.email || ''}
+            onChange={(e) => setMemberForm(prev => ({ ...prev, email: e.target.value }))}
+            className="h-8"
+          />
+        ) : (
+          <div className="flex items-center gap-2">
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            <span>{row.original.email}</span>
+          </div>
+        )
+      ),
+    },
+    {
+      accessorKey: 'phone',
+      header: 'Phone',
+      size: 140,
+      cell: ({ row }) => (
+        editingMemberId === row.original.id ? (
+          <Input
+            value={memberForm.phone || ''}
+            onChange={(e) => setMemberForm(prev => ({ ...prev, phone: e.target.value }))}
+            className="h-8"
+          />
+        ) : (
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-muted-foreground" />
+            <span>{row.original.phone || 'Not provided'}</span>
+          </div>
+        )
+      ),
+    },
+    {
+      accessorKey: 'graduationYear',
+      header: 'Grad Year',
+      size: 100,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <GraduationCap className="h-4 w-4 text-muted-foreground" />
+          <span>{row.original.graduationYear || 'N/A'}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      size: 200,
+      cell: ({ row }) => (
+        <div className="flex gap-1">
+          {editingMemberId === row.original.id ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={saveMember}
+                disabled={loading}
+                className="h-8 px-2"
+              >
+                <Save className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={cancelEditMember}
+                className="h-8 px-2"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => startEditMember(row.original)}
+                className="h-8 px-2"
+              >
+                <Edit className="h-3 w-3 mr-1" />
+                Edit
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => sendInvitationToMember(row.original.id)}
+                disabled={loading}
+                className="h-8 px-2 bg-blue-600 hover:bg-blue-700"
+              >
+                Invite
+              </Button>
+            </>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   useEffect(() => {
     // initial load
@@ -49,17 +190,32 @@ export function InvitationSection() {
     setLoading(true);
     setError(null);
     try {
-      const [membersData, invitationsData, familyInvData, usersData] = await Promise.all([
-        APIService.searchAlumniMembers(''),
+      const promises = [
         APIService.getInvitations({ page: 1, pageSize: 200 }),
         APIService.getFamilyInvitations ? APIService.getFamilyInvitations({ page: 1, pageSize: 200 }) : Promise.resolve([]),
         APIService.searchAppUsers('')
-      ]);
+      ];
 
-      setMembers(membersData || []);
-      setInvitations(invitationsData || []);
-      setFamilyInvitations(familyInvData || []);
-      setUsers(usersData || []);
+      // Only load members if a search has been performed
+      if (hasSearchedMembers) {
+        promises.unshift(APIService.searchAlumniMembers(memberSearch));
+      }
+
+      const results = await Promise.all(promises);
+
+      if (hasSearchedMembers) {
+        const [membersData, invitationsData, familyInvData, usersData] = results as [any[], any[], any[], any[]];
+        setMembers(membersData || []);
+        setInvitations(invitationsData || []);
+        setFamilyInvitations(familyInvData || []);
+        setUsers(usersData || []);
+      } else {
+        const [invitationsData, familyInvData, usersData] = results as [any[], any[], any[]];
+        setInvitations(invitationsData || []);
+        setFamilyInvitations(familyInvData || []);
+        setUsers(usersData || []);
+        // Keep members as empty array
+      }
     } catch (err) {
       console.error('Failed to load admin data', err);
       setError('Failed to load admin data. See console for details.');
@@ -71,6 +227,7 @@ export function InvitationSection() {
   // ---------- Alumni member actions ----------
   const handleSearchMembers = async (q: string) => {
     setMemberSearch(q);
+    setHasSearchedMembers(true);
     setLoading(true);
     setError(null);
     try {
@@ -287,46 +444,14 @@ export function InvitationSection() {
                 Showing source alumni records (not app users). Edit contact info or send invitation to existing alumni only.
               </div>
 
-              <div className="space-y-3">
-                {members.length === 0 && !loading ? (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <div>No alumni members found. Adjust your search or import source CSV.</div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  members.map((m: any) => (
-                    <AdminListItem
-                      key={m.id}
-                      title={<>{m.firstName || ''} {m.lastName || ''} {m.studentId ? `• ${m.studentId}` : ''}</>}
-                      subtitle={<>{m.email} • {m.phone || 'No phone'}</>}
-                      actions={
-                        editingMemberId === m.id ? (
-                          <>
-                            <Button size="sm" variant="outline" onClick={saveMember} disabled={loading}>Save</Button>
-                            <Button size="sm" variant="outline" onClick={cancelEditMember}>Cancel</Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => startEditMember(m)}>Edit</Button>
-                            <Button size="sm" variant="default" onClick={() => sendInvitationToMember(m.id)}>Invite</Button>
-                          </>
-                        )
-                      }
-                    >
-                      {editingMemberId === m.id && (
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2">
-                          <Input placeholder="First name" value={memberForm.firstName || ''} onChange={(e) => setMemberForm(prev => ({ ...prev, firstName: e.target.value }))} />
-                          <Input placeholder="Last name" value={memberForm.lastName || ''} onChange={(e) => setMemberForm(prev => ({ ...prev, lastName: e.target.value }))} />
-                          <Input placeholder="Email" value={memberForm.email || ''} onChange={(e) => setMemberForm(prev => ({ ...prev, email: e.target.value }))} />
-                          <Input placeholder="Phone" value={memberForm.phone || ''} onChange={(e) => setMemberForm(prev => ({ ...prev, phone: e.target.value }))} />
-                        </div>
-                      )}
-                    </AdminListItem>
-                  ))
-                )}
-              </div>
+              <TanStackAdvancedTable
+                data={members as unknown as Record<string, unknown>[]}
+                columns={memberColumns as unknown as ColumnDef<Record<string, unknown>>[]}
+                loading={loading}
+                emptyMessage={hasSearchedMembers ? 'No alumni members found. Adjust your search or import source CSV.' : 'Use the search above to find alumni members.'}
+                maxHeight="600px"
+                searchable={false}
+              />
             </TabsContent>
 
             {/* Invitations Tab */}

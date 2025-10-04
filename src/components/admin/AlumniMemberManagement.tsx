@@ -37,10 +37,6 @@ export function AlumniMemberManagement({ onMemberUpdated }: AlumniMemberManageme
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<AlumniMember>>({});
 
-  // Load alumni members on component mount
-  useEffect(() => {
-    loadAlumniMembers();
-  }, []);
 
   const loadAlumniMembers = async (query = '') => {
     setLoading(true);
@@ -56,10 +52,6 @@ export function AlumniMemberManagement({ onMemberUpdated }: AlumniMemberManageme
     }
   };
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
-    loadAlumniMembers(query);
-  };
 
   const handleEditMember = (member: AlumniMember) => {
     setEditingMember(member.id);
@@ -281,7 +273,7 @@ export function AlumniMemberManagement({ onMemberUpdated }: AlumniMemberManageme
             <Input
               placeholder="Search by name or email..."
               value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="max-w-sm"
             />
             <Button
