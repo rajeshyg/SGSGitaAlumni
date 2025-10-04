@@ -129,55 +129,106 @@ export function InvitationSection() {
       ),
     },
     {
+      id: 'invitationStatus',
+      header: 'Invitation Status',
+      size: 140,
+      cell: ({ row }) => {
+        const memberEmail = row.original.email;
+        const existingInvitation = invitations.find(inv => inv.email === memberEmail);
+
+        if (!existingInvitation) {
+          return <Badge variant="outline" className="text-gray-500">Not Invited</Badge>;
+        }
+
+        const statusColors: Record<string, string> = {
+          pending: 'bg-yellow-100 text-yellow-800',
+          sent: 'bg-blue-100 text-blue-800',
+          accepted: 'bg-green-100 text-green-800',
+          expired: 'bg-red-100 text-red-800',
+          revoked: 'bg-gray-100 text-gray-800',
+        };
+
+        return (
+          <Badge
+            variant="outline"
+            className={statusColors[existingInvitation.status] || 'bg-gray-100 text-gray-800'}
+          >
+            {existingInvitation.status}
+          </Badge>
+        );
+      },
+    },
+    {
       id: 'actions',
       header: 'Actions',
       size: 200,
-      cell: ({ row }) => (
-        <div className="flex gap-1">
-          {editingMemberId === row.original.id ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={saveMember}
-                disabled={loading}
-                className="h-8 px-2"
-              >
-                <Save className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={cancelEditMember}
-                className="h-8 px-2"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => startEditMember(row.original)}
-                className="h-8 px-2"
-              >
-                <Edit className="h-3 w-3 mr-1" />
-                Edit
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => sendInvitationToMember(row.original.id)}
-                disabled={loading}
-                className="h-8 px-2 bg-blue-600 hover:bg-blue-700"
-              >
-                Invite
-              </Button>
-            </>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        // Check if this member has a pending invitation
+        const memberEmail = row.original.email;
+        const existingInvitation = invitations.find(inv =>
+          inv.email === memberEmail && (inv.status === 'pending' || inv.status === 'sent')
+        );
+
+        return (
+          <div className="flex gap-1">
+            {editingMemberId === row.original.id ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={saveMember}
+                  disabled={loading}
+                  className="h-8 px-2"
+                >
+                  <Save className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelEditMember}
+                  className="h-8 px-2"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => startEditMember(row.original)}
+                  className="h-8 px-2"
+                >
+                  <Edit className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+                {existingInvitation ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => resendInvitation(existingInvitation.id)}
+                    disabled={loading}
+                    className="h-8 px-2 bg-orange-600 hover:bg-orange-700 text-white"
+                    title={`Resend invitation (status: ${existingInvitation.status})`}
+                  >
+                    Resend
+                  </Button>
+                ) : (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => sendInvitationToMember(row.original.id)}
+                    disabled={loading}
+                    className="h-8 px-2 bg-blue-600 hover:bg-blue-700"
+                  >
+                    Invite
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
