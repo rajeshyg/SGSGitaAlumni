@@ -123,9 +123,19 @@ export function InvitationSection() {
       await APIService.sendInvitationToAlumniMember(memberId, 'alumni', 14);
       setSuccess('Invitation queued');
       await loadAll();
-    } catch (err) {
+    } catch (err: any) {
       console.error('send invitation failed', err);
-      setError('Failed to send invitation');
+
+      // Handle specific error cases
+      if (err.message && err.message.includes('409')) {
+        setError('This alumni member already has a pending invitation');
+      } else if (err.message && err.message.includes('404')) {
+        setError('Alumni member not found');
+      } else if (err.message && err.message.includes('400')) {
+        setError('Invalid request - please check the member data');
+      } else {
+        setError('Failed to send invitation - please try again');
+      }
     } finally {
       setLoading(false);
     }

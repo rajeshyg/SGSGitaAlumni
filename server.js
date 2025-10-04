@@ -512,6 +512,124 @@ app.get('/api/export', async (req, res) => {
 // INVITATION SYSTEM API ENDPOINTS
 // ============================================================================
 
+// Get all invitations with pagination (both regular and family invitations)
+app.get('/api/invitations', async (req, res) => {
+  try {
+    const connection = await getPool().getConnection();
+    const { page = 1, pageSize = 50, status } = req.query;
+
+    console.log('API: Fetching all invitations for admin management:', { page, pageSize, status });
+
+    // Build WHERE clause for regular invitations
+    let whereClause = '';
+    const queryParams = [];
+
+    if (status) {
+      whereClause = 'WHERE ui.status = ?';
+      queryParams.push(status);
+    }
+
+    // Get total count for regular invitations
+    const countQuery = `SELECT COUNT(*) as total FROM USER_INVITATIONS ui ${whereClause}`;
+    const [countResult] = await connection.execute(countQuery, queryParams);
+    const total = countResult[0].total;
+
+    // Get paginated regular invitations
+    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const dataQuery = `
+      SELECT
+        ui.*,
+        u.first_name,
+        u.last_name,
+        u.email as user_email
+      FROM USER_INVITATIONS ui
+      LEFT JOIN app_users u ON ui.user_id = u.id
+      ${whereClause}
+      ORDER BY ui.created_at DESC
+      LIMIT ${parseInt(pageSize)} OFFSET ${offset}
+    `;
+
+    const [rows] = await connection.execute(dataQuery, queryParams);
+    connection.release();
+
+    // Transform regular invitations data
+    const invitations = rows.map(row => {
+      let invitationData = {};
+
+      // Skip parsing if invitation_data is null, undefined, or contains [object Object]
+      if (row.invitation_data && row.invitation_data !== '[object Object]' && row.invitation_data.trim() !== '') {
+        try {
+          // Handle different formats of invitation_data
+          if (typeof row.invitation_data === 'string') {
+            // Skip if it's clearly malformed
+            if (row.invitation_data === '[object Object]' || row.invitation_data.trim() === '') {
+              invitationData = {};
+            } else {
+              // Try to parse as JSON first
+              try {
+                invitationData = JSON.parse(row.invitation_data);
+              } catch (parseError) {
+                // If JSON parsing fails, try to fix common formatting issues
+                try {
+                  const fixedJson = row.invitation_data.replace(/'/g, '"');
+                  invitationData = JSON.parse(fixedJson);
+                } catch (secondParseError) {
+                  // If all parsing attempts fail, log and use empty object
+                  console.warn('Failed to parse invitation_data for invitation:', row.id, 'Data:', row.invitation_data.substring(0, 100));
+                  invitationData = {};
+                }
+              }
+            }
+          } else {
+            invitationData = row.invitation_data;
+          }
+        } catch (error) {
+          console.warn('Failed to parse invitation_data for invitation:', row.id, error);
+          invitationData = {};
+        }
+      }
+
+      return {
+        id: row.id,
+        email: row.email,
+        userId: row.user_id,
+        invitationToken: row.invitation_token,
+        invitedBy: row.invited_by,
+        invitationType: row.invitation_type,
+        invitationData: invitationData,
+        status: row.status,
+        sentAt: row.sent_at,
+        expiresAt: row.expires_at,
+        isUsed: row.is_used,
+        usedAt: row.used_at,
+        acceptedBy: row.accepted_by,
+        resendCount: row.resend_count,
+        lastResentAt: row.last_resent_at,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        user: row.user_id ? {
+          firstName: row.first_name,
+          lastName: row.last_name,
+          email: row.user_email
+        } : null,
+        invitationCategory: 'regular'
+      };
+    });
+
+    res.json({
+      data: invitations,
+      total,
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+      totalPages: Math.ceil(total / parseInt(pageSize))
+    });
+
+  } catch (error) {
+    console.error('Error fetching invitations:', error);
+    res.status(500).json({ error: 'Failed to fetch invitations' });
+  }
+});
+
 // Get family invitations with pagination
 app.get('/api/invitations/family', async (req, res) => {
   try {
@@ -551,15 +669,26 @@ app.get('/api/invitations/family', async (req, res) => {
       let childrenProfiles = [];
       try {
         // Handle different formats of children_profiles data
-        if (row.children_profiles) {
+        if (row.children_profiles && row.children_profiles !== '[object Object]' && row.children_profiles.trim() !== '') {
           if (typeof row.children_profiles === 'string') {
-            // Try to parse as JSON first
-            try {
-              childrenProfiles = JSON.parse(row.children_profiles);
-            } catch (parseError) {
-              // If JSON parsing fails, try to fix common formatting issues
-              const fixedJson = row.children_profiles.replace(/'/g, '"');
-              childrenProfiles = JSON.parse(fixedJson);
+            // Skip if it's clearly malformed
+            if (row.children_profiles === '[object Object]' || row.children_profiles.trim() === '') {
+              childrenProfiles = [];
+            } else {
+              // Try to parse as JSON first
+              try {
+                childrenProfiles = JSON.parse(row.children_profiles);
+              } catch (parseError) {
+                // If JSON parsing fails, try to fix common formatting issues
+                try {
+                  const fixedJson = row.children_profiles.replace(/'/g, '"');
+                  childrenProfiles = JSON.parse(fixedJson);
+                } catch (secondParseError) {
+                  // If all parsing attempts fail, log and use empty array
+                  console.warn('Failed to parse children_profiles for invitation:', row.id, 'Data:', row.children_profiles.substring(0, 100));
+                  childrenProfiles = [];
+                }
+              }
             }
           } else {
             childrenProfiles = row.children_profiles;
@@ -1007,9 +1136,13 @@ app.get('/api/invitations/validate/:token', async (req, res) => {
           email: invitation.email,
           invitationToken: invitation.invitation_token,
           invitedBy: invitation.invited_by,
-          invitationType: invitation.invitation_type,
-          invitationData: JSON.parse(invitation.invitation_data || '{}'),
-          status: invitation.status,
+          invitationData: (() => {
+            try {
+              return JSON.parse(invitation.invitation_data || '{}');
+            } catch (error) {
+              return {};
+            }
+          })(),
           sentAt: invitation.sent_at,
           expiresAt: invitation.expires_at,
           isUsed: invitation.is_used,
@@ -1111,9 +1244,13 @@ app.patch('/api/invitations/:id', async (req, res) => {
       userId: invitation.user_id,
       invitationToken: invitation.invitation_token,
       invitedBy: invitation.invited_by,
-      invitationType: invitation.invitation_type,
-      invitationData: JSON.parse(invitation.invitation_data || '{}'),
-      status: invitation.status,
+      invitationData: (() => {
+        try {
+          return JSON.parse(invitation.invitation_data || '{}');
+        } catch (error) {
+          return {};
+        }
+      })(),
       sentAt: invitation.sent_at,
       expiresAt: invitation.expires_at,
       isUsed: invitation.is_used,
@@ -2509,9 +2646,13 @@ app.get('/api/analytics/user-invitations/:userId', async (req, res) => {
       userId: row.user_id,
       invitationToken: row.invitation_token,
       invitedBy: row.invited_by,
-      invitationType: row.invitation_type,
-      invitationData: JSON.parse(row.invitation_data || '{}'),
-      status: row.status,
+      invitationData: (() => {
+        try {
+          return JSON.parse(row.invitation_data || '{}');
+        } catch (error) {
+          return {};
+        }
+      })(),
       sentAt: row.sent_at,
       expiresAt: row.expires_at,
       isUsed: row.is_used,

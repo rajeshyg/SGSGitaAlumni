@@ -170,23 +170,34 @@ describe('Cross-Platform Components', () => {
     })
 
     it('optimizes image URLs for different platforms', () => {
-      const baseUrl = 'https://example.com/image.jpg'
-
       // Mobile optimization
       (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'mobile'
       })
-      performanceOptimizer.optimizeImage = vi.fn().mockReturnValue(`${baseUrl}?quality=80`)
 
-      expect(performanceOptimizer.optimizeImage(baseUrl)).toContain('quality=80')
+      // Use the module's built-in mocking mechanism
+      const baseUrl = 'https://example.com/image.jpg'
+      performanceOptimizer.optimizeImage.mockReturnValue(`${baseUrl}?quality=80`)
+
+      const result = performanceOptimizer.optimizeImage(baseUrl)
+      console.log('Test result:', result)
+      if (!result.includes('quality=80')) {
+        throw new Error(`Expected result to contain 'quality=80', but got: ${result}`)
+      }
 
       // Desktop optimization
       (deviceDetector.getCapabilities as any).mockReturnValue({
         type: 'desktop'
       })
-      performanceOptimizer.optimizeImage = vi.fn().mockReturnValue(`${baseUrl}?quality=100`)
 
-      expect(performanceOptimizer.optimizeImage(baseUrl)).toContain('quality=100')
+      // Use the module's built-in mocking mechanism for desktop
+      performanceOptimizer.optimizeImage.mockReturnValue(`${baseUrl}?quality=100`)
+
+      const result2 = performanceOptimizer.optimizeImage(baseUrl)
+      console.log('Test result2:', result2)
+      if (!result2.includes('quality=100')) {
+        throw new Error(`Expected result2 to contain 'quality=100', but got: ${result2}`)
+      }
     })
   })
 
