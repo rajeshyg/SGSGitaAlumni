@@ -571,7 +571,7 @@ export const APIService = {
       const response = await apiClient.get(`/api/users/search?q=${encodeURIComponent(query)}&limit=${limit}`);
 
       logger.info('App users search completed');
-      return response as any[];
+      return response.users || [];
     } catch (error) {
       logger.error('Failed to search app users:', error);
       throw new Error('Failed to search app users.');
@@ -939,7 +939,7 @@ export const APIService = {
       const response = await apiClient.get(`/api/invitations?${queryParams.toString()}`);
 
       logger.info('Invitations fetched successfully');
-      return response as any[];
+      return response.data || [];
     } catch (error) {
       logger.error('Failed to fetch invitations:', error);
       throw new Error('Failed to fetch invitations. Please try again.');
@@ -959,7 +959,7 @@ export const APIService = {
       const response = await apiClient.get(`/api/invitations/family?${queryParams.toString()}`);
 
       logger.info('Family invitations fetched successfully');
-      return response as any[];
+      return response.data || [];
     } catch (error) {
       logger.error('Failed to fetch family invitations:', error);
       throw new Error('Failed to fetch family invitations. Please try again.');
