@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useAdminData } from '../hooks/useAdminData'
 import { LoadingState, ErrorState } from '../components/admin/AdminHelpers'
 import { AdminContent } from '../components/admin/AdminContent'
@@ -19,6 +20,8 @@ export function AdminPage() {
     apiConfig,
     stats
   } = useAdminData()
+
+  console.log('🔧 AdminPage: Rendering with loading:', loading, 'error:', error, 'data length:', fileImportData?.length)
 
   const handlePageChange = (newPage: number) =>
     newPage >= 0 && hasMore && loadMore()

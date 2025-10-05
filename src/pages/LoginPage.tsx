@@ -12,7 +12,7 @@ import { Card } from '../components/ui/card';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, isLoading, error, clearError } = useAuth();
+  const { login, isAuthenticated, isLoading, error, clearError, user } = useAuth();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -24,12 +24,17 @@ export function LoginPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/dashboard';
-      console.log('LoginPage: Redirecting authenticated user to:', from);
+    if (isAuthenticated && user) {
+      const userRole = user.role?.toLowerCase();
+      const defaultRedirect = userRole === 'admin' ? '/admin' : '/dashboard';
+      const from = location.state?.from?.pathname || defaultRedirect;
+      console.log('🔄 LoginPage: Authenticated user detected');
+      console.log('👤 User role:', user.role, 'Normalized role:', userRole);
+      console.log('🎯 Default redirect:', defaultRedirect, 'Final redirect to:', from);
+      console.log('📍 Location state:', location.state);
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, user, navigate, location]);
 
   // Clear errors when form data changes
   useEffect(() => {

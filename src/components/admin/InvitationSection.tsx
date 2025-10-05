@@ -233,6 +233,7 @@ export function InvitationSection() {
   ];
 
   useEffect(() => {
+    console.log('[InvitationSection] useEffect triggered, calling loadAll()');
     // initial load
     loadAll();
   }, []);

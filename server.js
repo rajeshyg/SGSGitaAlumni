@@ -35,8 +35,8 @@ const DB_CONFIG = {
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
-const REFRESH_TOKEN_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+const JWT_EXPIRES_IN = process.env.NODE_ENV === 'development' ? '24h' : (process.env.JWT_EXPIRES_IN || '1h');
+const REFRESH_TOKEN_EXPIRES_IN = process.env.NODE_ENV === 'development' ? '30d' : (process.env.REFRESH_TOKEN_EXPIRES_IN || '7d');
 
 // MySQL connection pool - Temporarily disabled for testing
 let pool = null;
@@ -59,14 +59,22 @@ const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
+    console.log('[AUTH_MIDDLEWARE] Received request to:', req.path);
+    console.log('[AUTH_MIDDLEWARE] Auth header present:', !!authHeader);
+    console.log('[AUTH_MIDDLEWARE] Token present:', !!token);
+
     if (!token) {
+      console.log('[AUTH_MIDDLEWARE] No token provided');
       return res.status(401).json({ error: 'Access token required' });
     }
 
     jwt.verify(token, JWT_SECRET, async (err, decoded) => {
       if (err) {
+        console.log('[AUTH_MIDDLEWARE] JWT verification failed:', err.message);
         return res.status(403).json({ error: 'Invalid or expired token' });
       }
+
+      console.log('[AUTH_MIDDLEWARE] JWT decoded successfully:', { userId: decoded.userId, email: decoded.email, role: decoded.role });
 
       try {
         // Verify user still exists and is active
@@ -77,19 +85,23 @@ const authenticateToken = async (req, res, next) => {
         );
         connection.release();
 
+        console.log('[AUTH_MIDDLEWARE] Database query result:', { found: rows.length > 0, user: rows.length > 0 ? { id: rows[0].id, email: rows[0].email, role: rows[0].role, is_active: rows[0].is_active } : null });
+
         if (rows.length === 0) {
+          console.log('[AUTH_MIDDLEWARE] User not found or inactive');
           return res.status(401).json({ error: 'User not found or inactive' });
         }
 
         req.user = rows[0];
+        console.log('[AUTH_MIDDLEWARE] Authentication successful, proceeding to route');
         next();
       } catch (dbError) {
-        console.error('Database error in auth middleware:', dbError);
+        console.error('[AUTH_MIDDLEWARE] Database error:', dbError);
         return res.status(500).json({ error: 'Authentication database error' });
       }
     });
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error('[AUTH_MIDDLEWARE] Auth middleware error:', error);
     return res.status(500).json({ error: 'Authentication error' });
   }
 };
@@ -291,8 +303,10 @@ app.get('/api/test-connection', async (req, res) => {
 // Get file imports with pagination and search
 app.get('/api/file-imports', async (req, res) => {
   try {
-    const connection = await getPool().getConnection();
     const { page = 0, pageSize = 10, search, status } = req.query;
+
+    // Use database
+    const connection = await getPool().getConnection();
 
     console.log('API: Fetching file imports from raw_csv_uploads...', { page, pageSize, search, status });
 
@@ -528,8 +542,10 @@ app.get('/api/invitations', async (req, res) => {
   const { createLogger } = await import('./src/utils/logger.js');
   const logger = createLogger('api/invitations');
   try {
-    const connection = await getPool().getConnection();
     const { page = 1, pageSize = 50, status } = req.query;
+
+    // Use database
+    const connection = await getPool().getConnection();
 
     logger.info('Fetching all invitations for admin management', { page, pageSize, status });
 
@@ -638,8 +654,10 @@ app.get('/api/invitations', async (req, res) => {
 // Get family invitations with pagination
 app.get('/api/invitations/family', async (req, res) => {
   try {
-    const connection = await getPool().getConnection();
     const { page = 1, pageSize = 50, status } = req.query;
+
+    // Use database
+    const connection = await getPool().getConnection();
 
     console.log('API: Fetching family invitations for admin management:', { page, pageSize, status });
 
@@ -1339,11 +1357,12 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    // Use database authentication
     const connection = await getPool().getConnection();
 
-    // Find user by email
+    // Find user by email - order by role priority (admin first, then moderator, then member)
     const [rows] = await connection.execute(
-      'SELECT id, email, password_hash, role, is_active, created_at FROM app_users WHERE email = ?',
+      'SELECT id, email, password_hash, role, is_active, created_at FROM app_users WHERE email = ? ORDER BY CASE WHEN role = "admin" THEN 1 WHEN role = "moderator" THEN 2 ELSE 3 END, created_at ASC',
       [email]
     );
 
@@ -1353,6 +1372,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const user = rows[0];
+    console.log('🔐 Login: Found user:', { id: user.id, email: user.email, role: user.role, is_active: user.is_active });
 
     // Check if user is active
     if (!user.is_active) {
@@ -1361,7 +1381,9 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Verify password
+    console.log('🔐 Verifying password...');
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    console.log(`🔐 Password valid: ${isValidPassword}`);
     if (!isValidPassword) {
       connection.release();
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -1474,6 +1496,7 @@ app.post('/api/auth/refresh', async (req, res) => {
 // Get current user profile
 app.get('/api/users/profile', authenticateToken, async (req, res) => {
   try {
+    // Use database
     const connection = await getPool().getConnection();
     const userId = req.user.id;
 
@@ -1915,19 +1938,24 @@ function generateOTPCode() {
 // Search alumni members (MUST come before the :id route to avoid matching "search" as an ID)
 app.get('/api/alumni-members/search', async (req, res) => {
   try {
-    const connection = await getPool().getConnection();
     const { q = '', limit = 50 } = req.query;
+
+    // Use database
+    const connection = await getPool().getConnection();
 
     console.log('API: Searching alumni members:', q);
 
     const limitNum = parseInt(limit) || 50;
     const searchQuery = `
       SELECT
-        id, student_id, first_name, last_name, email, phone,
-        batch as graduation_year, result as degree, center_name as department
-      FROM alumni_members
-      WHERE first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR student_id LIKE ?
-      ORDER BY last_name, first_name
+        am.id, am.student_id, am.first_name, am.last_name, am.email, am.phone,
+        am.batch as graduation_year, am.result as degree, am.center_name as department,
+        ot.otp_code as otp_code, ot.expires_at as otp_expires_at
+      FROM alumni_members am
+      LEFT JOIN app_users au ON au.alumni_member_id = am.id
+      LEFT JOIN OTP_TOKENS ot ON ot.user_id = au.id AND ot.is_used = false AND ot.expires_at > NOW()
+      WHERE am.first_name LIKE ? OR am.last_name LIKE ? OR am.email LIKE ? OR am.student_id LIKE ?
+      ORDER BY am.last_name, am.first_name
       LIMIT ${limitNum}
     `;
 
@@ -1944,7 +1972,9 @@ app.get('/api/alumni-members/search', async (req, res) => {
       phone: row.phone,
       graduationYear: row.graduation_year,
       degree: row.degree,
-      department: row.department
+      department: row.department,
+      otpCode: row.otp_code,
+      otpExpiresAt: row.otp_expires_at
     }));
 
     res.json(members);
@@ -2406,6 +2436,9 @@ app.get('/api/users/search', async (req, res) => {
   console.log('🚀 API: Users search endpoint called');
 
   try {
+    const { q = '', limit = 50 } = req.query;
+
+    // Use database
     console.log('🔍 API: Getting database connection...');
     const pool = getPool();
     console.log('📦 API: Pool obtained:', !!pool);
@@ -2413,7 +2446,6 @@ app.get('/api/users/search', async (req, res) => {
     const connection = await pool.getConnection();
     console.log('🔗 API: Database connection obtained successfully');
 
-    const { q = '', limit = 50 } = req.query;
     console.log('📋 API: Request parameters - q:', q, 'limit:', limit);
 
     // Test basic database connectivity
@@ -2802,216 +2834,44 @@ app.get('/api/analytics/invitations/conversion-trends', async (req, res) => {
 // DASHBOARD API ENDPOINTS
 // ============================================================================
 
-// Get current user
+// Get current user - NOT IMPLEMENTED: Requires authentication middleware
 app.get('/api/users/current', async (req, res) => {
-  try {
-    // In a real implementation, this would get the user from the session/JWT
-    // For now, return a mock user based on auth token or create a default user
-    const mockUser = {
-      id: 'user-123',
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john.doe@example.com',
-      graduationYear: 2020,
-      program: 'Computer Science',
-      currentPosition: 'Software Engineer',
-      bio: 'Passionate about technology and community building.',
-      isActive: true,
-      createdAt: new Date('2020-01-01'),
-      updatedAt: new Date()
-    };
-
-    res.json(mockUser);
-  } catch (error) {
-    console.error('Error fetching current user:', error);
-    res.status(500).json({ error: 'Failed to fetch current user' });
-  }
+  res.status(501).json({
+    error: 'Current user endpoint not implemented',
+    message: 'This endpoint requires authentication and database implementation'
+  });
 });
 
-// Get user stats
+// Get user stats - NOT IMPLEMENTED: Requires database tables for connections, postings, messages
 app.get('/api/users/:userId/stats', async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    // Mock stats - in real implementation, this would query the database
-    const mockStats = {
-      totalConnections: Math.floor(Math.random() * 150) + 50,
-      activePostings: Math.floor(Math.random() * 10) + 2,
-      unreadMessages: Math.floor(Math.random() * 5),
-      profileViews: Math.floor(Math.random() * 100) + 20
-    };
-
-    res.json(mockStats);
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-    res.status(500).json({ error: 'Failed to fetch user stats' });
-  }
+  res.status(501).json({
+    error: 'User stats endpoint not implemented',
+    message: 'This endpoint requires database tables for connections, postings, and messages'
+  });
 });
 
-// Get recent conversations
+// Get recent conversations - NOT IMPLEMENTED: Requires messaging system database tables
 app.get('/api/conversations/recent', async (req, res) => {
-  try {
-    const { userId, limit = 5 } = req.query;
-
-    // Mock conversations - in real implementation, this would query the database
-    const mockConversations = [
-      {
-        id: 'conv-1',
-        participants: [
-          { firstName: 'John', lastName: 'Doe' },
-          { firstName: 'Jane', lastName: 'Smith' }
-        ],
-        lastMessage: {
-          content: 'Thanks for the update!',
-          sender: { firstName: 'Jane', lastName: 'Smith' },
-          timestamp: new Date(Date.now() - 1000 * 60 * 30)
-        },
-        unreadCount: 2,
-        isOnline: true
-      },
-      {
-        id: 'conv-2',
-        participants: [
-          { firstName: 'John', lastName: 'Doe' },
-          { firstName: 'Mike', lastName: 'Johnson' }
-        ],
-        lastMessage: {
-          content: 'Looking forward to the event',
-          sender: { firstName: 'Mike', lastName: 'Johnson' },
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2)
-        },
-        unreadCount: 0,
-        isOnline: false
-      },
-      {
-        id: 'conv-3',
-        participants: [
-          { firstName: 'John', lastName: 'Doe' },
-          { firstName: 'Sarah', lastName: 'Wilson' }
-        ],
-        lastMessage: {
-          content: 'How is the new project going?',
-          sender: { firstName: 'Sarah', lastName: 'Wilson' },
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24)
-        },
-        unreadCount: 1,
-        isOnline: true
-      }
-    ].slice(0, parseInt(limit));
-
-    res.json(mockConversations);
-  } catch (error) {
-    console.error('Error fetching recent conversations:', error);
-    res.status(500).json({ error: 'Failed to fetch recent conversations' });
-  }
+  res.status(501).json({
+    error: 'Conversations endpoint not implemented',
+    message: 'This endpoint requires database tables for messaging and conversations'
+  });
 });
 
-// Get personalized posts
+// Get personalized posts - NOT IMPLEMENTED: Requires posts/content management database tables
 app.get('/api/posts/personalized', async (req, res) => {
-  try {
-    const { userId, limit = 10 } = req.query;
-
-    // Mock personalized posts - in real implementation, this would query the database
-    const mockPosts = [
-      {
-        id: 'post-1',
-        title: 'Alumni Networking Event - Fall 2025',
-        content: 'Join us for our annual alumni networking event featuring keynote speakers from top tech companies.',
-        author: { firstName: 'Alumni', lastName: 'Association' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
-        tags: ['networking', 'event', 'career'],
-        relevanceScore: 0.95,
-        type: 'event'
-      },
-      {
-        id: 'post-2',
-        title: 'Mentorship Program Applications Open',
-        content: 'The new mentorship program is now accepting applications for both mentors and mentees.',
-        author: { firstName: 'Career', lastName: 'Services' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 12), // 12 hours ago
-        tags: ['mentorship', 'career', 'program'],
-        relevanceScore: 0.88,
-        type: 'announcement'
-      },
-      {
-        id: 'post-3',
-        title: 'Tech Industry Job Opportunities',
-        content: 'Latest job postings from our alumni network partners.',
-        author: { firstName: 'Job', lastName: 'Board' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-        tags: ['jobs', 'technology', 'opportunities'],
-        relevanceScore: 0.82,
-        type: 'job'
-      },
-      {
-        id: 'post-4',
-        title: 'Class of 2020 Reunion Planning',
-        content: 'Help us plan the upcoming reunion event. Share your ideas!',
-        author: { firstName: 'Class', lastName: 'Rep' },
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 36), // 1.5 days ago
-        tags: ['reunion', 'class-of-2020', 'planning'],
-        relevanceScore: 0.75,
-        type: 'discussion'
-      }
-    ].slice(0, parseInt(limit));
-
-    res.json(mockPosts);
-  } catch (error) {
-    console.error('Error fetching personalized posts:', error);
-    res.status(500).json({ error: 'Failed to fetch personalized posts' });
-  }
+  res.status(501).json({
+    error: 'Personalized posts endpoint not implemented',
+    message: 'This endpoint requires database tables for posts and content management'
+  });
 });
 
-// Get notifications
+// Get notifications - NOT IMPLEMENTED: Requires notifications database table
 app.get('/api/notifications', async (req, res) => {
-  try {
-    const { userId, limit = 5 } = req.query;
-
-    // Mock notifications - in real implementation, this would query the database
-    const mockNotifications = [
-      {
-        id: 'notif-1',
-        type: 'message',
-        title: 'New Message',
-        message: 'You have a new message from Jane Smith',
-        isRead: false,
-        timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
-        actionUrl: '/messages/conv-1'
-      },
-      {
-        id: 'notif-2',
-        type: 'connection',
-        title: 'New Connection',
-        message: 'Mike Johnson accepted your connection request',
-        isRead: false,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
-        actionUrl: '/profile/mike-johnson'
-      },
-      {
-        id: 'notif-3',
-        type: 'event',
-        title: 'Event Reminder',
-        message: 'Alumni Networking Event starts in 2 hours',
-        isRead: true,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
-        actionUrl: '/events/networking-2025'
-      },
-      {
-        id: 'notif-4',
-        type: 'job',
-        title: 'Job Match Found',
-        message: 'A new job posting matches your profile',
-        isRead: true,
-        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-        actionUrl: '/jobs/software-engineer-123'
-      }
-    ].slice(0, parseInt(limit));
-
-    res.json(mockNotifications);
-  } catch (error) {
-    console.error('Error fetching notifications:', error);
-    res.status(500).json({ error: 'Failed to fetch notifications' });
-  }
+  res.status(501).json({
+    error: 'Notifications endpoint not implemented',
+    message: 'This endpoint requires database table for notifications'
+  });
 });
 
 // Quality metrics endpoints

@@ -3,12 +3,14 @@
 // ============================================================================
 // Main dashboard page component
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MemberDashboard } from '../components/dashboard/MemberDashboard';
 import { useAuth } from '../contexts/AuthContext';
 
 const DashboardPage: React.FC = () => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, hasRole } = useAuth();
+  const navigate = useNavigate();
 
   console.log('[DashboardPage] Render - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'user:', user);
 
@@ -16,10 +18,10 @@ const DashboardPage: React.FC = () => {
   if (isLoading) {
     console.log('[DashboardPage] Showing loading state');
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     );
@@ -29,15 +31,37 @@ const DashboardPage: React.FC = () => {
   if (!isAuthenticated || !user) {
     console.log('[DashboardPage] Not authenticated, showing login prompt');
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Please log in to access your dashboard.</p>
+          <p className="text-muted-foreground">Please log in to access your dashboard.</p>
         </div>
       </div>
     );
   }
 
-  console.log('[DashboardPage] Authenticated, rendering MemberDashboard with userId:', user.id);
+  // Redirect admin users to admin panel
+  useEffect(() => {
+    if (hasRole('admin')) {
+      console.log('[DashboardPage] Admin user detected, redirecting to /admin');
+      navigate('/admin', { replace: true });
+      return;
+    }
+  }, [hasRole, navigate]);
+
+  // If admin, show loading while redirecting
+  if (hasRole('admin')) {
+    console.log('[DashboardPage] Admin user, showing redirect loading');
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Redirecting to admin panel...</p>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('[DashboardPage] Authenticated member user, rendering MemberDashboard with userId:', user.id);
   return <MemberDashboard userId={user.id} />;
 };
 

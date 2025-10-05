@@ -71,9 +71,11 @@ export const checkAPIConfiguration = () => {
   return !!import.meta.env.VITE_API_BASE_URL
 }
 
-export const getAPIConfigStatus = () => ({
+const API_CONFIG_STATUS = {
   isConfigured: !!import.meta.env.VITE_API_BASE_URL,
   hasBaseUrl: !!import.meta.env.VITE_API_BASE_URL,
   hasUrl: !!import.meta.env.VITE_API_BASE_URL,
   configured: !!import.meta.env.VITE_API_BASE_URL
-})
+}
+
+export const getAPIConfigStatus = () => API_CONFIG_STATUS

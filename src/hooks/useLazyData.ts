@@ -35,7 +35,7 @@ export function useLazyData(options: UseLazyDataOptions = {}) {
       if (error instanceof Error && error.name === 'AbortError') return
       setState(prev => ({ ...prev, loading: false, error: error instanceof Error ? error.message : 'Failed to load data' }))
     }
-  }, [pageSize, enableCache, cacheTtl, state.data, cache])
+  }, [pageSize, enableCache, cacheTtl, cache])
 
   const { loadMore, refresh, search: searchAction, clearCache } = createActionCallbacks(state, searchTerm, loadData, cache)
   const search = useCallback((term: string) => { setSearchTerm(term); searchAction(term) }, [searchAction])

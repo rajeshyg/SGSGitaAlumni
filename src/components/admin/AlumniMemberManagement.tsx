@@ -22,6 +22,8 @@ interface AlumniMember {
   address?: string;
   createdAt: string;
   updatedAt: string;
+  otpCode?: string;
+  otpExpiresAt?: string;
 }
 
 interface AlumniMemberManagementProps {
@@ -198,6 +200,20 @@ export function AlumniMemberManagement({ onMemberUpdated }: AlumniMemberManageme
       size: 150,
       cell: ({ row }) => (
         <span>{row.original.department || 'N/A'}</span>
+      ),
+    },
+    {
+      accessorKey: 'otpCode',
+      header: 'OTP Token',
+      size: 120,
+      cell: ({ row }) => (
+        <span className="font-mono text-sm">
+          {row.original.otpCode ? (
+            <span className="text-green-600 font-bold">{row.original.otpCode}</span>
+          ) : (
+            <span className="text-muted-foreground">No active OTP</span>
+          )}
+        </span>
       ),
     },
     {

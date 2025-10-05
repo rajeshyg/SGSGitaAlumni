@@ -539,11 +539,12 @@ export const APIService = {
       logger.info('Fetching current authenticated user information');
 
       const response = await apiClient.get('/api/users/profile');
-
-      logger.info('Current user information retrieved');
+      logger.info('Current user API response:', response);
+      logger.info('Current user information retrieved successfully');
       return response as User;
     } catch (error) {
       logger.error('Failed to fetch current user:', error);
+      logger.error('Error details:', error);
       throw new Error('Failed to fetch user information.');
     }
   },

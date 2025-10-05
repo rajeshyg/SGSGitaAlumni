@@ -19,7 +19,12 @@ function validateTheme(themeName: string): themeName is ThemeName {
 }
 
 // Get initial theme from localStorage or system preference
-function getInitialTheme(): ThemeName {
+function getInitialTheme(defaultTheme?: ThemeName): ThemeName {
+  // If defaultTheme is provided and it's 'dark', prioritize it
+  if (defaultTheme === 'dark') {
+    return 'dark';
+  }
+
   // Check localStorage first
   const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
   if (storedTheme && validateTheme(storedTheme)) {
@@ -35,7 +40,7 @@ function getInitialTheme(): ThemeName {
   }
 
   // Default to default theme
-  return 'default';
+  return defaultTheme || 'default';
 }
 
 interface ThemeProviderProps {
@@ -45,7 +50,7 @@ interface ThemeProviderProps {
 
 function useThemeState(defaultTheme?: ThemeName) {
   const [currentTheme, setCurrentTheme] = useState<ThemeName>(() => {
-    return defaultTheme || getInitialTheme();
+    return getInitialTheme(defaultTheme);
   });
 
   const [theme, setThemeConfig] = useState<ThemeConfiguration>(() => {

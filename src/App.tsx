@@ -127,7 +127,7 @@ const PageLoadingFallback = () => (
 
 function App() {
   return (
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="dark">
       <AuthProvider>
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Suspense fallback={<PageLoadingFallback />}>

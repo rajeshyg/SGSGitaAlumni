@@ -17,14 +17,16 @@ export interface ProtectedRouteProps {
 // PROTECTED ROUTE COMPONENT
 // ============================================================================
 
-export function ProtectedRoute({ 
-  children, 
-  requiredRole, 
+export function ProtectedRoute({
+  children,
+  requiredRole,
   fallback,
   redirectTo = '/login'
 }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user, hasRole, hasAnyRole } = useAuth();
   const location = useLocation();
+
+  console.log('🔐 ProtectedRoute: Check - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'user:', user, 'requiredRole:', requiredRole);
 
   // ============================================================================
   // LOADING STATE
@@ -101,6 +103,7 @@ export function ProtectedRoute({
 // ============================================================================
 
 export function AdminRoute({ children, ...props }: Omit<ProtectedRouteProps, 'requiredRole'>) {
+  console.log('🔐 AdminRoute: Checking admin access');
   return (
     <ProtectedRoute requiredRole="admin" {...props}>
       {children}

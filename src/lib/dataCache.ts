@@ -61,16 +61,48 @@ export async function loadDataWithCache<T>(
   cache: DataCache,
   setState: (state: LazyDataState<T>) => void
 ) {
-  // Mock implementation
-  setState({
-    data: currentData,
-    loading: false,
-    error: null,
-    hasMore: false,
-    total: 0,
-    page,
-    pageSize
-  })
+  console.log('[loadDataWithCache] Starting load for page:', page, 'search:', search);
+  try {
+    // Import APIService dynamically to avoid circular dependencies
+    const { APIService } = await import('../services/APIService');
+
+    // Call the actual API
+    const params = {
+      page: page + 1, // API uses 1-based pagination
+      pageSize,
+      search: search || undefined
+    };
+
+    console.log('[loadDataWithCache] Calling APIService.getFileImports with params:', params);
+    const response = await APIService.getFileImports(params);
+    console.log('[loadDataWithCache] API response received:', { dataLength: response.data?.length, total: response.total });
+
+    const newData = append ? [...currentData, ...(response.data as T[])] : (response.data as T[]);
+    const hasMore = response.data.length === pageSize && (page + 1) * pageSize < response.total;
+
+    console.log('[loadDataWithCache] Setting state with loading: false, data length:', newData.length);
+    setState({
+      data: newData,
+      loading: false,
+      error: null,
+      hasMore,
+      total: response.total,
+      page,
+      pageSize
+    });
+
+  } catch (error) {
+    console.error('[loadDataWithCache] Error occurred:', error);
+    setState({
+      data: currentData,
+      loading: false,
+      error: error instanceof Error ? error.message : 'Failed to load data',
+      hasMore: false,
+      total: currentData.length,
+      page,
+      pageSize
+    });
+  }
 }
 
 export function createActionCallbacks<T>(

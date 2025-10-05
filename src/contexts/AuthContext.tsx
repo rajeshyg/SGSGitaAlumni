@@ -74,7 +74,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
-        console.log('[AuthContext] Login response user:', response.user);
+        console.log('[AuthContext] Login response user:', response.user, 'role:', response.user.role);
+        console.log('[AuthContext] User role type:', typeof response.user.role, 'Value:', JSON.stringify(response.user.role));
       }
 
       // Store tokens securely
@@ -210,11 +211,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // ============================================================================
 
   const hasRole = (role: string): boolean => {
-    return authState.user?.role === role;
+    const userRole = authState.user?.role?.toLowerCase();
+    const requiredRole = role.toLowerCase();
+    const result = userRole === requiredRole;
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('[AuthContext] hasRole check:', { userRole, requiredRole, result });
+    }
+    return result;
   };
 
   const hasAnyRole = (roles: string[]): boolean => {
-    return authState.user ? roles.includes(authState.user.role) : false;
+    const userRole = authState.user?.role?.toLowerCase();
+    const result = userRole ? roles.map(r => r.toLowerCase()).includes(userRole) : false;
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log('[AuthContext] hasAnyRole check:', { userRole, roles, result });
+    }
+    return result;
   };
 
   // ============================================================================
@@ -222,19 +236,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // ============================================================================
 
    useEffect(() => {
-      const checkAuth = async () => {
-        console.log('[AuthContext] Starting auth check on mount');
-        const token = localStorage.getItem('authToken');
-        const storedRefreshToken = localStorage.getItem('refreshToken');
+       const checkAuth = async () => {
+         console.log('[AuthContext] Starting auth check on mount');
+         const token = localStorage.getItem('authToken');
+         const storedRefreshToken = localStorage.getItem('refreshToken');
 
-        if (token) {
-          console.log('[AuthContext] Found stored token, initializing API client');
-          // Initialize API client with stored tokens
-          apiClient.initializeAuth(token, storedRefreshToken || undefined);
-          try {
-            console.log('[AuthContext] About to call APIService.getCurrentUser()');
-            const user = await APIService.getCurrentUser();
-            console.log('[AuthContext] APIService.getCurrentUser() returned:', user);
+         console.log('[AuthContext] Token exists:', !!token);
+         console.log('[AuthContext] Refresh token exists:', !!storedRefreshToken);
+
+         if (token) {
+           console.log('[AuthContext] Found stored token, initializing API client');
+           // Initialize API client with stored tokens
+           apiClient.initializeAuth(token, storedRefreshToken || undefined);
+           try {
+             console.log('[AuthContext] About to call APIService.getCurrentUser()');
+             const user = await APIService.getCurrentUser();
+             console.log('[AuthContext] APIService.getCurrentUser() returned:', user);
+             console.log('[AuthContext] User role from API:', user?.role);
 
            // Store user profile in localStorage for admin components
            const profile = {
