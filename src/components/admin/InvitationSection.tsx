@@ -6,7 +6,7 @@ import { Input } from '../ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import Badge from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Mail, Users, RefreshCw, Search, Edit, Save, X, GraduationCap, Phone, Copy, Eye, EyeOff, Key, Link } from 'lucide-react';
+import { Mail, Users, RefreshCw, Search, Edit, Save, X, GraduationCap, Phone, Copy, Eye, Key, Link } from 'lucide-react';
 import AdminListItem from './AdminListItem';
 import { APIService } from '../../services/APIService';
 import { TanStackAdvancedTable } from '../ui/tanstack-advanced-table';
@@ -46,9 +46,7 @@ export function InvitationSection() {
 
   // Testing features for invitation system
   const [showInvitationUrls, setShowInvitationUrls] = useState(false);
-  const [showOtpCodes, setShowOtpCodes] = useState(false);
   const [generatedOtpCodes, setGeneratedOtpCodes] = useState<Record<string, string>>({});
-  const [invitationUrls, setInvitationUrls] = useState<Record<string, string>>({});
 
   // Define columns for the alumni members table
   const memberColumns: ColumnDef<AlumniMember>[] = [
@@ -561,58 +559,66 @@ export function InvitationSection() {
             {/* Invitations Tab */}
             <TabsContent value="invitations" className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Invitations</h3>
+                <div className="flex items-center gap-4">
+                  <h3 className="text-lg font-medium">Invitations</h3>
+                  <Badge variant="outline" className="text-xs">
+                    {invitations.length} Individual • {familyInvitations.length} Family
+                  </Badge>
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => setShowInvitationUrls(!showInvitationUrls)}
-                    className="h-8"
+                    className={`h-8 ${showInvitationUrls ? 'bg-blue-50 border-blue-200' : ''}`}
                   >
                     <Link className="h-3 w-3 mr-1" />
-                    {showInvitationUrls ? 'Hide URLs' : 'Show URLs'}
+                    Test Mode
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowOtpCodes(!showOtpCodes)}
-                    className="h-8"
-                  >
-                    <Key className="h-3 w-3 mr-1" />
-                    {showOtpCodes ? 'Hide OTPs' : 'Show OTPs'}
-                  </Button>
-                  <Button variant="outline" onClick={reloadInvitations} disabled={loading}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                  <Button variant="outline" size="sm" onClick={reloadInvitations} disabled={loading}>
+                    <RefreshCw className="h-3 w-3 mr-1" />
                     Refresh
                   </Button>
                 </div>
               </div>
 
-              {/* Testing Features Section */}
-              {(showInvitationUrls || showOtpCodes) && (
-                <Card className="border-blue-200 bg-blue-50">
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Eye className="h-4 w-4" />
-                      Testing Features - Passwordless Invitation System
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      These features allow testing the new passwordless authentication flow locally without external email services.
-                    </CardDescription>
+              {/* Clean Testing Panel */}
+              {showInvitationUrls && (
+                <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-4 w-4 text-blue-600" />
+                        <CardTitle className="text-sm text-blue-900">Testing Panel</CardTitle>
+                      </div>
+                      <CardDescription className="text-xs text-blue-700">
+                        Passwordless authentication testing tools
+                      </CardDescription>
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    {showInvitationUrls && (
-                      <div>
-                        <h4 className="text-sm font-medium mb-2">Invitation URLs (Copy to Test)</h4>
-                        <div className="space-y-2 max-h-32 overflow-y-auto">
-                          {invitations.slice(0, 5).map((inv: any) => (
-                            <div key={inv.id} className="flex items-center gap-2 text-xs">
-                              <code className="flex-1 bg-white p-1 rounded text-xs">
-                                {generateInvitationUrl(inv.invitationToken)}
-                              </code>
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Invitation URLs */}
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                          <Link className="h-3 w-3" />
+                          Invitation URLs
+                        </h4>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {invitations.slice(0, 10).map((inv: any) => (
+                            <div key={inv.id} className="flex items-center gap-2 p-2 bg-white rounded border text-xs">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-900 truncate">{inv.email}</div>
+                                <code className="text-gray-600 font-mono text-xs break-all">
+                                  {generateInvitationUrl(inv.invitationToken)}
+                                </code>
+                              </div>
                               <Button
                                 size="sm"
-                                variant="outline"
+                                variant="ghost"
                                 onClick={() => copyToClipboard(generateInvitationUrl(inv.invitationToken), 'Invitation URL')}
-                                className="h-6 px-2"
+                                className="h-6 w-6 p-0 shrink-0"
+                                title="Copy URL"
                               >
                                 <Copy className="h-3 w-3" />
                               </Button>
@@ -620,24 +626,34 @@ export function InvitationSection() {
                           ))}
                         </div>
                       </div>
-                    )}
 
-                    {showOtpCodes && (
-                      <div>
-                        <h4 className="text-sm font-medium mb-2">OTP Codes (Generate for Testing)</h4>
-                        <div className="space-y-2 max-h-32 overflow-y-auto">
-                          {invitations.slice(0, 5).map((inv: any) => (
-                            <div key={inv.id} className="flex items-center gap-2 text-xs">
-                              <span className="w-32">{inv.email}:</span>
-                              <code className="flex-1 bg-white p-1 rounded text-xs">
-                                {generatedOtpCodes[inv.email] || 'Not generated'}
-                              </code>
+                      {/* OTP Generator */}
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                          <Key className="h-3 w-3" />
+                          OTP Generator
+                        </h4>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {invitations.slice(0, 10).map((inv: any) => (
+                            <div key={inv.id} className="flex items-center gap-2 p-2 bg-white rounded border text-xs">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-gray-900 truncate">{inv.email}</div>
+                                <div className="flex items-center gap-2">
+                                  <code className={`px-2 py-1 rounded text-xs font-mono ${
+                                    generatedOtpCodes[inv.email]
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-gray-100 text-gray-500'
+                                  }`}>
+                                    {generatedOtpCodes[inv.email] || 'Click Generate'}
+                                  </code>
+                                </div>
+                              </div>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => generateTestOtp(inv.email)}
                                 disabled={loading}
-                                className="h-6 px-2"
+                                className="h-6 px-2 text-xs shrink-0"
                               >
                                 Generate
                               </Button>
@@ -645,93 +661,130 @@ export function InvitationSection() {
                           ))}
                         </div>
                       </div>
-                    )}
+                    </div>
                   </CardContent>
                 </Card>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-2">Individual Invitations</h4>
+              {/* Clean Invitations List */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Individual Invitations
+                  </h4>
                   {invitations.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No individual invitations</div>
+                    <div className="text-sm text-muted-foreground p-4 border border-dashed rounded">
+                      No individual invitations yet. Send some from the Alumni Members tab.
+                    </div>
                   ) : (
-                    invitations.map((inv: any) => (
-                      <AdminListItem
-                        key={inv.id}
-                        title={
-                          <div className="flex items-center gap-2">
-                            {inv.email}
-                            {showInvitationUrls && (
+                    <div className="space-y-2">
+                      {invitations.map((inv: any) => (
+                        <Card key={inv.id} className="p-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-sm truncate">{inv.email}</span>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${
+                                    inv.status === 'pending' ? 'border-yellow-300 text-yellow-700' :
+                                    inv.status === 'accepted' ? 'border-green-300 text-green-700' :
+                                    'border-gray-300 text-gray-600'
+                                  }`}
+                                >
+                                  {inv.status}
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Sent: {inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : 'Never'}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 ml-2">
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => copyToClipboard(generateInvitationUrl(inv.invitationToken), 'Invitation URL')}
-                                className="h-6 px-2 text-xs"
-                                title="Copy invitation URL"
-                              >
-                                <Copy className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
-                        }
-                        subtitle={
-                          <div className="space-y-1">
-                            <div>{`${inv.status} • Sent: ${inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : 'n/a'}`}</div>
-                            {showInvitationUrls && (
-                              <div className="text-xs text-muted-foreground font-mono">
-                                {generateInvitationUrl(inv.invitationToken)}
-                              </div>
-                            )}
-                            {showOtpCodes && generatedOtpCodes[inv.email] && (
-                              <div className="text-xs">
-                                <span className="font-medium">OTP:</span>
-                                <code className="ml-1 bg-gray-100 px-1 rounded">{generatedOtpCodes[inv.email]}</code>
-                              </div>
-                            )}
-                          </div>
-                        }
-                        actions={(
-                          <>
-                            {showOtpCodes && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => generateTestOtp(inv.email)}
+                                onClick={() => resendInvitation(inv.id)}
                                 disabled={loading}
-                                className="mr-1"
+                                className="h-7 px-2 text-xs"
                               >
-                                <Key className="h-3 w-3 mr-1" />
-                                OTP
+                                Resend
                               </Button>
-                            )}
-                            <Button size="sm" variant="outline" onClick={() => resendInvitation(inv.id)}>Resend</Button>
-                            {inv.status !== 'accepted' && inv.status !== 'revoked' && <Button size="sm" variant="destructive" onClick={() => revokeInvitation(inv.id)}>Revoke</Button>}
-                          </>
-                        )}
-                      />
-                    ))
+                              {inv.status !== 'accepted' && inv.status !== 'revoked' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => revokeInvitation(inv.id)}
+                                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
+                                >
+                                  Revoke
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
                   )}
                 </div>
 
-                <div>
-                  <h4 className="font-medium mb-2">Family / Bulk Invitations</h4>
+                <div className="space-y-3">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Family Invitations
+                  </h4>
                   {familyInvitations.length === 0 ? (
-                    <div className="text-sm text-muted-foreground">No family invitations</div>
+                    <div className="text-sm text-muted-foreground p-4 border border-dashed rounded">
+                      No family invitations yet.
+                    </div>
                   ) : (
-                    familyInvitations.map((inv: any) => (
-                      <AdminListItem
-                        key={inv.id}
-                        title={inv.parentEmail}
-                        subtitle={`${inv.status} • Children: ${inv.childrenProfiles?.length || 0}`}
-                        actions={(
-                          <>
-                            <Button size="sm" variant="outline" onClick={() => resendInvitation(inv.id)}>Resend</Button>
-                            {inv.status !== 'completed' && <Button size="sm" variant="destructive" onClick={() => revokeInvitation(inv.id)}>Revoke</Button>}
-                          </>
-                        )}
-                      />
-                    ))
+                    <div className="space-y-2">
+                      {familyInvitations.map((inv: any) => (
+                        <Card key={inv.id} className="p-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-sm truncate">{inv.parentEmail}</span>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-xs ${
+                                    inv.status === 'pending' ? 'border-yellow-300 text-yellow-700' :
+                                    inv.status === 'completed' ? 'border-green-300 text-green-700' :
+                                    'border-gray-300 text-gray-600'
+                                  }`}
+                                >
+                                  {inv.status}
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Children: {inv.childrenProfiles?.length || 0}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 ml-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => resendInvitation(inv.id)}
+                                disabled={loading}
+                                className="h-7 px-2 text-xs"
+                              >
+                                Resend
+                              </Button>
+                              {inv.status !== 'completed' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => revokeInvitation(inv.id)}
+                                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
+                                >
+                                  Revoke
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
