@@ -6,7 +6,7 @@ import { Input } from '../ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import Badge from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Mail, Users, RefreshCw, Search, Edit, Save, X, GraduationCap, Phone } from 'lucide-react';
+import { Mail, Users, RefreshCw, Search, Edit, Save, X, GraduationCap, Phone, Copy, Eye, EyeOff, Key, Link } from 'lucide-react';
 import AdminListItem from './AdminListItem';
 import { APIService } from '../../services/APIService';
 import { TanStackAdvancedTable } from '../ui/tanstack-advanced-table';
@@ -43,6 +43,12 @@ export function InvitationSection() {
   const [memberSearch, setMemberSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [hasSearchedMembers, setHasSearchedMembers] = useState(false);
+
+  // Testing features for invitation system
+  const [showInvitationUrls, setShowInvitationUrls] = useState(false);
+  const [showOtpCodes, setShowOtpCodes] = useState(false);
+  const [generatedOtpCodes, setGeneratedOtpCodes] = useState<Record<string, string>>({});
+  const [invitationUrls, setInvitationUrls] = useState<Record<string, string>>({});
 
   // Define columns for the alumni members table
   const memberColumns: ColumnDef<AlumniMember>[] = [
@@ -448,6 +454,50 @@ export function InvitationSection() {
     }
   };
 
+  // ---------- Testing features for invitation system ----------
+
+  const generateTestOtp = async (email: string) => {
+    try {
+      // Use direct API call since APIService doesn't have generateOTP method
+      const response = await fetch('/api/otp/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ email, type: 'registration' })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.code) {
+          setGeneratedOtpCodes(prev => ({ ...prev, [email]: data.code }));
+          setSuccess(`OTP generated for ${email}`);
+        }
+      } else {
+        throw new Error('Failed to generate OTP');
+      }
+    } catch (err) {
+      console.error('Generate test OTP failed', err);
+      setError('Failed to generate test OTP');
+    }
+  };
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setSuccess(`${label} copied to clipboard`);
+    } catch (err) {
+      console.error('Copy to clipboard failed', err);
+      setError('Failed to copy to clipboard');
+    }
+  };
+
+  const generateInvitationUrl = (invitationToken: string) => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/invitation/${invitationToken}`;
+  };
+
   // status badges handled inline where needed
 
   return (
@@ -513,9 +563,92 @@ export function InvitationSection() {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">Invitations</h3>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={reloadInvitations} disabled={loading}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowInvitationUrls(!showInvitationUrls)}
+                    className="h-8"
+                  >
+                    <Link className="h-3 w-3 mr-1" />
+                    {showInvitationUrls ? 'Hide URLs' : 'Show URLs'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowOtpCodes(!showOtpCodes)}
+                    className="h-8"
+                  >
+                    <Key className="h-3 w-3 mr-1" />
+                    {showOtpCodes ? 'Hide OTPs' : 'Show OTPs'}
+                  </Button>
+                  <Button variant="outline" onClick={reloadInvitations} disabled={loading}>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
                 </div>
               </div>
+
+              {/* Testing Features Section */}
+              {(showInvitationUrls || showOtpCodes) && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Testing Features - Passwordless Invitation System
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      These features allow testing the new passwordless authentication flow locally without external email services.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {showInvitationUrls && (
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Invitation URLs (Copy to Test)</h4>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {invitations.slice(0, 5).map((inv: any) => (
+                            <div key={inv.id} className="flex items-center gap-2 text-xs">
+                              <code className="flex-1 bg-white p-1 rounded text-xs">
+                                {generateInvitationUrl(inv.invitationToken)}
+                              </code>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => copyToClipboard(generateInvitationUrl(inv.invitationToken), 'Invitation URL')}
+                                className="h-6 px-2"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {showOtpCodes && (
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">OTP Codes (Generate for Testing)</h4>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {invitations.slice(0, 5).map((inv: any) => (
+                            <div key={inv.id} className="flex items-center gap-2 text-xs">
+                              <span className="w-32">{inv.email}:</span>
+                              <code className="flex-1 bg-white p-1 rounded text-xs">
+                                {generatedOtpCodes[inv.email] || 'Not generated'}
+                              </code>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => generateTestOtp(inv.email)}
+                                disabled={loading}
+                                className="h-6 px-2"
+                              >
+                                Generate
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -526,10 +659,52 @@ export function InvitationSection() {
                     invitations.map((inv: any) => (
                       <AdminListItem
                         key={inv.id}
-                        title={inv.email}
-                        subtitle={`${inv.status} • Sent: ${inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : 'n/a'}`}
+                        title={
+                          <div className="flex items-center gap-2">
+                            {inv.email}
+                            {showInvitationUrls && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyToClipboard(generateInvitationUrl(inv.invitationToken), 'Invitation URL')}
+                                className="h-6 px-2 text-xs"
+                                title="Copy invitation URL"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        }
+                        subtitle={
+                          <div className="space-y-1">
+                            <div>{`${inv.status} • Sent: ${inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : 'n/a'}`}</div>
+                            {showInvitationUrls && (
+                              <div className="text-xs text-muted-foreground font-mono">
+                                {generateInvitationUrl(inv.invitationToken)}
+                              </div>
+                            )}
+                            {showOtpCodes && generatedOtpCodes[inv.email] && (
+                              <div className="text-xs">
+                                <span className="font-medium">OTP:</span>
+                                <code className="ml-1 bg-gray-100 px-1 rounded">{generatedOtpCodes[inv.email]}</code>
+                              </div>
+                            )}
+                          </div>
+                        }
                         actions={(
                           <>
+                            {showOtpCodes && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => generateTestOtp(inv.email)}
+                                disabled={loading}
+                                className="mr-1"
+                              >
+                                <Key className="h-3 w-3 mr-1" />
+                                OTP
+                              </Button>
+                            )}
                             <Button size="sm" variant="outline" onClick={() => resendInvitation(inv.id)}>Resend</Button>
                             {inv.status !== 'accepted' && inv.status !== 'revoked' && <Button size="sm" variant="destructive" onClick={() => revokeInvitation(inv.id)}>Revoke</Button>}
                           </>
