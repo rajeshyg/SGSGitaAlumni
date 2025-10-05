@@ -183,11 +183,15 @@ erDiagram
         timestamp last_resent_at
         timestamp created_at
         timestamp updated_at
+        json token_payload "HMAC token payload"
+        varchar token_signature "HMAC-SHA256 signature"
+        varchar token_format "legacy,hmac"
         INDEX idx_invitation_token (invitation_token)
         INDEX idx_email (email)
         INDEX idx_status (status)
         INDEX idx_expires_at (expires_at)
         INDEX idx_invited_by (invited_by)
+        INDEX idx_token_signature (token_signature)
     }
 
     %% OTP Authentication System

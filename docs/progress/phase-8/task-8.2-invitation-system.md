@@ -1,12 +1,13 @@
-# Task 8.2: Invitation System Implementation
+# Task 8.2: Invitation System Security Enhancement
 
-**Status:** 🟡 Planned
+**Status:** 🔄 In Progress (Security Phase)
 **Priority:** High
-**Duration:** 1 week
+**Duration:** Extended to 3 weeks
 **Dependencies:** Task 8.1 (Age Verification)
+**New Focus:** Passwordless authentication with enhanced security measures
 
 ## Overview
-Implement comprehensive invitation-based registration system with email verification, OTP authentication, and family member invitation management based on meeting requirements.
+Implement comprehensive invitation-based registration system with enhanced security measures, passwordless authentication, email verification, OTP authentication, and family member invitation management. This security enhancement focuses on passwordless authentication model with HMAC-signed tokens, server-side rate limiting, and database encryption for sensitive data, following industry best practices and compliance requirements.
 
 ## Requirements Analysis
 
@@ -17,11 +18,23 @@ Implement comprehensive invitation-based registration system with email verifica
 - **Parent Email Invitations:** For families with multiple children
 - **Profile Selection:** Parents can choose profile when multiple children graduated
 
+#### Passwordless Authentication Flow
+- **Step 1:** Invitation links (HMAC-signed for security)
+- **Step 2:** Terms acceptance and age verification
+- **Step 3:** OTP verification (email-based, with TOTP authenticator support)
+- **Step 4:** Secure access without password requirements
+
 ### Technical Requirements
 - **Token-Based Security:** Secure invitation tokens with expiration
 - **Email Integration:** Reliable email delivery system
 - **OTP Management:** Secure one-time password generation and validation
 - **Family Linking:** Support for multiple children under one parent email
+
+#### Passwordless Security Model
+- **HMAC-SHA256 Tokens:** Cryptographically signed invitation tokens
+- **Server-Side Rate Limiting:** Redis-based protection against abuse
+- **Database Encryption:** AES-256-GCM for sensitive data fields
+- **Multi-Factor OTP:** TOTP authenticator and SMS OTP support
 
 ## Database Schema Implementation
 
@@ -282,6 +295,60 @@ interface EmailTemplate {
 - Suspicious activity detection
 - Account lockout policies
 
+## Security Enhancements
+
+### 1. HMAC-SHA256 Token Signing
+- Server-side secret key management for token signing
+- Migration from plain tokens to HMAC-signed tokens
+- Token format: `/invitation/[HMAC_TOKEN]`
+- Enhanced forgery protection
+
+### 2. Multi-Factor OTP Support
+- TOTP authenticator app integration (Google Authenticator, Authy)
+- SMS OTP preparation for AWS SES integration
+- Admin UI OTP display for local testing
+- Passwordless authentication flow integration
+
+### 3. Server-Side Rate Limiting
+- Redis-based rate limiting implementation
+- Progressive delays and lockouts for abuse prevention
+- Protection for OTP generation, invitations, and logins
+- Removal of client-side rate limiting implementations
+
+### 4. Database Encryption
+- AES-256-GCM encryption for sensitive database columns
+- AWS KMS key management integration
+- Data migration strategy for existing data
+- Encrypted fields: tokens, OTP codes, IP addresses, audit logs
+
+## Local Testing Strategy
+
+### Admin UI Testing Features
+- Invitation URL display with copy-to-clipboard functionality
+- OTP code visibility in admin interface for testing
+- Complete passwordless flow testing without external services
+- Local development environment support
+
+### Testing Workflow
+- Admin creates invitation → URL displayed in UI
+- Tester clicks invitation link → Terms acceptance
+- OTP code shown in admin UI → Manual entry for testing
+- Full registration flow validation locally
+
+## Code Cleanup and Migration
+
+### Existing Implementation Audit
+- Identify current token generation functions
+- Catalog client-side rate limiting code
+- Review OTP service implementations
+- Document database schema encryption requirements
+
+### Migration Strategy
+- Phased implementation to minimize disruption
+- Backward compatibility during transition
+- Data migration scripts for encryption
+- Systematic removal of redundant implementations
+
 ## Testing Strategy
 
 ### 1. Unit Tests
@@ -311,11 +378,19 @@ interface EmailTemplate {
 - [ ] **OTP System:** Functional OTP generation and validation
 - [ ] **Family Support:** Multi-child invitation and registration support
 
+### Authentication Requirements
+- [ ] **Passwordless Flow:** Complete invitation → OTP → access without passwords
+- [ ] **HMAC Token Security:** All tokens cryptographically signed and verified
+- [ ] **Multi-Factor OTP:** TOTP authenticator support with SMS fallback
+- [ ] **Server Rate Limiting:** Redis-based protection against brute force attacks
+- [ ] **Database Encryption:** AES-256-GCM encryption for sensitive data
+
 ### Security Requirements
 - [ ] **Token Security:** Cryptographically secure token generation
 - [ ] **Rate Limiting:** Effective anti-abuse measures
 - [ ] **Data Protection:** Secure handling of invitation and OTP data
 - [ ] **Audit Trail:** Complete logging of invitation activities
+- [ ] **Encryption Compliance:** GDPR-compliant data encryption and key management
 
 ### User Experience
 - [ ] **Email Templates:** Professional, branded email communications
@@ -325,11 +400,23 @@ interface EmailTemplate {
 
 ## Implementation Timeline
 
-### Week 1: Core Development
-- **Days 1-2:** Database schema and core services
-- **Days 3-4:** Email integration and templates
-- **Days 5-6:** User interface components
-- **Day 7:** Testing and validation
+### Week 1: Security Foundation + Cleanup
+- **Days 1-2:** HMAC token implementation and migration
+- **Days 3-4:** Server-side rate limiting setup
+- **Days 5-6:** Database encryption and data migration
+- **Day 7:** Code cleanup and security audit
+
+### Week 2: Passwordless Authentication + Migration
+- **Days 1-2:** Multi-factor OTP implementation
+- **Days 3-4:** Admin UI testing features
+- **Days 5-6:** Passwordless flow integration
+- **Day 7:** Migration testing and validation
+
+### Week 3: Core Features + Final Cleanup
+- **Days 1-2:** Family invitation enhancements
+- **Days 3-4:** Email template updates
+- **Days 5-6:** End-to-end testing
+- **Day 7:** Documentation and handover
 
 ## Risk Mitigation
 
@@ -350,11 +437,17 @@ interface EmailTemplate {
 
 ## Next Steps
 
-1. **Email Service Setup:** Configure reliable email delivery
-2. **Database Implementation:** Create invitation and OTP tables
-3. **Service Development:** Build core invitation and OTP services
-4. **UI Development:** Create registration flow components
-5. **Testing:** Comprehensive testing of all workflows
+1. **Security Foundation:** Implement HMAC token signing and server-side rate limiting
+2. **Database Encryption:** Set up AES-256-GCM encryption for sensitive fields
+3. **Code Cleanup:** Audit and remove redundant client-side implementations
+4. **Multi-Factor OTP:** Add TOTP authenticator support and SMS preparation
+5. **Admin UI Testing:** Build local testing features for invitation URLs and OTP codes
+6. **Migration Strategy:** Plan and execute data migration for encryption
+7. **Email Service Setup:** Configure reliable email delivery with security enhancements
+8. **Database Implementation:** Create invitation and OTP tables with encryption
+9. **Service Development:** Build core invitation and OTP services with security measures
+10. **UI Development:** Create registration flow components with passwordless authentication
+11. **Testing:** Comprehensive security testing and validation of all workflows
 
 ---
 

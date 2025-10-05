@@ -25,17 +25,23 @@ CREATE TABLE USER_INVITATIONS (
     last_resent_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
+
+    -- HMAC Token Security Fields (Phase 8.2.1)
+    token_payload JSON, -- HMAC token payload for validation
+    token_signature VARCHAR(64), -- HMAC-SHA256 signature
+    token_format VARCHAR(20) DEFAULT 'legacy', -- 'legacy' or 'hmac'
+
     -- Foreign key constraints
     FOREIGN KEY (invited_by) REFERENCES USERS(id) ON DELETE CASCADE,
     FOREIGN KEY (accepted_by) REFERENCES USERS(id) ON DELETE SET NULL,
-    
+
     -- Indexes for performance
     INDEX idx_invitation_token (invitation_token),
     INDEX idx_email (email),
     INDEX idx_status (status),
     INDEX idx_expires_at (expires_at),
-    INDEX idx_invited_by (invited_by)
+    INDEX idx_invited_by (invited_by),
+    INDEX idx_token_signature (token_signature)
 );
 
 -- ============================================================================
