@@ -36,6 +36,17 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
+# Check integration patterns
+echo "🔗 Checking integration patterns..."
+npm run check-integration
+
+# If integration check fails, exit
+if [ $? -ne 0 ]; then
+  echo "❌ Integration pattern violations detected. Commit blocked."
+  echo "Please fix integration pattern issues and try again."
+  exit 1
+fi
+
 # Run tests
 # Temporarily disabled due to test failures - will re-enable after deployment validation
 # echo "🧪 Running tests..."

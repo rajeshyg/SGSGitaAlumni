@@ -39,6 +39,9 @@ jobs:
       - name: Check code redundancy
         run: npm run check-redundancy
 
+      - name: Check integration patterns
+        run: npm run check-integration
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v3
         with:

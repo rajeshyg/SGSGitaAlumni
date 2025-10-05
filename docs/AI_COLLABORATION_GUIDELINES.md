@@ -53,6 +53,123 @@ export function MyComponent({ onClick, disabled, children }: ComponentProps) {
   )
 }
 ```
+## 🔄 Integration Logic Patterns
+
+Follow the [Integration Patterns](standards/INTEGRATION_PATTERNS.md) standards for all data operations and API integrations.
+
+### State Synchronization
+- **Always validate server state before UI actions** to ensure data consistency
+- Implement backend-first architecture for reliable state management
+- Use optimistic updates with automatic rollback on failure
+
+### Conflict Prevention
+- **Implement guards against duplicate operations** using `useOperationGuard` hook
+- Prevent concurrent modifications to the same resource
+- Provide clear user feedback for conflicting actions
+
+### Error Recovery
+- **Provide clear recovery paths for all error scenarios**
+- Handle specific HTTP status codes (409 Conflict, 429 Rate Limited, etc.)
+- Implement exponential backoff and retry logic for transient failures
+
+### Loading States
+- **Show feedback for all async operations** with consistent loading indicators
+- Prevent user interactions during loading states
+- Use skeleton screens or progress bars for better UX
+
+### Optimistic Updates
+- **Update UI immediately for responsive user experience**
+- Rollback changes on failure with user notification
+- Maintain data integrity across the application
+
+---
+
+## 💻 Code Generation Standards
+
+### AI-Generated Integration Code Example
+
+```typescript
+// ✅ AI-Generated Integration Code using useDataOperation hook
+import { useDataOperation } from '@/hooks/useDataOperation';
+import { APIService } from '@/services/APIService';
+
+interface UserProfileData {
+  name: string;
+  email: string;
+}
+
+function UserProfileUpdater({ userId }: { userId: string }) {
+  const { execute, isLoading, error, resetError } = useDataOperation();
+
+  const handleUpdate = async (profileData: UserProfileData) => {
+    // State validation before API call
+    if (!profileData.name?.trim() || !profileData.email?.trim()) {
+      throw new Error('Name and email are required');
+    }
+
+    await execute(
+      () => APIService.updateUserProfile(userId, profileData),
+      {
+        operationId: `update-profile-${userId}`,
+        onSuccess: (result) => {
+          console.log('Profile updated successfully', result);
+          // Update local state or trigger refresh
+        },
+        onError: (err) => handleSpecificError(err)
+      }
+    );
+  };
+
+  // Proper error handling with specific HTTP status codes
+  const handleSpecificError = (error: any) => {
+    switch (error.status) {
+      case 409: // Conflict
+        alert('Profile was modified by another user. Please refresh and try again.');
+        break;
+      case 429: // Too Many Requests
+        alert('Too many requests. Please wait a moment before trying again.');
+        break;
+      case 422: // Validation Error
+        alert(`Validation error: ${error.response?.data?.message || 'Invalid data'}`);
+        break;
+      case 401: // Unauthorized
+        alert('Session expired. Please log in again.');
+        break;
+      case 403: // Forbidden
+        alert('You do not have permission to perform this action.');
+        break;
+      default:
+        alert('An error occurred. Please try again.');
+    }
+    resetError();
+  };
+
+  return (
+    <div>
+      {isLoading && <div className="loading">Updating profile...</div>}
+      {error && <div className="error">{error.message}</div>}
+      <button
+        onClick={() => handleUpdate({ name: 'John Doe', email: 'john@example.com' })}
+        disabled={isLoading}
+      >
+        {isLoading ? 'Updating...' : 'Update Profile'}
+      </button>
+    </div>
+  );
+}
+```
+
+This example demonstrates:
+- **Operation guards** to prevent duplicate execution using unique `operationId`
+- **State validation** before API calls to ensure data integrity
+- **Comprehensive error recovery patterns** with specific HTTP status code handling
+- **Loading states** with disabled buttons during operations
+- **Error boundaries** with user-friendly messages and recovery actions
+
+For complete integration patterns and hooks, see [Integration Patterns](standards/INTEGRATION_PATTERNS.md).
+
+---
+
 
 ## 🔍 Redundancy Prevention
 
@@ -238,6 +355,7 @@ For complete and authoritative metrics, see [Documentation Standards](DOCUMENTAT
 - [ ] Checked component registry
 - [ ] Reviewed file size limits
 - [ ] Assessed bundle impact
+- [ ] Integration patterns reviewed (see INTEGRATION_PATTERNS.md)
 
 ### During Implementation
 - [ ] Proper TypeScript types included
@@ -245,6 +363,11 @@ For complete and authoritative metrics, see [Documentation Standards](DOCUMENTAT
 - [ ] Tests written for new code
 - [ ] File size under 300 lines
 - [ ] Function size under 50 lines
+- [ ] State synchronization implemented
+- [ ] Operation guards used for async operations
+- [ ] Error recovery paths provided
+- [ ] Loading states implemented
+- [ ] Optimistic updates with rollback
 
 ### After Implementation
 - [ ] Quality pipeline passes
@@ -252,5 +375,6 @@ For complete and authoritative metrics, see [Documentation Standards](DOCUMENTAT
 - [ ] Documentation updated
 - [ ] Bundle size acceptable
 - [ ] Error scenarios tested
+- [ ] Integration patterns validated
 
 This comprehensive guide ensures AI assistants contribute effectively while maintaining the highest standards of code quality and project consistency.
