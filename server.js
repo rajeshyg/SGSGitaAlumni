@@ -7,6 +7,7 @@ import { getPool, testDatabaseConnection } from './utils/database.js';
 
 // Import middleware
 import { authenticateToken, setAuthMiddlewarePool } from './middleware/auth.js';
+import { loginRateLimit, invitationRateLimit, apiRateLimit, rateLimitStatus, clearRateLimit } from './middleware/rateLimit.js';
 
 // Import route modules
 import {
@@ -94,7 +95,7 @@ app.use(express.json());
 // AUTHENTICATION ROUTES
 // ============================================================================
 
-app.post('/api/auth/login', login);
+app.post('/api/auth/login', loginRateLimit, login);
 app.post('/api/auth/logout', authenticateToken, logout);
 app.post('/api/auth/refresh', refresh);
 app.post('/api/auth/register-from-invitation', registerFromInvitation);
@@ -106,11 +107,11 @@ app.post('/api/auth/register-from-family-invitation', registerFromFamilyInvitati
 
 app.get('/api/invitations', getAllInvitations);
 app.get('/api/invitations/family', getFamilyInvitations);
-app.post('/api/invitations/family', createFamilyInvitation);
+app.post('/api/invitations/family', invitationRateLimit, createFamilyInvitation);
 app.get('/api/invitations/family/validate/:token', validateFamilyInvitation);
 app.patch('/api/invitations/family/:id/accept-profile', acceptFamilyInvitationProfile);
-app.post('/api/invitations', createInvitation);
-app.post('/api/invitations/bulk', createBulkInvitations);
+app.post('/api/invitations', invitationRateLimit, createInvitation);
+app.post('/api/invitations/bulk', invitationRateLimit, createBulkInvitations);
 app.get('/api/invitations/validate/:token', validateInvitation);
 app.patch('/api/invitations/:id', updateInvitation);
 
@@ -154,6 +155,13 @@ app.get('/api/health', healthCheck);
 app.get('/api/test-connection', testConnection);
 app.get('/api/quality/code-metrics', getCodeMetrics);
 app.get('/api/quality/testing-metrics', getTestingMetrics);
+
+// ============================================================================
+// RATE LIMITING MONITORING ROUTES (ADMIN)
+// ============================================================================
+
+app.get('/api/admin/rate-limits/status', authenticateToken, rateLimitStatus);
+app.delete('/api/admin/rate-limits', authenticateToken, clearRateLimit);
 
 // ============================================================================
 // DASHBOARD ROUTES (NOT IMPLEMENTED)
