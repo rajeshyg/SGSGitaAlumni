@@ -2856,27 +2856,45 @@ app.get('/api/conversations/recent', async (req, res) => {
     const mockConversations = [
       {
         id: 'conv-1',
-        participants: ['John Doe', 'Jane Smith'],
-        lastMessage: 'Thanks for the update!',
-        lastMessageTime: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+        participants: [
+          { firstName: 'John', lastName: 'Doe' },
+          { firstName: 'Jane', lastName: 'Smith' }
+        ],
+        lastMessage: {
+          content: 'Thanks for the update!',
+          sender: { firstName: 'Jane', lastName: 'Smith' },
+          timestamp: new Date(Date.now() - 1000 * 60 * 30)
+        },
         unreadCount: 2,
-        avatar: '/api/placeholder/32/32'
+        isOnline: true
       },
       {
         id: 'conv-2',
-        participants: ['John Doe', 'Mike Johnson'],
-        lastMessage: 'Looking forward to the event',
-        lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+        participants: [
+          { firstName: 'John', lastName: 'Doe' },
+          { firstName: 'Mike', lastName: 'Johnson' }
+        ],
+        lastMessage: {
+          content: 'Looking forward to the event',
+          sender: { firstName: 'Mike', lastName: 'Johnson' },
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2)
+        },
         unreadCount: 0,
-        avatar: '/api/placeholder/32/32'
+        isOnline: false
       },
       {
         id: 'conv-3',
-        participants: ['John Doe', 'Sarah Wilson'],
-        lastMessage: 'How is the new project going?',
-        lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+        participants: [
+          { firstName: 'John', lastName: 'Doe' },
+          { firstName: 'Sarah', lastName: 'Wilson' }
+        ],
+        lastMessage: {
+          content: 'How is the new project going?',
+          sender: { firstName: 'Sarah', lastName: 'Wilson' },
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24)
+        },
         unreadCount: 1,
-        avatar: '/api/placeholder/32/32'
+        isOnline: true
       }
     ].slice(0, parseInt(limit));
 
@@ -2898,8 +2916,8 @@ app.get('/api/posts/personalized', async (req, res) => {
         id: 'post-1',
         title: 'Alumni Networking Event - Fall 2025',
         content: 'Join us for our annual alumni networking event featuring keynote speakers from top tech companies.',
-        author: 'Alumni Association',
-        publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
+        author: { firstName: 'Alumni', lastName: 'Association' },
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 6), // 6 hours ago
         tags: ['networking', 'event', 'career'],
         relevanceScore: 0.95,
         type: 'event'
@@ -2908,8 +2926,8 @@ app.get('/api/posts/personalized', async (req, res) => {
         id: 'post-2',
         title: 'Mentorship Program Applications Open',
         content: 'The new mentorship program is now accepting applications for both mentors and mentees.',
-        author: 'Career Services',
-        publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 12), // 12 hours ago
+        author: { firstName: 'Career', lastName: 'Services' },
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 12), // 12 hours ago
         tags: ['mentorship', 'career', 'program'],
         relevanceScore: 0.88,
         type: 'announcement'
@@ -2918,8 +2936,8 @@ app.get('/api/posts/personalized', async (req, res) => {
         id: 'post-3',
         title: 'Tech Industry Job Opportunities',
         content: 'Latest job postings from our alumni network partners.',
-        author: 'Job Board',
-        publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+        author: { firstName: 'Job', lastName: 'Board' },
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
         tags: ['jobs', 'technology', 'opportunities'],
         relevanceScore: 0.82,
         type: 'job'
@@ -2928,8 +2946,8 @@ app.get('/api/posts/personalized', async (req, res) => {
         id: 'post-4',
         title: 'Class of 2020 Reunion Planning',
         content: 'Help us plan the upcoming reunion event. Share your ideas!',
-        author: 'Class Rep',
-        publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 36), // 1.5 days ago
+        author: { firstName: 'Class', lastName: 'Rep' },
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 36), // 1.5 days ago
         tags: ['reunion', 'class-of-2020', 'planning'],
         relevanceScore: 0.75,
         type: 'discussion'
@@ -2956,7 +2974,7 @@ app.get('/api/notifications', async (req, res) => {
         title: 'New Message',
         message: 'You have a new message from Jane Smith',
         isRead: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
+        timestamp: new Date(Date.now() - 1000 * 60 * 15), // 15 minutes ago
         actionUrl: '/messages/conv-1'
       },
       {
@@ -2965,7 +2983,7 @@ app.get('/api/notifications', async (req, res) => {
         title: 'New Connection',
         message: 'Mike Johnson accepted your connection request',
         isRead: false,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+        timestamp: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
         actionUrl: '/profile/mike-johnson'
       },
       {
@@ -2974,7 +2992,7 @@ app.get('/api/notifications', async (req, res) => {
         title: 'Event Reminder',
         message: 'Alumni Networking Event starts in 2 hours',
         isRead: true,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4), // 4 hours ago
         actionUrl: '/events/networking-2025'
       },
       {
@@ -2983,7 +3001,7 @@ app.get('/api/notifications', async (req, res) => {
         title: 'Job Match Found',
         message: 'A new job posting matches your profile',
         isRead: true,
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
         actionUrl: '/jobs/software-engineer-123'
       }
     ].slice(0, parseInt(limit));

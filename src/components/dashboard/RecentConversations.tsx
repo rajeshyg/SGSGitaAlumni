@@ -43,9 +43,8 @@ export const RecentConversations: React.FC<RecentConversationsProps> = ({ conver
             >
               {/* Avatar */}
               <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
-                <AvatarImage src={conversation.avatar} />
                 <AvatarFallback className="text-xs sm:text-sm">
-                  {conversation.participants[0]?.charAt(0) || 'U'}
+                  {conversation.participants[0]?.firstName?.charAt(0) || 'U'}
                 </AvatarFallback>
               </Avatar>
 
@@ -53,7 +52,7 @@ export const RecentConversations: React.FC<RecentConversationsProps> = ({ conver
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <h4 className="font-medium text-gray-900 truncate text-sm sm:text-base">
-                    {conversation.participants.join(', ')}
+                    {conversation.participants.map(p => `${p.firstName} ${p.lastName}`).join(', ')}
                   </h4>
                   <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
                     {conversation.unreadCount > 0 && (
@@ -65,11 +64,11 @@ export const RecentConversations: React.FC<RecentConversationsProps> = ({ conver
                 </div>
 
                 <p className="text-xs sm:text-sm text-gray-600 truncate mt-1">
-                  {conversation.lastMessage}
+                  {conversation.lastMessage.content}
                 </p>
 
                 <p className="text-xs text-gray-500 mt-1">
-                  {new Date(conversation.lastMessageTime).toLocaleDateString()}
+                  {new Date(conversation.lastMessage.timestamp).toLocaleDateString()}
                 </p>
               </div>
             </div>
