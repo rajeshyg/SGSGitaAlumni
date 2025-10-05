@@ -5,6 +5,8 @@
 
 export * from './analytics';
 export * from './performance';
+export * from './alerting';
+export * from './server';
 
 /**
  * Initialize monitoring services

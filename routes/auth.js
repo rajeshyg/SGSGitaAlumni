@@ -2,6 +2,7 @@ import mysql from 'mysql2/promise';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { hmacTokenService } from '../src/lib/security/HMACTokenService.js';
+import { serverMonitoring } from '../src/lib/monitoring/server.js';
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
@@ -97,6 +98,12 @@ export const login = async (req, res) => {
 
     if (rows.length === 0) {
       connection.release();
+      // Log failed login attempt
+      serverMonitoring.logFailedLogin(
+        req.ip || req.connection.remoteAddress || 'unknown',
+        email,
+        { reason: 'user_not_found' }
+      );
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -106,6 +113,12 @@ export const login = async (req, res) => {
     // Check if user is active
     if (!user.is_active) {
       connection.release();
+      // Log failed login attempt
+      serverMonitoring.logFailedLogin(
+        req.ip || req.connection.remoteAddress || 'unknown',
+        email,
+        { reason: 'account_disabled', userId: user.id }
+      );
       return res.status(401).json({ error: 'Account is disabled' });
     }
 
@@ -115,6 +128,12 @@ export const login = async (req, res) => {
     console.log(`🔐 Password valid: ${isValidPassword}`);
     if (!isValidPassword) {
       connection.release();
+      // Log failed login attempt
+      serverMonitoring.logFailedLogin(
+        req.ip || req.connection.remoteAddress || 'unknown',
+        email,
+        { reason: 'invalid_password', userId: user.id }
+      );
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 

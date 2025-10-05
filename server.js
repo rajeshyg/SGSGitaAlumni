@@ -12,6 +12,7 @@ import { getPool, testDatabaseConnection } from './utils/database.js';
 // Import middleware
 import { authenticateToken, setAuthMiddlewarePool } from './middleware/auth.js';
 import { loginRateLimit, invitationRateLimit, apiRateLimit, rateLimitStatus, clearRateLimit } from './middleware/rateLimit.js';
+import { monitoringMiddleware } from './middleware/monitoring.js';
 
 // Import route modules
 import {
@@ -87,6 +88,18 @@ import {
   setOTPPool
 } from './routes/otp.js';
 
+import {
+  getMonitoringMetrics,
+  getSecurityEvents,
+  getSystemHealth,
+  getAlertStatus,
+  getDatabaseStatus,
+  getPerformanceMetrics,
+  getRateLimitStatus,
+  clearMonitoringData,
+  setMonitoringPool
+} from './routes/monitoring.js';
+
 // Environment variables already loaded at top of file
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -104,10 +117,14 @@ setAnalyticsPool(pool);
 setQualityPool(pool);
 setHealthPool(pool);
 setOTPPool(pool);
+setMonitoringPool(pool);
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Monitoring middleware (must be early in the stack)
+app.use(monitoringMiddleware);
 
 // ============================================================================
 // AUTHENTICATION ROUTES
@@ -180,6 +197,19 @@ app.get('/api/quality/testing-metrics', getTestingMetrics);
 
 app.get('/api/admin/rate-limits/status', authenticateToken, rateLimitStatus);
 app.delete('/api/admin/rate-limits', authenticateToken, clearRateLimit);
+
+// ============================================================================
+// MONITORING ROUTES (ADMIN)
+// ============================================================================
+
+app.get('/api/monitoring/metrics', authenticateToken, getMonitoringMetrics);
+app.get('/api/monitoring/security-events', authenticateToken, getSecurityEvents);
+app.get('/api/monitoring/system-health', authenticateToken, getSystemHealth);
+app.get('/api/monitoring/alerts', authenticateToken, getAlertStatus);
+app.get('/api/monitoring/database', authenticateToken, getDatabaseStatus);
+app.get('/api/monitoring/performance', authenticateToken, getPerformanceMetrics);
+app.get('/api/monitoring/rate-limits', authenticateToken, getRateLimitStatus);
+app.delete('/api/monitoring/data', authenticateToken, clearMonitoringData);
 
 // ============================================================================
 // DASHBOARD ROUTES (NOT IMPLEMENTED)

@@ -4,6 +4,7 @@
 // Enterprise-grade rate limiting with Redis backend for abuse prevention
 
 import { createClient, RedisClientType } from 'redis';
+import { serverMonitoring } from '../monitoring/server.js';
 
 export interface RateLimitPolicy {
   windowMs: number; // Time window in milliseconds
@@ -98,6 +99,13 @@ export class RedisRateLimiter {
       const count = currentCount ? parseInt(currentCount) : 0;
 
       if (count >= policy.maxRequests) {
+        // Log rate limit violation
+        serverMonitoring.logRateLimitViolation(key, 'rate_limit_check', {
+          policy: policy,
+          currentCount: count,
+          maxRequests: policy.maxRequests
+        });
+
         // Exceeded limit, apply block if configured
         if (policy.blockDurationMs) {
           await this.redisClient.setEx(
