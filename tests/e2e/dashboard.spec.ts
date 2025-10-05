@@ -17,7 +17,7 @@ test.describe('Member Dashboard', () => {
     await page.goto('/login');
     await page.fill('input[name="email"]', testUsers[0].email);
     await page.fill('input[name="password"]', testUsers[0].password);
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Wait for redirect to dashboard
     await page.waitForURL('/dashboard');
@@ -137,7 +137,7 @@ test.describe('Admin Dashboard', () => {
     await page.goto('/login');
     await page.fill('input[name="email"]', testUsers[2].email); // Admin user
     await page.fill('input[name="password"]', testUsers[2].password);
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Wait for redirect to admin dashboard
     await page.waitForURL('/admin');

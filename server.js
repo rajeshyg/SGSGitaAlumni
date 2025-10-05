@@ -1331,6 +1331,7 @@ app.post('/api/otp/generate', async (req, res) => {
 
 // User login
 app.post('/api/auth/login', async (req, res) => {
+  console.log('🔐 Login attempt received for email:', req.body?.email);
   try {
     const { email, password } = req.body;
 

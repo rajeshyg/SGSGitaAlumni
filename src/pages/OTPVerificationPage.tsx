@@ -289,7 +289,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
-          <CardTitle>Verify Your Identity</CardTitle>
+          <CardTitle>Verify OTP</CardTitle>
           <CardDescription>
             Enter the 6-digit code sent to {email}
           </CardDescription>

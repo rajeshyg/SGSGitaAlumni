@@ -307,7 +307,7 @@ async function updateUserProfile(userId: string, profileData: any) {
 - **Type Safety**: All integration code must pass TypeScript compilation
 - **API Contract Validation**: Request/response schemas must match API specifications
 - **Error Handling Coverage**: All error paths must be handled appropriately
-- **Performance Budget**: Integration operations must meet [performance targets](../PERFORMANCE_TARGETS.md#api-performance)
+- **Performance Budget**: Integration operations must meet performance targets (see PERFORMANCE_TARGETS.md)
 
 ### Automated Testing Requirements
 - **Unit Test Coverage**: > 80% for all integration service methods
@@ -316,8 +316,8 @@ async function updateUserProfile(userId: string, profileData: any) {
 - **Load Testing**: API endpoints must handle expected concurrent users
 
 ### Code Quality Standards
-- **Function Size Limits**: Integration functions must not exceed [50 lines](../QUALITY_METRICS.md#function-size-limits)
-- **Complexity Score**: Cyclomatic complexity must be < [10](../QUALITY_METRICS.md#complexity-scores)
+- **Function Size Limits**: Integration functions must not exceed 50 lines (see QUALITY_METRICS.md)
+- **Complexity Score**: Cyclomatic complexity must be < 10 (see QUALITY_METRICS.md)
 - **Error Handling**: All integration points must have comprehensive error handling
 - **Logging Standards**: Appropriate logging for debugging and monitoring
 
@@ -330,9 +330,9 @@ async function updateUserProfile(userId: string, profileData: any) {
 ## 🔗 Integration with Existing Standards
 
 ### Quality Standards Compliance
-→ **See [Quality Metrics](../QUALITY_METRICS.md)** for code quality requirements
-→ **See [Performance Targets](../PERFORMANCE_TARGETS.md)** for API performance standards
-→ **See [Security Requirements](../SECURITY_REQUIREMENTS.md)** for API security patterns
+→ **See Quality Metrics (QUALITY_METRICS.md)** for code quality requirements
+→ **See Performance Targets (PERFORMANCE_TARGETS.md)** for API performance standards
+→ **See Security Requirements (SECURITY_REQUIREMENTS.md)** for API security patterns
 
 ### Development Guidelines
 → **See [Development Guidelines](../DEVELOPMENT_GUIDELINES.md)** for coding standards

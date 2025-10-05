@@ -1,4 +1,4 @@
-import { config } from '@/config/environments'
+import { config } from '../../config/environments'
 
 export interface PerformanceMetric {
   name: string

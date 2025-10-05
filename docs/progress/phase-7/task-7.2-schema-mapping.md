@@ -550,8 +550,8 @@ SKILLS ──── (many) ALUMNI_SKILLS ──── (many) ALUMNI_PROFILES
 ## 🔗 RELATED DOCUMENTS
 
 - **Implementation Strategy:** [task-7.2-schema-mapping-implementation.md](./task-7.2-schema-mapping-implementation.md)
-- **Database Schema:** [Database Schema Diagrams](../../phase-2/database-schema.md)
-- **API Documentation:** [API Specification](../../phase-3/api-specification.md)
+- **Database Schema:** Database schema documentation (available in database schema files)
+- **API Documentation:** API specification documentation (available in API docs)
 
 ---
 

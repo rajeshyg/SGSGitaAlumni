@@ -25,7 +25,8 @@ export function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/admin';
+      const from = location.state?.from?.pathname || '/dashboard';
+      console.log('LoginPage: Redirecting authenticated user to:', from);
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, location]);
@@ -130,7 +131,7 @@ export function LoginPage() {
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Welcome Back
+            Sign In
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Sign in to your SGSGita Alumni account
@@ -139,7 +140,7 @@ export function LoginPage() {
 
         {/* Login Form */}
         <Card className="p-6 space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {/* Global Error Message */}
             {error && (
               <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-md text-sm">
@@ -191,7 +192,7 @@ export function LoginPage() {
 
             {/* Submit Button */}
             <Button
-              type="submit"
+              onClick={handleSubmit}
               className="w-full"
               disabled={isSubmitting}
             >

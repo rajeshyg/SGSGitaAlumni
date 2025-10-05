@@ -336,8 +336,8 @@ npm run test:edge
 ### Documentation
 - [Manual Testing Guide](./MANUAL_TESTING_GUIDE.md)
 - [Testing Strategy](./TESTING_STRATEGY.md)
-- [API Testing Guide](./API_TESTING_GUIDE.md)
-- [Performance Testing Guide](./PERFORMANCE_TESTING_GUIDE.md)
+- API Testing Guide (available in testing documentation)
+- Performance Testing Guide (available in testing documentation)
 
 ### External Resources
 - [Playwright Documentation](https://playwright.dev/)

@@ -538,7 +538,7 @@ export const APIService = {
     try {
       logger.info('Fetching current authenticated user information');
 
-      const response = await apiClient.get('/api/users/me');
+      const response = await apiClient.get('/api/users/profile');
 
       logger.info('Current user information retrieved');
       return response as User;

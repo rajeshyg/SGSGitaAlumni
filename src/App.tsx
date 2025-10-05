@@ -148,6 +148,11 @@ function App() {
                   <InvitationAcceptancePage />
                 </PublicRoute>
               } />
+              <Route path="/invitation/accept/:token" element={
+                <PublicRoute>
+                  <FamilyProfileSelectionPage />
+                </PublicRoute>
+              } />
               <Route path="/verify-otp/:email?" element={
                 <PublicRoute>
                   <OTPVerificationPage />
@@ -160,7 +165,7 @@ function App() {
               } />
 
               {/* Protected main routes */}
-              <Route path="/" element={<Navigate to="/admin" replace />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/home" element={
                 <ProtectedRoute>
                   <HomePage />

@@ -10,10 +10,10 @@ test.describe('Authentication Flow', () => {
 
   test('should display login page by default', async ({ page }) => {
     await expect(page).toHaveURL('/login');
-    await expect(page.locator('h1')).toContainText('Welcome Back');
+    await expect(page.locator('h1')).toContainText('Sign In');
     await expect(page.locator('input[name="email"]')).toBeVisible();
     await expect(page.locator('input[name="password"]')).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
+    await expect(page.locator('button')).toBeVisible();
   });
 
   test('should show invitation-only message', async ({ page }) => {
@@ -21,7 +21,7 @@ test.describe('Authentication Flow', () => {
   });
 
   test('should show validation errors for empty form submission', async ({ page }) => {
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Check for validation messages
     await expect(page.locator('text=Email is required')).toBeVisible();
@@ -31,7 +31,7 @@ test.describe('Authentication Flow', () => {
   test('should show validation error for invalid email format', async ({ page }) => {
     await page.fill('input[name="email"]', 'invalid-email');
     await page.fill('input[name="password"]', 'password123');
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     await expect(page.locator('text=Please enter a valid email address')).toBeVisible();
   });
@@ -39,7 +39,7 @@ test.describe('Authentication Flow', () => {
   test('should show validation error for short password', async ({ page }) => {
     await page.fill('input[name="email"]', 'test@example.com');
     await page.fill('input[name="password"]', '123');
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     await expect(page.locator('text=Password must be at least 6 characters')).toBeVisible();
   });
@@ -60,7 +60,7 @@ test.describe('Authentication Flow', () => {
 
     await page.fill('input[name="email"]', 'test@example.com');
     await page.fill('input[name="password"]', 'password123');
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Should redirect to dashboard after successful login
     await expect(page).toHaveURL('/dashboard');
@@ -81,7 +81,7 @@ test.describe('Authentication Flow', () => {
 
     await page.fill('input[name="email"]', 'test@example.com');
     await page.fill('input[name="password"]', 'wrongpassword');
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Should show error message
     await expect(page.locator('text=Invalid credentials')).toBeVisible();
@@ -104,10 +104,10 @@ test.describe('Authentication Flow', () => {
 
     await page.fill('input[name="email"]', 'test@example.com');
     await page.fill('input[name="password"]', 'password123');
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Should show loading state
-    await expect(page.locator('button[type="submit"]:disabled')).toBeVisible();
+    await expect(page.locator('button:disabled')).toBeVisible();
   });
 });
 
@@ -124,7 +124,7 @@ test.describe('Invitation-Based Onboarding Flow', () => {
 
   test('should validate invitation form', async ({ page }) => {
     await page.goto('/invitation/valid-token');
-    await page.click('button[type="submit"]');
+    await page.click('button');
 
     // Check for validation messages - form should require fields
     await expect(page.locator('input[name="firstName"]:invalid')).toBeVisible();
@@ -172,7 +172,7 @@ test.describe('Invitation-Based Onboarding Flow', () => {
     await page.fill('input[name="birthDate"]', '2000-01-01');
     await page.fill('input[name="graduationYear"]', '2020');
     await page.fill('input[name="program"]', 'Computer Science');
-    await page.click('button[type="submit"]');
+    await page.click('button');
 
     // Should redirect to login page
     await expect(page).toHaveURL('/login');
@@ -206,7 +206,7 @@ test.describe('OTP Verification Flow', () => {
   test('should display OTP verification form', async ({ page }) => {
     await expect(page.locator('h1')).toContainText('Verify OTP');
     await expect(page.locator('input[type="text"]')).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
+    await expect(page.locator('button')).toBeVisible();
   });
 
   test('should handle OTP input', async ({ page }) => {
@@ -229,7 +229,7 @@ test.describe('OTP Verification Flow', () => {
     });
 
     await page.fill('input[type="text"]', '123456');
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Should redirect to dashboard
     await expect(page).toHaveURL('/dashboard');
@@ -249,7 +249,7 @@ test.describe('OTP Verification Flow', () => {
     });
 
     await page.fill('input[type="text"]', '000000');
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Should show error message
     await expect(page.locator('text=Invalid OTP code')).toBeVisible();

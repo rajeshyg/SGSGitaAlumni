@@ -107,49 +107,49 @@ npm run test:desktop           # Desktop compatibility
 - **Description:** Personalized dashboard with real data integration
 - **Prototype Reference:** member-dashboard.tsx
 
-#### [Task 7.5: Alumni Directory](./task-7.5-alumni-directory.md)
+#### Task 7.5: Alumni Directory
 - **Status:** 🟡 Planned
 - **Description:** Searchable directory with profile cards
 - **Prototype Reference:** alumni-directory.tsx
 
-#### [Task 7.6: Profile Management](./task-7.6-profile-management.md)
+#### Task 7.6: Profile Management
 - **Status:** 🟡 Planned
 - **Description:** Profile viewing and editing functionality
 - **Prototype Reference:** Profile screens
 
-#### [Task 7.7: Basic Postings](./task-7.7-basic-postings.md)
+#### Task 7.7: Basic Postings
 - **Status:** 🟡 Planned
 - **Description:** Job postings and opportunities system
 - **Prototype Reference:** create-posting.tsx and posting lists
 
 ### Phase 7C: Advanced Features
 
-#### [Task 7.8: Messaging System](./task-7.8-messaging-system.md)
+#### Task 7.8: Messaging System
 - **Status:** 🟡 Planned
 - **Description:** Real-time chat and conversation management
 - **Prototype Reference:** chat.tsx
 
-#### [Task 7.9: Moderation Tools](./task-7.9-moderation-tools.md)
+#### Task 7.9: Moderation Tools
 - **Status:** 🟡 Planned
 - **Description:** Content moderation and admin functionality
 - **Prototype Reference:** Moderation screens
 
-#### [Task 7.10: Analytics Dashboard](./task-7.10-analytics-dashboard.md)
+#### Task 7.10: Analytics Dashboard
 - **Status:** 🟡 Planned
 - **Description:** Usage analytics and reporting
 - **Prototype Reference:** Analytics screens
 
 ### Phase 7D: Optimization & Deployment
 
-#### [Task 7.11: Mobile Optimization](./task-7.11-mobile-optimization.md)
+#### Task 7.11: Mobile Optimization
 - **Status:** 🟡 Planned
 - **Description:** Ensure 100% mobile compatibility and touch optimization
 
-#### [Task 7.12: Cross-Platform Testing](./task-7.12-cross-platform-testing.md)
+#### Task 7.12: Cross-Platform Testing
 - **Status:** 🟡 Planned
 - **Description:** Comprehensive testing across all platforms
 
-#### [Task 7.13: Production Deployment](./task-7.13-production-deployment.md)
+#### Task 7.13: Production Deployment
 - **Status:** 🟡 Planned
 - **Description:** Final validation and production deployment
 

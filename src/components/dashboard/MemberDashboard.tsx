@@ -17,6 +17,7 @@ interface MemberDashboardProps {
 }
 
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
+  console.log('[MemberDashboard] Mounting with userId:', userId);
   const { data, loading, error, refetch } = useDashboardData(userId);
 
   if (loading) {

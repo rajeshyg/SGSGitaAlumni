@@ -25,7 +25,7 @@ test.describe('Cross-Browser Authentication', () => {
     await expect(page.locator('input[name="password"]')).toHaveValue(testUsers[0].password);
     
     // Submit form
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Should redirect to dashboard
     await expect(page).toHaveURL('/dashboard');
@@ -37,7 +37,7 @@ test.describe('Cross-Browser Authentication', () => {
     await page.goto('/login');
     
     // Test empty form submission
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Check validation messages
     await expect(page.locator('text=Email is required')).toBeVisible();
@@ -46,7 +46,7 @@ test.describe('Cross-Browser Authentication', () => {
     // Test invalid email format
     await page.fill('input[name="email"]', 'invalid-email');
     await page.fill('input[name="password"]', 'password123');
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     await expect(page.locator('text=Please enter a valid email address')).toBeVisible();
     
@@ -67,7 +67,7 @@ test.describe('Cross-Browser Authentication', () => {
     await expect(page.locator('input[type="text"]')).toHaveValue('123456');
     
     // Submit OTP
-    await page.click('button[type="submit"]');
+    await page.click('button');
     
     // Should redirect to dashboard
     await expect(page).toHaveURL('/dashboard');
@@ -84,7 +84,7 @@ test.describe('Cross-Browser Dashboard', () => {
     await page.goto('/login');
     await page.fill('input[name="email"]', testUsers[0].email);
     await page.fill('input[name="password"]', testUsers[0].password);
-    await page.click('button[type="submit"]');
+    await page.click('button');
     await page.waitForURL('/dashboard');
     
     // Check dashboard components

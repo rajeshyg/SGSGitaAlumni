@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { APIService, type User, type LoginCredentials, type RegisterData, type AuthResponse } from '../services/APIService';
 import { AuthErrorHandler, type AuthError } from '../lib/auth/errorHandling';
+import { apiClient } from '../lib/api';
 
 // ============================================================================
 // AUTHENTICATION CONTEXT TYPES
@@ -13,6 +14,18 @@ export interface AuthState {
   error: string | null;
   authError: AuthError | null;
 }
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+// Safely construct user display name with fallbacks
+const getUserDisplayName = (user: User): string => {
+  const firstName = user.firstName || '';
+  const lastName = user.lastName || '';
+  const fullName = `${firstName} ${lastName}`.trim();
+  return fullName || 'User'; // Fallback to 'User' if both names are empty
+};
 
 export interface AuthContextType extends AuthState {
   login: (credentials: LoginCredentials) => Promise<AuthResponse>;
@@ -40,6 +53,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  console.log('[AuthProvider] Initializing AuthProvider');
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
@@ -67,10 +81,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem('authToken', response.token);
       localStorage.setItem('refreshToken', response.refreshToken);
 
+      // Initialize API client with auth tokens
+      apiClient.initializeAuth(response.token, response.refreshToken);
+
       // Store user profile in localStorage for admin components
       const profile = {
         id: typeof response.user.id === 'string' ? parseInt(response.user.id) || 1 : response.user.id,
-        name: `${response.user.firstName} ${response.user.lastName}`,
+        name: getUserDisplayName(response.user),
         role: response.user.role,
         avatar: null,
         preferences: {
@@ -116,6 +133,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.setItem('authToken', response.token);
       localStorage.setItem('refreshToken', response.refreshToken);
 
+      // Initialize API client with auth tokens
+      apiClient.initializeAuth(response.token, response.refreshToken);
+
       setAuthState({
         user: response.user,
         isAuthenticated: true,
@@ -151,6 +171,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('currentProfile');
+
+      // Clear API client auth tokens
+      apiClient.clearAuth();
+
       setAuthState({
         user: null,
         isAuthenticated: false,
@@ -198,16 +222,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // ============================================================================
 
    useEffect(() => {
-     const checkAuth = async () => {
-       const token = localStorage.getItem('authToken');
-       if (token) {
-         try {
-           const user = await APIService.getCurrentUser();
+      const checkAuth = async () => {
+        console.log('[AuthContext] Starting auth check on mount');
+        const token = localStorage.getItem('authToken');
+        const storedRefreshToken = localStorage.getItem('refreshToken');
+
+        if (token) {
+          console.log('[AuthContext] Found stored token, initializing API client');
+          // Initialize API client with stored tokens
+          apiClient.initializeAuth(token, storedRefreshToken || undefined);
+          try {
+            console.log('[AuthContext] About to call APIService.getCurrentUser()');
+            const user = await APIService.getCurrentUser();
+            console.log('[AuthContext] APIService.getCurrentUser() returned:', user);
 
            // Store user profile in localStorage for admin components
            const profile = {
              id: typeof user.id === 'string' ? parseInt(user.id) || 1 : user.id,
-             name: `${user.firstName} ${user.lastName}`,
+             name: getUserDisplayName(user),
              role: user.role,
              avatar: null,
              preferences: {
@@ -222,6 +254,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
              console.log('[AuthContext] Restored auth, stored profile:', profile);
            }
 
+           console.log('[AuthContext] Auth check successful, setting authenticated state');
            setAuthState({
              user,
              isAuthenticated: true,
@@ -238,7 +271,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
              // Store user profile in localStorage for admin components
              const profile = {
                id: typeof user.id === 'string' ? parseInt(user.id) || 1 : user.id,
-               name: `${user.firstName} ${user.lastName}`,
+               name: getUserDisplayName(user),
                role: user.role,
                avatar: null,
                preferences: {
@@ -266,6 +299,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
            }
          }
        } else {
+         console.log('[AuthContext] No stored token found, setting unauthenticated state');
          setAuthState(prev => ({ ...prev, isLoading: false }));
        }
      };

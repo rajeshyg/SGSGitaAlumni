@@ -23,17 +23,21 @@ export function useDashboardData(userId?: string): UseDashboardDataReturn {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = async () => {
+    console.log('[useDashboardData] fetchDashboardData called with userId:', userId);
     if (!userId) {
+      console.log('[useDashboardData] No userId provided, setting error');
       setError('User ID is required');
       setLoading(false);
       return;
     }
 
     try {
+      console.log('[useDashboardData] Starting data fetch');
       setLoading(true);
       setError(null);
 
       // Fetch user data using authenticated endpoint
+      console.log('[useDashboardData] Fetching current user');
       const user = await APIService.getCurrentUser();
 
       // Fetch all dashboard data in parallel (using mock endpoints for now)

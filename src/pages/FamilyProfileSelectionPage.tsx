@@ -222,7 +222,7 @@ const SelectionStep: React.FC<{
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Select Family Members</CardTitle>
+        <CardTitle>Accept Invitation</CardTitle>
         <CardDescription>
           Choose which family members you'd like to create accounts for
         </CardDescription>
