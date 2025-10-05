@@ -20,6 +20,9 @@ import { apiClient } from '../lib/api';
 import { AgeVerificationService } from './AgeVerificationService';
 import { OTPService } from './OTPService';
 import { EmailService } from './EmailService';
+import { EncryptedField, setEncryptionService } from '../lib/encryption/EncryptedFieldDecorator';
+import { DatabaseEncryptionService } from '../lib/encryption/DatabaseEncryptionService';
+import { KMSKeyManager } from '../lib/encryption/KMSKeyManager';
 
 export class InvitationService implements InvitationServiceInterface {
   private ageVerificationService: AgeVerificationService;

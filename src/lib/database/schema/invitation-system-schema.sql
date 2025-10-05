@@ -270,3 +270,37 @@ INSERT IGNORE INTO ROLES (id, name, description, is_active)
 VALUES (UUID(), 'admin', 'System Administrator', TRUE);
 
 -- Note: Actual role assignment should be done through proper admin interface
+
+-- ============================================================================
+-- DATABASE ENCRYPTION COLUMNS (Phase 8.2.4)
+-- ============================================================================
+
+-- Add encrypted columns to USER_INVITATIONS
+ALTER TABLE USER_INVITATIONS
+ADD COLUMN invitation_token_encrypted JSONB,
+ADD COLUMN email_encrypted JSONB,
+ADD COLUMN ip_address_encrypted JSONB,
+ADD COLUMN invitation_data_encrypted JSONB;
+
+-- Add encrypted columns to OTP_TOKENS
+ALTER TABLE OTP_TOKENS
+ADD COLUMN otp_code_encrypted JSONB,
+ADD COLUMN ip_address_encrypted JSONB;
+
+-- Add encrypted columns to FAMILY_INVITATIONS
+ALTER TABLE FAMILY_INVITATIONS
+ADD COLUMN parent_email_encrypted JSONB,
+ADD COLUMN children_profiles_encrypted JSONB;
+
+-- Add encrypted columns to AGE_VERIFICATION (for parent email)
+ALTER TABLE AGE_VERIFICATION
+ADD COLUMN parent_email_encrypted JSONB;
+
+-- Add encrypted columns to PARENT_CONSENT_RECORDS
+ALTER TABLE PARENT_CONSENT_RECORDS
+ADD COLUMN parent_email_encrypted JSONB,
+ADD COLUMN consent_ip_address_encrypted JSONB;
+
+-- Add encrypted columns to INVITATION_AUDIT_LOG (for IP address)
+ALTER TABLE INVITATION_AUDIT_LOG
+ADD COLUMN ip_address_encrypted JSONB;
