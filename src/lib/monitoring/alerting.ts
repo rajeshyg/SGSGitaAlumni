@@ -61,6 +61,7 @@ export class AlertingService {
   private lastTriggered: Map<string, number> = new Map();
   private notificationService: NotificationService;
   private maxAlerts: number = 1000;
+  private previousStates: Map<string, any> = new Map();
 
   constructor(notificationService?: NotificationService) {
     this.notificationService = notificationService || new ConsoleNotificationService();
@@ -157,13 +158,40 @@ export class AlertingService {
         const lastTriggered = this.lastTriggered.get(rule.id) || 0;
         if (now - lastTriggered < rule.cooldownMs) continue;
 
-        if (rule.condition(metrics)) {
+        // For state-change based rules, check if state has changed
+        const previousState = this.previousStates.get(rule.id);
+        const currentState = this.getStateForRule(rule.id, metrics);
+
+        // Update previous state
+        this.previousStates.set(rule.id, currentState);
+
+        // Check if alert should trigger based on rule type
+        let shouldTrigger = false;
+
+        if (rule.id === 'redis-connection-failed') {
+          // Only alert if Redis was connected and now disconnected
+          shouldTrigger = previousState === true && currentState === false;
+        } else {
+          // Default behavior for other rules
+          shouldTrigger = rule.condition(metrics);
+        }
+
+        if (shouldTrigger) {
           await this.triggerAlert(rule, metrics);
           this.lastTriggered.set(rule.id, now);
         }
       } catch (error) {
         logger.error(`Error checking rule ${rule.id}:`, error);
       }
+    }
+  }
+
+  private getStateForRule(ruleId: string, metrics: any): any {
+    switch (ruleId) {
+      case 'redis-connection-failed':
+        return metrics.redisConnected;
+      default:
+        return null;
     }
   }
 
