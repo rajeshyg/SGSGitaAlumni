@@ -53,10 +53,12 @@ export class RedisRateLimiter {
     try {
       await this.redisClient.connect();
       this.connected = true;
+      serverMonitoring.updateRedisStatus(true);
       // Redis rate limiter connected
     } catch (error) {
       // Failed to connect to Redis for rate limiting
       this.connected = false;
+      serverMonitoring.updateRedisStatus(false);
     }
   }
 
