@@ -471,14 +471,14 @@ export const getUserProfile = async (req, res) => {
   }
 };
 
-// Get current user profile
+// Get current user profile (basic User object for AuthContext)
 export const getCurrentUserProfile = async (req, res) => {
   try {
     // Use database
     const connection = await pool.getConnection();
     const userId = req.user.id;
 
-    // Get complete user profile with alumni data
+    // Get basic user info (same format as login response)
     const query = `
       SELECT
         u.id,
@@ -486,33 +486,10 @@ export const getCurrentUserProfile = async (req, res) => {
         u.first_name,
         u.last_name,
         u.role,
-        u.status,
         u.is_active,
-        u.birth_date,
-        u.phone,
-        u.profile_image_url,
-        u.bio,
-        u.linkedin_url,
-        u.current_position,
-        u.company,
-        u.location,
-        u.email_verified,
-        u.email_verified_at,
-        u.last_login_at,
         u.created_at,
-        u.updated_at,
-        am.family_name,
-        am.father_name,
-        am.batch as graduation_year,
-        am.center_name as program,
-        am.result as alumni_position,
-        am.category as alumni_category,
-        am.phone as alumni_phone,
-        am.email as alumni_email,
-        am.student_id,
-        am.status as alumni_status
+        u.last_login_at
       FROM app_users u
-      LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
       WHERE u.id = ? AND u.is_active = true
     `;
 
@@ -525,49 +502,19 @@ export const getCurrentUserProfile = async (req, res) => {
 
     const row = rows[0];
 
-    // Build comprehensive user profile with proper fallbacks
-    const userProfile = {
+    // Return basic User object matching AuthContext expectations
+    const user = {
       id: row.id,
-      firstName: row.first_name || row.father_name || 'Unknown',
-      lastName: row.last_name || row.family_name || 'Unknown',
       email: row.email,
+      firstName: row.first_name || 'Unknown',
+      lastName: row.last_name || 'Unknown',
       role: row.role,
-      status: row.status,
       isActive: row.is_active,
-      birthDate: row.birth_date,
-      phone: row.phone || row.alumni_phone,
-      profileImageUrl: row.profile_image_url,
-      bio: row.bio,
-      linkedinUrl: row.linkedin_url,
-      currentPosition: row.current_position || row.alumni_position,
-      company: row.company || row.alumni_category,
-      location: row.location || row.program,
-      graduationYear: row.graduation_year,
-      program: row.program,
-      emailVerified: !!row.email_verified,
-      emailVerifiedAt: row.email_verified_at,
-      lastLoginAt: row.last_login_at,
-      isProfileComplete: !!(row.first_name && row.last_name) || !!(row.father_name && row.family_name),
-      ageVerified: false, // TODO: Add to schema if needed
-      parentConsentRequired: false, // TODO: Add to schema if needed
-      parentConsentGiven: false, // TODO: Add to schema if needed
-      alumniProfile: row.alumni_member_id ? {
-        familyName: row.family_name,
-        fatherName: row.father_name,
-        batch: row.graduation_year,
-        centerName: row.program,
-        result: row.alumni_position,
-        category: row.alumni_category,
-        phone: row.alumni_phone,
-        email: row.alumni_email,
-        studentId: row.student_id,
-        status: row.alumni_status
-      } : null,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      lastLoginAt: row.last_login_at
     };
 
-    res.json(userProfile);
+    res.json(user);
   } catch (error) {
     console.error('Get current user error:', error);
     res.status(500).json({ error: 'Failed to get user profile' });

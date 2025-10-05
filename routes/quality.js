@@ -1,3 +1,11 @@
+import mysql from 'mysql2/promise';
+
+// Get database pool - will be passed from main server
+let pool = null;
+
+export function setQualityPool(dbPool) {
+  pool = dbPool;
+}
 import path from 'path';
 import fs from 'fs';
 

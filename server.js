@@ -1,8 +1,12 @@
-import express from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 
-// Import database utilities
+// Load environment variables FIRST
+dotenv.config();
+
+import express from 'express';
+import cors from 'cors';
+
+// Import database utilities (AFTER dotenv is loaded)
 import { getPool, testDatabaseConnection } from './utils/database.js';
 
 // Import middleware
@@ -68,9 +72,22 @@ import {
   setHealthPool
 } from './routes/health.js';
 
-// Load environment variables
-dotenv.config();
+import {
+  generateOTP,
+  validateOTP,
+  getRemainingAttempts,
+  getDailyCount,
+  checkRateLimit,
+  resetDailyLimit,
+  incrementDailyCount,
+  cleanupExpired,
+  setupTOTP,
+  getTOTPStatus,
+  getOTPUserProfile,
+  setOTPPool
+} from './routes/otp.js';
 
+// Environment variables already loaded at top of file
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -86,6 +103,7 @@ setUsersPool(pool);
 setAnalyticsPool(pool);
 setQualityPool(pool);
 setHealthPool(pool);
+setOTPPool(pool);
 
 // Middleware
 app.use(cors());
@@ -257,22 +275,22 @@ app.get('/api/export', (req, res) => {
 });
 
 // ============================================================================
-// OTP ROUTES (LEGACY - DISABLED)
+// OTP ROUTES
 // ============================================================================
 
-app.post('/api/otp/generate', (req, res) => {
-  res.status(410).json({
-    error: 'OTP generation endpoint deprecated',
-    message: 'OTP functionality has been moved to separate service.'
-  });
-});
+app.post('/api/otp/generate', apiRateLimit, generateOTP);
+app.post('/api/otp/validate', validateOTP);
+app.get('/api/otp/remaining-attempts/:email', getRemainingAttempts);
+app.get('/api/otp/daily-count/:email', getDailyCount);
+app.get('/api/otp/rate-limit/:email', checkRateLimit);
+app.post('/api/otp/reset-daily-limit', resetDailyLimit);
+app.post('/api/otp/increment-daily-count', incrementDailyCount);
+app.delete('/api/otp/cleanup-expired', cleanupExpired);
 
-app.post('/api/otp/validate', (req, res) => {
-  res.status(410).json({
-    error: 'OTP validation endpoint deprecated',
-    message: 'OTP functionality has been moved to separate service.'
-  });
-});
+// Multi-factor OTP routes
+app.post('/api/users/totp/setup', setupTOTP);
+app.get('/api/users/totp/status/:email', getTOTPStatus);
+app.get('/api/users/profile/:email', getOTPUserProfile);
 
 // Start server
 const server = app.listen(PORT, async () => {

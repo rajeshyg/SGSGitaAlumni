@@ -10,10 +10,11 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { OTPService } from '../services/OTPService';
-import { 
-  OTPValidation, 
+import { TOTPService } from '../lib/auth/TOTPService';
+import {
+  OTPValidation,
   OTPType,
-  OTPError 
+  OTPError
 } from '../types/invitation';
 
 interface OTPVerificationPageProps {
@@ -25,6 +26,9 @@ interface LocationState {
   otpType?: OTPType;
   redirectTo?: string;
   message?: string;
+  verificationMethod?: 'email' | 'sms' | 'totp';
+  totpSecret?: string;
+  phoneNumber?: string;
 }
 
 export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
@@ -35,10 +39,15 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   
   // Services
   const otpService = new OTPService();
-  
+  const totpService = new TOTPService();
+
   // State management
   const [email] = useState<string>(urlEmail || state?.email || '');
   const [otpType] = useState<OTPType>(state?.otpType || 'login');
+  const [verificationMethod, setVerificationMethod] = useState<'email' | 'sms' | 'totp'>(
+    state?.verificationMethod || 'email'
+  );
+  const [totpSecret] = useState<string>(state?.totpSecret || '');
   const [otpCode, setOtpCode] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -142,7 +151,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
 
   const handleOTPSubmit = async (codeToVerify?: string) => {
     const code = codeToVerify || otpCode;
-    
+
     if (code.length !== 6) {
       setError('Please enter a complete 6-digit OTP code');
       return;
@@ -152,17 +161,57 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
       setIsSubmitting(true);
       setError(null);
 
-      const otpValidation = await otpService.validateOTP({
-        email,
-        otpCode: code,
-        type: otpType
-      });
+      let isValid = false;
 
-      setValidation(otpValidation);
+      // Handle different verification methods
+      switch (verificationMethod) {
+        case 'email':
+        case 'sms':
+          const otpValidation = await otpService.validateOTP({
+            email,
+            otpCode: code,
+            type: otpType
+          });
+          setValidation(otpValidation);
+          isValid = otpValidation.isValid;
 
-      if (otpValidation.isValid) {
+          if (!isValid) {
+            setError(otpValidation.errors.join(', '));
+            setRemainingAttempts(otpValidation.remainingAttempts);
+
+            if (otpValidation.remainingAttempts === 0) {
+              setError('Maximum attempts exceeded. Please request a new OTP.');
+            }
+          }
+          break;
+
+        case 'totp':
+          if (!totpSecret) {
+            setError('TOTP secret not available. Please try email verification.');
+            return;
+          }
+
+          const totpValidation = totpService.verifyTOTP(code, totpSecret);
+          isValid = totpValidation.isValid;
+
+          if (!isValid) {
+            setError('Invalid TOTP code. Please try again.');
+            setRemainingAttempts(prev => Math.max(0, prev - 1));
+
+            if (remainingAttempts <= 1) {
+              setError('Maximum attempts exceeded. Please request a new OTP.');
+            }
+          }
+          break;
+
+        default:
+          setError('Unsupported verification method');
+          return;
+      }
+
+      if (isValid) {
         setSuccess('OTP verified successfully! Redirecting...');
-        
+
         // Redirect based on OTP type and state
         setTimeout(() => {
           if (state?.redirectTo) {
@@ -175,13 +224,6 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
             navigate('/dashboard');
           }
         }, 2000);
-      } else {
-        setError(otpValidation.errors.join(', '));
-        setRemainingAttempts(otpValidation.remainingAttempts);
-        
-        if (otpValidation.remainingAttempts === 0) {
-          setError('Maximum attempts exceeded. Please request a new OTP.');
-        }
       }
 
     } catch (err) {
@@ -291,7 +333,9 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
         <CardHeader>
           <CardTitle>Verify OTP</CardTitle>
           <CardDescription>
-            Enter the 6-digit code sent to {email}
+            {verificationMethod === 'email' && `Enter the 6-digit code sent to ${email}`}
+            {verificationMethod === 'sms' && `Enter the 6-digit code sent to your phone`}
+            {verificationMethod === 'totp' && `Enter the 6-digit code from your authenticator app`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -307,6 +351,42 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
               <AlertDescription className="text-green-600">{success}</AlertDescription>
             </Alert>
           )}
+
+          {/* Verification Method Selector */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Verification Method
+            </label>
+            <div className="flex space-x-2">
+              <Button
+                type="button"
+                variant={verificationMethod === 'email' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setVerificationMethod('email')}
+                disabled={isSubmitting}
+              >
+                Email
+              </Button>
+              <Button
+                type="button"
+                variant={verificationMethod === 'sms' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setVerificationMethod('sms')}
+                disabled={isSubmitting || !state?.phoneNumber}
+              >
+                SMS
+              </Button>
+              <Button
+                type="button"
+                variant={verificationMethod === 'totp' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setVerificationMethod('totp')}
+                disabled={isSubmitting || !totpSecret}
+              >
+                Authenticator
+              </Button>
+            </div>
+          </div>
 
           {/* OTP Input */}
           {renderOTPInputs()}

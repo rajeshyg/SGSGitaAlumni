@@ -1,23 +1,37 @@
 import mysql from 'mysql2/promise';
 
-// MySQL Database Configuration
-export const DB_CONFIG = {
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: parseInt(process.env.DB_PORT || '3306'),
-  connectTimeout: 60000,
-  acquireTimeout: 60000,
-  timeout: 60000,
-};
+// MySQL Database Configuration (created dynamically)
+function getDBConfig() {
+  return {
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: parseInt(process.env.DB_PORT || '3306'),
+    connectTimeout: 60000,
+  };
+}
 
-// MySQL connection pool - Temporarily disabled for testing
+// MySQL Pool Configuration (created dynamically)
+function getPoolConfig() {
+  return {
+    ...getDBConfig(),
+    connectionLimit: 10,
+    queueLimit: 0,
+  };
+}
+
+// MySQL connection pool - Created lazily after environment variables are loaded
 let pool = null;
 
 export const getPool = () => {
   if (!pool) {
-    pool = mysql.createPool(DB_CONFIG);
+    // Ensure environment variables are loaded
+    if (!process.env.DB_HOST || !process.env.DB_USER) {
+      throw new Error('Database environment variables not loaded. Make sure dotenv.config() runs before database initialization.');
+    }
+
+    pool = mysql.createPool(getPoolConfig());
     console.log('MySQL: Connection pool created');
   }
   return pool;

@@ -3,6 +3,8 @@
 // ============================================================================
 // Singleton pattern for secure HMAC token secret key management with rotation support
 
+import crypto from 'crypto';
+
 export class TokenSecretManager {
   private static instance: TokenSecretManager;
   private currentSecret: string;
@@ -92,7 +94,6 @@ export class TokenSecretManager {
    */
   private generateNewSecret(): string {
     // Generate 256-bit (32 byte) random secret
-    const crypto = require('crypto');
     return crypto.randomBytes(32).toString('hex');
   }
 }

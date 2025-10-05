@@ -234,9 +234,11 @@ export function InvitationSection() {
 
   useEffect(() => {
     console.log('[InvitationSection] useEffect triggered, calling loadAll()');
-    // initial load
-    loadAll();
-  }, []);
+    // initial load - only if not already loading
+    if (!loading) {
+      loadAll();
+    }
+  }, []); // Empty dependency array - only run on mount
 
   const loadAll = async () => {
     setLoading(true);

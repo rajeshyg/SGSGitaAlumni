@@ -3,15 +3,17 @@
 // ============================================================================
 // Service for managing One-Time Password authentication
 
-import { 
-  OTPToken, 
-  OTPRequest, 
+import {
+  OTPToken,
+  OTPRequest,
   OTPVerificationRequest,
   OTPValidation,
   OTPServiceInterface,
   OTPError,
   OTPType
 } from '../types/invitation';
+import { TOTPService } from '../lib/auth/TOTPService';
+import { SMSOTPService } from '../lib/auth/SMSOTPService';
 import { apiClient } from '../lib/api';
 
 export class OTPService implements OTPServiceInterface {
@@ -304,7 +306,7 @@ export class OTPService implements OTPServiceInterface {
 
   private async incrementAttemptCount(otpTokenId: string): Promise<void> {
     try {
-      await apiClient.patch(`/api/otp/${otpTokenId}/increment-attempts`);
+      await apiClient.patch(`/api/otp/${otpTokenId}/increment-attempts`, {});
     } catch (error) {
       // Log error but don't throw - counting failures shouldn't break main flow
       if (import.meta.env.DEV) {
@@ -381,5 +383,179 @@ export class OTPService implements OTPServiceInterface {
    */
   isOTPExpired(expiresAt: Date): boolean {
     return new Date() > new Date(expiresAt);
+  }
+
+  // ============================================================================
+  // MULTI-FACTOR OTP METHODS (Task 8.2.2)
+  // ============================================================================
+
+  /**
+   * Generate multi-factor OTP for multiple methods
+   * @param email User email
+   * @param methods Array of OTP methods to use
+   * @param userId User ID
+   * @returns Multi-factor OTP results
+   */
+  async generateMultiFactorOTP(
+    email: string,
+    methods: ('email' | 'sms' | 'totp')[],
+    userId?: string
+  ): Promise<{
+    methods: Array<{
+      method: string;
+      success: boolean;
+      otpCode?: string;
+      secret?: string;
+      qrCodeUrl?: string;
+      messageId?: string;
+      error?: string;
+    }>;
+  }> {
+    const results = [];
+
+    for (const method of methods) {
+      try {
+        switch (method) {
+          case 'email':
+            const emailResult = await this.generateOTP({
+              email,
+              type: 'login',
+              userId
+            });
+            results.push({
+              method: 'email',
+              success: true,
+              otpCode: emailResult.otpCode
+            });
+            break;
+
+          case 'sms':
+            // SMS generation would be handled by SMSOTPService
+            results.push({
+              method: 'sms',
+              success: false,
+              error: 'SMS not implemented in base service'
+            });
+            break;
+
+          case 'totp':
+            // TOTP setup would be handled by TOTPService
+            results.push({
+              method: 'totp',
+              success: false,
+              error: 'TOTP not implemented in base service'
+            });
+            break;
+
+          default:
+            results.push({
+              method,
+              success: false,
+              error: 'Unsupported OTP method'
+            });
+        }
+      } catch (error) {
+        results.push({
+          method,
+          success: false,
+          error: (error as Error).message
+        });
+      }
+    }
+
+    return { methods: results };
+  }
+
+  /**
+   * Verify multi-factor OTP
+   * @param method OTP method
+   * @param email User email
+   * @param otpCode OTP code
+   * @param phoneNumber Phone number (for SMS)
+   * @param secret TOTP secret (for TOTP)
+   * @returns Verification result
+   */
+  async verifyMultiFactorOTP(
+    method: 'email' | 'sms' | 'totp',
+    email: string,
+    otpCode: string,
+    phoneNumber?: string,
+    secret?: string
+  ): Promise<{
+    isValid: boolean;
+    method: string;
+    error?: string;
+  }> {
+    try {
+      switch (method) {
+        case 'email':
+          const emailValidation = await this.validateOTP({
+            email,
+            otpCode,
+            type: 'login'
+          });
+          return {
+            isValid: emailValidation.isValid,
+            method: 'email'
+          };
+
+        case 'sms':
+          // SMS verification would be handled by SMSOTPService
+          return {
+            isValid: false,
+            method: 'sms',
+            error: 'SMS verification not implemented in base service'
+          };
+
+        case 'totp':
+          // TOTP verification would be handled by TOTPService
+          return {
+            isValid: false,
+            method: 'totp',
+            error: 'TOTP verification not implemented in base service'
+          };
+
+        default:
+          return {
+            isValid: false,
+            method,
+            error: 'Unsupported OTP method'
+          };
+      }
+    } catch (error) {
+      return {
+        isValid: false,
+        method,
+        error: (error as Error).message
+      };
+    }
+  }
+
+  /**
+   * Get available OTP methods for a user
+   * @param email User email
+   * @returns Available methods
+   */
+  async getAvailableOTPMethods(email: string): Promise<('email' | 'sms' | 'totp')[]> {
+    const methods: ('email' | 'sms' | 'totp')[] = ['email']; // Email always available
+
+    try {
+      // Check if user has phone number (for SMS)
+      const userResponse = await apiClient.get(`/api/users/profile/${encodeURIComponent(email)}`);
+      if (userResponse.phoneNumber) {
+        methods.push('sms');
+      }
+
+      // Check if user has TOTP setup
+      const totpResponse = await apiClient.get(`/api/users/totp/status/${encodeURIComponent(email)}`);
+      if (totpResponse.hasTOTP) {
+        methods.push('totp');
+      }
+    } catch (error) {
+      // If we can't check, just return email
+      console.warn('Failed to check available OTP methods:', error);
+    }
+
+    return methods;
   }
 }

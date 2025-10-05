@@ -114,6 +114,13 @@ export const apiClient = {
     return this.request(endpoint, {
       method: 'DELETE'
     });
+  },
+
+  patch(endpoint: string, data: Record<string, unknown>) {
+    return this.request(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
   }
 }
 
