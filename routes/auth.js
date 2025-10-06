@@ -284,7 +284,6 @@ export const registerFromInvitation = async (req, res) => {
           first_name = ?,
           last_name = ?,
           birth_date = ?,
-          graduation_year = ?,
           program = ?,
           current_position = ?,
           bio = ?,
@@ -300,7 +299,6 @@ export const registerFromInvitation = async (req, res) => {
         firstName,
         lastName,
         new Date(birthDate),
-        graduationYear,
         program,
         currentPosition || null,
         bio || null,
@@ -326,7 +324,6 @@ export const registerFromInvitation = async (req, res) => {
           firstName: user.first_name,
           lastName: user.last_name,
           email: user.email,
-          graduationYear: user.graduation_year,
           program: user.program,
           currentPosition: user.current_position,
           bio: user.bio,
@@ -347,7 +344,6 @@ export const registerFromInvitation = async (req, res) => {
         lastName,
         email,
         birthDate: new Date(birthDate),
-        graduationYear,
         program,
         currentPosition,
         bio,
@@ -363,11 +359,11 @@ export const registerFromInvitation = async (req, res) => {
 
       const insertQuery = `
         INSERT INTO app_users (
-          id, first_name, last_name, email, birth_date, graduation_year,
+          id, first_name, last_name, email, birth_date,
           program, current_position, bio, invitation_id,
           is_active, age_verified, parent_consent_required, parent_consent_given,
           requires_otp, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       await connection.execute(insertQuery, [
@@ -376,7 +372,6 @@ export const registerFromInvitation = async (req, res) => {
         user.lastName,
         user.email,
         user.birthDate,
-        user.graduationYear,
         user.program,
         user.currentPosition || null,
         user.bio || null,
@@ -429,7 +424,6 @@ export const registerFromFamilyInvitation = async (req, res) => {
       lastName,
       email,
       birthDate: new Date(birthDate),
-      graduationYear,
       program,
       currentPosition,
       bio,
@@ -446,11 +440,11 @@ export const registerFromFamilyInvitation = async (req, res) => {
 
     const query = `
       INSERT INTO app_users (
-        id, first_name, last_name, email, birth_date, graduation_year,
+        id, first_name, last_name, email, birth_date,
         program, current_position, bio, invitation_id, profile_id,
         is_active, age_verified, parent_consent_required, parent_consent_given,
         requires_otp, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await connection.execute(query, [
@@ -459,7 +453,6 @@ export const registerFromFamilyInvitation = async (req, res) => {
       user.lastName,
       user.email,
       user.birthDate,
-      user.graduationYear,
       user.program,
       user.currentPosition || null,
       user.bio || null,
