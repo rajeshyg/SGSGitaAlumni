@@ -147,7 +147,10 @@ app.get('/api/invitations/family/validate/:token', validateFamilyInvitation);
 app.patch('/api/invitations/family/:id/accept-profile', acceptFamilyInvitationProfile);
 app.post('/api/invitations', invitationRateLimit, createInvitation);
 app.post('/api/invitations/bulk', invitationRateLimit, createBulkInvitations);
-app.get('/api/invitations/validate/:token', validateInvitation);
+app.get('/api/invitations/validate/:token', (req, res, next) => {
+  console.log('ROUTE_MATCH: Invitation validation route matched for token:', req.params.token);
+  next();
+}, validateInvitation);
 app.patch('/api/invitations/:id', updateInvitation);
 
 // ============================================================================

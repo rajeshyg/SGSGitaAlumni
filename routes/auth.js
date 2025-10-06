@@ -87,8 +87,10 @@ export const login = async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    console.log('🔐 Login: Attempting to get DB connection...');
     // Use database authentication
     const connection = await pool.getConnection();
+    console.log('🔐 Login: DB connection obtained successfully');
 
     // Find user by email - order by role priority (admin first, then moderator, then member)
     const [rows] = await connection.execute(

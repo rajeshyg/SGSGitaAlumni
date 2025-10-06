@@ -677,9 +677,19 @@ export const createBulkInvitations = async (req, res) => {
 
 // Validate invitation token
 export const validateInvitation = async (req, res) => {
+  // Prevent caching of invitation validation responses
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'ETag': false,
+    'Last-Modified': new Date().toUTCString()
+  });
+
   try {
-    const connection = await pool.getConnection();
     const { token } = req.params;
+    console.log('VALIDATE_INVITATION: Starting validation for token:', token);
+    const connection = await pool.getConnection();
 
     // First, try to find by exact token match (for backward compatibility)
     let query = `
@@ -713,12 +723,13 @@ export const validateInvitation = async (req, res) => {
 
     if (rows.length > 0) {
       const invitation = rows[0];
-      res.json({
+      const responseData = {
         invitation: {
           id: invitation.id,
           email: invitation.email,
           invitationToken: invitation.invitation_token,
           invitedBy: invitation.invited_by,
+          invitationType: invitation.invitation_type,
           invitationData: (() => {
             try {
               return JSON.parse(invitation.invitation_data || '{}');
@@ -726,6 +737,7 @@ export const validateInvitation = async (req, res) => {
               return {};
             }
           })(),
+          status: invitation.status,
           sentAt: invitation.sent_at,
           expiresAt: invitation.expires_at,
           isUsed: invitation.is_used,
@@ -733,7 +745,9 @@ export const validateInvitation = async (req, res) => {
           createdAt: invitation.created_at,
           updatedAt: invitation.updated_at
         }
-      });
+      };
+      console.log('VALIDATE_INVITATION: Sending response:', JSON.stringify(responseData, null, 2));
+      res.json(responseData);
     } else {
       res.json({ invitation: null });
     }

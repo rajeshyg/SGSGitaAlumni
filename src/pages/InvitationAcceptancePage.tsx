@@ -27,6 +27,8 @@ interface InvitationAcceptancePageProps {
 export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
+
+  console.log('InvitationAcceptancePage: Component rendered with token:', token);
   
   // Services
   const invitationService = new InvitationService();
@@ -58,9 +60,12 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
   // ============================================================================
 
   useEffect(() => {
+    console.log('InvitationAcceptancePage: useEffect triggered with token:', token);
     if (token) {
+      console.log('InvitationAcceptancePage: Token found, calling validateInvitation');
       validateInvitation();
     } else {
+      console.log('InvitationAcceptancePage: No token found, setting error');
       setError('No invitation token provided');
       setIsLoading(false);
     }
@@ -71,26 +76,36 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
   // ============================================================================
 
   const validateInvitation = async () => {
+    console.log('InvitationAcceptancePage: validateInvitation called');
     try {
+      console.log('InvitationAcceptancePage: Setting isLoading to true');
       setIsLoading(true);
       setError(null);
 
       if (!token) {
+        console.log('InvitationAcceptancePage: No token provided, throwing error');
         throw new Error('No invitation token provided');
       }
 
+      console.log('InvitationAcceptancePage: Calling invitationService.validateInvitation with token:', token);
       const validationResult = await invitationService.validateInvitation(token);
+      console.log('InvitationAcceptancePage: Validation result received:', validationResult);
+
       setValidation(validationResult);
 
       if (validationResult.isValid && validationResult.invitation) {
+        console.log('InvitationAcceptancePage: Validation successful, moving to registration step');
         setInvitation(validationResult.invitation);
         setStep('registration');
       } else {
+        console.log('InvitationAcceptancePage: Validation failed with errors:', validationResult.errors);
         setError(validationResult.errors.join(', '));
       }
     } catch (err) {
+      console.log('InvitationAcceptancePage: Validation failed with exception:', err);
       setError(err instanceof Error ? err.message : 'Failed to validate invitation');
     } finally {
+      console.log('InvitationAcceptancePage: Setting isLoading to false');
       setIsLoading(false);
     }
   };
@@ -265,7 +280,7 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
                 min="1990"
                 max={new Date().getFullYear()}
                 value={formData.graduationYear}
-                onChange={(e) => handleInputChange('graduationYear', parseInt(e.target.value))}
+                onChange={(e) => handleInputChange('graduationYear', e.target.value)}
                 required
               />
             </div>

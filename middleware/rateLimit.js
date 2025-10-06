@@ -17,6 +17,7 @@ import { redisRateLimiter } from '../src/lib/security/RedisRateLimiter.ts';
 export function rateLimit(policyName = 'default', options = {}) {
   return async (req, res, next) => {
     try {
+      console.log(`[RATE_LIMIT] ${policyName}: Starting rate limit check for ${req.path}`);
       // Determine the key for rate limiting
       let key;
       if (options.useUserId && req.user && req.user.id) {
@@ -32,9 +33,11 @@ export function rateLimit(policyName = 'default', options = {}) {
       key = `${policyName}:${key}`;
 
       const policy = redisRateLimiter.getPolicy(policyName);
+      console.log(`[RATE_LIMIT] ${policyName}: Policy obtained, checking Redis...`);
 
       // Check rate limit
       const result = await redisRateLimiter.checkAndRecord(key, policy, req.user?.id);
+      console.log(`[RATE_LIMIT] ${policyName}: Redis check completed, result: ${result.allowed}`);
 
       // Set rate limit headers
       res.set({

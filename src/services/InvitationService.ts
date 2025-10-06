@@ -154,7 +154,9 @@ export class InvitationService implements InvitationServiceInterface {
   async validateInvitation(token: string): Promise<InvitationValidation> {
     try {
       const response = await apiClient.get(`/api/invitations/validate/${token}`);
-      const invitation: Invitation | null = response.data.invitation;
+      console.log('InvitationService: API response received:', response);
+      const invitation: Invitation | null = response.invitation;
+      console.log('InvitationService: Extracted invitation:', invitation);
 
       if (!invitation) {
         return {
