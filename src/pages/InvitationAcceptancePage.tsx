@@ -17,7 +17,8 @@ import {
   InvitationValidation,
   UserRegistrationData,
   AgeVerificationResult,
-  OTPValidation
+  OTPValidation,
+  AlumniData
 } from '../types/invitation';
 
 interface InvitationAcceptancePageProps {
@@ -37,11 +38,12 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
   // State management
   const [invitation, setInvitation] = useState<Invitation | null>(null);
   const [validation, setValidation] = useState<InvitationValidation | null>(null);
+  const [alumniData, setAlumniData] = useState<AlumniData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<'validation' | 'registration' | 'age-verification' | 'parent-consent' | 'complete'>('validation');
-  
+
   // Form data
   const [formData, setFormData] = useState<UserRegistrationData>({
     firstName: '',
@@ -96,6 +98,22 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
       if (validationResult.isValid && validationResult.invitation) {
         console.log('InvitationAcceptancePage: Validation successful, moving to registration step');
         setInvitation(validationResult.invitation);
+
+        // Pre-populate form with alumni data if available
+        if (validationResult.alumniData) {
+          console.log('InvitationAcceptancePage: Alumni data found, pre-populating form');
+          setAlumniData(validationResult.alumniData);
+          setFormData({
+            firstName: validationResult.alumniData.firstName || '',
+            lastName: validationResult.alumniData.lastName || '',
+            birthDate: new Date(), // Birth date not in alumni data
+            graduationYear: validationResult.alumniData.graduationYear || new Date().getFullYear(),
+            program: validationResult.alumniData.program || '',
+            currentPosition: '',
+            bio: ''
+          });
+        }
+
         setStep('registration');
       } else {
         console.log('InvitationAcceptancePage: Validation failed with errors:', validationResult.errors);
@@ -225,6 +243,13 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
         <CardTitle>Complete Your Registration</CardTitle>
         <CardDescription>
           You've been invited to join the SGS Gita Alumni Network. Please complete your profile.
+          {alumniData && (
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800">
+                <strong>Pre-filled from your alumni record:</strong> Your name and graduation information have been automatically filled in.
+              </p>
+            </div>
+          )}
         </CardDescription>
       </CardHeader>
       <CardContent>

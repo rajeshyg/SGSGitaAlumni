@@ -38,6 +38,21 @@ export interface InvitationData {
   specialInstructions?: string;
 }
 
+export interface AlumniData {
+  id: string;
+  studentId?: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  phone?: string;
+  graduationYear?: number;
+  degree?: string;
+  program?: string;
+  address?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // ============================================================================
 // OTP SYSTEM TYPES
 // ============================================================================
@@ -176,6 +191,7 @@ export interface InvitationRequest {
 export interface InvitationValidation {
   isValid: boolean;
   invitation: Invitation | null;
+  alumniData?: AlumniData | null;
   errors: string[];
   requiresParentConsent: boolean;
   isExpired: boolean;
@@ -270,13 +286,13 @@ export interface InvitationServiceInterface {
   createInvitation(request: InvitationRequest): Promise<Invitation>;
   sendInvitation(invitationId: string): Promise<void>;
   validateInvitation(token: string): Promise<InvitationValidation>;
-  acceptInvitation(token: string, userData: UserRegistrationData): Promise<User>;
+  acceptInvitation(token: string, userData: UserRegistrationData): Promise<any>;
   resendInvitation(invitationId: string): Promise<void>;
   revokeInvitation(invitationId: string): Promise<void>;
   getInvitationStatus(token: string): Promise<Invitation>;
   listInvitations(filters?: InvitationFilters): Promise<Invitation[]>;
   validateFamilyInvitation(token: string): Promise<FamilyInvitation>;
-  acceptFamilyInvitation(token: string, profileId: string, userData: UserRegistrationData): Promise<User>;
+  acceptFamilyInvitation(token: string, profileId: string, userData: UserRegistrationData): Promise<any>;
 }
 
 export interface OTPServiceInterface {
@@ -294,7 +310,7 @@ export interface FamilyInvitationServiceInterface {
   sendFamilyInvitation(invitationId: string): Promise<void>;
   getAvailableProfiles(token: string): Promise<ChildProfile[]>;
   selectChildProfile(token: string, profileId: string): Promise<ProfileSelection>;
-  completeFamilyRegistration(selections: ProfileSelection[]): Promise<User[]>;
+  completeFamilyRegistration(selections: ProfileSelection[]): Promise<any[]>;
 }
 
 export interface AgeVerificationServiceInterface {

@@ -723,6 +723,44 @@ export const validateInvitation = async (req, res) => {
 
     if (rows.length > 0) {
       const invitation = rows[0];
+
+      // For alumni invitations, fetch alumni data to pre-populate the form
+      let alumniData = null;
+      if (invitation.invitation_type === 'alumni') {
+        try {
+          const alumniQuery = `
+            SELECT
+              id, student_id, first_name, last_name, email, phone,
+              batch as graduation_year, result as degree, center_name as program,
+              address, created_at, updated_at
+            FROM alumni_members
+            WHERE email = ? AND email IS NOT NULL AND email != ''
+            LIMIT 1
+          `;
+          const [alumniRows] = await connection.execute(alumniQuery, [invitation.email]);
+
+          if (alumniRows.length > 0) {
+            const alumni = alumniRows[0];
+            alumniData = {
+              id: alumni.id,
+              studentId: alumni.student_id,
+              firstName: alumni.first_name,
+              lastName: alumni.last_name,
+              email: alumni.email,
+              phone: alumni.phone,
+              graduationYear: alumni.graduation_year,
+              degree: alumni.degree,
+              program: alumni.program,
+              address: alumni.address,
+              createdAt: alumni.created_at,
+              updatedAt: alumni.updated_at
+            };
+          }
+        } catch (alumniError) {
+          console.warn('Failed to fetch alumni data for invitation:', invitation.id, alumniError.message);
+        }
+      }
+
       const responseData = {
         invitation: {
           id: invitation.id,
@@ -744,7 +782,8 @@ export const validateInvitation = async (req, res) => {
           resendCount: invitation.resend_count,
           createdAt: invitation.created_at,
           updatedAt: invitation.updated_at
-        }
+        },
+        alumniData: alumniData
       };
       console.log('VALIDATE_INVITATION: Sending response:', JSON.stringify(responseData, null, 2));
       res.json(responseData);
