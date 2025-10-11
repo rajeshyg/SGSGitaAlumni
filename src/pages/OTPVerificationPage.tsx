@@ -11,6 +11,8 @@ import { Input } from '../components/ui/input';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { OTPService } from '../services/OTPService';
 import { TOTPService } from '../lib/auth/TOTPService';
+import { useAuth } from '../contexts/AuthContext';
+import { APIService } from '../services/APIService';
 import {
   OTPValidation,
   OTPType,
@@ -29,6 +31,7 @@ interface LocationState {
   verificationMethod?: 'email' | 'sms' | 'totp';
   totpSecret?: string;
   phoneNumber?: string;
+  user?: any; // User data from registration
 }
 
 export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
@@ -36,6 +39,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState;
+  const { login } = useAuth(); // Get login function from AuthContext
   
   // Services
   const otpService = new OTPService();
@@ -95,9 +99,20 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
 
   const loadRemainingAttempts = async () => {
     try {
+      console.log('[OTPVerificationPage] Checking remaining attempts for:', email);
       const attempts = await otpService.getRemainingOTPAttempts(email);
+      console.log('[OTPVerificationPage] Remaining attempts received:', attempts);
+      console.log('[OTPVerificationPage] Type of attempts:', typeof attempts);
       setRemainingAttempts(attempts);
+      
+      // Don't show error on page load - only show it after failed validation attempts
+      // The validation response will set the error if attempts are exhausted
+      if (attempts === 0) {
+        console.warn('[OTPVerificationPage] No attempts remaining (0 received from API)');
+        // Don't set error here - let the validation attempt show the error
+      }
     } catch (err) {
+      console.error('[OTPVerificationPage] Error loading remaining attempts:', err);
       // Default to 3 attempts if we can't load
       setRemainingAttempts(3);
     }
@@ -210,20 +225,83 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
       }
 
       if (isValid) {
-        setSuccess('OTP verified successfully! Redirecting...');
+        setSuccess('OTP verified successfully! Authenticating...');
 
-        // Redirect based on OTP type and state
-        setTimeout(() => {
-          if (state?.redirectTo) {
-            navigate(state.redirectTo);
-          } else if (otpType === 'login') {
-            navigate('/dashboard');
-          } else if (otpType === 'registration') {
-            navigate('/profile-setup');
-          } else {
-            navigate('/dashboard');
+        // Handle authentication after successful OTP verification
+        if (otpType === 'registration') {
+          // For registration flow: authenticate the user
+          try {
+            // If we have user credentials from state, use them for automatic login
+            if (state?.user) {
+              console.log('[OTPVerificationPage] Authenticating new user after registration...');
+              
+              // Create session for the newly registered user
+              const loginResponse = await APIService.login({
+                email: email,
+                password: '' // OTP verification serves as authentication
+              });
+
+              // Update auth context will be handled by the login method
+              console.log('[OTPVerificationPage] Authentication successful');
+            }
+
+            // Redirect to dashboard
+            setTimeout(() => {
+              navigate('/dashboard', {
+                state: {
+                  message: 'Welcome to SGS Gita Alumni Network!',
+                  user: state?.user
+                }
+              });
+            }, 1500);
+
+          } catch (authError) {
+            console.error('[OTPVerificationPage] Authentication error:', authError);
+            // If auto-login fails, redirect to login page
+            setTimeout(() => {
+              navigate('/login', {
+                state: {
+                  message: 'Verification successful! Please log in with your credentials.',
+                  email: email
+                }
+              });
+            }, 1500);
           }
-        }, 2000);
+        } else if (otpType === 'login') {
+          // For login flow: authenticate the user
+          try {
+            console.log('[OTPVerificationPage] Authenticating user after OTP login...');
+            
+            // OTP verification serves as authentication for passwordless login
+            // Use the login function from useAuth hook to update auth context
+            await login({
+              email: email,
+              password: '', // OTP verification serves as authentication
+              otpVerified: true
+            });
+
+            console.log('[OTPVerificationPage] Login successful');
+
+            // Redirect to appropriate dashboard
+            setTimeout(() => {
+              const redirectTo = state?.redirectTo || '/dashboard';
+              navigate(redirectTo);
+            }, 1500);
+
+          } catch (authError) {
+            console.error('[OTPVerificationPage] Login error:', authError);
+            setError('Authentication failed. Please try again or contact support.');
+          }
+        } else {
+          // For other OTP types, just redirect
+          setTimeout(() => {
+            if (state?.redirectTo) {
+              navigate(state.redirectTo);
+            } else {
+              navigate('/dashboard');
+            }
+          }, 1500);
+        }
       }
 
     } catch (err) {

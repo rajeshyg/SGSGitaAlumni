@@ -88,10 +88,17 @@ export const authenticateToken = async (req, res, next) => {
 export const login = async (req, res) => {
   console.log('🔐 Login attempt received for email:', req.body?.email);
   try {
-    const { email, password } = req.body;
+    const { email, password, otpVerified } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+    // Check if this is OTP-based passwordless login or traditional password login
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // For OTP-verified login, password is optional
+    // For traditional login, password is required
+    if (!otpVerified && !password) {
+      return res.status(400).json({ error: 'Password is required for traditional login' });
     }
 
     console.log('🔐 Login: Attempting to get DB connection...');
@@ -148,19 +155,23 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Account is disabled' });
     }
 
-    // Verify password
-    console.log('🔐 Verifying password...');
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    console.log(`🔐 Password valid: ${isValidPassword}`);
-    if (!isValidPassword) {
-      connection.release();
-      // Log failed login attempt
-      serverMonitoring.logFailedLogin(
-        req.ip || req.connection.remoteAddress || 'unknown',
-        email,
-        { reason: 'invalid_password', userId: user.id }
-      );
-      return res.status(401).json({ error: 'Invalid credentials' });
+    // Verify password (skip for OTP-verified logins)
+    if (!otpVerified) {
+      console.log('🔐 Verifying password...');
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      console.log(`🔐 Password valid: ${isValidPassword}`);
+      if (!isValidPassword) {
+        connection.release();
+        // Log failed login attempt
+        serverMonitoring.logFailedLogin(
+          req.ip || req.connection.remoteAddress || 'unknown',
+          email,
+          { reason: 'invalid_password', userId: user.id }
+        );
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+    } else {
+      console.log('🔐 Skipping password verification (OTP-verified login)');
     }
 
     connection.release();

@@ -5,6 +5,7 @@
 // Supports email, SMS, and TOTP multi-factor authentication
 
 import mysql from 'mysql2/promise';
+import { emailService } from '../utils/emailService.js';
 
 // Get database pool - will be passed from main server
 let pool = null;
@@ -17,9 +18,101 @@ export function setOTPPool(dbPool) {
 // OTP GENERATION
 // ============================================================================
 
+// Helper function to generate random 6-digit OTP
+function generateRandomOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// NEW: Generate and send OTP in one step (for admin testing and user login)
+export const generateAndSendOTP = async (req, res) => {
+  try {
+    const { email, type = 'email' } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        error: 'Email is required'
+      });
+    }
+
+    // Check rate limit - max 3 OTPs per hour
+    const connection = await pool.getConnection();
+    
+    const [rateLimitRows] = await connection.execute(`
+      SELECT COUNT(*) as attempts
+      FROM OTP_TOKENS
+      WHERE email = ?
+        AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+    `, [email]);
+
+    const attempts = rateLimitRows[0]?.attempts || 0;
+    if (attempts >= 3) {
+      connection.release();
+      return res.status(429).json({
+        error: 'Rate limit exceeded. Please try again later.',
+        remainingAttempts: 0
+      });
+    }
+
+    // Generate random 6-digit OTP
+    const otpCode = generateRandomOTP();
+    const expiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES || '5');
+    
+    // Get user ID if user exists
+    const [userRows] = await connection.execute(
+      'SELECT id FROM app_users WHERE email = ?',
+      [email]
+    );
+    const userId = userRows.length > 0 ? userRows[0].id : null;
+
+    // Insert OTP token - use MySQL NOW() + INTERVAL for expiration to avoid timezone issues
+    await connection.execute(`
+      INSERT INTO OTP_TOKENS (
+        email, otp_code, token_type, user_id,
+        expires_at, created_at
+      ) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), NOW())
+    `, [email, otpCode, type, userId, expiryMinutes]);
+
+    connection.release();
+
+    // Send OTP via email
+    try {
+      await emailService.sendOTPEmail(email, otpCode, expiryMinutes);
+    } catch (emailError) {
+      console.error('Email send error (OTP still generated):', emailError);
+    }
+
+    // Calculate expiry time for response
+    const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
+
+    // Log OTP code in development mode for testing
+    if (process.env.NODE_ENV === 'development' || process.env.DEV_LOG_OTP === 'true') {
+      console.log('\n' + '='.repeat(65));
+      console.log('📧 [OTP Service] EMAIL VERIFICATION CODE (Development Mode)');
+      console.log('='.repeat(65));
+      console.log(`To: ${email}`);
+      console.log(`OTP Code: ${otpCode}`);
+      console.log(`Expires: ${expiresAt.toLocaleString()}`);
+      console.log(`Valid for: ${expiryMinutes} minutes`);
+      console.log('='.repeat(65) + '\n');
+    }
+
+    res.json({
+      success: true,
+      message: 'OTP generated and sent successfully',
+      code: otpCode, // Include code in response for admin/testing
+      expiresAt: expiresAt.toISOString()
+    });
+
+  } catch (error) {
+    console.error('Generate and send OTP error:', error);
+    res.status(500).json({ error: 'Failed to generate OTP' });
+  }
+};
+
+// LEGACY: Manual OTP generation (requires OTP code to be provided)
 export const generateOTP = async (req, res) => {
   try {
-    const { email, otpCode, tokenType, userId, phoneNumber, expiresAt } = req.body;
+    const { email, otpCode, tokenType, userId, expiresAt } = req.body;
 
     if (!email || !otpCode || !tokenType) {
       return res.status(400).json({
@@ -32,9 +125,9 @@ export const generateOTP = async (req, res) => {
     // Insert OTP token
     const query = `
       INSERT INTO OTP_TOKENS (
-        email, otp_code, token_type, user_id, phone_number,
+        email, otp_code, token_type, user_id,
         expires_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, NOW())
+      ) VALUES (?, ?, ?, ?, ?, NOW())
     `;
 
     const expiresDate = expiresAt ? new Date(expiresAt) : new Date(Date.now() + 5 * 60 * 1000);
@@ -44,7 +137,6 @@ export const generateOTP = async (req, res) => {
       otpCode,
       tokenType,
       userId || null,
-      phoneNumber || null,
       expiresDate
     ]);
 
@@ -94,7 +186,7 @@ export const validateOTP = async (req, res) => {
       return res.json({
         isValid: false,
         token: null,
-        remainingAttempts: 0,
+        remainingAttempts: 3,  // User gets full attempts even if no token exists
         errors: ['No valid OTP found'],
         isExpired: false,
         isRateLimited: false
@@ -163,7 +255,7 @@ export const validateOTP = async (req, res) => {
     res.status(500).json({
       isValid: false,
       token: null,
-      remainingAttempts: 0,
+      remainingAttempts: 3,  // User gets full attempts even on error
       errors: ['OTP validation failed'],
       isExpired: false,
       isRateLimited: false
@@ -175,6 +267,31 @@ export const validateOTP = async (req, res) => {
 // OTP UTILITY ENDPOINTS
 // ============================================================================
 
+export const sendOTP = async (req, res) => {
+  try {
+    const { email, otpCode, type } = req.body;
+
+    if (!email || !otpCode || !type) {
+      return res.status(400).json({
+        error: 'Email, OTP code, and type are required'
+      });
+    }
+
+    // Send OTP via email service
+    const result = await emailService.sendOTPEmail(email, otpCode);
+
+    res.json({
+      success: true,
+      message: 'OTP sent successfully',
+      mode: result.mode || 'production'
+    });
+
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+};
+
 export const getRemainingAttempts = async (req, res) => {
   try {
     const { email } = req.params;
@@ -185,22 +302,37 @@ export const getRemainingAttempts = async (req, res) => {
 
     const connection = await pool.getConnection();
 
-    // Count recent failed attempts in last hour
+    // Get the most recent active OTP token for this email
     const [rows] = await connection.execute(`
-      SELECT COUNT(*) as attempts
+      SELECT attempt_count
       FROM OTP_TOKENS
       WHERE email = ?
-        AND last_attempt_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
         AND is_used = FALSE
+        AND expires_at > NOW()
+      ORDER BY created_at DESC
+      LIMIT 1
     `, [email]);
 
     connection.release();
 
-    const attempts = rows[0]?.attempts || 0;
     const maxAttempts = 3;
-    const remaining = Math.max(0, maxAttempts - attempts);
+    
+    // If no active token exists, user can make full 3 attempts
+    if (rows.length === 0) {
+      return res.json({ 
+        remainingAttempts: maxAttempts,
+        maxAttempts: maxAttempts
+      });
+    }
 
-    res.json({ remainingAttempts: remaining });
+    // Calculate remaining attempts from the most recent token
+    const attemptCount = rows[0]?.attempt_count || 0;
+    const remaining = Math.max(0, maxAttempts - attemptCount);
+
+    res.json({ 
+      remainingAttempts: remaining,
+      maxAttempts: maxAttempts
+    });
 
   } catch (error) {
     console.error('Get remaining attempts error:', error);
@@ -439,5 +571,47 @@ export const getOTPUserProfile = async (req, res) => {
   } catch (error) {
     console.error('Get user profile error:', error);
     res.status(500).json({ error: 'Failed to get user profile' });
+  }
+};
+// Get active OTP for an email (if not expired and not used)
+export const getActiveOTP = async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const connection = await pool.getConnection();
+
+    const [rows] = await connection.execute(`
+      SELECT otp_code, expires_at, token_type
+      FROM OTP_TOKENS
+      WHERE email = ?
+        AND expires_at > NOW()
+        AND is_used = FALSE
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [email]);
+
+    connection.release();
+
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        message: 'No active OTP found',
+        hasActiveOtp: false 
+      });
+    }
+
+    res.json({
+      hasActiveOtp: true,
+      code: rows[0].otp_code,
+      expiresAt: rows[0].expires_at,
+      tokenType: rows[0].token_type
+    });
+
+  } catch (error) {
+    console.error('Get active OTP error:', error);
+    res.status(500).json({ error: 'Failed to get active OTP' });
   }
 };

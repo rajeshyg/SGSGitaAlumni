@@ -46,7 +46,7 @@ export function InvitationSection() {
 
   // Testing features for invitation system
   const [showInvitationUrls, setShowInvitationUrls] = useState(false);
-  const [generatedOtpCodes, setGeneratedOtpCodes] = useState<Record<string, string>>({});
+  const [generatedOtpCodes, setGeneratedOtpCodes] = useState<Record<string, { code: string; expiresAt: string; isExpired: boolean }>>({});
 
   // Define columns for the alumni members table
   const memberColumns: ColumnDef<AlumniMember>[] = [
@@ -243,6 +243,33 @@ export function InvitationSection() {
       loadAll();
     }
   }, []); // Empty dependency array - only run on mount
+
+  // Fetch active OTPs when invitations are loaded
+  useEffect(() => {
+    if (activeTab === 'invitations' && invitations.length > 0) {
+      invitations.forEach(inv => {
+        fetchActiveOtp(inv.email);
+      });
+    }
+  }, [invitations, activeTab]);
+
+  // Periodic expiry check - update every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setGeneratedOtpCodes(prevCodes => {
+        const updated = { ...prevCodes };
+        Object.keys(updated).forEach(email => {
+          updated[email] = {
+            ...updated[email],
+            isExpired: isOtpExpired(updated[email].expiresAt)
+          };
+        });
+        return updated;
+      });
+    }, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const loadAll = async () => {
     setLoading(true);
@@ -454,30 +481,79 @@ export function InvitationSection() {
 
   // ---------- Testing features for invitation system ----------
 
+  // Check if OTP is expired
+  const isOtpExpired = (expiresAt: string): boolean => {
+    return new Date(expiresAt) < new Date();
+  };
+
+  // Fetch active OTP for an email
+  const fetchActiveOtp = async (email: string) => {
+    try {
+      const response = await fetch(`/api/otp/active/${encodeURIComponent(email)}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.code && data.expiresAt) {
+          const expired = isOtpExpired(data.expiresAt);
+          setGeneratedOtpCodes(prev => ({
+            ...prev,
+            [email]: {
+              code: data.code,
+              expiresAt: data.expiresAt,
+              isExpired: expired
+            }
+          }));
+        } else {
+          // No active OTP found
+          setGeneratedOtpCodes(prev => {
+            const newCodes = { ...prev };
+            delete newCodes[email];
+            return newCodes;
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch active OTP:', err);
+    }
+  };
+
   const generateTestOtp = async (email: string) => {
     try {
       // Use direct API call since APIService doesn't have generateOTP method
+      // Note: Using 'login' type so the OTP can be used for passwordless login testing
       const response = await fetch('/api/otp/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ email, type: 'registration' })
+        body: JSON.stringify({ email, type: 'login' })
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data && data.code) {
-          setGeneratedOtpCodes(prev => ({ ...prev, [email]: data.code }));
-          setSuccess(`OTP generated for ${email}`);
+        if (data && data.code && data.expiresAt) {
+          setGeneratedOtpCodes(prev => ({
+            ...prev,
+            [email]: {
+              code: data.code,
+              expiresAt: data.expiresAt,
+              isExpired: false
+            }
+          }));
+          setSuccess(`OTP generated for ${email}: ${data.code}`);
         }
       } else {
-        throw new Error('Failed to generate OTP');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate OTP');
       }
     } catch (err) {
       console.error('Generate test OTP failed', err);
-      setError('Failed to generate test OTP');
+      setError(err instanceof Error ? err.message : 'Failed to generate test OTP');
     }
   };
 
@@ -639,23 +715,50 @@ export function InvitationSection() {
                               <div className="flex-1 min-w-0">
                                 <div className="font-medium text-gray-900 truncate">{inv.email}</div>
                                 <div className="flex items-center gap-2">
-                                  <code className={`px-2 py-1 rounded text-xs font-mono ${
-                                    generatedOtpCodes[inv.email]
-                                      ? 'bg-green-100 text-green-800'
-                                      : 'bg-gray-100 text-gray-500'
-                                  }`}>
-                                    {generatedOtpCodes[inv.email] || 'Click Generate'}
-                                  </code>
+                                  {generatedOtpCodes[inv.email] ? (
+                                    <>
+                                      <code className={`px-2 py-1 rounded text-xs font-mono ${
+                                        generatedOtpCodes[inv.email].isExpired
+                                          ? 'bg-red-100 text-red-800'
+                                          : 'bg-green-100 text-green-800'
+                                      }`}>
+                                        {generatedOtpCodes[inv.email].code}
+                                      </code>
+                                      <span className="text-xs text-gray-500">
+                                        {generatedOtpCodes[inv.email].isExpired ? (
+                                          'Expired'
+                                        ) : (
+                                          <>
+                                            Expires: {new Date(generatedOtpCodes[inv.email].expiresAt).toLocaleTimeString()}
+                                          </>
+                                        )}
+                                      </span>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => copyToClipboard(generatedOtpCodes[inv.email].code, 'OTP')}
+                                        className="h-6 px-2 text-xs shrink-0"
+                                      >
+                                        <Copy className="h-3 w-3" />
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <code className="px-2 py-1 rounded text-xs font-mono bg-gray-100 text-gray-500">
+                                      No active OTP
+                                    </code>
+                                  )}
                                 </div>
                               </div>
                               <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => generateTestOtp(inv.email)}
-                                disabled={loading}
+                                disabled={loading || (generatedOtpCodes[inv.email] && !generatedOtpCodes[inv.email].isExpired)}
                                 className="h-6 px-2 text-xs shrink-0"
+                                title={generatedOtpCodes[inv.email] && !generatedOtpCodes[inv.email].isExpired ? 'OTP still valid' : 'Generate new OTP'}
                               >
-                                Generate
+                                <Key className="h-3 w-3 mr-1" />
+                                {generatedOtpCodes[inv.email] && !generatedOtpCodes[inv.email].isExpired ? 'Valid' : 'Generate'}
                               </Button>
                             </div>
                           ))}

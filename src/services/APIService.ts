@@ -33,6 +33,7 @@ const getDataService = () => {
 export interface LoginCredentials extends Record<string, unknown> {
   email: string;
   password: string;
+  otpVerified?: boolean; // Optional flag for passwordless OTP login
 }
 
 export interface RegisterData extends Record<string, unknown> {

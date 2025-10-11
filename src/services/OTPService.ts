@@ -48,13 +48,26 @@ export class OTPService implements OTPServiceInterface {
       const otpData = {
         email: request.email,
         otpCode,
-        tokenType: request.type,
+        type: request.type,  // Backend expects 'type', not 'tokenType'
         userId: request.userId || null,
         expiresAt: expiresAt.toISOString()
       };
 
       const response = await apiClient.post('/api/otp/generate', otpData);
-      const otpToken: OTPToken = response.data;
+      
+      // Map the API response to OTPToken format
+      const otpToken: OTPToken = {
+        id: response.id || '',
+        email: request.email,
+        otpCode: response.code || otpCode, // API returns 'code', we need 'otpCode'
+        tokenType: request.type,
+        userId: request.userId,
+        generatedAt: new Date(),
+        expiresAt: new Date(response.expiresAt || expiresAt),
+        isUsed: false,
+        attemptCount: 0,
+        createdAt: new Date()
+      };
 
       return otpToken;
 
@@ -115,7 +128,8 @@ export class OTPService implements OTPServiceInterface {
         tokenType: request.type
       });
 
-      const validation: OTPValidation = response.data;
+      // response is already the data (not nested in response.data)
+      const validation: OTPValidation = response;
 
       // If validation failed, increment attempt count
       if (!validation.isValid && validation.token) {
@@ -125,16 +139,18 @@ export class OTPService implements OTPServiceInterface {
       return validation;
 
     } catch (error) {
+      console.error('[OTPService] validateOTP error:', error);
       if (error instanceof OTPError) {
         throw error;
       }
       
       // Return invalid validation for any unexpected errors
+      // NOTE: Set remaining attempts to 3 instead of 0 to avoid blocking the user
       return {
         isValid: false,
         token: null,
-        remainingAttempts: 0,
-        errors: ['OTP validation failed'],
+        remainingAttempts: 3,  // Changed from 0 to 3
+        errors: ['OTP validation failed - please try again'],
         isExpired: false,
         isRateLimited: false
       };
@@ -153,10 +169,19 @@ export class OTPService implements OTPServiceInterface {
 
   async getRemainingOTPAttempts(email: string): Promise<number> {
     try {
+      console.log('[OTPService] Requesting remaining attempts for:', email);
       const response = await apiClient.get(`/api/otp/remaining-attempts/${encodeURIComponent(email)}`);
-      return response.data.remainingAttempts;
+      console.log('[OTPService] API response:', response);
+      console.log('[OTPService] response.remainingAttempts:', response.remainingAttempts);
+      console.log('[OTPService] Type:', typeof response.remainingAttempts);
+      
+      // response is already the data (not nested in response.data)
+      const attempts = response.remainingAttempts || 3;
+      console.log('[OTPService] Returning attempts:', attempts);
+      return attempts;
     } catch (error) {
-      return 0;
+      console.error('[OTPService] Error getting remaining attempts:', error);
+      return 3; // Default to 3 attempts on error
     }
   }
 
@@ -247,7 +272,7 @@ export class OTPService implements OTPServiceInterface {
   private async checkDailyLimits(email: string): Promise<void> {
     try {
       const response = await apiClient.get(`/api/otp/daily-count/${encodeURIComponent(email)}`);
-      const dailyCount = response.data.count;
+      const dailyCount = response.count || 0;
 
       if (dailyCount >= this.MAX_DAILY_OTPS) {
         throw new OTPError(
@@ -271,7 +296,7 @@ export class OTPService implements OTPServiceInterface {
   private async checkRateLimits(email: string): Promise<void> {
     try {
       const response = await apiClient.get(`/api/otp/rate-limit/${encodeURIComponent(email)}`);
-      const recentAttempts = response.data.attempts;
+      const recentAttempts = response.attempts || 0;
 
       if (recentAttempts >= this.MAX_ATTEMPTS_PER_HOUR) {
         throw new OTPError(

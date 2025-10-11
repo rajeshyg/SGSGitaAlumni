@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
+import { OTPService } from '../services/OTPService';
 
 // ============================================================================
 // LOGIN PAGE COMPONENT
@@ -13,14 +14,17 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated, isLoading, error, clearError, user } = useAuth();
+  const otpService = new OTPService();
 
   // Form state
   const [formData, setFormData] = useState({
-    email: '',
+    email: location.state?.email || '',
     password: ''
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequestingOTP, setIsRequestingOTP] = useState(false);
+  const [showPasswordlessLogin, setShowPasswordlessLogin] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -112,6 +116,56 @@ export function LoginPage() {
   };
 
   // ============================================================================
+  // OTP PASSWORDLESS LOGIN
+  // ============================================================================
+
+  const handleRequestOTP = async () => {
+    // Validate email
+    if (!formData.email) {
+      setFormErrors({ email: 'Email is required for passwordless login' });
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      setFormErrors({ email: 'Please enter a valid email address' });
+      return;
+    }
+
+    setIsRequestingOTP(true);
+    setFormErrors({});
+
+    try {
+      console.log('[LoginPage] Requesting OTP for email:', formData.email);
+
+      // Generate OTP using OTPService (this also sends the email)
+      await otpService.generateOTP({
+        email: formData.email,
+        type: 'login'
+      });
+
+      console.log('[LoginPage] OTP generated and sent successfully');
+
+      // Redirect to OTP verification page
+      navigate(`/verify-otp/${encodeURIComponent(formData.email)}`, {
+        state: {
+          email: formData.email,
+          otpType: 'login',
+          verificationMethod: 'email',
+          message: 'Please check your email for the verification code.'
+        }
+      });
+
+    } catch (error) {
+      console.error('[LoginPage] OTP request error:', error);
+      setFormErrors({
+        email: error instanceof Error ? error.message : 'Failed to send OTP. Please try again.'
+      });
+    } finally {
+      setIsRequestingOTP(false);
+    }
+  };
+
+  // ============================================================================
   // LOADING STATE
   // ============================================================================
 
@@ -153,6 +207,13 @@ export function LoginPage() {
               </div>
             )}
 
+            {/* Success Message from state */}
+            {location.state?.message && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+                {location.state.message}
+              </div>
+            )}
+
             {/* Email Field */}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium text-foreground">
@@ -174,42 +235,94 @@ export function LoginPage() {
               )}
             </div>
 
-            {/* Password Field */}
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-foreground">
-                Password
-              </label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={formData.password}
-                onChange={handleInputChange}
-                className={formErrors.password ? 'border-destructive' : ''}
-                placeholder="Enter your password"
-              />
-              {formErrors.password && (
-                <p className="text-sm text-destructive">{formErrors.password}</p>
-              )}
-            </div>
+            {/* Password Field - Only show if not using passwordless login */}
+            {!showPasswordlessLogin && (
+              <div className="space-y-2">
+                <label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className={formErrors.password ? 'border-destructive' : ''}
+                  placeholder="Enter your password"
+                />
+                {formErrors.password && (
+                  <p className="text-sm text-destructive">{formErrors.password}</p>
+                )}
+              </div>
+            )}
 
             {/* Submit Button */}
+            {!showPasswordlessLogin && (
+              <Button
+                onClick={handleSubmit}
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            )}
+
+            {/* Passwordless Login Toggle */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">or</span>
+              </div>
+            </div>
+
+            {/* Request OTP Button */}
             <Button
-              onClick={handleSubmit}
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (showPasswordlessLogin) {
+                  handleRequestOTP();
+                } else {
+                  setShowPasswordlessLogin(true);
+                }
+              }}
               className="w-full"
-              disabled={isSubmitting}
+              disabled={isRequestingOTP}
             >
-              {isSubmitting ? (
+              {isRequestingOTP ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Signing in...
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                  Sending OTP...
                 </>
+              ) : showPasswordlessLogin ? (
+                '📧 Send Verification Code'
               ) : (
-                'Sign In'
+                '🔐 Sign in without password'
               )}
             </Button>
+
+            {/* Back to password login */}
+            {showPasswordlessLogin && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setShowPasswordlessLogin(false)}
+                className="w-full text-sm"
+              >
+                Back to password login
+              </Button>
+            )}
           </form>
 
           {/* Additional Links */}

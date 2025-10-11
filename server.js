@@ -90,7 +90,9 @@ import {
 
 import {
   generateOTP,
+  generateAndSendOTP,
   validateOTP,
+  sendOTP,
   getRemainingAttempts,
   getDailyCount,
   checkRateLimit,
@@ -100,6 +102,7 @@ import {
   setupTOTP,
   getTOTPStatus,
   getOTPUserProfile,
+  getActiveOTP,
   setOTPPool
 } from './routes/otp.js';
 
@@ -331,11 +334,13 @@ app.get('/api/export', (req, res) => {
 // OTP ROUTES
 // ============================================================================
 
-app.post('/api/otp/generate', apiRateLimit, generateOTP);
+app.post('/api/otp/generate', apiRateLimit, generateAndSendOTP); // New auto-generate endpoint
+app.post('/api/otp/send', apiRateLimit, sendOTP);
 app.post('/api/otp/validate', validateOTP);
 app.get('/api/otp/remaining-attempts/:email', getRemainingAttempts);
 app.get('/api/otp/daily-count/:email', getDailyCount);
 app.get('/api/otp/rate-limit/:email', checkRateLimit);
+app.get('/api/otp/active/:email', getActiveOTP);
 app.post('/api/otp/reset-daily-limit', resetDailyLimit);
 app.post('/api/otp/increment-daily-count', incrementDailyCount);
 app.delete('/api/otp/cleanup-expired', cleanupExpired);

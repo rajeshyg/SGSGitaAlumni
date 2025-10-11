@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { APIService } from '../services/APIService';
 import { AlumniProfile } from '../services/AlumniDataIntegrationService';
+import { OTPService } from '../services/OTPService';
 
 interface InvitationValidationResponse {
   isValid: boolean;
@@ -50,6 +51,7 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
 
   // Services
   const apiService = APIService;
+  const otpService = new OTPService();
 
   // State management
   const [validation, setValidation] = useState<InvitationValidationResponse | null>(null);
@@ -115,21 +117,54 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
       setIsJoining(true);
       setError(null);
 
+      console.log('[InvitationAcceptancePage] Starting registration from invitation...');
+
       // Register from invitation using streamlined service
       const response = await apiService.registerFromInvitation({
         invitationToken: token,
         additionalData: {}
       });
 
-      // Redirect to dashboard or login
-      navigate('/dashboard', {
+      console.log('[InvitationAcceptancePage] Registration successful:', response);
+
+      // Generate and send OTP for verification
+      const email = response.user.email || validation.invitation?.email;
+      
+      if (!email) {
+        setError('User email not found. Please contact support.');
+        return;
+      }
+
+      console.log('[InvitationAcceptancePage] Generating OTP for email:', email);
+
+      // Generate OTP using OTPService
+      const otpToken = await otpService.generateOTP({
+        email,
+        type: 'registration',
+        userId: response.user.id?.toString()
+      });
+
+      console.log('[InvitationAcceptancePage] OTP generated successfully');
+
+      // Send OTP via email
+      await otpService.sendOTP(email, otpToken.otpCode, 'registration');
+
+      console.log('[InvitationAcceptancePage] OTP sent to email');
+
+      // Redirect to OTP verification page
+      navigate(`/verify-otp/${encodeURIComponent(email)}`, {
         state: {
-          message: 'Welcome to SGS Gita Alumni Network!',
+          email,
+          otpType: 'registration',
+          verificationMethod: 'email',
+          redirectTo: '/dashboard',
+          message: 'Welcome to SGS Gita Alumni Network! Please verify your email to continue.',
           user: response.user
         }
       });
 
     } catch (err) {
+      console.error('[InvitationAcceptancePage] Join alumni network error:', err);
       setError(err instanceof Error ? err.message : 'Failed to join alumni network');
     } finally {
       setIsJoining(false);
