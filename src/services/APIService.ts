@@ -420,12 +420,21 @@ export const APIService = {
     try {
       logger.info('Attempting login for user:', credentials.email);
 
-      const response = await apiClient.post('/api/auth/login', credentials);
+      // Add timeout to login request
+      const response = await Promise.race([
+        apiClient.post('/api/auth/login', credentials),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Login request timeout after 30 seconds')), 30000)
+        )
+      ]);
 
       logger.info('Login successful for user:', credentials.email);
       return response as AuthResponse;
     } catch (error) {
       logger.error('Login failed:', error);
+      if (error instanceof Error && error.message.includes('timeout')) {
+        throw new Error('Login is taking longer than expected. Please check your connection and try again.');
+      }
       throw new Error('Login failed. Please check your credentials.');
     }
   },
@@ -994,6 +1003,40 @@ export const APIService = {
     } catch (error) {
       logger.error('Failed to revoke invitation:', error);
       throw new Error('Failed to revoke invitation. Please try again.');
+    }
+  },
+
+  // Validate invitation (streamlined version)
+  validateInvitation: async (token: string): Promise<any> => {
+    try {
+      console.log('[APIService] Starting validateInvitation for token:', token);
+      logger.info('Validating invitation token:', token);
+
+      console.log('[APIService] Making API call to:', `/api/invitations/validate/${token}`);
+      const response = await apiClient.get(`/api/invitations/validate/${token}`);
+
+      console.log('[APIService] API call completed, response:', response);
+      logger.info('Invitation validation completed');
+      return response;
+    } catch (error) {
+      console.error('[APIService] Validation failed:', error);
+      logger.error('Failed to validate invitation:', error);
+      throw new Error('Failed to validate invitation. Please try again.');
+    }
+  },
+
+  // Register from invitation (streamlined version)
+  registerFromInvitation: async (data: { invitationToken: string; additionalData?: any }): Promise<any> => {
+    try {
+      logger.info('Registering from invitation');
+
+      const response = await apiClient.post('/api/auth/register-from-invitation', data);
+
+      logger.info('Registration from invitation completed successfully');
+      return response;
+    } catch (error) {
+      logger.error('Failed to register from invitation:', error);
+      throw new Error('Failed to complete registration. Please try again.');
     }
   }
 };

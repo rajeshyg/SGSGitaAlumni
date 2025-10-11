@@ -241,9 +241,18 @@ export const createFamilyInvitation = async (req, res) => {
     });
 
     // Extract token components for database storage
-    const tokenParts = hmacToken.split('.');
-    const tokenPayload = tokenParts[0] || '';
-    const tokenSignature = tokenParts[1] || '';
+    // The token is base64url encoded JSON with {payload, signature}
+    let tokenPayload = '';
+    let tokenSignature = '';
+    try {
+      const tokenData = JSON.parse(Buffer.from(hmacToken, 'base64url').toString());
+      tokenPayload = JSON.stringify(tokenData.payload) || '';
+      tokenSignature = tokenData.signature || '';
+    } catch (error) {
+      console.error('Error parsing HMAC token:', error);
+      tokenPayload = '';
+      tokenSignature = '';
+    }
 
     const familyInvitation = {
       id: familyInvitationId,
@@ -461,14 +470,23 @@ export const createInvitation = async (req, res) => {
     });
 
     // Extract token components for database storage
-    const tokenParts = hmacToken.split('.');
-    const tokenPayload = tokenParts[0] || '';
-    const tokenSignature = tokenParts[1] || '';
+    // The token is base64url encoded JSON with {payload, signature}
+    let tokenPayload = '';
+    let tokenSignature = '';
+    try {
+      const tokenData = JSON.parse(Buffer.from(hmacToken, 'base64url').toString());
+      tokenPayload = JSON.stringify(tokenData.payload) || '';
+      tokenSignature = tokenData.signature || '';
+    } catch (error) {
+      console.error('Error parsing HMAC token:', error);
+      tokenPayload = '';
+      tokenSignature = '';
+    }
 
     const invitation = {
       id: invitationId,
       email: targetEmail,
-      userId: targetUserId,
+      userId: targetUserId || null,
       invitationToken: hmacToken, // Store full HMAC token
       invitedBy,
       invitationType: invitationType || 'alumni',
@@ -479,19 +497,15 @@ export const createInvitation = async (req, res) => {
       isUsed: false,
       resendCount: 0,
       createdAt: new Date(),
-      updatedAt: new Date(),
-      // HMAC token fields
-      tokenPayload: tokenPayload,
-      tokenSignature: tokenSignature,
-      tokenFormat: 'hmac'
+      updatedAt: new Date()
     };
 
     const query = `
       INSERT INTO USER_INVITATIONS (
         id, email, user_id, invitation_token, invited_by, invitation_type,
         invitation_data, status, sent_at, expires_at, is_used,
-        resend_count, created_at, updated_at, token_payload, token_signature, token_format
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        resend_count, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await connection.execute(query, [
@@ -508,10 +522,7 @@ export const createInvitation = async (req, res) => {
       invitation.isUsed,
       invitation.resendCount,
       invitation.createdAt,
-      invitation.updatedAt,
-      invitation.tokenPayload,
-      invitation.tokenSignature,
-      invitation.tokenFormat
+      invitation.updatedAt
     ]);
 
     connection.release();
@@ -599,9 +610,18 @@ export const createBulkInvitations = async (req, res) => {
         });
 
         // Extract token components for database storage
-        const tokenParts = hmacToken.split('.');
-        const tokenPayload = tokenParts[0] || '';
-        const tokenSignature = tokenParts[1] || '';
+        // The token is base64url encoded JSON with {payload, signature}
+        let tokenPayload = '';
+        let tokenSignature = '';
+        try {
+          const tokenData = JSON.parse(Buffer.from(hmacToken, 'base64url').toString());
+          tokenPayload = JSON.stringify(tokenData.payload) || '';
+          tokenSignature = tokenData.signature || '';
+        } catch (error) {
+          console.error('Error parsing HMAC token:', error);
+          tokenPayload = '';
+          tokenSignature = '';
+        }
 
         const invitation = {
           id: invitationId,
@@ -617,19 +637,15 @@ export const createBulkInvitations = async (req, res) => {
           isUsed: false,
           resendCount: 0,
           createdAt: new Date(),
-          updatedAt: new Date(),
-          // HMAC token fields
-          tokenPayload: tokenPayload,
-          tokenSignature: tokenSignature,
-          tokenFormat: 'hmac'
+          updatedAt: new Date()
         };
 
         const insertQuery = `
           INSERT INTO USER_INVITATIONS (
             id, email, user_id, invitation_token, invited_by, invitation_type,
             invitation_data, status, sent_at, expires_at, is_used,
-            resend_count, created_at, updated_at, token_payload, token_signature, token_format
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            resend_count, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         await connection.execute(insertQuery, [
@@ -646,10 +662,7 @@ export const createBulkInvitations = async (req, res) => {
           invitation.isUsed,
           invitation.resendCount,
           invitation.createdAt,
-          invitation.updatedAt,
-          invitation.tokenPayload,
-          invitation.tokenSignature,
-          invitation.tokenFormat
+          invitation.updatedAt
         ]);
 
         createdInvitations.push(invitation);
@@ -675,7 +688,7 @@ export const createBulkInvitations = async (req, res) => {
   }
 };
 
-// Validate invitation token
+// Validate invitation token (streamlined version)
 export const validateInvitation = async (req, res) => {
   // Prevent caching of invitation validation responses
   res.set({
@@ -688,108 +701,74 @@ export const validateInvitation = async (req, res) => {
 
   try {
     const { token } = req.params;
-    console.log('VALIDATE_INVITATION: Starting validation for token:', token);
-    const connection = await pool.getConnection();
+    console.log('VALIDATE_INVITATION: Starting streamlined validation for token:', token);
 
-    // First, try to find by exact token match (for backward compatibility)
-    let query = `
-      SELECT * FROM USER_INVITATIONS
-      WHERE invitation_token = ? AND status = 'pending' AND expires_at > NOW() AND is_used = false
-    `;
+    // Import services dynamically to avoid circular dependencies
+    const { AlumniDataIntegrationService } = await import('../src/services/AlumniDataIntegrationService.js');
+    const { StreamlinedRegistrationService } = await import('../src/services/StreamlinedRegistrationService.js');
+    const { EmailService } = await import('../src/services/EmailService.js');
 
-    let [rows] = await connection.execute(query, [token]);
+    // Initialize services
+    const alumniService = new AlumniDataIntegrationService(pool);
+    const registrationService = new StreamlinedRegistrationService(pool, alumniService);
 
-    // If not found and token looks like HMAC format, try HMAC validation
-    if (rows.length === 0 && token.includes('.')) {
-      try {
-        const validation = hmacTokenService.validateToken(token);
-        if (validation.isValid && validation.payload) {
-          // Find invitation by payload data
-          query = `
-            SELECT * FROM USER_INVITATIONS
-            WHERE id = ? AND email = ? AND status = 'pending' AND expires_at > NOW() AND is_used = false
-          `;
-          [rows] = await connection.execute(query, [
-            validation.payload.invitationId,
-            validation.payload.email
-          ]);
-        }
-      } catch (hmacError) {
-        console.warn('HMAC token validation failed:', hmacError.message);
-      }
+    console.log('VALIDATE_INVITATION: Services initialized, calling validation...');
+
+    // Use the streamlined validation service
+    const validation = await registrationService.validateInvitationWithAlumniData(token);
+
+    console.log('VALIDATE_INVITATION: Validation result:', {
+      isValid: validation.isValid,
+      errorType: validation.errorType,
+      hasAlumniProfile: !!validation.alumniProfile
+    });
+
+    if (!validation.isValid) {
+      return res.json({
+        isValid: false,
+        invitation: null,
+        alumniProfile: null,
+        requiresUserInput: false,
+        suggestedFields: [],
+        canOneClickJoin: false,
+        errorType: validation.errorType,
+        errorMessage: validation.errorMessage
+      });
     }
 
-    connection.release();
+    // Prepare registration data
+    const registrationData = await registrationService.prepareRegistrationData(token);
 
-    if (rows.length > 0) {
-      const invitation = rows[0];
-
-      // For alumni invitations, fetch alumni data to pre-populate the form
-      let alumniData = null;
-      if (invitation.invitation_type === 'alumni') {
-        try {
-          const alumniQuery = `
-            SELECT
-              id, student_id, first_name, last_name, email, phone,
-              batch as graduation_year, result as degree, center_name as program,
-              address, created_at, updated_at
-            FROM alumni_members
-            WHERE email = ? AND email IS NOT NULL AND email != ''
-            LIMIT 1
-          `;
-          const [alumniRows] = await connection.execute(alumniQuery, [invitation.email]);
-
-          if (alumniRows.length > 0) {
-            const alumni = alumniRows[0];
-            alumniData = {
-              id: alumni.id,
-              studentId: alumni.student_id,
-              firstName: alumni.first_name,
-              lastName: alumni.last_name,
-              email: alumni.email,
-              phone: alumni.phone,
-              graduationYear: alumni.graduation_year,
-              degree: alumni.degree,
-              program: alumni.program,
-              address: alumni.address,
-              createdAt: alumni.created_at,
-              updatedAt: alumni.updated_at
-            };
-          }
-        } catch (alumniError) {
-          console.warn('Failed to fetch alumni data for invitation:', invitation.id, alumniError.message);
-        }
+    const responseData = {
+      isValid: true,
+      invitation: {
+        id: validation.invitation.id,
+        email: validation.invitation.email,
+        invitationToken: validation.invitation.invitation_token,
+        invitedBy: validation.invitation.invited_by,
+        invitationType: validation.invitation.invitation_type,
+        alumniMemberId: validation.invitation.alumni_member_id,
+        completionStatus: validation.invitation.completion_status,
+        status: validation.invitation.status,
+        sentAt: validation.invitation.sent_at,
+        expiresAt: validation.invitation.expires_at,
+        createdAt: validation.invitation.created_at,
+        updatedAt: validation.invitation.updated_at
+      },
+      alumniProfile: validation.alumniProfile,
+      requiresUserInput: validation.requiresUserInput,
+      suggestedFields: validation.suggestedFields,
+      canOneClickJoin: validation.canOneClickJoin,
+      registrationData: {
+        requiredFields: registrationData.requiredFields,
+        optionalFields: registrationData.optionalFields,
+        estimatedCompletionTime: registrationData.estimatedCompletionTime
       }
+    };
 
-      const responseData = {
-        invitation: {
-          id: invitation.id,
-          email: invitation.email,
-          invitationToken: invitation.invitation_token,
-          invitedBy: invitation.invited_by,
-          invitationType: invitation.invitation_type,
-          invitationData: (() => {
-            try {
-              return JSON.parse(invitation.invitation_data || '{}');
-            } catch (error) {
-              return {};
-            }
-          })(),
-          status: invitation.status,
-          sentAt: invitation.sent_at,
-          expiresAt: invitation.expires_at,
-          isUsed: invitation.is_used,
-          resendCount: invitation.resend_count,
-          createdAt: invitation.created_at,
-          updatedAt: invitation.updated_at
-        },
-        alumniData: alumniData
-      };
-      console.log('VALIDATE_INVITATION: Sending response:', JSON.stringify(responseData, null, 2));
-      res.json(responseData);
-    } else {
-      res.json({ invitation: null });
-    }
+    console.log('VALIDATE_INVITATION: Sending streamlined response');
+    res.json(responseData);
+
   } catch (error) {
     console.error('Error validating invitation:', error);
     res.status(500).json({ error: 'Failed to validate invitation' });

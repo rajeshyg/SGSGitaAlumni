@@ -3,6 +3,7 @@
 // ============================================================================
 // Server-side HMAC-SHA256 signed token generation and validation for secure invitations
 
+import { createHmac } from 'crypto';
 import { TokenSecretManager } from './TokenSecretManager';
 
 export interface HMACInvitationToken {
@@ -96,8 +97,7 @@ export class HMACTokenService {
    * Create HMAC signature for payload
    */
   private createHmacSignature(payload: string): string {
-    return require('crypto')
-      .createHmac(this.algorithm, this.secretKey)
+    return createHmac(this.algorithm, this.secretKey)
       .update(payload)
       .digest('hex');
   }

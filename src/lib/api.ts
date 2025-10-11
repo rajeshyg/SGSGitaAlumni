@@ -4,7 +4,7 @@ import axios from 'axios'
 
 // Enhanced API client with security features
 export const apiClient = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || '',
+  baseURL: (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_BASE_URL : '') || '',
 
   // Legacy compatibility methods
   getAuthHeaders(): Record<string, string> {
@@ -20,20 +20,30 @@ export const apiClient = {
 
   // Initialize secure API client with auth tokens
   initializeAuth(token: string, refreshToken?: string): void {
-    secureAPIClient.setAuthTokens(token, refreshToken);
+    if (secureAPIClient) {
+      secureAPIClient.setAuthTokens(token, refreshToken);
+    }
   },
 
   // Clear auth tokens
   clearAuth(): void {
-    secureAPIClient.clearAuthTokens();
+    if (secureAPIClient) {
+      secureAPIClient.clearAuthTokens();
+    }
   },
 
   // Set encryption key for sensitive data
   async setEncryptionKey(key: CryptoKey): Promise<void> {
-    await secureAPIClient.setEncryptionKey(key);
+    if (secureAPIClient) {
+      await secureAPIClient.setEncryptionKey(key);
+    }
   },
 
   async request(endpoint: string, options: RequestInit = {}) {
+    if (!secureAPIClient) {
+      throw new Error('Secure API client not available on server-side');
+    }
+
     try {
       const method = (options.method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH') || 'GET';
       const data = options.body ? JSON.parse(options.body as string) : undefined;

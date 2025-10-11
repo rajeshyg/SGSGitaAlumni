@@ -29,8 +29,10 @@ import { AccessControlService } from './AccessControlService';
 // Global encryption service instance
 export const encryptionService = new EncryptionService();
 
-// Global secure API client instance
-export const secureAPIClient = new SecureAPIClient(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001');
+// Global secure API client instance - only create on client side
+export const secureAPIClient = typeof import.meta !== 'undefined' && import.meta.env
+  ? new SecureAPIClient(import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001')
+  : null;
 
 // Global input validator instance
 export const inputValidator = new InputValidator();

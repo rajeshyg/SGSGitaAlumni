@@ -50,3 +50,45 @@ export async function testDatabaseConnection() {
     return false;
   }
 }
+
+// Monitor connection pool status
+export function getPoolStatus() {
+  const pool = getPool();
+  const poolName = 'MainPool';
+
+  return {
+    poolName,
+    connectionLimit: pool.config.connectionLimit,
+    queueLimit: pool.config.queueLimit,
+    availableConnections: pool._availableConnections ? pool._availableConnections.length : 'unknown',
+    usingConnections: pool._usingConnections ? pool._usingConnections.length : 'unknown',
+    waitingClients: pool._waitingClients ? pool._waitingClients.length : 'unknown',
+    totalConnections: pool._allConnections ? pool._allConnections.length : 'unknown'
+  };
+}
+
+// Log pool status periodically
+export function startPoolMonitoring(intervalMs = 60000) { // Default: every minute
+  console.log('🔍 Starting database connection pool monitoring...');
+
+  const logPoolStatus = () => {
+    const status = getPoolStatus();
+    console.log('📊 Pool Status:', status);
+
+    // Warn if pool is getting full
+    if (status.totalConnections >= status.connectionLimit * 0.8) {
+      console.warn('⚠️  Connection pool usage is high:', `${status.totalConnections}/${status.connectionLimit}`);
+    }
+
+    // Alert if pool is exhausted
+    if (status.totalConnections >= status.connectionLimit) {
+      console.error('🚨 Connection pool is exhausted! All connections are in use.');
+    }
+  };
+
+  // Log immediately
+  logPoolStatus();
+
+  // Set up periodic logging
+  return setInterval(logPoolStatus, intervalMs);
+}

@@ -14,6 +14,8 @@ export interface Invitation {
   invitedBy: string;
   invitationType: InvitationType;
   invitationData?: InvitationData;
+  alumniMemberId?: number; // Link to alumni_members table
+  completionStatus?: string; // Status of invitation completion
   status: InvitationStatus;
   sentAt: Date;
   expiresAt: Date;
@@ -192,10 +194,13 @@ export interface InvitationValidation {
   isValid: boolean;
   invitation: Invitation | null;
   alumniData?: AlumniData | null;
+  alumniProfile?: any; // From streamlined API
   errors: string[];
   requiresParentConsent: boolean;
   isExpired: boolean;
   isAlreadyUsed: boolean;
+  canOneClickJoin?: boolean;
+  suggestedFields?: string[];
 }
 
 export interface UserRegistrationData {
@@ -286,7 +291,7 @@ export interface InvitationServiceInterface {
   createInvitation(request: InvitationRequest): Promise<Invitation>;
   sendInvitation(invitationId: string): Promise<void>;
   validateInvitation(token: string): Promise<InvitationValidation>;
-  acceptInvitation(token: string, userData: UserRegistrationData): Promise<any>;
+  acceptInvitation(token: string): Promise<any>; // Simplified - no userData needed
   resendInvitation(invitationId: string): Promise<void>;
   revokeInvitation(invitationId: string): Promise<void>;
   getInvitationStatus(token: string): Promise<Invitation>;

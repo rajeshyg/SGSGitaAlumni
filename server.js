@@ -3,6 +3,21 @@ import dotenv from 'dotenv';
 // Load environment variables FIRST
 dotenv.config();
 
+// ============================================================================
+// CRITICAL: Add process-level error handlers to prevent silent crashes
+// ============================================================================
+process.on('uncaughtException', (error) => {
+  console.error('🚨 UNCAUGHT EXCEPTION:', error);
+  console.error('Stack:', error.stack);
+  // Don't exit - let the error be handled
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 UNHANDLED REJECTION at:', promise);
+  console.error('Reason:', reason);
+  // Don't exit - log and continue
+});
+
 import express from 'express';
 import cors from 'cors';
 
@@ -133,7 +148,12 @@ app.use(monitoringMiddleware);
 app.post('/api/auth/login', loginRateLimit, login);
 app.post('/api/auth/logout', authenticateToken, logout);
 app.post('/api/auth/refresh', refresh);
-app.post('/api/auth/register-from-invitation', registerFromInvitation);
+app.post('/api/auth/register-from-invitation', (req, res, next) => {
+  console.log('🔵 ROUTE MATCHED: /api/auth/register-from-invitation');
+  console.log('Request headers:', req.headers);
+  console.log('Request body:', req.body);
+  next();
+}, registerFromInvitation);
 app.post('/api/auth/register-from-family-invitation', registerFromFamilyInvitation);
 
 // ============================================================================
@@ -327,28 +347,40 @@ app.get('/api/users/profile/:email', getOTPUserProfile);
 
 // Start server
 const server = app.listen(PORT, async () => {
-  console.log(`🚀 Backend API server running on http://localhost:${PORT}`);
-  console.log(`📊 MySQL Database: ${process.env.DB_NAME}`);
-  console.log(`🏠 Host: ${process.env.DB_HOST}`);
+  try {
+    console.log(`🚀 Backend API server running on http://localhost:${PORT}`);
+    console.log(`📊 MySQL Database: ${process.env.DB_NAME}`);
+    console.log(`🏠 Host: ${process.env.DB_HOST}`);
 
-  // Test database connection
-  await testDatabaseConnection();
+    // Test database connection
+    await testDatabaseConnection();
+    console.log('✅ Server startup completed successfully');
+  } catch (error) {
+    console.error('❌ Server startup error:', error);
+  }
+});
+
+server.on('error', (error) => {
+  console.error('❌ Server error:', error);
 });
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
+  console.error('❌ Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
   // Don't exit - keep server running
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Reason stack:', reason?.stack);
   // Don't exit - keep server running
 });
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
+  console.log('🔴 SIGINT RECEIVED - Shutting down gracefully...');
+  console.trace('SIGINT stack trace:');
   server.close(() => {
     console.log('Server closed');
   });
@@ -359,7 +391,8 @@ process.on('SIGINT', async () => {
 });
 
 process.on('SIGTERM', async () => {
-  console.log('Shutting down gracefully...');
+  console.log('🔴 SIGTERM RECEIVED - Shutting down gracefully...');
+  console.trace('SIGTERM stack trace:');
   server.close(() => {
     console.log('Server closed');
   });

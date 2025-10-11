@@ -3,7 +3,7 @@
 // ============================================================================
 // Express middleware for automatic rate limiting using Redis backend
 
-import { redisRateLimiter } from '../src/lib/security/RedisRateLimiter.ts';
+import { redisRateLimiter } from '../src/lib/security/RedisRateLimiter.js';
 
 /**
  * Rate limiting middleware factory

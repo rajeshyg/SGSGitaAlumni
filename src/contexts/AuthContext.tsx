@@ -70,7 +70,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null, authError: null }));
 
-      const response: AuthResponse = await APIService.login(credentials);
+      // Add timeout to login request
+      const response: AuthResponse = await Promise.race([
+        APIService.login(credentials),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Login request timeout after 30 seconds')), 30000)
+        )
+      ]);
 
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console

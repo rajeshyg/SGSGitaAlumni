@@ -153,12 +153,17 @@ export class InvitationService implements InvitationServiceInterface {
 
   async validateInvitation(token: string): Promise<InvitationValidation> {
     try {
-      const response = await apiClient.get(`/api/invitations/validate/${token}`);
-      console.log('InvitationService: API response received:', response);
-      const invitation: Invitation | null = response.invitation;
-      console.log('InvitationService: Extracted invitation:', invitation);
+      // Add timeout to invitation validation request
+      const response = await Promise.race([
+        apiClient.get(`/api/invitations/validate/${token}`),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Invitation validation timeout after 30 seconds')), 30000)
+        )
+      ]);
 
-      if (!invitation) {
+      console.log('InvitationService: API response received:', response);
+
+      if (!response.isValid) {
         return {
           isValid: false,
           invitation: null,
@@ -169,50 +174,33 @@ export class InvitationService implements InvitationServiceInterface {
         };
       }
 
-      const errors: string[] = [];
-      let isValid = true;
-      let requiresParentConsent = false;
-
-      // Check if invitation is expired
-      const isExpired = new Date() > new Date(invitation.expiresAt);
-      if (isExpired) {
-        errors.push('Invitation has expired');
-        isValid = false;
-      }
-
-      // Check if invitation is already used
-      const isAlreadyUsed = invitation.isUsed;
-      if (isAlreadyUsed) {
-        errors.push('Invitation has already been used');
-        isValid = false;
-      }
-
-      // Check invitation status
-      if (invitation.status !== 'pending') {
-        errors.push(`Invitation status is ${invitation.status}`);
-        isValid = false;
-      }
-
-      // For alumni invitations, check if age verification might be needed
-      if (invitation.invitationType === 'alumni' && invitation.invitationData?.graduationYear) {
-        const estimatedAge = new Date().getFullYear() - invitation.invitationData.graduationYear + 18;
-        requiresParentConsent = this.ageVerificationService.requiresParentConsent(estimatedAge);
-      }
+      const invitation = response.invitation;
+      const alumniProfile = response.alumniProfile;
+      const requiresParentConsent = alumniProfile?.requiresParentConsent || false;
 
       return {
-        isValid,
+        isValid: true,
         invitation,
-        errors,
+        errors: [],
         requiresParentConsent,
-        isExpired,
-        isAlreadyUsed
+        isExpired: false,
+        isAlreadyUsed: false,
+        alumniProfile,
+        canOneClickJoin: response.canOneClickJoin,
+        suggestedFields: response.suggestedFields || []
       };
 
     } catch (error) {
+      console.error('InvitationService: Validation error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
       return {
         isValid: false,
         invitation: null,
-        errors: ['Failed to validate invitation'],
+        errors: [errorMessage.includes('timeout')
+          ? 'Invitation validation is taking longer than expected. Please try again.'
+          : 'Failed to validate invitation'
+        ],
         requiresParentConsent: false,
         isExpired: false,
         isAlreadyUsed: false
@@ -220,11 +208,11 @@ export class InvitationService implements InvitationServiceInterface {
     }
   }
 
-  async acceptInvitation(token: string, userData: UserRegistrationData): Promise<User> {
+  async acceptInvitation(token: string): Promise<User> {
     try {
       // Validate invitation first
       const validation = await this.validateInvitation(token);
-      
+
       if (!validation.isValid || !validation.invitation) {
         throw new InvitationError(
           validation.errors.join(', '),
@@ -233,55 +221,30 @@ export class InvitationService implements InvitationServiceInterface {
         );
       }
 
-      // Perform age verification
-      const ageVerification = await this.ageVerificationService.verifyAge(userData.birthDate);
-      
-      if (!ageVerification.isValid) {
+      // Check if parent consent is required (from alumni data)
+      if (validation.requiresParentConsent) {
         throw new InvitationError(
-          ageVerification.errors.join(', '),
-          'AGE_VERIFICATION_FAILED',
+          'Parent consent is required for users under 18. A consent request has been sent.',
+          'PARENT_CONSENT_REQUIRED',
           400
         );
       }
 
-      // Handle parent consent if required
-      if (ageVerification.requiresParentConsent) {
-        if (!userData.parentEmail || !userData.parentConsentToken) {
-          throw new InvitationError(
-            'Parent consent is required for users under 18',
-            'PARENT_CONSENT_REQUIRED',
-            400
-          );
-        }
-
-        const consentValid = await this.ageVerificationService.validateParentConsent(
-          userData.parentConsentToken
-        );
-        
-        if (!consentValid) {
-          throw new InvitationError(
-            'Invalid or expired parent consent',
-            'INVALID_PARENT_CONSENT',
-            400
-          );
-        }
-      }
-
-      // Create or update user account
+      // Create user account linked to alumni record
       const userCreationData = {
-        ...userData,
         email: validation.invitation.email,
         invitationId: validation.invitation.id,
-        requiresOtp: true,
-        ageVerified: true,
-        parentConsentRequired: ageVerification.requiresParentConsent,
-        parentConsentGiven: ageVerification.requiresParentConsent
+        alumniMemberId: validation.invitation.alumniMemberId,
+        requiresOtp: false, // No OTP for simple join
+        ageVerified: true, // Already verified from alumni record
+        parentConsentRequired: false,
+        parentConsentGiven: false
       };
 
       const userResponse = await apiClient.post('/api/auth/register-from-invitation', userCreationData);
       const user: User = userResponse.data.user;
 
-      // Mark invitation as used and link to user
+      // Mark invitation as accepted
       await apiClient.request(`/api/invitations/${validation.invitation.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -289,7 +252,7 @@ export class InvitationService implements InvitationServiceInterface {
           isUsed: true,
           usedAt: new Date().toISOString(),
           acceptedBy: user.id,
-          userId: user.id // Ensure user_id is set for tracking
+          completionStatus: 'completed'
         })
       });
 

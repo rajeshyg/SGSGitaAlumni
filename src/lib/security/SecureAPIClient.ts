@@ -107,34 +107,43 @@ export class SecureAPIClient {
   private async request<T>(endpoint: string, options: RequestOptions): Promise<APIResponse<T>> {
     const requestId = this.generateRequestId();
     const url = this.buildURL(endpoint);
+    const startTime = Date.now();
 
     try {
-      const config = await this.buildRequestConfig(options, requestId);
+      // Set default timeout if not provided
+      const timeout = options.timeout || 30000; // 30 seconds default
+      const requestOptions = { ...options, timeout };
 
       this.logSecurityEvent('API_REQUEST_START', {
         requestId,
-        method: config.method,
+        method: options.method || 'GET',
         url: url.replace(this.baseURL, '[BASE_URL]'),
-        hasAuth: !!this.authToken
+        hasAuth: !!this.authToken,
+        timeout
       });
 
-      const response = await this.executeRequest(url, config, options.retries || 3);
+      const config = await this.buildRequestConfig(requestOptions, requestId);
+      const response = await this.executeRequest(url, config, requestOptions.retries || 3);
 
       const result = await this.handleResponse<T>(response, requestId);
+      const duration = Date.now() - startTime;
 
       this.logSecurityEvent('API_REQUEST_SUCCESS', {
         requestId,
         status: response.status,
-        contentLength: response.headers.get('content-length')
+        contentLength: response.headers.get('content-length'),
+        duration: `${duration}ms`
       });
 
       return result;
 
     } catch (error) {
+      const duration = Date.now() - startTime;
       this.logSecurityEvent('API_REQUEST_FAILED', {
         requestId,
         error: error instanceof Error ? error.message : 'Unknown error',
-        endpoint
+        endpoint,
+        duration: `${duration}ms`
       });
       throw error;
     }

@@ -74,6 +74,21 @@ export class AgeVerificationService implements AgeVerificationServiceInterface {
     return age < this.PARENT_CONSENT_AGE;
   }
 
+  async checkAgeFromAlumniData(alumniData: { graduationYear?: number }): Promise<{ requiresParentConsent: boolean; estimatedAge: number }> {
+    if (!alumniData.graduationYear) {
+      return { requiresParentConsent: false, estimatedAge: 25 }; // Default assumption
+    }
+
+    // Estimate age: graduation year + 22 (typical age at graduation) - current year
+    const currentYear = new Date().getFullYear();
+    const estimatedAge = currentYear - (alumniData.graduationYear + 22);
+
+    return {
+      requiresParentConsent: this.requiresParentConsent(estimatedAge),
+      estimatedAge
+    };
+  }
+
   async collectParentConsent(
     parentEmail: string, 
     childData: UserRegistrationData
