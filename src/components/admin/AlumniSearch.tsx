@@ -72,6 +72,7 @@ export function AlumniSearch({ onUserSelect, selectedUsers = [], multiSelect = t
       const { users } = response;
 
       // Transform results to match our interface
+      // eslint-disable-next-line custom/no-hardcoded-mock-data -- This transforms API response data, not mock data
       const transformedResults: UserSearchResult[] = users.map((user: any) => ({
         id: user.id,
         firstName: user.firstName,

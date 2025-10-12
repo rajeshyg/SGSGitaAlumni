@@ -1,6 +1,38 @@
 import '@testing-library/jest-dom'
 import { vi } from 'vitest'
 
+// Mock environment variables for tests
+process.env.NODE_ENV = 'test'
+process.env.DB_HOST = 'localhost'
+process.env.DB_USER = 'test_user'
+process.env.DB_PASSWORD = 'test_password'
+process.env.DB_NAME = 'sgs_gita_alumni_test'
+process.env.DB_PORT = '3306'
+
+// Mock mysql2 database connections
+vi.mock('mysql2/promise', () => ({
+  default: {
+    createPool: vi.fn(() => ({
+      getConnection: vi.fn(() => ({
+        execute: vi.fn().mockResolvedValue([[]]),
+        query: vi.fn().mockResolvedValue([[]]),
+        release: vi.fn(),
+      })),
+      execute: vi.fn().mockResolvedValue([[]]),
+      query: vi.fn().mockResolvedValue([[]]),
+      end: vi.fn().mockResolvedValue(undefined),
+      config: {
+        connectionLimit: 10,
+        queueLimit: 0,
+      },
+      _availableConnections: [],
+      _usingConnections: [],
+      _waitingClients: [],
+      _allConnections: [],
+    })),
+  },
+}))
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

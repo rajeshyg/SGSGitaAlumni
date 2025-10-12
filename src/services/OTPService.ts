@@ -358,7 +358,7 @@ export class OTPService implements OTPServiceInterface {
       );
     }
 
-    const otpCode = '123456'; // Fixed OTP for testing
+    const otpCode = this.generateOTPCode(); // Generate proper OTP for testing
     
     // Store test OTP in database
     const expiresAt = new Date();

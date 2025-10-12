@@ -1,5 +1,5 @@
 // Debug: InvitationSection starting
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -47,6 +47,84 @@ export function InvitationSection() {
   // Testing features for invitation system
   const [showInvitationUrls, setShowInvitationUrls] = useState(false);
   const [generatedOtpCodes, setGeneratedOtpCodes] = useState<Record<string, { code: string; expiresAt: string; isExpired: boolean }>>({});
+
+  // Check if OTP is expired
+  const isOtpExpired = useCallback((expiresAt: string): boolean => {
+    return new Date(expiresAt) < new Date();
+  }, []);
+
+  // Fetch active OTP for an email
+  const fetchActiveOtp = useCallback(async (email: string) => {
+    try {
+      const response = await fetch(`/api/otp/active/${encodeURIComponent(email)}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.code && data.expiresAt) {
+          const expired = isOtpExpired(data.expiresAt);
+          setGeneratedOtpCodes(prev => ({
+            ...prev,
+            [email]: {
+              code: data.code,
+              expiresAt: data.expiresAt,
+              isExpired: expired
+            }
+          }));
+        } else {
+          // No active OTP found
+          setGeneratedOtpCodes(prev => {
+            const newCodes = { ...prev };
+            delete newCodes[email];
+            return newCodes;
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch active OTP:', err);
+    }
+  }, [isOtpExpired]);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const promises = [
+        APIService.getInvitations({ page: 1, pageSize: 200 }),
+        APIService.getFamilyInvitations ? APIService.getFamilyInvitations({ page: 1, pageSize: 200 }) : Promise.resolve([]),
+        APIService.searchAppUsers('')
+      ];
+
+      // Only load members if a search has been performed
+      if (hasSearchedMembers) {
+        promises.unshift(APIService.searchAlumniMembers(memberSearch));
+      }
+
+      const results = await Promise.all(promises);
+
+      if (hasSearchedMembers) {
+        const [membersData, invitationsData, familyInvData, usersData] = results as [any[], any[], any[], any[]];
+        setMembers(membersData || []);
+        setInvitations(invitationsData || []);
+        setFamilyInvitations(familyInvData || []);
+        setUsers(usersData || []);
+      } else {
+        const [invitationsData, familyInvData, usersData] = results as [any[], any[], any[]];
+        setInvitations(invitationsData || []);
+        setFamilyInvitations(familyInvData || []);
+        setUsers(usersData || []);
+        // Keep members as empty array
+      }
+    } catch (err) {
+      console.error('Failed to load admin data', err);
+      setError('Failed to load admin data. See console for details.');
+    } finally {
+      setLoading(false);
+    }
+  }, [hasSearchedMembers, memberSearch]);
 
   // Define columns for the alumni members table
   const memberColumns: ColumnDef<AlumniMember>[] = [
@@ -237,11 +315,10 @@ export function InvitationSection() {
   ];
 
   useEffect(() => {
-    console.log('[InvitationSection] useEffect triggered, calling loadAll()');
-    // initial load - only if not already loading
-    if (!loading) {
-      loadAll();
-    }
+    console.log('[InvitationSection] Initial mount - calling loadAll()');
+    // initial load on mount only
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run on mount
 
   // Fetch active OTPs when invitations are loaded
@@ -251,7 +328,7 @@ export function InvitationSection() {
         fetchActiveOtp(inv.email);
       });
     }
-  }, [invitations, activeTab]);
+  }, [invitations, activeTab, fetchActiveOtp]);
 
   // Periodic expiry check - update every 30 seconds
   useEffect(() => {
@@ -269,45 +346,8 @@ export function InvitationSection() {
     }, 30000); // Check every 30 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isOtpExpired]);
 
-  const loadAll = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const promises = [
-        APIService.getInvitations({ page: 1, pageSize: 200 }),
-        APIService.getFamilyInvitations ? APIService.getFamilyInvitations({ page: 1, pageSize: 200 }) : Promise.resolve([]),
-        APIService.searchAppUsers('')
-      ];
-
-      // Only load members if a search has been performed
-      if (hasSearchedMembers) {
-        promises.unshift(APIService.searchAlumniMembers(memberSearch));
-      }
-
-      const results = await Promise.all(promises);
-
-      if (hasSearchedMembers) {
-        const [membersData, invitationsData, familyInvData, usersData] = results as [any[], any[], any[], any[]];
-        setMembers(membersData || []);
-        setInvitations(invitationsData || []);
-        setFamilyInvitations(familyInvData || []);
-        setUsers(usersData || []);
-      } else {
-        const [invitationsData, familyInvData, usersData] = results as [any[], any[], any[]];
-        setInvitations(invitationsData || []);
-        setFamilyInvitations(familyInvData || []);
-        setUsers(usersData || []);
-        // Keep members as empty array
-      }
-    } catch (err) {
-      console.error('Failed to load admin data', err);
-      setError('Failed to load admin data. See console for details.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // ---------- Alumni member actions ----------
   const handleSearchMembers = async (q: string) => {
@@ -480,46 +520,6 @@ export function InvitationSection() {
   };
 
   // ---------- Testing features for invitation system ----------
-
-  // Check if OTP is expired
-  const isOtpExpired = (expiresAt: string): boolean => {
-    return new Date(expiresAt) < new Date();
-  };
-
-  // Fetch active OTP for an email
-  const fetchActiveOtp = async (email: string) => {
-    try {
-      const response = await fetch(`/api/otp/active/${encodeURIComponent(email)}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data.code && data.expiresAt) {
-          const expired = isOtpExpired(data.expiresAt);
-          setGeneratedOtpCodes(prev => ({
-            ...prev,
-            [email]: {
-              code: data.code,
-              expiresAt: data.expiresAt,
-              isExpired: expired
-            }
-          }));
-        } else {
-          // No active OTP found
-          setGeneratedOtpCodes(prev => {
-            const newCodes = { ...prev };
-            delete newCodes[email];
-            return newCodes;
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch active OTP:', err);
-    }
-  };
 
   const generateTestOtp = async (email: string) => {
     try {

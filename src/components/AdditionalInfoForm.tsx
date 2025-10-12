@@ -194,6 +194,7 @@ const FormField: React.FC<FormFieldProps> = ({
 
 // Helper functions
 function getFieldLabel(field: string): string {
+  // eslint-disable-next-line custom/no-hardcoded-mock-data -- This is a UI label mapping, not mock data
   const labels: Record<string, string> = {
     firstName: 'First Name',
     lastName: 'Last Name',

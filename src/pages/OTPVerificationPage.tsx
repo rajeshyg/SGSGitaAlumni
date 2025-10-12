@@ -12,9 +12,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { OTPService } from '../services/OTPService';
 import { TOTPService } from '../lib/auth/TOTPService';
 import { useAuth } from '../contexts/AuthContext';
-import { APIService } from '../services/APIService';
 import {
-  OTPValidation,
   OTPType,
   OTPError
 } from '../types/invitation';
@@ -59,7 +57,6 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number>(3);
   const [resendCooldown, setResendCooldown] = useState<number>(0);
-  const [validation, setValidation] = useState<OTPValidation | null>(null);
   
   // Refs for OTP input focus management
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -187,7 +184,6 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
             otpCode: code,
             type: otpType
           });
-          setValidation(otpValidation);
           isValid = otpValidation.isValid;
 
           if (!isValid) {
@@ -235,37 +231,36 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
             if (state?.user) {
               console.log('[OTPVerificationPage] Authenticating new user after registration...');
               
-              // Create session for the newly registered user
-              const loginResponse = await APIService.login({
+              // Create session for the newly registered user using OTP-verified login
+              const loginResult = await login({
                 email: email,
-                password: '' // OTP verification serves as authentication
+                password: '', // OTP verification serves as authentication
+                otpVerified: true
               });
 
-              // Update auth context will be handled by the login method
-              console.log('[OTPVerificationPage] Authentication successful');
+              console.log('[OTPVerificationPage] Authentication successful:', loginResult);
             }
 
             // Redirect to dashboard
-            setTimeout(() => {
-              navigate('/dashboard', {
-                state: {
-                  message: 'Welcome to SGS Gita Alumni Network!',
-                  user: state?.user
-                }
-              });
-            }, 1500);
+            console.log('[OTPVerificationPage] Redirecting to dashboard...');
+            navigate('/dashboard', {
+              replace: true,
+              state: {
+                message: 'Welcome to SGS Gita Alumni Network!',
+                user: state?.user
+              }
+            });
 
           } catch (authError) {
             console.error('[OTPVerificationPage] Authentication error:', authError);
             // If auto-login fails, redirect to login page
-            setTimeout(() => {
-              navigate('/login', {
-                state: {
-                  message: 'Verification successful! Please log in with your credentials.',
-                  email: email
-                }
-              });
-            }, 1500);
+            navigate('/login', {
+              replace: true,
+              state: {
+                message: 'Verification successful! Please log in with your credentials.',
+                email: email
+              }
+            });
           }
         } else if (otpType === 'login') {
           // For login flow: authenticate the user
@@ -274,33 +269,41 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
             
             // OTP verification serves as authentication for passwordless login
             // Use the login function from useAuth hook to update auth context
-            await login({
+            const loginResult = await login({
               email: email,
               password: '', // OTP verification serves as authentication
               otpVerified: true
             });
 
-            console.log('[OTPVerificationPage] Login successful');
+            console.log('[OTPVerificationPage] Login successful:', loginResult);
 
-            // Redirect to appropriate dashboard
-            setTimeout(() => {
-              const redirectTo = state?.redirectTo || '/dashboard';
-              navigate(redirectTo);
-            }, 1500);
+            // Redirect to appropriate dashboard based on user role
+            const redirectTo = state?.redirectTo || '/dashboard';
+            console.log('[OTPVerificationPage] Redirecting to:', redirectTo);
+            navigate(redirectTo, { 
+              replace: true,
+              state: { 
+                message: 'Login successful!',
+                fromOTPLogin: true
+              }
+            });
 
           } catch (authError) {
             console.error('[OTPVerificationPage] Login error:', authError);
             setError('Authentication failed. Please try again or contact support.');
           }
         } else {
-          // For other OTP types, just redirect
-          setTimeout(() => {
-            if (state?.redirectTo) {
-              navigate(state.redirectTo);
-            } else {
-              navigate('/dashboard');
+          // For other OTP types (password_reset, etc.), just redirect
+          console.log('[OTPVerificationPage] OTP verified, redirecting to:', state?.redirectTo || '/dashboard');
+          const redirectTo = state?.redirectTo || '/dashboard';
+          navigate(redirectTo, {
+            replace: true,
+            state: {
+              message: 'Verification successful!',
+              email: email,
+              otpType: otpType
             }
-          }, 1500);
+          });
         }
       }
 

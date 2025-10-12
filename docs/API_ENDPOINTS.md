@@ -421,6 +421,116 @@ Content-Type: application/json
 }
 ```
 
+### Dashboard Endpoints
+
+#### Get User Stats
+```http
+GET /api/users/:userId/stats
+Authorization: Bearer {token}
+```
+
+**Parameters:**
+- `userId` (number): User ID to fetch stats for
+
+**Authorization:**
+- Users can only access their own stats unless they have admin role
+- Returns 403 Forbidden if unauthorized
+
+**Response:**
+```json
+{
+  "totalConnections": 0,
+  "activePostings": 0,
+  "unreadMessages": 0,
+  "profileViews": 0
+}
+```
+
+**Status:** ✅ Implemented (returns default values until database tables are created)
+
+---
+
+#### Get Recent Conversations
+```http
+GET /api/conversations/recent?userId={userId}&limit={limit}
+Authorization: Bearer {token}
+```
+
+**Parameters:**
+- `userId` (number): User ID to fetch conversations for
+- `limit` (number, optional): Maximum results (default: 5)
+
+**Authorization:**
+- Users can only access their own conversations unless they have admin role
+- Returns 403 Forbidden if unauthorized
+
+**Response:**
+```json
+[]
+```
+
+**Status:** ✅ Implemented (returns empty array until messaging tables are created)
+
+---
+
+#### Get Personalized Posts
+```http
+GET /api/posts/personalized?userId={userId}&limit={limit}
+Authorization: Bearer {token}
+```
+
+**Parameters:**
+- `userId` (number): User ID to fetch personalized posts for
+- `limit` (number, optional): Maximum results (default: 10)
+
+**Authorization:**
+- Users can only access their own posts unless they have admin role
+- Returns 403 Forbidden if unauthorized
+
+**Response:**
+```json
+[]
+```
+
+**Status:** ✅ Implemented (returns empty array until posts tables are created)
+
+---
+
+#### Get Notifications
+```http
+GET /api/notifications?userId={userId}&limit={limit}
+Authorization: Bearer {token}
+```
+
+**Parameters:**
+- `userId` (number): User ID to fetch notifications for
+- `limit` (number, optional): Maximum results (default: 5)
+
+**Authorization:**
+- Users can only access their own notifications unless they have admin role
+- Returns 403 Forbidden if unauthorized
+
+**Response:**
+```json
+[]
+```
+
+**Status:** ✅ Implemented (returns empty array until notifications table is created)
+
+**Implementation Notes:**
+- All dashboard endpoints require authentication via JWT token
+- All endpoints implement proper authorization checks
+- Current implementations return safe default values (empty arrays or zero stats)
+- TODO: Implement actual database queries when the following tables are created:
+  - `connections` - for totalConnections stat
+  - `postings` - for activePostings stat
+  - `messages` - for unreadMessages stat and recent conversations
+  - `profile_views` - for profileViews stat
+  - `posts` - for personalized posts
+  - `notifications` - for user notifications
+
+---
+
 ### Messaging Endpoints
 
 #### Get Conversations

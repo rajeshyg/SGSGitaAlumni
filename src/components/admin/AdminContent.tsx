@@ -3,8 +3,6 @@ import { MainLayout } from './MainLayout'
 import { QualityDashboard } from '../dashboard/QualityDashboard'
 import { InvitationSection } from './InvitationSection'
 import { AnalyticsDashboard } from './AnalyticsDashboard'
-import { AlumniMemberManagement } from './AlumniMemberManagement'
-import { AppUserManagement } from './AppUserManagement'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import type { FileImport } from '../../services/APIService'
 

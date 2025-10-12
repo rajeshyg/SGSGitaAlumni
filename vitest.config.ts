@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { loadEnv } from 'vite'
 
 // Import advanced testing frameworks
 // TODO: Implement advanced testing frameworks in src/lib/testing/
@@ -33,14 +34,31 @@ import react from '@vitejs/plugin-react'
 //   new BasicChangeAnalyzer()
 // )
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    globals: true,
-    environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    exclude: ['tests/**', 'tests/**/**', 'playwright.config.*'],
+export default defineConfig(({ mode }) => {
+  // Load environment variables
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [react()],
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+      exclude: ['tests/**', 'tests/**/**', 'playwright.config.*', 'node_modules/**'],
+
+      // Environment configuration for isolated testing
+      env: {
+        NODE_ENV: 'test',
+        ...env
+      },
+
+      // Load test environment variables
+      environmentOptions: {
+        jsdom: {
+          url: 'http://localhost:5173'
+        }
+      },
 
     // Advanced testing will be configured programmatically
     // See src/lib/testing/ for framework implementations
@@ -75,6 +93,7 @@ export default defineConfig({
       '@': '/src',
     },
   },
+  }
 })
 
 // Custom reporters and advanced functionality available in src/lib/testing/

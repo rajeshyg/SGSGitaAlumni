@@ -1,17 +1,18 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RedisRateLimiter, RateLimitPolicy, RateLimitConfig } from '../RedisRateLimiter';
 
 // Mock Redis client
-jest.mock('redis', () => ({
-  createClient: jest.fn(() => ({
-    connect: jest.fn(),
-    quit: jest.fn(),
-    get: jest.fn(),
-    set: jest.fn(),
-    setEx: jest.fn(),
-    incr: jest.fn(),
-    expire: jest.fn(),
-    del: jest.fn(),
-    keys: jest.fn()
+vi.mock('redis', () => ({
+  createClient: vi.fn(() => ({
+    connect: vi.fn(),
+    quit: vi.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
+    setEx: vi.fn(),
+    incr: vi.fn(),
+    expire: vi.fn(),
+    del: vi.fn(),
+    keys: vi.fn()
   }))
 }));
 
@@ -22,7 +23,7 @@ describe('RedisRateLimiter', () => {
 
   beforeEach(() => {
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Get the mocked Redis client
     const redis = require('redis');

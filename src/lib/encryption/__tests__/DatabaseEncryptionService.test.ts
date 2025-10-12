@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseEncryptionService, EncryptionConfig } from '../DatabaseEncryptionService';
 
 describe('DatabaseEncryptionService', () => {
@@ -13,9 +14,9 @@ describe('DatabaseEncryptionService', () => {
     };
 
     // Mock KMS client
-    jest.mock('@aws-sdk/client-kms', () => ({
-      KMSClient: jest.fn().mockImplementation(() => ({
-        send: jest.fn()
+    vi.mock('@aws-sdk/client-kms', () => ({
+      KMSClient: vi.fn().mockImplementation(() => ({
+        send: vi.fn()
       }))
     }));
 
@@ -23,7 +24,7 @@ describe('DatabaseEncryptionService', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('encryptData', () => {

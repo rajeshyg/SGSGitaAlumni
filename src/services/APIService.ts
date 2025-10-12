@@ -511,7 +511,7 @@ export const APIService = {
       const response = await apiClient.get(`/api/alumni-members/search?q=${encodeURIComponent(query)}&limit=${limit}`);
 
       logger.info('Alumni members search completed');
-      return response as any[];
+      return Array.isArray(response) ? response : (response?.members || response?.data || []);
     } catch (error) {
       logger.error('Failed to search alumni members:', error);
       throw new Error('Failed to search alumni members.');
@@ -582,7 +582,7 @@ export const APIService = {
       const response = await apiClient.get(`/api/users/search?q=${encodeURIComponent(query)}&limit=${limit}`);
 
       logger.info('App users search completed');
-      return response.users || [];
+      return Array.isArray(response) ? response : (response?.users || response?.data || []);
     } catch (error) {
       logger.error('Failed to search app users:', error);
       throw new Error('Failed to search app users.');
@@ -950,7 +950,7 @@ export const APIService = {
       const response = await apiClient.get(`/api/invitations?${queryParams.toString()}`);
 
       logger.info('Invitations fetched successfully');
-      return response.data || [];
+      return Array.isArray(response) ? response : (response?.data || []);
     } catch (error) {
       logger.error('Failed to fetch invitations:', error);
       throw new Error('Failed to fetch invitations. Please try again.');
@@ -970,7 +970,7 @@ export const APIService = {
       const response = await apiClient.get(`/api/invitations/family?${queryParams.toString()}`);
 
       logger.info('Family invitations fetched successfully');
-      return response.data || [];
+      return Array.isArray(response) ? response : (response?.data || []);
     } catch (error) {
       logger.error('Failed to fetch family invitations:', error);
       throw new Error('Failed to fetch family invitations. Please try again.');
