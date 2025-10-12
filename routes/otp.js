@@ -84,22 +84,14 @@ export const generateAndSendOTP = async (req, res) => {
     // Calculate expiry time for response
     const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
 
-    // Log OTP code in development mode for testing
-    if (process.env.NODE_ENV === 'development' || process.env.DEV_LOG_OTP === 'true') {
-      console.log('\n' + '='.repeat(65));
-      console.log('📧 [OTP Service] EMAIL VERIFICATION CODE (Development Mode)');
-      console.log('='.repeat(65));
-      console.log(`To: ${email}`);
-      console.log(`OTP Code: ${otpCode}`);
-      console.log(`Expires: ${expiresAt.toLocaleString()}`);
-      console.log(`Valid for: ${expiryMinutes} minutes`);
-      console.log('='.repeat(65) + '\n');
+    // Log success in development mode (without exposing OTP code)
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`📧 OTP generated and sent to ${email} (expires: ${expiresAt.toLocaleString()})`);
     }
 
     res.json({
       success: true,
       message: 'OTP generated and sent successfully',
-      code: otpCode, // Include code in response for admin/testing
       expiresAt: expiresAt.toISOString()
     });
 
