@@ -48,7 +48,7 @@ export class DatabaseEncryptionService {
       const iv = crypto.randomBytes(16);
 
       // Encrypt data with AES-256-GCM
-      const cipher = crypto.createCipherGCM('aes-256-gcm', dataKey, iv);
+      const cipher = crypto.createCipheriv('aes-256-gcm', dataKey, iv);
       let encrypted = cipher.update(plainText, 'utf8', 'base64');
       encrypted += cipher.final('base64');
 
@@ -78,9 +78,8 @@ export class DatabaseEncryptionService {
       const dataKey = dataKeyResponse.Plaintext!;
 
       // Decrypt data with AES-256-GCM
-      const decipher = crypto.createDecipherGCM('aes-256-gcm', dataKey);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', dataKey, Buffer.from(encryptedData.iv, 'base64'));
       decipher.setAuthTag(Buffer.from(encryptedData.tag, 'base64'));
-      decipher.setIV(Buffer.from(encryptedData.iv, 'base64'));
 
       let decrypted = decipher.update(encryptedData.encryptedData, 'base64', 'utf8');
       decrypted += decipher.final('utf8');

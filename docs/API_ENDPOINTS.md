@@ -1,8 +1,8 @@
 # API Endpoints Documentation
 
 **Status:** ✅ ALIGNED WITH CURRENT IMPLEMENTATION
-**Date:** September 30, 2025
-**Version:** 1.0.0
+**Date:** October 12, 2025
+**Version:** 1.1.0 - Added Comprehensive OTP Endpoints Documentation
 
 ## Data Model Separation
 
@@ -420,6 +420,451 @@ Content-Type: application/json
   "isActive": true
 }
 ```
+
+### OTP Authentication Endpoints
+
+#### Generate and Send OTP
+```http
+POST /api/otp/generate
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "type": "login"
+}
+```
+
+**Description:** Generates a new OTP code and sends it via email. This endpoint combines generation and sending in one step.
+
+**Request Body:**
+- `email` (string, required): Email address to send OTP to
+- `type` (string, optional): OTP type - `login`, `registration`, or `password_reset` (default: `email`)
+
+**Rate Limits:**
+- **Hourly:** 3 OTP requests per email address
+- **Daily:** 10 OTP requests per email address
+
+**Response (Success - 200 OK):**
+```json
+{
+  "success": true,
+  "code": "123456",
+  "expiresAt": "2025-10-12T15:30:00.000Z",
+  "remainingAttempts": 3,
+  "message": "OTP sent successfully to user@example.com"
+}
+```
+
+**Response (Rate Limit Exceeded - 429 Too Many Requests):**
+```json
+{
+  "error": "Rate limit exceeded. Please try again later.",
+  "remainingAttempts": 0
+}
+```
+
+**Response (Daily Limit Exceeded - 429 Too Many Requests):**
+```json
+{
+  "error": "Daily OTP limit exceeded. Please try again tomorrow.",
+  "remainingAttempts": 0
+}
+```
+
+**Notes:**
+- OTP code is 6 digits
+- Default expiry: 5 minutes (configurable via `OTP_EXPIRY_MINUTES` environment variable)
+- In development mode, OTP code is logged to console
+- Email sending errors are logged but don't fail the request
+
+**Status:** ✅ Implemented and tested
+
+---
+
+#### Validate OTP
+```http
+POST /api/otp/validate
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "otpCode": "123456",
+  "tokenType": "login"
+}
+```
+
+**Description:** Validates an OTP code against the database.
+
+**Request Body:**
+- `email` (string, required): Email address associated with the OTP
+- `otpCode` (string, required): 6-digit OTP code to validate
+- `tokenType` (string, required): OTP type - `login`, `registration`, or `password_reset`
+
+**Response (Valid OTP - 200 OK):**
+```json
+{
+  "success": true,
+  "message": "OTP validated successfully",
+  "remainingAttempts": 3
+}
+```
+
+**Response (Invalid OTP - 400 Bad Request):**
+```json
+{
+  "error": "Invalid OTP code",
+  "remainingAttempts": 2
+}
+```
+
+**Response (Expired OTP - 410 Gone):**
+```json
+{
+  "error": "OTP has expired. Please request a new one.",
+  "remainingAttempts": 0
+}
+```
+
+**Response (OTP Already Used - 400 Bad Request):**
+```json
+{
+  "error": "OTP has already been used",
+  "remainingAttempts": 0
+}
+```
+
+**Response (Max Attempts Exceeded - 429 Too Many Requests):**
+```json
+{
+  "error": "Maximum validation attempts exceeded",
+  "remainingAttempts": 0
+}
+```
+
+**Security Features:**
+- Maximum 3 validation attempts per OTP
+- OTP marked as used after successful validation
+- Attempt count incremented on each failed validation
+- IP address tracking for security monitoring
+
+**Status:** ✅ Implemented and tested
+
+---
+
+#### Get Active OTP
+```http
+GET /api/otp/active/:email
+Authorization: Bearer {admin-token}
+```
+
+**Description:** Retrieves the currently active (unexpired and unused) OTP for a given email address. **Admin only endpoint.**
+
+**Parameters:**
+- `email` (string, required): Email address to check for active OTP
+
+**Authorization:**
+- Requires admin role
+- Returns 403 Forbidden if not authorized
+
+**Response (Active OTP Found - 200 OK):**
+```json
+{
+  "hasActiveOtp": true,
+  "code": "123456",
+  "expiresAt": "2025-10-12T15:30:00.000Z",
+  "tokenType": "login"
+}
+```
+
+**Response (No Active OTP - 404 Not Found):**
+```json
+{
+  "message": "No active OTP found",
+  "hasActiveOtp": false
+}
+```
+
+**Use Cases:**
+- Admin testing and debugging
+- Support team assisting users with login issues
+- Invitation workflow testing
+
+**Status:** ✅ Implemented and tested
+
+---
+
+#### Check Rate Limit
+```http
+GET /api/otp/rate-limit/:email
+```
+
+**Description:** Checks the current rate limit status for an email address.
+
+**Parameters:**
+- `email` (string, required): Email address to check
+
+**Response:**
+```json
+{
+  "allowed": true,
+  "hourlyCount": 1,
+  "hourlyLimit": 3,
+  "message": "2 requests remaining in the next hour"
+}
+```
+
+**Status:** ✅ Implemented
+
+---
+
+#### Get Remaining Attempts
+```http
+GET /api/otp/remaining-attempts/:email
+```
+
+**Description:** Gets the number of remaining validation attempts for the most recent OTP.
+
+**Parameters:**
+- `email` (string, required): Email address to check
+
+**Response:**
+```json
+{
+  "remainingAttempts": 3,
+  "maxAttempts": 3
+}
+```
+
+**Status:** ✅ Implemented
+
+---
+
+#### Get Daily Count
+```http
+GET /api/otp/daily-count/:email
+```
+
+**Description:** Gets the number of OTP requests made in the last 24 hours.
+
+**Parameters:**
+- `email` (string, required): Email address to check
+
+**Response:**
+```json
+{
+  "count": 2,
+  "limit": 10,
+  "remaining": 8
+}
+```
+
+**Status:** ✅ Implemented
+
+---
+
+#### Cleanup Expired OTPs
+```http
+DELETE /api/otp/cleanup-expired
+Authorization: Bearer {admin-token}
+```
+
+**Description:** Manually triggers cleanup of expired OTP tokens. **Admin only endpoint.**
+
+**Authorization:**
+- Requires admin role
+- Returns 403 Forbidden if not authorized
+
+**Response:**
+```json
+{
+  "success": true,
+  "deletedCount": 15,
+  "message": "Cleanup completed successfully"
+}
+```
+
+**Cleanup Rules:**
+- Deletes OTPs where `expires_at < NOW()`
+- Deletes used OTPs older than 24 hours
+- Deletes locked OTPs older than 24 hours
+
+**Status:** ✅ Implemented
+
+---
+
+#### OTP Endpoint Usage Examples
+
+**Example 1: Complete Login Flow with OTP**
+
+```javascript
+// Step 1: Request OTP
+const generateResponse = await fetch('/api/otp/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    type: 'login'
+  })
+});
+
+const otpData = await generateResponse.json();
+console.log(`OTP sent! Expires at: ${otpData.expiresAt}`);
+
+// Step 2: User enters OTP code (from email)
+const userEnteredCode = '123456';
+
+// Step 3: Validate OTP
+const validateResponse = await fetch('/api/otp/validate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    otpCode: userEnteredCode,
+    tokenType: 'login'
+  })
+});
+
+const validationResult = await validateResponse.json();
+
+if (validationResult.success) {
+  // Step 4: Login with OTP verification
+  const loginResponse = await fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'user@example.com',
+      otpVerified: true
+    })
+  });
+
+  const authData = await loginResponse.json();
+  // Store JWT token and redirect to dashboard
+  localStorage.setItem('token', authData.token);
+  window.location.href = '/dashboard';
+}
+```
+
+**Example 2: Admin Checking Active OTP**
+
+```javascript
+// Admin checks if user has active OTP
+const email = 'user@example.com';
+const response = await fetch(`/api/otp/active/${email}`, {
+  headers: {
+    'Authorization': `Bearer ${adminToken}`
+  }
+});
+
+const data = await response.json();
+
+if (data.hasActiveOtp) {
+  console.log(`Active OTP: ${data.code}`);
+  console.log(`Expires at: ${data.expiresAt}`);
+  console.log(`Type: ${data.tokenType}`);
+} else {
+  console.log('No active OTP found');
+}
+```
+
+**Example 3: Rate Limit Handling**
+
+```javascript
+// Check rate limit before requesting OTP
+const email = 'user@example.com';
+const rateLimitResponse = await fetch(`/api/otp/rate-limit/${email}`);
+const rateLimitData = await rateLimitResponse.json();
+
+if (!rateLimitData.allowed) {
+  alert(`Rate limit exceeded. ${rateLimitData.message}`);
+  return;
+}
+
+// Proceed with OTP generation
+const generateResponse = await fetch('/api/otp/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, type: 'login' })
+});
+
+if (generateResponse.status === 429) {
+  const error = await generateResponse.json();
+  alert(error.error);
+}
+```
+
+**Example 4: PowerShell Testing Script**
+
+```powershell
+# Generate OTP
+$email = "test@example.com"
+$generateBody = @{
+    email = $email
+    type = "login"
+} | ConvertTo-Json
+
+$otpResponse = Invoke-RestMethod -Uri "http://localhost:3001/api/otp/generate" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body $generateBody
+
+Write-Host "OTP Code: $($otpResponse.code)"
+Write-Host "Expires At: $($otpResponse.expiresAt)"
+
+# Validate OTP
+$validateBody = @{
+    email = $email
+    otpCode = $otpResponse.code
+    tokenType = "login"
+} | ConvertTo-Json
+
+$validateResponse = Invoke-RestMethod -Uri "http://localhost:3001/api/otp/validate" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body $validateBody
+
+Write-Host "Validation Success: $($validateResponse.success)"
+```
+
+---
+
+#### OTP Best Practices
+
+**Security:**
+- Always use HTTPS in production
+- Never log OTP codes in production environments
+- Implement IP-based rate limiting for additional security
+- Monitor failed validation attempts for suspicious activity
+- Use secure random number generation for OTP codes
+
+**User Experience:**
+- Display clear expiry time to users
+- Show remaining attempts on validation errors
+- Provide option to resend OTP if expired
+- Implement countdown timer on frontend
+- Auto-submit OTP when 6 digits entered
+
+**Error Handling:**
+- Handle all HTTP status codes appropriately
+- Display user-friendly error messages
+- Implement retry logic with exponential backoff
+- Log errors for debugging and monitoring
+- Provide fallback authentication methods
+
+**Performance:**
+- Cache rate limit checks to reduce database queries
+- Use database indexes on email and expires_at columns
+- Implement automated cleanup of expired tokens
+- Monitor OTP generation and validation metrics
+- Set appropriate database connection pool sizes
+
+**Compliance:**
+- Log all OTP operations for audit trail
+- Implement data retention policies
+- Ensure GDPR compliance for email storage
+- Document security measures for compliance audits
+- Regular security reviews and penetration testing
+
+---
 
 ### Dashboard Endpoints
 

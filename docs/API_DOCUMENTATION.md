@@ -1,8 +1,8 @@
 # API Documentation: SGSGitaAlumni Platform
 
 **Status:** ✅ ALIGNED WITH CURRENT IMPLEMENTATION
-**Date:** September 30, 2025
-**Version:** 1.0.0
+**Date:** October 12, 2025
+**Version:** 1.1.0 - Added OTP Authentication Documentation
 
 ## Overview
 
@@ -78,6 +78,34 @@ Content-Type: application/json
 }
 ```
 
+### OTP Authentication
+
+The platform supports passwordless authentication using One-Time Passwords (OTP) sent via email.
+
+#### OTP Login Flow
+
+1. **Request OTP**: User enters email and requests OTP code
+2. **Receive OTP**: System sends 6-digit code via email (expires in 5 minutes)
+3. **Validate OTP**: User enters code for validation
+4. **Authenticate**: System validates OTP and issues JWT token
+
+**Key Features:**
+- **Rate Limiting**: 3 OTPs per hour, 10 per day per email
+- **Security**: Maximum 3 validation attempts per OTP
+- **Expiry**: Default 5 minutes (configurable)
+- **Single Use**: OTP cannot be reused after successful validation
+
+**Endpoints:**
+- `POST /api/otp/generate` - Generate and send OTP
+- `POST /api/otp/validate` - Validate OTP code
+- `GET /api/otp/active/:email` - Get active OTP (admin only)
+- `GET /api/otp/rate-limit/:email` - Check rate limit status
+- `GET /api/otp/remaining-attempts/:email` - Get remaining validation attempts
+- `GET /api/otp/daily-count/:email` - Get daily OTP count
+- `DELETE /api/otp/cleanup-expired` - Cleanup expired OTPs (admin only)
+
+For detailed OTP endpoint documentation, see [API Endpoints - OTP Authentication](API_ENDPOINTS.md#otp-authentication-endpoints).
+
 ## Error Handling
 
 All API endpoints follow consistent error response format:
@@ -102,6 +130,10 @@ All API endpoints follow consistent error response format:
 - `VALIDATION_ERROR`: Request data validation failed
 - `RESOURCE_NOT_FOUND`: Requested resource doesn't exist
 - `RATE_LIMIT_EXCEEDED`: Too many requests, try again later
+- `OTP_EXPIRED`: OTP has expired, request a new one
+- `OTP_INVALID`: Invalid OTP code provided
+- `OTP_ALREADY_USED`: OTP has already been used
+- `MAX_ATTEMPTS_EXCEEDED`: Maximum OTP validation attempts exceeded
 - `INTERNAL_SERVER_ERROR`: Unexpected server error
 
 ## Rate Limiting
@@ -109,6 +141,7 @@ All API endpoints follow consistent error response format:
 API endpoints are rate-limited to prevent abuse:
 
 - **Authentication endpoints:** 5 requests per minute per IP
+- **OTP endpoints:** 3 requests per hour, 10 per day per email
 - **Search endpoints:** 30 requests per minute per user
 - **General endpoints:** 60 requests per minute per user
 
@@ -118,6 +151,12 @@ X-RateLimit-Limit: 60
 X-RateLimit-Remaining: 59
 X-RateLimit-Reset: 1634567890
 ```
+
+**OTP-Specific Rate Limits:**
+- Hourly limit: 3 OTP generation requests per email
+- Daily limit: 10 OTP generation requests per email
+- Validation attempts: 3 attempts per OTP code
+- Response: HTTP 429 (Too Many Requests) when exceeded
 
 ## Pagination
 

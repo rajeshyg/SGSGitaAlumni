@@ -65,15 +65,23 @@ describe('TokenSecretManager', () => {
   describe('environment variable integration', () => {
     const originalEnv = process.env.INVITATION_TOKEN_SECRET;
 
+    beforeEach(() => {
+      // Reset instance before each test in this suite
+      (TokenSecretManager as any).instance = null;
+    });
+
     afterEach(() => {
       process.env.INVITATION_TOKEN_SECRET = originalEnv;
       (TokenSecretManager as any).instance = null;
     });
 
     it('should use environment variable when available', () => {
-      const testSecret = 'test-environment-secret-12345';
+      // Must be at least 32 characters (256-bit key)
+      const testSecret = 'test-environment-secret-12345678901234567890';
       process.env.INVITATION_TOKEN_SECRET = testSecret;
 
+      // Reset instance AFTER setting env var
+      (TokenSecretManager as any).instance = null;
       const newManager = TokenSecretManager.getInstance();
       expect((newManager as any).currentSecret).toBe(testSecret);
     });
@@ -81,6 +89,8 @@ describe('TokenSecretManager', () => {
     it('should generate new secret when environment variable is not set', () => {
       delete process.env.INVITATION_TOKEN_SECRET;
 
+      // Reset instance AFTER deleting env var
+      (TokenSecretManager as any).instance = null;
       const newManager = TokenSecretManager.getInstance();
       const secret = (newManager as any).currentSecret;
 

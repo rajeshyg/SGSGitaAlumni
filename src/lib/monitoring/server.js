@@ -50,6 +50,18 @@ class ServerMonitoringService {
     logger.warn(`Suspicious activity: ${activity}`, { ip, details });
   }
 
+  logFailedLogin(ip, email, details) {
+    logger.warn(`Failed login attempt`, { ip, email, ...details });
+  }
+
+  updateRedisStatus(isConnected) {
+    logger.info(`Redis status updated`, { connected: isConnected });
+  }
+
+  recordError(error, context) {
+    logger.error(`Error recorded`, { error: error.message, context });
+  }
+
   getMetrics() {
     return this.metrics;
   }

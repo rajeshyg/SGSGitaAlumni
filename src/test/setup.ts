@@ -77,3 +77,63 @@ class MockTouch {
 }
 
 ;(globalThis as any).Touch = MockTouch
+
+// Mock lucide-react icons - Create mock component factory
+const createMockIcon = (name: string) => {
+  const MockIcon = () => null;
+  MockIcon.displayName = name;
+  return MockIcon;
+};
+
+vi.mock('lucide-react', () => ({
+  // Provide mock implementations for all icons used in components
+  Link: createMockIcon('Link'),
+  Mail: createMockIcon('Mail'),
+  User: createMockIcon('User'),
+  Users: createMockIcon('Users'),
+  Search: createMockIcon('Search'),
+  Plus: createMockIcon('Plus'),
+  Edit: createMockIcon('Edit'),
+  Trash: createMockIcon('Trash'),
+  Check: createMockIcon('Check'),
+  X: createMockIcon('X'),
+  AlertCircle: createMockIcon('AlertCircle'),
+  Info: createMockIcon('Info'),
+  ChevronDown: createMockIcon('ChevronDown'),
+  ChevronUp: createMockIcon('ChevronUp'),
+  ChevronLeft: createMockIcon('ChevronLeft'),
+  ChevronRight: createMockIcon('ChevronRight'),
+  MoreVertical: createMockIcon('MoreVertical'),
+  Settings: createMockIcon('Settings'),
+  LogOut: createMockIcon('LogOut'),
+  Home: createMockIcon('Home'),
+  Bell: createMockIcon('Bell'),
+  MessageSquare: createMockIcon('MessageSquare'),
+  Calendar: createMockIcon('Calendar'),
+  FileText: createMockIcon('FileText'),
+  Download: createMockIcon('Download'),
+  Upload: createMockIcon('Upload'),
+  RefreshCw: createMockIcon('RefreshCw'),
+  Eye: createMockIcon('Eye'),
+  EyeOff: createMockIcon('EyeOff'),
+  Lock: createMockIcon('Lock'),
+  Unlock: createMockIcon('Unlock'),
+  Shield: createMockIcon('Shield'),
+  Star: createMockIcon('Star'),
+  Heart: createMockIcon('Heart'),
+  Share: createMockIcon('Share'),
+  Copy: createMockIcon('Copy'),
+  ExternalLink: createMockIcon('ExternalLink'),
+  Filter: createMockIcon('Filter'),
+  SortAsc: createMockIcon('SortAsc'),
+  SortDesc: createMockIcon('SortDesc'),
+  ArrowUp: createMockIcon('ArrowUp'),
+  ArrowDown: createMockIcon('ArrowDown'),
+  ArrowLeft: createMockIcon('ArrowLeft'),
+  ArrowRight: createMockIcon('ArrowRight'),
+  Loader: createMockIcon('Loader'),
+  Loader2: createMockIcon('Loader2'),
+  Spinner: createMockIcon('Spinner'),
+  GripVertical: createMockIcon('GripVertical'),
+  ChevronsUpDown: createMockIcon('ChevronsUpDown'),
+}))

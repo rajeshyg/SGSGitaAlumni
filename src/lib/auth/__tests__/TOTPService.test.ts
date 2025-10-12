@@ -3,33 +3,20 @@
 // ============================================================================
 // Comprehensive test suite for TOTP authentication functionality
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { TOTPService } from '../TOTPService';
 
-// Mock crypto for deterministic testing
-const mockRandomBytes = vi.fn();
-vi.mock('crypto', () => ({
-  default: {
-    randomBytes: mockRandomBytes,
-    createHmac: vi.fn(() => ({
-      update: vi.fn().mockReturnThis(),
-      digest: vi.fn().mockReturnValue(Buffer.from([0x1f, 0x2e, 0x3d, 0x4c, 0x5b, 0x6a, 0x79, 0x88]))
-    }))
-  }
-}));
+// Note: We use real crypto for these tests since we can't spy on ESM exports
 
 describe('TOTPService', () => {
   let totpService: TOTPService;
 
   beforeEach(() => {
     totpService = new TOTPService();
-    vi.clearAllMocks();
   });
 
   describe('generateSecret', () => {
     it('should generate a valid base32 secret', () => {
-      mockRandomBytes.mockReturnValue(Buffer.from('test-secret-12345'));
-
       const secret = totpService.generateSecret();
 
       expect(typeof secret).toBe('string');
@@ -38,13 +25,10 @@ describe('TOTPService', () => {
     });
 
     it('should generate different secrets on multiple calls', () => {
-      mockRandomBytes
-        .mockReturnValueOnce(Buffer.from('secret1'))
-        .mockReturnValueOnce(Buffer.from('secret2'));
-
       const secret1 = totpService.generateSecret();
       const secret2 = totpService.generateSecret();
 
+      // Secrets should be different (cryptographically random)
       expect(secret1).not.toBe(secret2);
     });
   });

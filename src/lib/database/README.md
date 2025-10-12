@@ -18,7 +18,9 @@ src/lib/database/
     ├── gita-connect-complete-schema.mmd        # Complete schema (Mermaid)
     ├── gita-connect-complete-visualization.html # Interactive diagram
     ├── coppa-compliance-system.mmd             # COPPA compliance diagram
-    └── coppa-compliance-visualization.html     # COPPA compliance visualization
+    ├── coppa-compliance-visualization.html     # COPPA compliance visualization
+    ├── otp-flows.mmd                           # OTP authentication flows (Mermaid)
+    └── otp-flows-visualization.html            # Interactive OTP flow diagrams
 ```
 
 ## 🎯 Key Accomplishments
@@ -115,6 +117,16 @@ src/lib/database/
      - Compliance feature grid with key capabilities
      - Legal compliance framework documentation
 
+3. **OTP Authentication Flows**
+   - **File**: `mermaid/otp-flows-visualization.html`
+   - **Features**:
+     - Interactive flow diagrams for OTP generation and validation
+     - Complete authentication workflow with OTP
+     - Rate limiting and security mechanisms
+     - Admin OTP display workflow
+     - Error handling and cleanup processes
+     - Tabbed interface for easy navigation
+
 ## 🚀 Key Features Implemented
 
 ### Invitation-Based Authentication System
@@ -203,6 +215,7 @@ The database design documentation has been completely updated and modernized to 
 
 - ✅ **Updated schema diagrams** showing current invitation system
 - ✅ **COPPA compliance documentation** with dedicated diagrams
+- ✅ **OTP authentication flow diagrams** with interactive visualizations
 - ✅ **Comprehensive constraint documentation** with all foreign keys and indexes
 - ✅ **Complete migration history** from legacy systems to current architecture
 - ✅ **Backup and recovery procedures** for business continuity

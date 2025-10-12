@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DatabaseEncryptionService, EncryptionConfig } from '../DatabaseEncryptionService';
 
+// Mock KMS client at module level
+const mockSend = vi.fn();
+vi.mock('@aws-sdk/client-kms', () => ({
+  KMSClient: vi.fn().mockImplementation(() => ({
+    send: mockSend
+  })),
+  GenerateDataKeyCommand: vi.fn(),
+  DecryptCommand: vi.fn()
+}));
+
 describe('DatabaseEncryptionService', () => {
   let encryptionService: DatabaseEncryptionService;
   let mockConfig: EncryptionConfig;
@@ -13,12 +23,13 @@ describe('DatabaseEncryptionService', () => {
       keySpec: 'AES_256'
     };
 
-    // Mock KMS client
-    vi.mock('@aws-sdk/client-kms', () => ({
-      KMSClient: vi.fn().mockImplementation(() => ({
-        send: vi.fn()
-      }))
-    }));
+    // Mock KMS responses
+    // AES-256 requires a 32-byte (256-bit) key
+    const mockKey = Buffer.alloc(32); // 32 bytes of zeros
+    mockSend.mockResolvedValue({
+      Plaintext: mockKey,
+      CiphertextBlob: Buffer.from('encrypted-key')
+    });
 
     encryptionService = new DatabaseEncryptionService(mockConfig);
   });
@@ -71,8 +82,9 @@ describe('DatabaseEncryptionService', () => {
       const plainText = 'test data';
       const encrypted = await encryptionService.encryptData(plainText);
 
-      // Tamper with encrypted data
-      encrypted.encryptedData = encrypted.encryptedData.replace('a', 'b');
+      // Tamper with encrypted data - change first character to ensure tampering
+      const tamperedData = 'X' + encrypted.encryptedData.substring(1);
+      encrypted.encryptedData = tamperedData;
 
       await expect(encryptionService.decryptData(encrypted))
         .rejects.toThrow();

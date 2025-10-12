@@ -1,0 +1,190 @@
+%% ============================================================================
+%% OTP AUTHENTICATION FLOWS
+%% ============================================================================
+%% Comprehensive flow diagrams for OTP generation, validation, and lifecycle
+%% Last Updated: October 12, 2025
+
+%% ============================================================================
+%% 1. OTP GENERATION FLOW
+%% ============================================================================
+graph TD
+    subgraph "OTP Generation Flow"
+        A[User requests OTP] --> B{Check rate limits}
+        B -->|Exceeded hourly limit| C[Return 429 error]
+        B -->|Exceeded daily limit| D[Return 429 error]
+        B -->|Within limits| E[Generate 6-digit OTP]
+        E --> F[Calculate expiry time]
+        F --> G[Get user ID if exists]
+        G --> H[Insert into OTP_TOKENS table]
+        H --> I{Email service available?}
+        I -->|Yes| J[Send OTP via email]
+        I -->|No| K[Log email error]
+        J --> L[Return success response]
+        K --> L
+        L --> M{Development mode?}
+        M -->|Yes| N[Log OTP to console]
+        M -->|No| O[End]
+        N --> O
+    end
+
+%% ============================================================================
+%% 2. OTP VALIDATION FLOW
+%% ============================================================================
+graph TD
+    subgraph "OTP Validation Flow"
+        V1[User submits OTP code] --> V2{Validate input}
+        V2 -->|Invalid| V3[Return 400 error]
+        V2 -->|Valid| V4[Query OTP_TOKENS table]
+        V4 --> V5{OTP found?}
+        V5 -->|No| V6[Return invalid OTP error]
+        V5 -->|Yes| V7{Check expiration}
+        V7 -->|Expired| V8[Return expired error]
+        V7 -->|Valid| V9{Check if used}
+        V9 -->|Already used| V10[Return already used error]
+        V9 -->|Not used| V11{Check attempt count}
+        V11 -->|Max attempts exceeded| V12[Return locked error]
+        V11 -->|Within limits| V13{Verify OTP code}
+        V13 -->|Incorrect| V14[Increment attempt count]
+        V14 --> V15[Return invalid code error]
+        V13 -->|Correct| V16[Mark OTP as used]
+        V16 --> V17[Update used_at timestamp]
+        V17 --> V18[Return validation success]
+    end
+
+%% ============================================================================
+%% 3. OTP LIFECYCLE
+%% ============================================================================
+graph LR
+    subgraph "OTP Token Lifecycle"
+        L1[Created] --> L2[Active]
+        L2 --> L3{Status?}
+        L3 -->|Used successfully| L4[Used]
+        L3 -->|Time expired| L5[Expired]
+        L3 -->|Max attempts| L6[Locked]
+        L4 --> L7[Cleanup eligible]
+        L5 --> L7
+        L6 --> L7
+        L7 --> L8[Deleted by cleanup job]
+    end
+
+%% ============================================================================
+%% 4. ADMIN OTP DISPLAY WORKFLOW
+%% ============================================================================
+graph TD
+    subgraph "Admin OTP Display Workflow"
+        AD1[Admin views invitation section] --> AD2[Enter email address]
+        AD2 --> AD3[Click 'Check Active OTP']
+        AD3 --> AD4[Call GET /api/otp/active/:email]
+        AD4 --> AD5{Active OTP exists?}
+        AD5 -->|No| AD6[Show 'No active OTP' message]
+        AD5 -->|Yes| AD7[Display OTP code]
+        AD7 --> AD8[Display expiry time]
+        AD8 --> AD9{Check expiry status}
+        AD9 -->|Expires soon| AD10[Show warning badge]
+        AD9 -->|Normal| AD11[Show info badge]
+        AD10 --> AD12[Disable generate button]
+        AD11 --> AD12
+        AD6 --> AD13[Enable generate button]
+    end
+
+%% ============================================================================
+%% 5. COMPLETE AUTHENTICATION FLOW WITH OTP
+%% ============================================================================
+graph TD
+    subgraph "Complete Authentication Flow"
+        AUTH1[User enters email on login page] --> AUTH2[Click 'Send OTP']
+        AUTH2 --> AUTH3{Check daily limit}
+        AUTH3 -->|Exceeded| AUTH4[Show limit error]
+        AUTH3 -->|OK| AUTH5{Check hourly rate}
+        AUTH5 -->|Exceeded| AUTH6[Show rate limit error]
+        AUTH5 -->|OK| AUTH7[Generate OTP]
+        AUTH7 --> AUTH8[Send OTP email]
+        AUTH8 --> AUTH9[Navigate to verification page]
+        AUTH9 --> AUTH10[User enters OTP code]
+        AUTH10 --> AUTH11[Submit for validation]
+        AUTH11 --> AUTH12{OTP valid?}
+        AUTH12 -->|No| AUTH13{Attempts remaining?}
+        AUTH13 -->|Yes| AUTH14[Show error, allow retry]
+        AUTH13 -->|No| AUTH15[Lock account, show error]
+        AUTH14 --> AUTH10
+        AUTH12 -->|Yes| AUTH16[Call login API with otpVerified=true]
+        AUTH16 --> AUTH17[Backend skips password check]
+        AUTH17 --> AUTH18[Generate JWT tokens]
+        AUTH18 --> AUTH19[Update auth context]
+        AUTH19 --> AUTH20[Navigate to dashboard]
+    end
+
+%% ============================================================================
+%% 6. RATE LIMITING LOGIC
+%% ============================================================================
+graph TD
+    subgraph "Rate Limiting Logic"
+        RL1[OTP request received] --> RL2[Query OTP_TOKENS for email]
+        RL2 --> RL3[Count tokens in last hour]
+        RL3 --> RL4{Count >= 3?}
+        RL4 -->|Yes| RL5[Return hourly limit error]
+        RL4 -->|No| RL6[Count tokens in last 24 hours]
+        RL6 --> RL7{Count >= 10?}
+        RL7 -->|Yes| RL8[Return daily limit error]
+        RL7 -->|No| RL9[Allow OTP generation]
+        RL9 --> RL10[Increment counters]
+    end
+
+%% ============================================================================
+%% 7. CLEANUP PROCESS
+%% ============================================================================
+graph TD
+    subgraph "OTP Cleanup Process"
+        CL1[Scheduled cleanup job runs] --> CL2[Query expired OTP tokens]
+        CL2 --> CL3[Query used OTP tokens older than 24h]
+        CL3 --> CL4[Query locked OTP tokens older than 24h]
+        CL4 --> CL5[Delete all matching records]
+        CL5 --> CL6[Log cleanup statistics]
+        CL6 --> CL7{Errors occurred?}
+        CL7 -->|Yes| CL8[Alert administrators]
+        CL7 -->|No| CL9[End cleanup]
+    end
+
+%% ============================================================================
+%% 8. ERROR HANDLING FLOW
+%% ============================================================================
+graph TD
+    subgraph "OTP Error Handling"
+        ERR1[Error occurs] --> ERR2{Error type?}
+        ERR2 -->|Rate limit| ERR3[Return 429 with retry-after]
+        ERR2 -->|Invalid input| ERR4[Return 400 with details]
+        ERR2 -->|Not found| ERR5[Return 404 with message]
+        ERR2 -->|Expired| ERR6[Return 410 with expiry info]
+        ERR2 -->|Database error| ERR7[Log error, return 500]
+        ERR2 -->|Email error| ERR8[Log error, continue]
+        ERR3 --> ERR9[Client handles retry]
+        ERR4 --> ERR10[Client shows validation error]
+        ERR5 --> ERR11[Client prompts regeneration]
+        ERR6 --> ERR11
+        ERR7 --> ERR12[Client shows generic error]
+        ERR8 --> ERR13[OTP still generated]
+    end
+
+%% ============================================================================
+%% NOTES
+%% ============================================================================
+%% Rate Limits:
+%% - Hourly: 3 OTP requests per email
+%% - Daily: 10 OTP requests per email
+%% - Max attempts per OTP: 3 validation attempts
+%%
+%% Expiry:
+%% - Default: 5 minutes from generation
+%% - Configurable via OTP_EXPIRY_MINUTES env variable
+%%
+%% Cleanup:
+%% - Expired tokens: Deleted immediately when detected
+%% - Used tokens: Deleted after 24 hours
+%% - Locked tokens: Deleted after 24 hours
+%%
+%% Security:
+%% - OTP codes are 6-digit random numbers
+%% - IP address tracking for security monitoring
+%% - Attempt count tracking to prevent brute force
+%% - Automatic lockout after max attempts
+
