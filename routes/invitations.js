@@ -309,34 +309,75 @@ export const validateFamilyInvitation = async (req, res) => {
     const connection = await pool.getConnection();
     const { token } = req.params;
 
+    // FIX 2: Validate HMAC signature first
+    console.log('[HMAC_VALIDATION] Validating family invitation token signature');
+    const hmacValidation = hmacTokenService.validateToken(token);
+
+    if (!hmacValidation.isValid) {
+      connection.release();
+      console.warn('[HMAC_VALIDATION] Invalid token signature:', hmacValidation.error);
+      return res.status(401).json({
+        error: 'Invalid invitation token',
+        reason: hmacValidation.error,
+        familyInvitation: null
+      });
+    }
+
+    // Check token expiration from payload
+    const payload = hmacValidation.payload;
+    if (payload.expiresAt < Date.now()) {
+      connection.release();
+      console.warn('[HMAC_VALIDATION] Token expired:', new Date(payload.expiresAt));
+      return res.status(401).json({
+        error: 'Invitation token has expired',
+        familyInvitation: null
+      });
+    }
+
+    // Verify token exists in database and matches payload
     const query = `
       SELECT * FROM FAMILY_INVITATIONS
-      WHERE invitation_token = ? AND status IN ('pending', 'partially_accepted')
-      AND expires_at > NOW()
+      WHERE invitation_token = ?
+        AND status IN ('pending', 'partially_accepted')
+        AND expires_at > NOW()
     `;
 
     const [rows] = await connection.execute(query, [token]);
     connection.release();
 
-    if (rows.length > 0) {
-      const row = rows[0];
-      const familyInvitation = {
-        id: row.id,
-        parentEmail: row.parent_email,
-        childrenProfiles: JSON.parse(row.children_profiles || '[]'),
-        invitationToken: row.invitation_token,
-        status: row.status,
-        sentAt: row.sent_at,
-        expiresAt: row.expires_at,
-        invitedBy: row.invited_by,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
-      };
-
-      res.json({ familyInvitation });
-    } else {
-      res.json({ familyInvitation: null });
+    if (rows.length === 0) {
+      console.warn('[HMAC_VALIDATION] Token not found in database or already used');
+      return res.json({ familyInvitation: null });
     }
+
+    // Verify payload email matches database record
+    const row = rows[0];
+    if (payload.email !== row.parent_email) {
+      console.error('[HMAC_VALIDATION] Email mismatch - possible token forgery attempt');
+      return res.status(401).json({
+        error: 'Invalid invitation token',
+        reason: 'Token data mismatch',
+        familyInvitation: null
+      });
+    }
+
+    console.log('[HMAC_VALIDATION] Token validated successfully');
+
+    const familyInvitation = {
+      id: row.id,
+      parentEmail: row.parent_email,
+      childrenProfiles: JSON.parse(row.children_profiles || '[]'),
+      invitationToken: row.invitation_token,
+      status: row.status,
+      sentAt: row.sent_at,
+      expiresAt: row.expires_at,
+      invitedBy: row.invited_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+
+    res.json({ familyInvitation });
+
   } catch (error) {
     console.error('Error validating family invitation:', error);
     res.status(500).json({ error: 'Failed to validate family invitation' });
@@ -702,6 +743,25 @@ export const validateInvitation = async (req, res) => {
   try {
     const { token } = req.params;
     console.log('VALIDATE_INVITATION: Starting streamlined validation for token:', token);
+
+    // FIX 2: VALIDATE HMAC SIGNATURE FIRST
+    const hmacValidation = hmacTokenService.validateToken(token);
+
+    if (!hmacValidation.isValid) {
+      console.warn('VALIDATE_INVITATION: Invalid HMAC signature:', hmacValidation.error);
+      return res.json({
+        isValid: false,
+        invitation: null,
+        alumniProfile: null,
+        requiresUserInput: false,
+        suggestedFields: [],
+        canOneClickJoin: false,
+        errorType: 'INVALID_TOKEN',
+        errorMessage: 'Invalid or tampered invitation token'
+      });
+    }
+
+    console.log('VALIDATE_INVITATION: HMAC signature valid, proceeding with service validation');
 
     // Import services dynamically to avoid circular dependencies
     const { AlumniDataIntegrationService } = await import('../src/services/AlumniDataIntegrationService.js');

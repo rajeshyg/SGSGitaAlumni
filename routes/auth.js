@@ -155,6 +155,40 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Account is disabled' });
     }
 
+    // FIX 1: Add server-side OTP verification check to prevent authentication bypass
+    if (otpVerified) {
+      console.log('🔐 Verifying OTP was actually validated...');
+
+      // Check that OTP was validated within last 5 minutes
+      const [otpCheck] = await connection.execute(
+        `SELECT id, used_at FROM OTP_TOKENS
+         WHERE email = ?
+           AND is_used = TRUE
+           AND used_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+         ORDER BY used_at DESC
+         LIMIT 1`,
+        [email]
+      );
+
+      if (otpCheck.length === 0) {
+        connection.release();
+        serverMonitoring.logFailedLogin(
+          req.ip || req.connection.remoteAddress || 'unknown',
+          email,
+          { reason: 'otp_not_verified', claimed_otp_verified: true }
+        );
+        return res.status(401).json({
+          error: 'OTP verification required',
+          message: 'Please verify your OTP before logging in'
+        });
+      }
+
+      console.log('🔐 OTP verification confirmed:', {
+        otpId: otpCheck[0].id,
+        usedAt: otpCheck[0].used_at
+      });
+    }
+
     // Verify password (skip for OTP-verified logins)
     if (!otpVerified) {
       console.log('🔐 Verifying password...');

@@ -443,6 +443,20 @@ app.get('/api/users/totp/status/:email', getTOTPStatus);
 app.get('/api/users/profile/:email', getOTPUserProfile);
 
 // Start server
+// FIX 5: Add proper Redis initialization or fallback for rate limiting
+import { redisRateLimiter } from './src/lib/security/RedisRateLimiter.ts';
+
+let redisAvailable = false;
+try {
+  await redisRateLimiter.initialize();
+  redisAvailable = true;
+  console.log('✅ Redis rate limiter initialized successfully');
+} catch (error) {
+  console.warn('⚠️ Redis unavailable, rate limiting will use in-memory fallback');
+  console.warn('   Error:', error.message);
+  // Continue without Redis - middleware will handle gracefully
+}
+
 const server = app.listen(PORT, async () => {
   try {
     console.log(`🚀 Backend API server running on http://localhost:${PORT}`);
