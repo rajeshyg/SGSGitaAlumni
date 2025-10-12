@@ -264,7 +264,7 @@ describe('OTPService.validateOTP', () => {
 ## 🎯 Success Metrics
 
 ### Test Coverage Targets
-- **Unit Test Coverage**: >90% for OTPService.ts
+- **Unit Test Coverage**: >80% for OTPService.ts
 - **Integration Test Coverage**: All critical OTP flows
 - **E2E Test Coverage**: Maintained at current levels
 
