@@ -50,7 +50,6 @@ describe('OTPService', () => {
     it('should generate OTP successfully', async () => {
       const mockResponse = {
         id: 'otp123',
-        code: '123456',
         expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString()
       };
 
@@ -63,16 +62,14 @@ describe('OTPService', () => {
       expect(result).toHaveProperty('id');
       expect(result.email).toBe(validRequest.email);
       expect(result.tokenType).toBe(validRequest.type);
-      expect(result.otpCode).toBe('123456');
+      expect(result.otpCode).toBe(''); // OTP code is not returned for security
       expect(result.isUsed).toBe(false);
       expect(result.attemptCount).toBe(0);
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/otp/generate', {
+      expect(mockApiClient.post).toHaveBeenCalledWith('/api/otp/generate-and-send', {
         email: validRequest.email,
-        otpCode: expect.stringMatching(/^\d{6}$/),
         type: validRequest.type,
-        userId: validRequest.userId,
-        expiresAt: expect.any(String)
+        userId: validRequest.userId
       });
     });
 
@@ -116,37 +113,6 @@ describe('OTPService', () => {
     });
   });
 
-  describe('sendOTP', () => {
-    it('should send OTP successfully', async () => {
-      mockApiClient.post.mockResolvedValueOnce({});
-      mockApiClient.post.mockResolvedValueOnce({}); // increment daily count
-
-      await expect(otpService.sendOTP('test@example.com', '123456', 'login'))
-        .resolves.toBeUndefined();
-
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/otp/send', {
-        email: 'test@example.com',
-        otpCode: '123456',
-        type: 'login'
-      });
-    });
-
-    it('should validate email format', async () => {
-      await expect(otpService.sendOTP('invalid-email', '123456', 'login'))
-        .rejects.toThrow('Invalid email address');
-    });
-
-    it('should increment daily OTP count', async () => {
-      mockApiClient.post.mockResolvedValueOnce({});
-      mockApiClient.post.mockResolvedValueOnce({});
-
-      await otpService.sendOTP('test@example.com', '123456', 'login');
-
-      expect(mockApiClient.post).toHaveBeenCalledWith('/api/otp/increment-daily-count', {
-        email: 'test@example.com'
-      });
-    });
-  });
 
   describe('validateOTP', () => {
     const validRequest: OTPVerificationRequest = {
@@ -312,7 +278,7 @@ describe('OTPService', () => {
       const originalEnv = (globalThis as any).import?.meta?.env?.PROD;
       (globalThis as any).import = { meta: { env: { PROD: false } } };
 
-      mockApiClient.post.mockResolvedValueOnce({});
+      mockApiClient.post.mockResolvedValueOnce({ otpCode: '123456' });
 
       const result = await otpService.generateTestOTP('test@example.com');
 
@@ -389,7 +355,6 @@ describe('OTPService', () => {
     it('should generate email OTP successfully', async () => {
       const mockResponse = {
         id: 'otp123',
-        code: '123456',
         expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString()
       };
 
@@ -402,7 +367,7 @@ describe('OTPService', () => {
       expect(result.methods).toHaveLength(1);
       expect(result.methods[0].method).toBe('email');
       expect(result.methods[0].success).toBe(true);
-      expect(result.methods[0].otpCode).toBe('123456');
+      expect(result.methods[0].otpCode).toBe(''); // OTP code not returned for security
     });
 
     it('should handle SMS method (not implemented)', async () => {
@@ -552,10 +517,6 @@ describe('OTPService', () => {
   });
 
   describe('private method validation through public interfaces', () => {
-    it('should validate email format through sendOTP', async () => {
-      await expect(otpService.sendOTP('invalid-email', '123456', 'login'))
-        .rejects.toThrow(OTPError);
-    });
 
     it('should generate consistent OTP codes', async () => {
       // Since we mock crypto.getRandomValues to return consistent values,

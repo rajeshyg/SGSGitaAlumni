@@ -3,7 +3,8 @@
 // ============================================================================
 // Enterprise-grade rate limiting with Redis backend for abuse prevention
 
-import { createClient, RedisClientType } from 'redis';
+import pkg from 'redis';
+const { createClient } = pkg;
 import { serverMonitoring } from '../monitoring/server.js';
 
 export interface RateLimitPolicy {
@@ -36,7 +37,7 @@ export interface RateLimitConfig {
 }
 
 export class RedisRateLimiter {
-  private redisClient: RedisClientType;
+  private redisClient: any;
   private config: RateLimitConfig;
   private connected: boolean = false;
 

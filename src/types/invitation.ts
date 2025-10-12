@@ -302,7 +302,6 @@ export interface InvitationServiceInterface {
 
 export interface OTPServiceInterface {
   generateOTP(request: OTPRequest): Promise<OTPToken>;
-  sendOTP(email: string, otpCode: string, type: OTPType): Promise<void>;
   validateOTP(request: OTPVerificationRequest): Promise<OTPValidation>;
   isOTPRequired(userId: string): Promise<boolean>;
   getRemainingOTPAttempts(email: string): Promise<number>;

@@ -103,6 +103,7 @@ import {
   getTOTPStatus,
   getOTPUserProfile,
   getActiveOTP,
+  generateTestOTP,
   setOTPPool
 } from './routes/otp.js';
 
@@ -117,6 +118,13 @@ import {
   clearMonitoringData,
   setMonitoringPool
 } from './routes/monitoring.js';
+
+import {
+  sendEmail,
+  getEmailDeliveryStatus,
+  getEmailTemplate,
+  setEmailPool
+} from './routes/email.js';
 
 // Environment variables already loaded at top of file
 const app = express();
@@ -136,6 +144,7 @@ setQualityPool(pool);
 setHealthPool(pool);
 setOTPPool(pool);
 setMonitoringPool(pool);
+setEmailPool(pool);
 
 // Middleware
 app.use(cors());
@@ -404,10 +413,20 @@ app.get('/api/export', (req, res) => {
 });
 
 // ============================================================================
+// EMAIL ROUTES
+// ============================================================================
+
+app.post('/api/email/send', sendEmail);
+app.get('/api/email/delivery/:emailId', getEmailDeliveryStatus);
+app.get('/api/email/templates/:templateId', getEmailTemplate);
+
+// ============================================================================
 // OTP ROUTES
 // ============================================================================
 
 app.post('/api/otp/generate', apiRateLimit, generateAndSendOTP); // New auto-generate endpoint
+app.post('/api/otp/generate-and-send', apiRateLimit, generateAndSendOTP); // Alias for frontend compatibility
+app.post('/api/otp/generate-test', apiRateLimit, generateTestOTP); // Test endpoint
 app.post('/api/otp/send', apiRateLimit, sendOTP);
 app.post('/api/otp/validate', validateOTP);
 app.get('/api/otp/remaining-attempts/:email', getRemainingAttempts);

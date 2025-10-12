@@ -589,6 +589,11 @@ export const APIService = {
     }
   },
 
+  // Alias for searchAppUsers to match server route naming
+  searchUsers: async (query: string, limit: number = 50): Promise<any[]> => {
+    return APIService.searchAppUsers(query, limit);
+  },
+
   // Update app user (admin only - status, permissions, etc.)
   updateAppUser: async (userId: string, updates: {
     status?: 'active' | 'inactive' | 'suspended';

@@ -120,39 +120,30 @@ export class OTPService implements OTPServiceInterface {
       // Check rate limiting
       await this.checkRateLimits(request.email);
 
-      // Generate OTP code
-      const otpCode = this.generateOTPCode();
-
-      // Calculate expiration time
-      const expiresAt = new Date();
-      expiresAt.setMinutes(expiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
-
-      // Create OTP token in database
+      // Generate OTP server-side (no longer generate locally)
       const otpData = {
         email: request.email,
-        otpCode,
         type: request.type,  // Backend expects 'type', not 'tokenType'
-        userId: request.userId || null,
-        expiresAt: expiresAt.toISOString()
+        userId: request.userId || null
       };
 
-      const response = await apiClient.post('/api/otp/generate', otpData);
+      const response = await apiClient.post('/api/otp/generate-and-send', otpData);
 
       // Map the API response to OTPToken format
       const otpToken: OTPToken = {
         id: response.id || '',
         email: request.email,
-        otpCode: response.code || otpCode, // API returns 'code', we need 'otpCode'
+        otpCode: '', // OTP code is not returned for security - only sent via email
         tokenType: request.type,
         userId: request.userId,
         generatedAt: new Date(),
-        expiresAt: new Date(response.expiresAt || expiresAt),
+        expiresAt: new Date(response.expiresAt),
         isUsed: false,
         attemptCount: 0,
         createdAt: new Date()
       };
 
-      logger.info('OTP generated successfully', {
+      logger.info('OTP generated and sent successfully', {
         email: request.email,
         type: request.type,
         expiresAt: otpToken.expiresAt
@@ -179,67 +170,6 @@ export class OTPService implements OTPServiceInterface {
     }
   }
 
-  /**
-   * Send OTP code to user via email
-   *
-   * Delivers the generated OTP code to the user's email address and updates
-   * the daily OTP count for rate limiting purposes.
-   *
-   * @param {string} email - User's email address
-   * @param {string} otpCode - The OTP code to send
-   * @param {OTPType} type - Type of OTP being sent
-   *
-   * @returns {Promise<void>}
-   *
-   * @throws {OTPError} INVALID_EMAIL - When email format is invalid
-   * @throws {OTPError} OTP_SEND_FAILED - When email delivery fails
-   *
-   * @example
-   * ```typescript
-   * await otpService.sendOTP('user@example.com', '123456', 'login');
-   * ```
-   */
-  async sendOTP(email: string, otpCode: string, type: OTPType): Promise<void> {
-    try {
-      // Validate email
-      if (!this.isValidEmail(email)) {
-        throw new OTPError(
-          'Invalid email address',
-          'INVALID_EMAIL',
-          400
-        );
-      }
-
-      // Send OTP via email service
-      await apiClient.post('/api/otp/send', {
-        email,
-        otpCode,
-        type
-      });
-
-      // Update user's daily OTP count
-      await this.incrementDailyOTPCount(email);
-
-      logger.info('OTP sent successfully', { email, type });
-
-    } catch (error) {
-      if (error instanceof OTPError) {
-        throw error;
-      }
-
-      logError(error as Error, {
-        context: 'OTPService.sendOTP',
-        email,
-        type
-      });
-
-      throw new OTPError(
-        'Failed to send OTP',
-        'OTP_SEND_FAILED',
-        500
-      );
-    }
-  }
 
   /**
    * Validate an OTP code against stored token
@@ -487,15 +417,6 @@ export class OTPService implements OTPServiceInterface {
     return emailRegex.test(email);
   }
 
-  private generateOTPCode(): string {
-    // Generate cryptographically secure 6-digit OTP
-    const array = new Uint8Array(3);
-    crypto.getRandomValues(array);
-    
-    // Convert to 6-digit number
-    const number = (array[0] << 16) | (array[1] << 8) | array[2];
-    return (number % 1000000).toString().padStart(6, '0');
-  }
 
   /**
    * Check if user has exceeded daily OTP generation limit
@@ -618,21 +539,14 @@ export class OTPService implements OTPServiceInterface {
       );
     }
 
-    const otpCode = this.generateOTPCode(); // Generate proper OTP for testing
-
-    // Store test OTP in database
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + this.OTP_EXPIRY_MINUTES);
-
-    await apiClient.post('/api/otp/generate', {
+    // Generate test OTP server-side
+    const response = await apiClient.post('/api/otp/generate-test', {
       email,
-      otpCode,
-      tokenType: 'login',
-      expiresAt: expiresAt.toISOString()
+      tokenType: 'login'
     });
 
     logger.info('Test OTP generated', { email });
-    return otpCode;
+    return response.otpCode; // Server returns the OTP code for testing
   }
 
   /**

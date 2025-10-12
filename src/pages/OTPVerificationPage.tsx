@@ -332,12 +332,10 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
         type: otpType
       });
 
-      await otpService.sendOTP(email, '', otpType);
-      
       setSuccess('New OTP sent to your email');
       setResendCooldown(60); // 60 second cooldown
       setOtpCode(''); // Clear current OTP
-      
+
       // Focus first input
       if (otpInputRefs.current[0]) {
         otpInputRefs.current[0].focus();

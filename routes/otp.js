@@ -6,6 +6,7 @@
 
 import mysql from 'mysql2/promise';
 import { emailService } from '../utils/emailService.js';
+import crypto from 'crypto';
 
 // Get database pool - will be passed from main server
 let pool = null;
@@ -20,33 +21,44 @@ export function setOTPPool(dbPool) {
 
 // Helper function to generate random 6-digit OTP
 function generateRandomOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // Use crypto.randomInt() for cryptographically secure random number generation
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 // NEW: Generate and send OTP in one step (for admin testing and user login)
 export const generateAndSendOTP = async (req, res) => {
+  console.log('🔍 [DEBUG] generateAndSendOTP called with body:', req.body);
+
   try {
     const { email, type = 'email' } = req.body;
+    console.log('🔍 [DEBUG] Extracted email:', email, 'type:', type);
 
     if (!email) {
+      console.log('❌ [DEBUG] Email validation failed - no email provided');
       return res.status(400).json({
         error: 'Email is required'
       });
     }
 
+    console.log('🔍 [DEBUG] Checking database connection...');
     // Check rate limit - max 3 OTPs per hour
     const connection = await pool.getConnection();
-    
+    console.log('✅ [DEBUG] Database connection obtained');
+
     const [rateLimitRows] = await connection.execute(`
       SELECT COUNT(*) as attempts
       FROM OTP_TOKENS
       WHERE email = ?
         AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
     `, [email]);
+    console.log('🔍 [DEBUG] Rate limit query result:', rateLimitRows);
 
     const attempts = rateLimitRows[0]?.attempts || 0;
+    console.log('🔍 [DEBUG] Current attempts:', attempts);
+
     if (attempts >= 3) {
       connection.release();
+      console.log('❌ [DEBUG] Rate limit exceeded');
       return res.status(429).json({
         error: 'Rate limit exceeded. Please try again later.',
         remainingAttempts: 0
@@ -56,29 +68,39 @@ export const generateAndSendOTP = async (req, res) => {
     // Generate random 6-digit OTP
     const otpCode = generateRandomOTP();
     const expiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES || '5');
-    
+    console.log('🔍 [DEBUG] Generated OTP code, expiry minutes:', expiryMinutes);
+
     // Get user ID if user exists
+    console.log('🔍 [DEBUG] Querying for user ID...');
     const [userRows] = await connection.execute(
       'SELECT id FROM app_users WHERE email = ?',
       [email]
     );
+    console.log('🔍 [DEBUG] User query result:', userRows);
+
     const userId = userRows.length > 0 ? userRows[0].id : null;
+    console.log('🔍 [DEBUG] User ID:', userId);
 
     // Insert OTP token - use MySQL NOW() + INTERVAL for expiration to avoid timezone issues
-    await connection.execute(`
+    console.log('🔍 [DEBUG] Inserting OTP token...');
+    const [insertResult] = await connection.execute(`
       INSERT INTO OTP_TOKENS (
         email, otp_code, token_type, user_id,
         expires_at, created_at
       ) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), NOW())
-    `, [email, otpCode, type, userId, expiryMinutes]);
+    `, [email, otpCode, 'login', userId, expiryMinutes]);
+    console.log('✅ [DEBUG] OTP token inserted successfully, insertId:', insertResult.insertId);
 
     connection.release();
+    console.log('🔍 [DEBUG] Database connection released');
 
     // Send OTP via email
+    console.log('🔍 [DEBUG] Sending OTP email...');
     try {
       await emailService.sendOTPEmail(email, otpCode, expiryMinutes);
+      console.log('✅ [DEBUG] OTP email sent successfully');
     } catch (emailError) {
-      console.error('Email send error (OTP still generated):', emailError);
+      console.error('❌ [DEBUG] Email send error (OTP still generated):', emailError);
     }
 
     // Calculate expiry time for response
@@ -89,6 +111,7 @@ export const generateAndSendOTP = async (req, res) => {
       console.log(`📧 OTP generated and sent to ${email} (expires: ${expiresAt.toLocaleString()})`);
     }
 
+    console.log('✅ [DEBUG] generateAndSendOTP completed successfully');
     res.json({
       success: true,
       message: 'OTP generated and sent successfully',
@@ -96,53 +119,18 @@ export const generateAndSendOTP = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Generate and send OTP error:', error);
+    console.error('❌ [DEBUG] Generate and send OTP error:', error);
+    console.error('❌ [DEBUG] Error stack:', error.stack);
+    console.error('❌ [DEBUG] Error message:', error.message);
     res.status(500).json({ error: 'Failed to generate OTP' });
   }
 };
 
-// LEGACY: Manual OTP generation (requires OTP code to be provided)
+// LEGACY: Manual OTP generation (requires OTP code to be provided) - DEPRECATED
 export const generateOTP = async (req, res) => {
-  try {
-    const { email, otpCode, tokenType, userId, expiresAt } = req.body;
-
-    if (!email || !otpCode || !tokenType) {
-      return res.status(400).json({
-        error: 'Email, OTP code, and token type are required'
-      });
-    }
-
-    const connection = await pool.getConnection();
-
-    // Insert OTP token
-    const query = `
-      INSERT INTO OTP_TOKENS (
-        email, otp_code, token_type, user_id,
-        expires_at, created_at
-      ) VALUES (?, ?, ?, ?, ?, NOW())
-    `;
-
-    const expiresDate = expiresAt ? new Date(expiresAt) : new Date(Date.now() + 5 * 60 * 1000);
-
-    await connection.execute(query, [
-      email,
-      otpCode,
-      tokenType,
-      userId || null,
-      expiresDate
-    ]);
-
-    connection.release();
-
-    res.json({
-      success: true,
-      message: 'OTP generated successfully'
-    });
-
-  } catch (error) {
-    console.error('Generate OTP error:', error);
-    res.status(500).json({ error: 'Failed to generate OTP' });
-  }
+  return res.status(410).json({
+    error: 'This endpoint is deprecated. Use /api/otp/generate-and-send instead.'
+  });
 };
 
 // ============================================================================
@@ -259,29 +247,11 @@ export const validateOTP = async (req, res) => {
 // OTP UTILITY ENDPOINTS
 // ============================================================================
 
+// LEGACY: Manual OTP sending (requires OTP code to be provided) - DEPRECATED
 export const sendOTP = async (req, res) => {
-  try {
-    const { email, otpCode, type } = req.body;
-
-    if (!email || !otpCode || !type) {
-      return res.status(400).json({
-        error: 'Email, OTP code, and type are required'
-      });
-    }
-
-    // Send OTP via email service
-    const result = await emailService.sendOTPEmail(email, otpCode);
-
-    res.json({
-      success: true,
-      message: 'OTP sent successfully',
-      mode: result.mode || 'production'
-    });
-
-  } catch (error) {
-    console.error('Send OTP error:', error);
-    res.status(500).json({ error: 'Failed to send OTP' });
-  }
+  return res.status(410).json({
+    error: 'This endpoint is deprecated. OTP generation and sending is now combined in /api/otp/generate-and-send.'
+  });
 };
 
 export const getRemainingAttempts = async (req, res) => {
@@ -566,6 +536,58 @@ export const getOTPUserProfile = async (req, res) => {
   }
 };
 // Get active OTP for an email (if not expired and not used)
+// Add new endpoint for test OTP generation (returns OTP code for testing)
+export const generateTestOTP = async (req, res) => {
+  try {
+    const { email, tokenType = 'login' } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Only allow in development/testing environments
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Test OTP generation not allowed in production' });
+    }
+
+    const connection = await pool.getConnection();
+
+    // Generate random 6-digit OTP
+    const otpCode = generateRandomOTP();
+    const expiryMinutes = parseInt(process.env.OTP_EXPIRY_MINUTES || '5');
+
+    // Get user ID if user exists
+    const [userRows] = await connection.execute(
+      'SELECT id FROM app_users WHERE email = ?',
+      [email]
+    );
+    const userId = userRows.length > 0 ? userRows[0].id : null;
+
+    // Insert OTP token
+    const [result] = await connection.execute(`
+      INSERT INTO OTP_TOKENS (
+        email, otp_code, token_type, user_id,
+        expires_at, created_at
+      ) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), NOW())
+    `, [email, otpCode, tokenType, userId, expiryMinutes]);
+
+    connection.release();
+
+    console.log(`[TEST OTP] Generated OTP ${otpCode} for ${email}`);
+
+    res.json({
+      success: true,
+      otpCode, // Return OTP code for testing
+      expiresAt: new Date(Date.now() + expiryMinutes * 60 * 1000).toISOString(),
+      message: 'Test OTP generated successfully'
+    });
+
+  } catch (error) {
+    console.error('Generate test OTP error:', error);
+    res.status(500).json({ error: 'Failed to generate test OTP' });
+  }
+};
+
 export const getActiveOTP = async (req, res) => {
   try {
     const { email } = req.params;
@@ -589,9 +611,9 @@ export const getActiveOTP = async (req, res) => {
     connection.release();
 
     if (rows.length === 0) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         message: 'No active OTP found',
-        hasActiveOtp: false 
+        hasActiveOtp: false
       });
     }
 
