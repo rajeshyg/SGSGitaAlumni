@@ -25,14 +25,7 @@ const UploadPage = lazy(() => Promise.resolve({
   )
 }))
 
-const AlumniDirectoryPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Alumni Directory</h1>
-      <p className="text-muted-foreground">Alumni directory coming soon...</p>
-    </div>
-  )
-}))
+const AlumniDirectoryPage = lazy(() => import('./pages/AlumniDirectoryPage'))
 
 const ReportsPage = lazy(() => Promise.resolve({
   default: () => (

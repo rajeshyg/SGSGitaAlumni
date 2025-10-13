@@ -27,6 +27,13 @@ export const APIDataService = {
   getFileImports: async (): Promise<FileImport[]> => {
     // Production implementation - call real API
     const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/file-imports`);
+    
+    // Handle deprecated endpoint (410 Gone) - return empty array
+    if (response.status === 410) {
+      console.warn('[apiData] File imports endpoint is deprecated, returning empty array');
+      return [];
+    }
+    
     if (!response.ok) {
       throw new Error(`Failed to fetch file imports: ${response.statusText}`);
     }

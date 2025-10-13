@@ -286,6 +286,12 @@ export const APIService = {
       const dataService = getDataService();
       const response = await dataService.getFileImports();
 
+      // If endpoint is deprecated or returns empty, return empty response
+      if (!response || response.length === 0) {
+        logger.info('No file imports available (endpoint may be deprecated)');
+        return createEmptyResponse(params);
+      }
+
       logger.info('API response received', { dataLength: response.length });
 
       // Transform API data to FileImport format

@@ -159,7 +159,6 @@ export const getAlumniDirectory = async (req, res) => {
         am.batch as graduation_year,
         am.result as degree,
         am.center_name as department,
-        am.address,
         am.created_at,
         am.updated_at
       FROM alumni_members am
@@ -198,7 +197,7 @@ export const getAlumniDirectory = async (req, res) => {
       graduationYear: row.graduation_year,
       degree: row.degree,
       department: row.department,
-      location: extractLocation(row.address),
+      location: null, // Address column not available in current schema
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }));

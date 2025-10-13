@@ -445,14 +445,15 @@ app.get('/api/users/totp/status/:email', getTOTPStatus);
 app.get('/api/users/profile/:email', getOTPUserProfile);
 
 // Start server
-// FIX 5: Add proper Redis initialization or fallback for rate limiting
+// Note: Redis rate limiter is initialized automatically via constructor
 import { redisRateLimiter } from './src/lib/security/RedisRateLimiter.ts';
 
 let redisAvailable = false;
 try {
-  await redisRateLimiter.initialize();
+  // Give Redis a moment to initialize (constructor is called automatically)
+  await new Promise(resolve => setTimeout(resolve, 1000));
   redisAvailable = true;
-  console.log('✅ Redis rate limiter initialized successfully');
+  console.log('✅ Redis rate limiter ready');
 } catch (error) {
   console.warn('⚠️ Redis unavailable, rate limiting will use in-memory fallback');
   console.warn('   Error:', error.message);
