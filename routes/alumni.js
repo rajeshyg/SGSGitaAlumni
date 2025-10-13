@@ -61,6 +61,195 @@ export const searchAlumniMembers = async (req, res) => {
   }
 };
 
+// Get alumni directory with pagination and filters
+export const getAlumniDirectory = async (req, res) => {
+  try {
+    // Parse query parameters
+    const {
+      q = '',                           // Search query
+      page = 1,                         // Page number
+      perPage = 20,                     // Items per page
+      graduationYear,                   // Specific year filter
+      graduationYearMin,                // Year range min
+      graduationYearMax,                // Year range max
+      department,                       // Department filter
+      sortBy = 'name',                  // Sort field
+      sortOrder = 'asc'                 // Sort direction
+    } = req.query;
+
+    // Validate and sanitize inputs
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const perPageNum = Math.min(100, Math.max(1, parseInt(perPage) || 20));
+    const offset = (pageNum - 1) * perPageNum;
+
+    // Get database connection
+    const connection = await pool.getConnection();
+
+    console.log('API: Fetching alumni directory:', { q, page: pageNum, perPage: perPageNum, graduationYear, department });
+
+    // Build WHERE clause
+    const whereClauses = [];
+    const queryParams = [];
+
+    // Search query (name or email)
+    if (q && q.trim()) {
+      whereClauses.push('(am.first_name LIKE ? OR am.last_name LIKE ? OR am.email LIKE ?)');
+      const searchTerm = `%${q.trim()}%`;
+      queryParams.push(searchTerm, searchTerm, searchTerm);
+    }
+
+    // Graduation year filters
+    if (graduationYear) {
+      whereClauses.push('am.batch = ?');
+      queryParams.push(parseInt(graduationYear));
+    } else {
+      if (graduationYearMin) {
+        whereClauses.push('am.batch >= ?');
+        queryParams.push(parseInt(graduationYearMin));
+      }
+      if (graduationYearMax) {
+        whereClauses.push('am.batch <= ?');
+        queryParams.push(parseInt(graduationYearMax));
+      }
+    }
+
+    // Department filter
+    if (department && department.trim()) {
+      whereClauses.push('am.center_name = ?');
+      queryParams.push(department.trim());
+    }
+
+    const whereClause = whereClauses.length > 0
+      ? `WHERE ${whereClauses.join(' AND ')}`
+      : '';
+
+    // Build ORDER BY clause
+    let orderByClause = '';
+    switch (sortBy) {
+      case 'graduationYear':
+        orderByClause = `ORDER BY am.batch ${sortOrder === 'desc' ? 'DESC' : 'ASC'}, am.last_name ASC, am.first_name ASC`;
+        break;
+      case 'recent':
+        orderByClause = `ORDER BY am.created_at ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
+        break;
+      case 'name':
+      default:
+        orderByClause = `ORDER BY am.last_name ${sortOrder === 'desc' ? 'DESC' : 'ASC'}, am.first_name ${sortOrder === 'desc' ? 'DESC' : 'ASC'}`;
+        break;
+    }
+
+    // Get total count
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM alumni_members am
+      ${whereClause}
+    `;
+    const [countRows] = await connection.execute(countQuery, queryParams);
+    const total = countRows[0].total;
+
+    // Get paginated data
+    const dataQuery = `
+      SELECT
+        am.id,
+        am.student_id,
+        am.first_name,
+        am.last_name,
+        am.email,
+        am.phone,
+        am.batch as graduation_year,
+        am.result as degree,
+        am.center_name as department,
+        am.address,
+        am.created_at,
+        am.updated_at
+      FROM alumni_members am
+      ${whereClause}
+      ${orderByClause}
+      LIMIT ${perPageNum} OFFSET ${offset}
+    `;
+    const [dataRows] = await connection.execute(dataQuery, queryParams);
+
+    // Get filter options (available years and departments)
+    const [yearRows] = await connection.execute(`
+      SELECT DISTINCT batch as year
+      FROM alumni_members
+      WHERE batch IS NOT NULL
+      ORDER BY batch DESC
+    `);
+
+    const [deptRows] = await connection.execute(`
+      SELECT DISTINCT center_name as department
+      FROM alumni_members
+      WHERE center_name IS NOT NULL AND center_name != ''
+      ORDER BY center_name ASC
+    `);
+
+    connection.release();
+
+    // Transform data
+    const data = dataRows.map(row => ({
+      id: row.id,
+      studentId: row.student_id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      displayName: `${row.first_name} ${row.last_name}`.trim(),
+      email: row.email,
+      phone: row.phone || null,
+      graduationYear: row.graduation_year,
+      degree: row.degree,
+      department: row.department,
+      location: extractLocation(row.address),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(total / perPageNum);
+    const pagination = {
+      page: pageNum,
+      perPage: perPageNum,
+      total,
+      totalPages,
+      hasNext: pageNum < totalPages,
+      hasPrev: pageNum > 1
+    };
+
+    // Build filter options
+    const filters = {
+      graduationYears: yearRows.map(row => row.year),
+      departments: deptRows.map(row => row.department)
+    };
+
+    // Send response
+    res.json({
+      success: true,
+      data,
+      pagination,
+      filters
+    });
+
+  } catch (error) {
+    console.error('Error fetching alumni directory:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch alumni directory',
+      message: error.message
+    });
+  }
+};
+
+// Helper function to extract location from address
+function extractLocation(address) {
+  if (!address) return null;
+
+  // Simple extraction: get last part after comma (usually city/state)
+  const parts = address.split(',').map(p => p.trim());
+  if (parts.length >= 2) {
+    return parts[parts.length - 1]; // Return last part (state/country)
+  }
+  return address.substring(0, 50); // Return first 50 chars if no comma
+}
+
 // Get alumni member by ID
 export const getAlumniMember = async (req, res) => {
   try {

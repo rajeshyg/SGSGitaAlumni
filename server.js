@@ -54,6 +54,7 @@ import {
 
 import {
   searchAlumniMembers,
+  getAlumniDirectory,
   getAlumniMember,
   updateAlumniMember,
   sendInvitationToAlumni,
@@ -190,6 +191,7 @@ app.patch('/api/invitations/:id', updateInvitation);
 // ============================================================================
 
 app.get('/api/alumni-members/search', searchAlumniMembers);
+app.get('/api/alumni/directory', getAlumniDirectory);  // New directory endpoint
 app.get('/api/alumni-members/:id', getAlumniMember);
 app.put('/api/alumni-members/:id', updateAlumniMember);
 app.post('/api/alumni-members/:id/send-invitation', authenticateToken, sendInvitationToAlumni);
