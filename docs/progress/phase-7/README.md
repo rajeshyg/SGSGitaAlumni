@@ -111,7 +111,7 @@ npm run test:desktop           # Desktop compatibility
 - **Description:** Personalized dashboard with real data integration
 - **Prototype Reference:** member-dashboard.tsx
 
-#### Task 7.5: Alumni Directory
+#### [Task 7.5: Alumni Directory](./task-7.5-alumni-directory.md)
 - **Status:** 🟡 Planned
 - **Description:** Searchable directory with profile cards
 - **Prototype Reference:** alumni-directory.tsx
