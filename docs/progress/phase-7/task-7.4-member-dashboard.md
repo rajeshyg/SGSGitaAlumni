@@ -7,6 +7,9 @@
 ## Overview
 Implement the member dashboard by migrating the prototype's personalized dashboard screen and replacing all mock data with real API integration. This creates the central hub for authenticated users with personalized content, statistics, and quick actions.
 
+### Sub-Tasks
+1. **[Task 7.4.1: Dashboard Feed Integration](./task-7.4.1-dashboard-feed-integration.md)** - 2-3 days 🔄 In Progress
+
 ## Objectives
 - Migrate member dashboard UI from prototype
 - Implement real-time personalized content

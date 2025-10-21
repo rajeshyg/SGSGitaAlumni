@@ -1050,5 +1050,77 @@ export const APIService = {
       logger.error('Failed to register from invitation:', error);
       throw new Error('Failed to complete registration. Please try again.');
     }
+  },
+
+  // ============================================================================
+  // GENERIC HTTP METHODS
+  // ============================================================================
+
+  // Generic GET method for API calls
+  get: async <T = any>(endpoint: string, config?: { params?: any }): Promise<T> => {
+    try {
+      // Build query string from params if provided
+      let url = endpoint;
+      if (config?.params) {
+        const queryString = new URLSearchParams(config.params).toString();
+        url = `${endpoint}?${queryString}`;
+      }
+      
+      logger.info(`GET request to ${url}`);
+      const response = await apiClient.get(url);
+      logger.info(`GET response from ${url}`, response);
+      
+      return response as T;
+    } catch (error) {
+      logger.error(`GET request failed for ${endpoint}:`, error);
+      throw error;
+    }
+  },
+
+  // Generic POST method for API calls (already exists as individual methods, but adding for consistency)
+  postGeneric: async <T = any>(endpoint: string, data?: any): Promise<T> => {
+    try {
+      logger.info(`POST request to ${endpoint}`, data);
+      const response = await apiClient.post(endpoint, data || {});
+      logger.info(`POST response from ${endpoint}`, response);
+      
+      return response as T;
+    } catch (error) {
+      logger.error(`POST request failed for ${endpoint}:`, error);
+      throw error;
+    }
+  },
+
+  // Generic PUT method for API calls
+  putGeneric: async <T = any>(endpoint: string, data?: any): Promise<T> => {
+    try {
+      logger.info(`PUT request to ${endpoint}`, data);
+      const response = await apiClient.put(endpoint, data || {});
+      logger.info(`PUT response from ${endpoint}`, response);
+
+      return response as T;
+    } catch (error) {
+      logger.error(`PUT request failed for ${endpoint}:`, error);
+      throw error;
+    }
+  },
+
+  // Alias for putGeneric (for consistency with get/post methods)
+  put: async <T = any>(endpoint: string, data?: any): Promise<T> => {
+    return APIService.putGeneric<T>(endpoint, data);
+  },
+
+  // Generic DELETE method for API calls
+  deleteGeneric: async <T = any>(endpoint: string): Promise<T> => {
+    try {
+      logger.info(`DELETE request to ${endpoint}`);
+      const response = await apiClient.delete(endpoint);
+      logger.info(`DELETE response from ${endpoint}`, response);
+      
+      return response as T;
+    } catch (error) {
+      logger.error(`DELETE request failed for ${endpoint}:`, error);
+      throw error;
+    }
   }
 };

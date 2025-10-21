@@ -42,10 +42,14 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     test: {
       globals: true,
-      environment: 'jsdom',
-      setupFiles: ['./src/test/setup.ts'],
-      include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-      exclude: ['tests/**', 'tests/**/**', 'playwright.config.*', 'node_modules/**'],
+      environment: 'node', // Use node environment for API tests
+      setupFiles: ['./tests/setup/api-test-setup.ts'], // Separate setup for API tests
+      include: [
+        'src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+        'tests/api/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+        'tests/unit/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+      ],
+      exclude: ['playwright.config.*', 'node_modules/**'],
 
       // Environment configuration for isolated testing
       env: {

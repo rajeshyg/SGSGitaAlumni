@@ -9,12 +9,28 @@ import { MemberDashboard } from '../components/dashboard/MemberDashboard';
 import { useAuth } from '../contexts/AuthContext';
 
 const DashboardPage: React.FC = () => {
-  const { user, isAuthenticated, isLoading, hasRole } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
 
   console.log('[DashboardPage] Render - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'user:', user);
 
-  // Show loading state while auth is being checked
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  const hasValidUser = Boolean(user?.id && user?.email);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      console.log('[DashboardPage] User not authenticated, redirecting to /login');
+      navigate('/login', { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && isAdmin) {
+      console.log('[DashboardPage] Admin user detected, redirecting to /admin');
+      navigate('/admin', { replace: true });
+    }
+  }, [isAdmin, isAuthenticated, isLoading, navigate]);
+
   if (isLoading) {
     console.log('[DashboardPage] Showing loading state');
     return (
@@ -27,29 +43,19 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!isAuthenticated || !user) {
-    console.log('[DashboardPage] Not authenticated, showing login prompt');
+  if (!isAuthenticated) {
+    console.log('[DashboardPage] Awaiting redirect for unauthenticated user');
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <p className="text-muted-foreground">Please log in to access your dashboard.</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Redirecting...</p>
         </div>
       </div>
     );
   }
 
-  // Redirect admin users to admin panel
-  useEffect(() => {
-    if (hasRole('admin')) {
-      console.log('[DashboardPage] Admin user detected, redirecting to /admin');
-      navigate('/admin', { replace: true });
-      return;
-    }
-  }, [hasRole, navigate]);
-
-  // If admin, show loading while redirecting
-  if (hasRole('admin')) {
+  if (isAdmin) {
     console.log('[DashboardPage] Admin user, showing redirect loading');
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -61,8 +67,24 @@ const DashboardPage: React.FC = () => {
     );
   }
 
-  console.log('[DashboardPage] Authenticated member user, rendering MemberDashboard with userId:', user.id);
-  return <MemberDashboard userId={user.id} />;
+  if (!hasValidUser) {
+    console.log('[DashboardPage] Authenticated but user profile incomplete, showing fallback');
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">
+            We&apos;re loading your profile details. If this message persists, please refresh the page or contact support.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentUser = user!;
+
+  console.log('[DashboardPage] Authenticated member user, rendering MemberDashboard with userId:', currentUser.id);
+  return <MemberDashboard userId={currentUser.id} />;
 };
 
 export default DashboardPage;

@@ -4,6 +4,7 @@ import { getCurrentProfile } from '../components/admin/admin-utils'
 
 export function useAdminData() {
   // Data fetching with lazy loading and caching
+  // NOTE: autoLoad disabled because file-imports endpoint is deprecated (returns 410 Gone)
   const {
     data: fileImportData,
     total,
@@ -18,7 +19,7 @@ export function useAdminData() {
     pageSize: 10,
     enableCache: true,
     cacheTtl: 5 * 60 * 1000,
-    autoLoad: true
+    autoLoad: false // Disabled: endpoint deprecated
   })
 
   // Get user profile and API config

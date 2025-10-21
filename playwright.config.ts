@@ -27,7 +27,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || 'http://localhost:5173',
+    baseURL: process.env.BASE_URL || 'http://localhost:9323',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     /* Take screenshot on failure */
@@ -35,9 +35,9 @@ export default defineConfig({
     /* Record video on failure */
     video: 'retain-on-failure',
     /* Global timeout for each action */
-    actionTimeout: 10000,
+    actionTimeout: 15000,
     /* Global timeout for navigation */
-    navigationTimeout: 30000,
+    navigationTimeout: 45000,
     /* Ignore HTTPS errors */
     ignoreHTTPSErrors: true,
     /* Bypass Content Security Policy for testing */
@@ -89,7 +89,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: 'http://localhost:9323',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },

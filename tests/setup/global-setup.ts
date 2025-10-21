@@ -29,8 +29,14 @@ async function globalSetup(config: FullConfig) {
 async function validateEnvironment() {
   console.log('🔍 Validating test environment...');
   
-  // Check if required environment variables are set
-  const requiredEnvVars = ['NODE_ENV', 'DATABASE_URL'];
+  // Set NODE_ENV to test if not set
+  if (!process.env.NODE_ENV) {
+    process.env.NODE_ENV = 'test';
+  }
+  
+  // For E2E tests using mocks, we don't need DATABASE_URL
+  // Only validate it if we're doing integration tests
+  const requiredEnvVars = ['NODE_ENV'];
   const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
   
   if (missingVars.length > 0) {

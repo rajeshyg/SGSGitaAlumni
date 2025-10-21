@@ -138,6 +138,7 @@ export interface PublicRouteProps {
 
 export function PublicRoute({ children, redirectTo = '/dashboard' }: PublicRouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
   // ============================================================================
   // LOADING STATE
@@ -159,7 +160,20 @@ export function PublicRoute({ children, redirectTo = '/dashboard' }: PublicRoute
   // ============================================================================
 
   if (isAuthenticated) {
-    return <Navigate to={redirectTo} replace />;
+    // Get the intended destination from location state
+    const from = (location.state as any)?.from?.pathname;
+
+    // Only use 'from' if it exists and is NOT a public route (login, register, etc.)
+    // This prevents infinite loops when navigating back from protected routes
+    const publicRoutes = ['/login', '/register', '/forgot-password', '/verify-otp'];
+    const isFromPublicRoute = from && publicRoutes.includes(from);
+
+    // Use 'from' only if it's a valid protected route, otherwise use default redirectTo
+    const destination = from && !isFromPublicRoute ? from : redirectTo;
+
+    console.log('🔄 PublicRoute: Redirecting authenticated user from', location.pathname, 'to', destination);
+
+    return <Navigate to={destination} replace />;
   }
 
   // ============================================================================

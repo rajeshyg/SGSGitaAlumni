@@ -480,6 +480,17 @@ export const registerFromFamilyInvitation = async (req, res) => {
       user.updatedAt
     ]);
 
+    // Create default preferences for the new user
+    console.log(`📋 Creating default preferences for new user ${userId}...`);
+    const { createDefaultPreferences } = await import('./preferences.js');
+    try {
+      await createDefaultPreferences(userId);
+      console.log(`✅ Default preferences created for user ${userId}`);
+    } catch (prefError) {
+      console.error(`⚠️ Failed to create default preferences for user ${userId}:`, prefError);
+      // Don't fail registration if preference creation fails
+    }
+
     connection.release();
 
     res.status(201).json({ user });

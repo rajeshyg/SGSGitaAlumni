@@ -18,6 +18,13 @@ function getPoolConfig() {
     ...getDBConfig(),
     connectionLimit: 10,
     queueLimit: 0,
+    // Enable JSON parsing for MySQL JSON types
+    typeCast: function (field, next) {
+      if (field.type === 'JSON') {
+        return JSON.parse(field.string());
+      }
+      return next();
+    }
   };
 }
 

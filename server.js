@@ -127,6 +127,55 @@ import {
   setEmailPool
 } from './routes/email.js';
 
+import {
+  getAllDomains,
+  getDomainById,
+  getPrimaryDomains,
+  getDomainChildren,
+  getDomainHierarchy,
+  createDomain,
+  updateDomain,
+  deleteDomain,
+  setDomainsPool
+} from './routes/domains.js';
+
+import {
+  getUserPreferences,
+  updateUserPreferences,
+  getAvailableDomains,
+  validatePreferencesEndpoint,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  getPrivacySettings,
+  updatePrivacySettings,
+  getAccountSettings,
+  setPreferencesPool
+} from './routes/preferences.js';
+
+import {
+  getFeed,
+  toggleLike,
+  addComment,
+  shareFeedItem,
+  getComments,
+  setFeedPool
+} from './routes/feed.js';
+
+import {
+  getTags,
+  searchTagsEndpoint,
+  getSuggestedTagsEndpoint,
+  getPopularTagsEndpoint,
+  createTag,
+  getPostingTagsEndpoint,
+  addPostingTags,
+  approveTagEndpoint,
+  getPendingTags,
+  setTagsPool
+} from './routes/tags.js';
+
+import postingsRouter, { setPostingsPool } from './routes/postings.js';
+
 // Environment variables already loaded at top of file
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -146,6 +195,11 @@ setHealthPool(pool);
 setOTPPool(pool);
 setMonitoringPool(pool);
 setEmailPool(pool);
+setDomainsPool(pool);
+setPreferencesPool(pool);
+setTagsPool(pool);
+setPostingsPool(pool);
+setFeedPool(pool);
 
 // Middleware
 app.use(cors());
@@ -421,6 +475,72 @@ app.get('/api/export', (req, res) => {
 app.post('/api/email/send', sendEmail);
 app.get('/api/email/delivery/:emailId', getEmailDeliveryStatus);
 app.get('/api/email/templates/:templateId', getEmailTemplate);
+
+// ============================================================================
+// DOMAIN ROUTES (Task 7.7.1)
+// ============================================================================
+
+app.get('/api/domains', getAllDomains);
+app.get('/api/domains/primary', getPrimaryDomains);
+app.get('/api/domains/hierarchy', getDomainHierarchy);
+app.get('/api/domains/:id', getDomainById);
+app.get('/api/domains/:id/children', getDomainChildren);
+app.post('/api/admin/domains', authenticateToken, createDomain);
+app.put('/api/admin/domains/:id', authenticateToken, updateDomain);
+app.delete('/api/admin/domains/:id', authenticateToken, deleteDomain);
+
+// ============================================================================
+// PREFERENCES ROUTES (Task 7.7.2)
+// ============================================================================
+
+app.get('/api/preferences/:userId', authenticateToken, getUserPreferences);
+app.put('/api/preferences/:userId', authenticateToken, updateUserPreferences);
+app.get('/api/preferences/domains/available', getAvailableDomains);
+app.post('/api/preferences/validate', validatePreferencesEndpoint);
+
+// ============================================================================
+// NOTIFICATION & PRIVACY PREFERENCES ROUTES (Task 7.7.4)
+// ============================================================================
+
+app.get('/api/users/:userId/notification-preferences', authenticateToken, getNotificationPreferences);
+app.put('/api/users/:userId/notification-preferences', authenticateToken, updateNotificationPreferences);
+app.get('/api/users/:userId/privacy-settings', authenticateToken, getPrivacySettings);
+app.put('/api/users/:userId/privacy-settings', authenticateToken, updatePrivacySettings);
+app.get('/api/users/:userId/account-settings', authenticateToken, getAccountSettings);
+
+// ============================================================================
+// ACTIVITY FEED ROUTES (Task 7.4.1)
+// ============================================================================
+
+app.get('/api/feed', authenticateToken, getFeed);
+app.post('/api/feed/items/:id/like', authenticateToken, toggleLike);
+app.post('/api/feed/items/:id/comment', authenticateToken, addComment);
+app.post('/api/feed/items/:id/share', authenticateToken, shareFeedItem);
+app.get('/api/feed/items/:id/comments', authenticateToken, getComments);
+
+// ============================================================================
+// TAG ROUTES (Task 7.7.3)
+// ============================================================================
+
+// Public tag endpoints
+app.get('/api/tags', getTags);
+app.get('/api/tags/search', searchTagsEndpoint);
+app.get('/api/tags/suggested', getSuggestedTagsEndpoint);
+app.get('/api/tags/popular', getPopularTagsEndpoint);
+app.post('/api/tags', authenticateToken, createTag);
+
+// Posting tag endpoints
+app.get('/api/postings/:id/tags', getPostingTagsEndpoint);
+app.post('/api/postings/:id/tags', authenticateToken, addPostingTags);
+
+// Admin tag endpoints
+app.post('/api/admin/tags/:id/approve', authenticateToken, approveTagEndpoint);
+app.get('/api/admin/tags/pending', authenticateToken, getPendingTags);
+
+// ============================================================================
+// POSTINGS ROUTES
+// ============================================================================
+app.use('/api/postings', postingsRouter);
 
 // ============================================================================
 // OTP ROUTES

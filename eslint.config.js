@@ -109,7 +109,7 @@ export default [
       'max-lines': ['error', 500], // Allow larger component files
     }
   },
-  // Test files
+  // Test files in src/
   {
     files: ['src/**/*.{test,spec}.{ts,tsx}', 'src/**/__tests__/**'],
     languageOptions: {
@@ -135,6 +135,38 @@ export default [
       'max-lines-per-function': 'off',
       '@typescript-eslint/no-explicit-any': 'off',
       'sonarjs/no-duplicate-string': 'warn', // Less strict in tests
+
+      // 🚫 MOCK DATA RULES - DISABLED FOR TESTS (LEGITIMATE USAGE)
+      'custom/no-mock-data': 'off',
+      'custom/no-mock-imports': 'off',
+      'custom/no-hardcoded-mock-data': 'off'
+    }
+  },
+  // Playwright E2E test files
+  {
+    files: ['tests/**/*.{ts,js}', 'tests/**/*.spec.ts'],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2020,
+        sourceType: 'module'
+      },
+      globals: {
+        ...globals.node,
+        ...globals.browser
+      }
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+      sonarjs: sonarjs
+    },
+    rules: {
+      // Relax rules for E2E tests
+      'max-lines': ['error', 1000], // E2E tests can be longer
+      'max-lines-per-function': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'sonarjs/no-duplicate-string': 'warn',
+      'no-console': 'off', // Allow console in tests
 
       // 🚫 MOCK DATA RULES - DISABLED FOR TESTS (LEGITIMATE USAGE)
       'custom/no-mock-data': 'off',

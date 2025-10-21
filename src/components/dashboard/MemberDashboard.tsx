@@ -3,14 +3,17 @@
 // ============================================================================
 // Main dashboard component with personalized content and widgets
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { LayoutDashboard, Activity } from 'lucide-react';
 import { useDashboardData } from '../../hooks/useDashboardData';
 import { StatsOverview } from './StatsOverview';
 import { RecentConversations } from './RecentConversations';
 import { PersonalizedPosts } from './PersonalizedPosts';
 import { QuickActions } from './QuickActions';
 import { NotificationsList } from './NotificationsList';
+import DashboardFeed from './DashboardFeed';
 
 interface MemberDashboardProps {
   userId?: string;
@@ -18,6 +21,7 @@ interface MemberDashboardProps {
 
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
   console.log('[MemberDashboard] Mounting with userId:', userId);
+  const [activeTab, setActiveTab] = useState('overview');
   const { data, loading, error, refetch } = useDashboardData(userId);
 
   if (loading) {
@@ -45,29 +49,50 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
           </p>
         </div>
 
-        {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-          {/* Main Content Column */}
-          <div className="xl:col-span-2 space-y-4 sm:space-y-6 order-2 xl:order-1">
-            {/* Stats Overview */}
-            <StatsOverview stats={data.stats} />
+        {/* Tab Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="feed" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              Feed
+            </TabsTrigger>
+          </TabsList>
 
-            {/* Recent Conversations */}
-            <RecentConversations conversations={data.recentConversations} />
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="mt-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+              {/* Main Content Column */}
+              <div className="xl:col-span-2 space-y-4 sm:space-y-6 order-2 xl:order-1">
+                {/* Stats Overview */}
+                <StatsOverview stats={data.stats} />
 
-            {/* Personalized Posts */}
-            <PersonalizedPosts posts={data.personalizedPosts} />
-          </div>
+                {/* Recent Conversations */}
+                <RecentConversations conversations={data.recentConversations} />
 
-          {/* Sidebar Column */}
-          <div className="space-y-4 sm:space-y-6 order-1 xl:order-2">
-            {/* Quick Actions */}
-            <QuickActions actions={data.quickActions} />
+                {/* Personalized Posts */}
+                <PersonalizedPosts posts={data.personalizedPosts} />
+              </div>
 
-            {/* Notifications */}
-            <NotificationsList notifications={data.notifications} />
-          </div>
-        </div>
+              {/* Sidebar Column */}
+              <div className="space-y-4 sm:space-y-6 order-1 xl:order-2">
+                {/* Quick Actions */}
+                <QuickActions actions={data.quickActions} />
+
+                {/* Notifications */}
+                <NotificationsList notifications={data.notifications} />
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Feed Tab */}
+          <TabsContent value="feed" className="mt-6">
+            <DashboardFeed userId={userId || ''} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

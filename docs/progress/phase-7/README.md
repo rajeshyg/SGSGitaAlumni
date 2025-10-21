@@ -121,39 +121,55 @@ npm run test:desktop           # Desktop compatibility
 - **Description:** Profile viewing and editing functionality
 - **Prototype Reference:** Profile screens
 
-#### Task 7.7: Basic Postings
-- **Status:** 🟡 Planned
-- **Description:** Job postings and opportunities system
-- **Prototype Reference:** create-posting.tsx and posting lists
+#### [Task 7.7: Domain Taxonomy & Preferences System](./task-7.7-domain-taxonomy-system.md)
+- **Status:** ✅ Complete
+- **Description:** Hierarchical domain structure, user preferences, and tag management
+- **Prototype Reference:** preferences page and create-posting form
+- **Sub-Tasks:**
+  - [Task 7.7.1: Hierarchical Domain Schema](./task-7.7.1-hierarchical-domains.md) ✅ Complete (2025-10-13)
+  - [Task 7.7.2: Enhanced Preferences Schema](./task-7.7.2-enhanced-preferences.md) ✅ Complete (2025-10-13)
+  - [Task 7.7.3: Tag Management System](./task-7.7.3-tag-management.md) ✅ Complete (2025-10-14)
+  - [Task 7.7.8: Auto-Matching System](./task-7.7.8-auto-matching-system.md) ✅ Complete (2025-10-19)
 
 ### Phase 7C: Advanced Features
 
-#### Task 7.8: Messaging System
+#### [Task 7.8: Auto-Matching System](./task-7.7.8-auto-matching-system.md)
+- **Status:** ✅ Complete
+- **Description:** Intelligent matching of seekers with helpers based on domains, skills, and preferences
+- **Dependencies:** Task 7.7 (Domain Taxonomy System)
+- **Completed:** 2025-10-19
+
+#### Task 7.9: Messaging System
 - **Status:** 🟡 Planned
 - **Description:** Real-time chat and conversation management
 - **Prototype Reference:** chat.tsx
 
-#### Task 7.9: Moderation Tools
+#### Task 7.9: Messaging System
+- **Status:** 🟡 Planned
+- **Description:** Real-time chat and conversation management
+- **Prototype Reference:** chat.tsx
+
+#### Task 7.10: Moderation Tools
 - **Status:** 🟡 Planned
 - **Description:** Content moderation and admin functionality
 - **Prototype Reference:** Moderation screens
 
-#### Task 7.10: Analytics Dashboard
+#### Task 7.11: Analytics Dashboard
 - **Status:** 🟡 Planned
 - **Description:** Usage analytics and reporting
 - **Prototype Reference:** Analytics screens
 
 ### Phase 7D: Optimization & Deployment
 
-#### Task 7.11: Mobile Optimization
+#### Task 7.12: Mobile Optimization
 - **Status:** 🟡 Planned
 - **Description:** Ensure 100% mobile compatibility and touch optimization
 
-#### Task 7.12: Cross-Platform Testing
+#### Task 7.13: Cross-Platform Testing
 - **Status:** 🟡 Planned
 - **Description:** Comprehensive testing across all platforms
 
-#### Task 7.13: Production Deployment
+#### Task 7.14: Production Deployment
 - **Status:** 🟡 Planned
 - **Description:** Final validation and production deployment
 

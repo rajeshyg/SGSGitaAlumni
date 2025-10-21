@@ -197,6 +197,10 @@ export class StreamlinedRegistrationService {
         alumniProfile.phone || null
       ]);
 
+      // Create default user preferences
+      console.log(`📋 Creating default preferences for new user ${userId}...`);
+      await this.createDefaultUserPreferences(connection, userId);
+
       // Update invitation status
       await connection.execute(`
         UPDATE USER_INVITATIONS
@@ -296,6 +300,10 @@ export class StreamlinedRegistrationService {
         mergedData.phone || null
       ]);
 
+      // Create default user preferences
+      console.log(`📋 Creating default preferences for new user ${userId}...`);
+      await this.createDefaultUserPreferences(connection, userId);
+
       // Update invitation status
       await connection.execute(`
         UPDATE USER_INVITATIONS
@@ -348,6 +356,56 @@ export class StreamlinedRegistrationService {
       throw new Error('Failed to complete registration');
     } finally {
       connection.release();
+    }
+  }
+
+  /**
+   * Create default preferences for a new user
+   * Creates entries in USER_PREFERENCES, USER_NOTIFICATION_PREFERENCES, and USER_PRIVACY_SETTINGS
+   */
+  private async createDefaultUserPreferences(connection: mysql.PoolConnection, userId: string): Promise<void> {
+    try {
+      // Create default USER_PREFERENCES
+      const prefId = uuidv4();
+      await connection.execute(`
+        INSERT INTO USER_PREFERENCES (
+          id, user_id,
+          preference_type, max_postings,
+          notification_settings, privacy_settings, interface_settings,
+          is_professional, education_status
+        ) VALUES (
+          ?, ?,
+          'both', 5,
+          '{"email_notifications": true, "push_notifications": true, "frequency": "daily"}',
+          '{"profile_visibility": "alumni_only", "show_email": false, "show_phone": false}',
+          '{"theme": "system", "language": "en", "timezone": "UTC"}',
+          FALSE, 'professional'
+        )
+      `, [prefId, userId]);
+      console.log(`✅ Created USER_PREFERENCES for user ${userId}`);
+
+      // Create default USER_NOTIFICATION_PREFERENCES
+      await connection.execute(`
+        INSERT INTO USER_NOTIFICATION_PREFERENCES (
+          user_id, email_notifications, email_frequency, posting_updates,
+          connection_requests, event_reminders, weekly_digest, push_notifications
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [userId, true, 'daily', true, true, true, true, false]);
+      console.log(`✅ Created USER_NOTIFICATION_PREFERENCES for user ${userId}`);
+
+      // Create default USER_PRIVACY_SETTINGS
+      await connection.execute(`
+        INSERT INTO USER_PRIVACY_SETTINGS (
+          user_id, profile_visibility, show_email, show_phone, show_location,
+          searchable_by_name, searchable_by_email, allow_messaging
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [userId, 'alumni_only', false, false, true, true, false, 'alumni_only']);
+      console.log(`✅ Created USER_PRIVACY_SETTINGS for user ${userId}`);
+
+    } catch (error) {
+      console.error(`❌ Error creating default preferences for user ${userId}:`, error);
+      // Don't throw - preference creation failure shouldn't break registration
+      // Preferences will be created on-demand when user accesses preferences page
     }
   }
 

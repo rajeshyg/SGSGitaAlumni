@@ -26,6 +26,9 @@ const UploadPage = lazy(() => Promise.resolve({
 }))
 
 const AlumniDirectoryPage = lazy(() => import('./pages/AlumniDirectoryPage'))
+const PreferencesPage = lazy(() => import('./pages/PreferencesPage'))
+const PostingsPage = lazy(() => import('./pages/PostingsPage'))
+const CreatePostingPage = lazy(() => import('./pages/CreatePostingPage'))
 
 const ReportsPage = lazy(() => Promise.resolve({
   default: () => (
@@ -208,6 +211,21 @@ function App() {
               <Route path="/alumni-directory" element={
                 <ProtectedRoute>
                   <AlumniDirectoryPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/preferences" element={
+                <ProtectedRoute>
+                  <PreferencesPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/postings" element={
+                <ProtectedRoute>
+                  <PostingsPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/postings/new" element={
+                <ProtectedRoute>
+                  <CreatePostingPage />
                 </ProtectedRoute>
               } />
               <Route path="/reports" element={
