@@ -7,31 +7,41 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { StatsOverviewProps } from '../../types/dashboard';
 
+const formatValue = (value: number) => {
+  return value.toLocaleString();
+};
+
 export const StatsOverview: React.FC<StatsOverviewProps> = ({ stats }) => {
   const statItems = [
     {
-      label: 'Total Connections',
-      value: stats.totalConnections,
-      icon: '👥',
-      color: 'text-blue-600'
+      label: 'Your network',
+      value: formatValue(stats.networkSize),
+      helper: 'active alumni connections'
     },
     {
-      label: 'Active Postings',
-      value: stats.activePostings,
-      icon: '📄',
-      color: 'text-green-600'
+      label: 'Active opportunities',
+      value: formatValue(stats.activeOpportunities),
+      helper: 'currently available'
     },
     {
-      label: 'Unread Messages',
-      value: stats.unreadMessages,
-      icon: '💬',
-      color: 'text-orange-600'
+      label: 'Matched for you',
+      value: formatValue(stats.matchedOpportunities),
+      helper: 'align with your domains'
     },
     {
-      label: 'Profile Views',
-      value: stats.profileViews,
-      icon: '👁️',
-      color: 'text-purple-600'
+      label: 'Pending invitations',
+      value: formatValue(stats.pendingInvitations),
+      helper: 'need your response'
+    },
+    {
+      label: 'Profile completion',
+      value: `${stats.profileCompletion}%`,
+      helper: 'setup progress'
+    },
+    {
+      label: 'Invitations sent',
+      value: formatValue(stats.invitationsSent),
+      helper: 'you have shared'
     }
   ];
 
@@ -41,18 +51,12 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ stats }) => {
         <CardTitle className="text-lg sm:text-xl">Dashboard Overview</CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {statItems.map((item, index) => (
-            <div key={index} className="text-center p-2 sm:p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <div className="text-xl sm:text-2xl mb-1 sm:mb-2" role="img" aria-label={item.label}>
-                {item.icon}
-              </div>
-              <div className={`text-2xl sm:text-3xl font-bold ${item.color} leading-none`}>
-                {item.value.toLocaleString()}
-              </div>
-              <div className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
-                {item.label}
-              </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+          {statItems.map((item) => (
+            <div key={item.label} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-colors hover:border-primary/40 hover:bg-primary/5 dark:hover:bg-primary/10">
+              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{item.label}</p>
+              <p className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">{item.value}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.helper}</p>
             </div>
           ))}
         </div>

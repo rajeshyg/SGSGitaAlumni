@@ -8,11 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { LayoutDashboard, Activity } from 'lucide-react';
 import { useDashboardData } from '../../hooks/useDashboardData';
+import { DashboardHero } from './DashboardHero';
 import { StatsOverview } from './StatsOverview';
-import { RecentConversations } from './RecentConversations';
-import { PersonalizedPosts } from './PersonalizedPosts';
 import { QuickActions } from './QuickActions';
 import { NotificationsList } from './NotificationsList';
+import { PendingActions } from './PendingActions';
+import { RecommendedConnections } from './RecommendedConnections';
+import { OpportunitiesSpotlight } from './OpportunitiesSpotlight';
+import { ActivityTimeline } from './ActivityTimeline';
+import { DomainFocusCard } from './DomainFocusCard';
 import DashboardFeed from './DashboardFeed';
 
 interface MemberDashboardProps {
@@ -20,38 +24,29 @@ interface MemberDashboardProps {
 }
 
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
-  console.log('[MemberDashboard] Mounting with userId:', userId);
   const [activeTab, setActiveTab] = useState('overview');
   const { data, loading, error, refetch } = useDashboardData(userId);
+  const handleRetry = () => { void refetch(); };
 
   if (loading) {
     return <DashboardSkeleton />;
   }
 
   if (error) {
-    return <DashboardError error={error} onRetry={refetch} />;
+    return <DashboardError error={error} onRetry={handleRetry} />;
   }
 
   if (!data) {
-    return <DashboardError error="No dashboard data available" onRetry={refetch} />;
+    return <DashboardError error="No dashboard data available" onRetry={handleRetry} />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 leading-tight">
-            Welcome back, {data.user.firstName}!
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-2">
-            Here's what's happening in your alumni network
-          </p>
-        </div>
+        <DashboardHero summary={data.summary} />
 
-        {/* Tab Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-md grid-cols-2 bg-transparent">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               Overview
@@ -65,25 +60,21 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
           {/* Overview Tab */}
           <TabsContent value="overview" className="mt-6">
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-              {/* Main Content Column */}
               <div className="xl:col-span-2 space-y-4 sm:space-y-6 order-2 xl:order-1">
-                {/* Stats Overview */}
                 <StatsOverview stats={data.stats} />
-
-                {/* Recent Conversations */}
-                <RecentConversations conversations={data.recentConversations} />
-
-                {/* Personalized Posts */}
-                <PersonalizedPosts posts={data.personalizedPosts} />
+                <OpportunitiesSpotlight
+                  matched={data.opportunities.matched}
+                  trending={data.opportunities.trending}
+                />
+                <ActivityTimeline items={data.recentActivity} />
               </div>
 
-              {/* Sidebar Column */}
               <div className="space-y-4 sm:space-y-6 order-1 xl:order-2">
-                {/* Quick Actions */}
                 <QuickActions actions={data.quickActions} />
-
-                {/* Notifications */}
+                <PendingActions actions={data.pendingActions} />
                 <NotificationsList notifications={data.notifications} />
+                <DomainFocusCard focus={data.domainFocus} />
+                <RecommendedConnections connections={data.recommendedConnections} />
               </div>
             </div>
           </TabsContent>

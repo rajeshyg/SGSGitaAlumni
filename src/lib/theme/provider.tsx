@@ -102,6 +102,17 @@ export function ThemeProvider({ children, defaultTheme }: ThemeProviderProps) {
 
   useThemeEffects(currentTheme, setCurrentTheme, setThemeConfig);
 
+  // Ensure Tailwind dark: classes activate by toggling the 'dark' class on <html>
+  // This keeps shadcn variables (CSS vars) and Tailwind dark styles in sync
+  useEffect(() => {
+    const root = document.documentElement;
+    if (currentTheme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [currentTheme]);
+
   // Theme switching function with validation
   const setTheme = (themeName: ThemeName) => {
     if (!validateTheme(themeName)) {

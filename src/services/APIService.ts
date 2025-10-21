@@ -1,5 +1,6 @@
 import { APIDataService, type FileImport as APIFileImport, checkAPIConfiguration, getAPIConfigStatus } from '../lib/apiData';
 import { apiClient } from '../lib/api';
+import { DashboardData } from '../types/dashboard';
 
 // Simple logger utility for production-safe logging
 const logger = {
@@ -415,6 +416,26 @@ export const APIService = {
         failedImports: 0,
         totalRecords: 0
       };
+    }
+  },
+
+  // Get member dashboard overview data
+  getMemberDashboard: async (userId?: string | number): Promise<DashboardData> => {
+    try {
+      logger.info('Fetching member dashboard overview', { userId });
+      const query = userId ? `?userId=${userId}` : '';
+      const response = await apiClient.get(`/api/dashboard/member${query}`) as { success?: boolean; error?: string } & DashboardData;
+
+      if (!response?.success) {
+        logger.warn('Dashboard overview request returned unsuccessful flag', response);
+        throw new Error(response?.error || 'Failed to load dashboard information.');
+      }
+
+      logger.info('Member dashboard data retrieved');
+      return response as DashboardData;
+    } catch (error) {
+      logger.error('Failed to fetch member dashboard overview:', error);
+      throw new Error('Failed to load dashboard information.');
     }
   },
 

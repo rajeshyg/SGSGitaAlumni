@@ -8,8 +8,39 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import Badge from '../ui/badge';
 import { NotificationsListProps } from '../../types/dashboard';
 
+const levelClasses: Record<string, string> = {
+  warning: 'border-amber-200 bg-amber-50 dark:border-amber-400/40 dark:bg-amber-400/10',
+  success: 'border-emerald-200 bg-emerald-50 dark:border-emerald-400/40 dark:bg-emerald-400/10',
+  info: 'border-blue-200 bg-blue-50 dark:border-blue-400/40 dark:bg-blue-400/10'
+};
+
+const formatTimestamp = (value: string | Date) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric'
+  }).format(date);
+};
+
 export const NotificationsList: React.FC<NotificationsListProps> = ({ notifications }) => {
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((notification) => !notification.isRead).length;
+
+  if (!notifications || notifications.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Notifications</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-600">No notifications right now. We'll let you know when something changes.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -23,62 +54,50 @@ export const NotificationsList: React.FC<NotificationsListProps> = ({ notificati
           )}
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        {notifications.length === 0 ? (
-          <p className="text-gray-500 text-center py-6 sm:py-8 text-sm sm:text-base">
-            No notifications
-          </p>
-        ) : (
-          <div className="space-y-2 sm:space-y-3">
-            {notifications.slice(0, 5).map((notification) => (
-              <div
-                key={notification.id}
-                className={`p-2 sm:p-3 rounded-lg border cursor-pointer transition-colors active:bg-gray-100 touch-manipulation ${
-                  !notification.isRead
-                    ? 'bg-blue-50 border-blue-200'
-                    : 'bg-gray-50 border-gray-200'
-                }`}
-                onClick={() => {
-                  if (notification.actionUrl) {
-                    window.location.href = notification.actionUrl;
-                  }
-                }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <h4 className={`font-medium text-sm sm:text-base truncate ${
-                      !notification.isRead ? 'text-blue-900' : 'text-gray-900'
-                    }`}>
-                      {notification.title}
-                    </h4>
-                    <p className={`text-xs sm:text-sm mt-1 line-clamp-2 ${
-                      !notification.isRead ? 'text-blue-700' : 'text-gray-600'
-                    }`}>
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {new Date(notification.timestamp).toLocaleDateString()}
-                    </p>
-                  </div>
-                  {!notification.isRead && (
-                    <div className="h-2 w-2 bg-blue-500 rounded-full ml-2 mt-1 flex-shrink-0"></div>
-                  )}
-                </div>
-              </div>
-            ))}
+      <CardContent className="pt-0 space-y-2 sm:space-y-3">
+        {notifications.slice(0, 5).map((notification) => {
+          const levelClass = levelClasses[notification.level] || 'border-gray-200 bg-gray-50';
 
-            {notifications.length > 5 && (
-              <div className="text-center pt-2">
-                <button
-                  className="text-primary hover:text-primary/80 text-sm font-medium py-2 px-4 touch-manipulation"
-                  onClick={() => {
-                    window.location.href = '/notifications';
-                  }}
-                >
-                  View All ({notifications.length})
-                </button>
+          return (
+            <button
+              key={notification.id}
+              className={`w-full rounded-lg border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 dark:hover:bg-primary/10 ${levelClass}`}
+              onClick={() => {
+                if (notification.actionHref) {
+                  window.location.href = notification.actionHref;
+                }
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <h4 className={`font-medium text-sm sm:text-base truncate ${notification.isRead ? 'text-gray-900 dark:text-gray-100' : 'text-gray-900 dark:text-gray-100'}`}>
+                    {notification.title}
+                  </h4>
+                  <p className="text-xs sm:text-sm mt-1 line-clamp-2 text-gray-600 dark:text-gray-300">
+                    {notification.message}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {formatTimestamp(notification.timestamp)}
+                  </p>
+                </div>
+                {!notification.isRead && (
+                  <span className="mt-1 h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
+                )}
               </div>
-            )}
+            </button>
+          );
+        })}
+
+        {notifications.length > 5 && (
+          <div className="text-center pt-2">
+            <button
+              className="text-primary hover:text-primary/80 text-sm font-medium"
+              onClick={() => {
+                window.location.href = '/notifications';
+              }}
+            >
+              View all ({notifications.length})
+            </button>
           </div>
         )}
       </CardContent>

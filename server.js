@@ -162,6 +162,11 @@ import {
 } from './routes/feed.js';
 
 import {
+  getMemberDashboard,
+  setDashboardPool
+} from './routes/dashboard.js';
+
+import {
   getTags,
   searchTagsEndpoint,
   getSuggestedTagsEndpoint,
@@ -200,6 +205,7 @@ setPreferencesPool(pool);
 setTagsPool(pool);
 setPostingsPool(pool);
 setFeedPool(pool);
+setDashboardPool(pool);
 
 // Middleware
 app.use(cors());
@@ -216,9 +222,12 @@ app.post('/api/auth/login', loginRateLimit, login);
 app.post('/api/auth/logout', authenticateToken, logout);
 app.post('/api/auth/refresh', refresh);
 app.post('/api/auth/register-from-invitation', (req, res, next) => {
-  console.log('🔵 ROUTE MATCHED: /api/auth/register-from-invitation');
-  console.log('Request headers:', req.headers);
-  console.log('Request body:', req.body);
+  // Reduce verbose logging in production
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('🔵 ROUTE MATCHED: /api/auth/register-from-invitation');
+    console.log('Request headers:', req.headers);
+    console.log('Request body:', req.body);
+  }
   next();
 }, registerFromInvitation);
 app.post('/api/auth/register-from-family-invitation', registerFromFamilyInvitation);
@@ -235,7 +244,9 @@ app.patch('/api/invitations/family/:id/accept-profile', acceptFamilyInvitationPr
 app.post('/api/invitations', invitationRateLimit, createInvitation);
 app.post('/api/invitations/bulk', invitationRateLimit, createBulkInvitations);
 app.get('/api/invitations/validate/:token', (req, res, next) => {
-  console.log('ROUTE_MATCH: Invitation validation route matched for token:', req.params.token);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('ROUTE_MATCH: Invitation validation route matched for token:', req.params.token);
+  }
   next();
 }, validateInvitation);
 app.patch('/api/invitations/:id', updateInvitation);
@@ -264,6 +275,12 @@ app.post('/api/users/:id/send-invitation', authenticateToken, sendInvitationToUs
 app.get('/api/users/search', searchUsers);
 app.get('/api/users/:id/profile', getUserProfile);
 app.get('/api/users/profile', authenticateToken, getCurrentUserProfile);
+
+// ============================================================================
+// MEMBER DASHBOARD ROUTES
+// ============================================================================
+
+app.get('/api/dashboard/member', authenticateToken, getMemberDashboard);
 
 // ============================================================================
 // ANALYTICS ROUTES

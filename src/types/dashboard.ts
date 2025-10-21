@@ -1,101 +1,165 @@
-// ============================================================================
-// DASHBOARD SYSTEM TYPE DEFINITIONS
-// ============================================================================
-// TypeScript interfaces for the member dashboard system
+export type DashboardActionPriority = 'high' | 'medium' | 'low' | 'secondary';
 
-import { User } from '../services/APIService';
-
-// ============================================================================
-// DASHBOARD DATA TYPES
-// ============================================================================
-
-export interface DashboardData {
-  user: User;
-  stats: DashboardStats;
-  recentConversations: ConversationPreview[];
-  personalizedPosts: PostingPreview[];
-  quickActions: QuickAction[];
-  notifications: Notification[];
+export interface DashboardSummary {
+  greeting: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  avatarUrl: string | null;
+  lastLoginAt: string | null;
+  memberSince: string | null;
+  profileCompletion: number;
+  missingProfileFields: string[];
+  primaryDomain: DashboardDomain | null;
+  graduationYear: number | string | null;
+  location: string | null;
+  currentPosition: string | null;
+  company: string | null;
 }
 
 export interface DashboardStats {
-  totalConnections: number;
-  activePostings: number;
-  unreadMessages: number;
-  profileViews: number;
+  networkSize: number;
+  activeOpportunities: number;
+  matchedOpportunities: number;
+  pendingInvitations: number;
+  profileCompletion: number;
+  invitationsSent: number;
 }
 
-export interface ConversationPreview {
-  id: string;
-  participants: User[];
-  lastMessage: {
-    content: string;
-    sender: User;
-    timestamp: Date;
-  };
-  unreadCount: number;
-  isOnline: boolean;
-}
-
-export interface PostingPreview {
-  id: string;
-  title: string;
-  type: 'job' | 'event' | 'mentorship' | 'news';
-  author: User;
-  timestamp: Date;
-  relevanceScore: number;
-  tags: string[];
-}
-
-export interface QuickAction {
+export interface DashboardQuickAction {
   id: string;
   label: string;
+  description: string;
   icon: string;
-  action: () => void;
-  priority: 'high' | 'medium' | 'low';
+  href: string;
+  priority: DashboardActionPriority;
+  badge?: string;
 }
 
-export interface Notification {
+export interface DashboardNotification {
   id: string;
-  type: 'system' | 'connection' | 'posting' | 'event';
   title: string;
   message: string;
-  timestamp: Date;
+  timestamp: string | Date;
+  level: 'info' | 'success' | 'warning';
+  actionHref?: string;
   isRead: boolean;
-  actionUrl?: string;
 }
 
-// ============================================================================
-// COMPONENT PROPS TYPES
-// ============================================================================
+export interface DashboardPendingAction {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  href: string;
+  priority: DashboardActionPriority;
+}
+
+export interface DashboardConnectionSuggestion {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  fullName: string;
+  position: string | null;
+  company: string | null;
+  location: string | null;
+  avatarUrl: string | null;
+  lastActiveAt: string | null;
+  sharedAttributes: string[];
+}
+
+export interface DashboardOpportunity {
+  id: string;
+  title: string;
+  type: string | null;
+  location: string | null;
+  urgency: string | null;
+  viewCount?: number | null;
+  interestCount?: number | null;
+  createdAt?: string | null;
+}
+
+export interface DashboardActivityItem {
+  id: string;
+  type: string;
+  title: string | null;
+  content: string | null;
+  actor: string | null;
+  timestamp: string | Date | null;
+}
+
+export interface DashboardDomain {
+  id: string;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  colorCode?: string | null;
+  domainLevel?: string | null;
+  parentDomainId?: string | null;
+}
+
+export interface DashboardData {
+  summary: DashboardSummary;
+  stats: DashboardStats;
+  quickActions: DashboardQuickAction[];
+  notifications: DashboardNotification[];
+  pendingActions: DashboardPendingAction[];
+  recommendedConnections: DashboardConnectionSuggestion[];
+  opportunities: {
+    matched: DashboardOpportunity[];
+    trending: DashboardOpportunity[];
+  };
+  recentActivity: DashboardActivityItem[];
+  domainFocus: {
+    primary: DashboardDomain | null;
+    secondary: DashboardDomain[];
+    interests: DashboardDomain[];
+  } | null;
+  meta: {
+    generatedAt: string;
+  };
+}
 
 export interface StatsOverviewProps {
   stats: DashboardStats;
 }
 
-export interface RecentConversationsProps {
-  conversations: ConversationPreview[];
-}
-
-export interface PersonalizedPostsProps {
-  posts: PostingPreview[];
-}
-
 export interface QuickActionsProps {
-  actions: QuickAction[];
+  actions: DashboardQuickAction[];
 }
 
 export interface NotificationsListProps {
-  notifications: Notification[];
+  notifications: DashboardNotification[];
 }
 
-// ============================================================================
-// HOOK RETURN TYPES
-// ============================================================================
+export interface DashboardPendingActionsProps {
+  actions: DashboardPendingAction[];
+}
+
+export interface RecommendedConnectionsProps {
+  connections: DashboardConnectionSuggestion[];
+}
+
+export interface OpportunitiesSpotlightProps {
+  matched: DashboardOpportunity[];
+  trending: DashboardOpportunity[];
+}
+
+export interface ActivityTimelineProps {
+  items: DashboardActivityItem[];
+}
+
+export interface DomainFocusCardProps {
+  focus: DashboardData['domainFocus'];
+}
+
+export interface DashboardHeroProps {
+  summary: DashboardSummary;
+}
 
 export interface UseDashboardDataReturn {
   data: DashboardData | null;
   loading: boolean;
   error: string | null;
-  refetch: () => void;
+  refetch: () => Promise<void>;
 }
