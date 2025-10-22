@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { MetricTile } from './shared';
 import { StatsOverviewProps } from '../../types/dashboard';
 
 const formatValue = (value: number) => {
@@ -14,50 +15,60 @@ const formatValue = (value: number) => {
 export const StatsOverview: React.FC<StatsOverviewProps> = ({ stats }) => {
   const statItems = [
     {
-      label: 'Your network',
+      label: 'Your Network',
       value: formatValue(stats.networkSize),
-      helper: 'active alumni connections'
+      helper: 'Active alumni connections',
+      accent: 'info' as const
     },
     {
-      label: 'Active opportunities',
+      label: 'Active Opportunities',
       value: formatValue(stats.activeOpportunities),
-      helper: 'currently available'
+      helper: 'Currently available to you',
+      accent: 'success' as const
     },
     {
-      label: 'Matched for you',
+      label: 'Matched For You',
       value: formatValue(stats.matchedOpportunities),
-      helper: 'align with your domains'
+      helper: 'Align with your domains',
+      accent: 'info' as const
     },
     {
-      label: 'Pending invitations',
+      label: 'Pending Invitations',
       value: formatValue(stats.pendingInvitations),
-      helper: 'need your response'
+      helper: 'Need your response',
+      accent: 'warning' as const
     },
     {
-      label: 'Profile completion',
+      label: 'Profile Completion',
       value: `${stats.profileCompletion}%`,
-      helper: 'setup progress'
+      helper: 'Setup progress',
+      accent: 'success' as const
     },
     {
-      label: 'Invitations sent',
+      label: 'Invitations Sent',
       value: formatValue(stats.invitationsSent),
-      helper: 'you have shared'
+      helper: 'Shared with your network',
+      accent: 'default' as const
     }
   ];
 
   return (
-    <Card>
-      <CardHeader className="pb-3 sm:pb-6">
-        <CardTitle className="text-lg sm:text-xl">Dashboard Overview</CardTitle>
+    <Card className="border-border/60 shadow-sm">
+      <CardHeader className="pb-4 sm:pb-5">
+        <CardTitle className="text-xl font-semibold tracking-tight text-foreground">
+          Dashboard Overview
+        </CardTitle>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
           {statItems.map((item) => (
-            <div key={item.label} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 transition-colors hover:border-primary/40 hover:bg-primary/5 dark:hover:bg-primary/10">
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">{item.label}</p>
-              <p className="mt-2 text-2xl font-semibold text-gray-900 dark:text-gray-100">{item.value}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.helper}</p>
-            </div>
+            <MetricTile
+              key={item.label}
+              label={item.label}
+              value={item.value}
+              helperText={item.helper}
+              accent={item.accent}
+            />
           ))}
         </div>
       </CardContent>

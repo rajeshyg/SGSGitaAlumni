@@ -239,7 +239,7 @@ export class PredictiveAnalyticsEngine {
     baselineMetrics: ComprehensiveMetrics
   ): Promise<any> {
     let riskLevel = 'low';
-    let confidence = 0.8;
+    const confidence = 0.8;
     const recommendations = [];
     const mitigation = [];
 

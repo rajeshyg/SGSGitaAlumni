@@ -241,7 +241,7 @@ export class ThreatModelingEngine {
     return Math.min(likelihood, 1);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   private assessImpact(threat: any, architecture: ArchitectureAnalysis): number {
     // Simplified impact assessment
     let impact = 0.5; // Base impact

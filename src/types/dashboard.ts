@@ -98,6 +98,43 @@ export interface DashboardDomain {
   parentDomainId?: string | null;
 }
 
+export interface DashboardSystemStatusItem {
+  id: string;
+  label: string;
+  status: string;
+  helper: string;
+  severity: 'info' | 'success' | 'warning' | 'danger';
+  icon?: string | null;
+  lastUpdated?: string | null;
+}
+
+export interface DashboardInsight {
+  id: string;
+  title: string;
+  description: string;
+  severity: 'info' | 'success' | 'warning' | 'danger';
+  badgeText?: string;
+  actionHref?: string;
+  actionLabel?: string;
+}
+
+export interface DashboardQualitySummary {
+  overallScore: number;
+  passing: number;
+  warnings: number;
+  failing: number;
+  updatedAt?: string | null;
+  trend?: string | null;
+}
+
+export interface DashboardAnalyticsMetric {
+  id: string;
+  label: string;
+  value: number | string;
+  helper: string;
+  accent?: 'default' | 'success' | 'warning' | 'danger' | 'info';
+}
+
 export interface DashboardData {
   summary: DashboardSummary;
   stats: DashboardStats;
@@ -114,6 +151,12 @@ export interface DashboardData {
     primary: DashboardDomain | null;
     secondary: DashboardDomain[];
     interests: DashboardDomain[];
+  } | null;
+  systemStatus?: DashboardSystemStatusItem[];
+  insights?: DashboardInsight[];
+  analytics?: {
+    qualitySummary?: DashboardQualitySummary | null;
+    metrics?: DashboardAnalyticsMetric[];
   } | null;
   meta: {
     generatedAt: string;

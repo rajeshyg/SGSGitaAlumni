@@ -29,14 +29,14 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ items }) => 
           <CardTitle>Recent Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">Once you start engaging with the community, your activity will appear here.</p>
+          <p className="text-sm text-muted-foreground">Once you start engaging with the community, your activity will appear here.</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card>
+    <Card className="border-border/60 shadow-sm">
       <CardHeader>
         <CardTitle>Recent Activity</CardTitle>
       </CardHeader>
@@ -46,7 +46,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ items }) => 
             <div key={item.id} className="relative pl-6">
               <div className="absolute left-1 top-1.5 h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
               <div className="flex flex-wrap items-center gap-2">
-                <h4 className="text-sm font-semibold text-gray-900">
+                <h4 className="text-sm font-semibold text-foreground">
                   {item.title || item.type}
                 </h4>
                 <Badge variant="outline" className="text-xs capitalize">
@@ -54,10 +54,10 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ items }) => 
                 </Badge>
               </div>
               {item.content && (
-                <p className="mt-1 text-sm text-gray-600">{item.content}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{item.content}</p>
               )}
-              <p className="mt-1 text-xs text-gray-500">
-                {item.actor && <span className="font-medium text-gray-700">{item.actor}</span>}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {item.actor && <span className="font-medium text-foreground">{item.actor}</span>}
                 {item.actor ? ' - ' : ''}
                 {formatTimestamp(item.timestamp)}
               </p>

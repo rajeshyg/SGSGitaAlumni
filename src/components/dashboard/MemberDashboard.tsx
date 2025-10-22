@@ -7,7 +7,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { LayoutDashboard, Activity } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import { useDashboardData } from '../../hooks/useDashboardData';
+import { DashboardHeader } from './DashboardHeader';
 import { DashboardHero } from './DashboardHero';
 import { StatsOverview } from './StatsOverview';
 import { QuickActions } from './QuickActions';
@@ -17,16 +19,24 @@ import { RecommendedConnections } from './RecommendedConnections';
 import { OpportunitiesSpotlight } from './OpportunitiesSpotlight';
 import { ActivityTimeline } from './ActivityTimeline';
 import { DomainFocusCard } from './DomainFocusCard';
+import { RecentConversations } from './RecentConversations';
+import { PersonalizedPosts } from './PersonalizedPosts';
 import DashboardFeed from './DashboardFeed';
+import type { User } from '../../services/APIService';
 
 interface MemberDashboardProps {
   userId?: string;
+  user?: User;
 }
 
-export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
+export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: propUser }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const { data, loading, error, refetch } = useDashboardData(userId);
+  const { user: authUser, logout } = useAuth();
   const handleRetry = () => { void refetch(); };
+
+  // Use prop user or auth user
+  const currentUser = propUser || authUser;
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -36,54 +46,99 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
     return <DashboardError error={error} onRetry={handleRetry} />;
   }
 
-  if (!data) {
+  if (!data || !currentUser) {
     return <DashboardError error="No dashboard data available" onRetry={handleRetry} />;
   }
 
+  // Prepare profile for DashboardHeader
+  const currentProfile = {
+    id: currentUser.id,
+    name: `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email || 'User',
+    role: currentUser.role || 'member',
+    avatar: data.summary?.avatarUrl || undefined,
+    preferences: {
+      professionalStatus: data.summary?.currentPosition || 'member'
+    }
+  };
+
+  // Prepare stats for DashboardHeader
+  const headerStats = {
+    notifications: { unread: data.notifications?.length || 0 },
+    chat: { totalUnread: 0 } // TODO: Add unread messages count when chat feature is implemented
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.error('Logout failed:', error);
+      }
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-3 sm:p-4 md:p-6">
-      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-        <DashboardHero summary={data.summary} />
+    <div className="min-h-screen bg-background">
+      <DashboardHeader
+        currentProfile={currentProfile}
+        stats={headerStats}
+        onSwitchProfile={() => {}}
+        onLogout={handleLogout}
+      />
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-md grid-cols-2 bg-transparent">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="feed" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Feed
-            </TabsTrigger>
-          </TabsList>
+      <div className="container mx-auto px-4 sm:px-6 py-8">
+        <div className="space-y-6 lg:space-y-8">
+          <DashboardHero summary={data.summary} />
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="mt-6">
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
-              <div className="xl:col-span-2 space-y-4 sm:space-y-6 order-2 xl:order-1">
-                <StatsOverview stats={data.stats} />
-                <OpportunitiesSpotlight
-                  matched={data.opportunities.matched}
-                  trending={data.opportunities.trending}
-                />
-                <ActivityTimeline items={data.recentActivity} />
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 bg-muted/50 p-1 rounded-lg border border-border/40">
+              <TabsTrigger
+                value="overview"
+                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="font-medium">Overview</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="feed"
+                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all"
+              >
+                <Activity className="h-4 w-4" />
+                <span className="font-medium">Feed</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+                <div className="lg:col-span-8 xl:col-span-9 space-y-6 order-2 lg:order-1">
+                  <StatsOverview stats={data.stats} />
+                  <PersonalizedPosts userId={userId || ''} limit={3} />
+                  <OpportunitiesSpotlight
+                    matched={data.opportunities.matched}
+                    trending={data.opportunities.trending}
+                  />
+                  <ActivityTimeline items={data.recentActivity} />
+                </div>
+
+                <div className="lg:col-span-4 xl:col-span-3 space-y-6 order-1 lg:order-2">
+                  <QuickActions actions={data.quickActions} />
+                  <RecentConversations userId={userId} />
+                  <PendingActions actions={data.pendingActions} />
+                  <NotificationsList notifications={data.notifications} />
+                  <DomainFocusCard focus={data.domainFocus} />
+                  <RecommendedConnections connections={data.recommendedConnections} />
+                </div>
               </div>
+            </TabsContent>
 
-              <div className="space-y-4 sm:space-y-6 order-1 xl:order-2">
-                <QuickActions actions={data.quickActions} />
-                <PendingActions actions={data.pendingActions} />
-                <NotificationsList notifications={data.notifications} />
-                <DomainFocusCard focus={data.domainFocus} />
-                <RecommendedConnections connections={data.recommendedConnections} />
-              </div>
-            </div>
-          </TabsContent>
-
-          {/* Feed Tab */}
-          <TabsContent value="feed" className="mt-6">
-            <DashboardFeed userId={userId || ''} />
-          </TabsContent>
-        </Tabs>
+            {/* Feed Tab */}
+            <TabsContent value="feed" className="mt-6">
+              <DashboardFeed userId={userId || ''} />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </div>
   );
@@ -94,7 +149,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId }) => {
 // ============================================================================
 
 const DashboardSkeleton: React.FC = () => (
-  <div className="min-h-screen bg-gray-50 p-4">
+  <div className="min-h-screen bg-background p-4">
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header Skeleton */}
       <div className="mb-8">
@@ -170,7 +225,7 @@ interface DashboardErrorProps {
 }
 
 const DashboardError: React.FC<DashboardErrorProps> = ({ error, onRetry }) => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+  <div className="min-h-screen bg-background flex items-center justify-center p-4">
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle className="text-red-600">Dashboard Error</CardTitle>
@@ -179,8 +234,8 @@ const DashboardError: React.FC<DashboardErrorProps> = ({ error, onRetry }) => (
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <p className="text-gray-600 mb-4">{error}</p>
-        <button
+        <p className="text-muted-foreground mb-4">{error}</p>
+        <button type="button"
           onClick={onRetry}
           className="w-full bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded"
         >

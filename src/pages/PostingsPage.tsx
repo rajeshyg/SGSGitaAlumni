@@ -93,7 +93,7 @@ const PostingsPage: React.FC = () => {
 
     try {
       let endpoint = '/api/postings';
-      let params: any = {
+      const params: any = {
         status: 'active',
         limit: 50
       };

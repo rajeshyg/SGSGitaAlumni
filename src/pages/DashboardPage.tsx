@@ -84,7 +84,7 @@ const DashboardPage: React.FC = () => {
   const currentUser = user!;
 
   console.log('[DashboardPage] Authenticated member user, rendering MemberDashboard with userId:', currentUser.id);
-  return <MemberDashboard userId={currentUser.id} />;
+  return <MemberDashboard userId={currentUser.id} user={currentUser} />;
 };
 
 export default DashboardPage;

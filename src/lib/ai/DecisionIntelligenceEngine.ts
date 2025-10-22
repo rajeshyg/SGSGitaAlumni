@@ -91,13 +91,11 @@ export class DecisionIntelligenceEngine {
     const outcomePredictions = await this.outcomePredictor.predictOutcomes(optionEvaluations.map(e => e.option));
 
     // Make decision
-    const decision = await this.decisionModel.decide(
+    return await this.decisionModel.decide(
       optionEvaluations,
       outcomePredictions,
       context
     );
-
-    return decision;
   }
 
   private async evaluateOptions(

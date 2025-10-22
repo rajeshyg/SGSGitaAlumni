@@ -44,22 +44,48 @@ export const DashboardFeed: React.FC<DashboardFeedProps> = ({ userId }) => {
     try {
       const response = await APIService.get<{
         success: boolean;
-        items: FeedItem[];
-        pagination: { page: number; limit: number; total: number; hasMore: boolean };
+        items: any[];
+        pagination: { page: number; limit: number; total?: number; hasMore: boolean };
       }>(`/api/feed?page=${pageNum}&limit=10&type=${activeFilter}`);
 
-      if (response.success) {
+      if (response.success && response.items) {
+        // Map API response to FeedItem format
+        const mappedItems: FeedItem[] = response.items.map((item: any) => ({
+          id: item.id,
+          item_type: item.type || item.item_type,
+          item_id: item.item_id || item.id,
+          title: item.title,
+          content: item.content,
+          author_id: item.author?.id || item.author_id,
+          author_name: item.author?.name || item.author_name,
+          author_avatar: item.author?.avatar || item.author_avatar,
+          created_at: item.timestamp || item.created_at,
+          like_count: item.engagement?.likes || item.like_count || 0,
+          comment_count: item.engagement?.comments || item.comment_count || 0,
+          share_count: item.engagement?.shares || item.share_count || 0,
+          user_liked: item.engagement?.user_liked || item.user_liked || false
+        }));
+
         if (pageNum === 1) {
-          setFeedItems(response.items);
+          setFeedItems(mappedItems);
         } else {
-          setFeedItems(prev => [...prev, ...response.items]);
+          setFeedItems(prev => [...prev, ...mappedItems]);
         }
         setHasMore(response.pagination.hasMore);
         setPage(pageNum);
+      } else {
+        // No items returned
+        if (pageNum === 1) {
+          setFeedItems([]);
+        }
+        setHasMore(false);
       }
     } catch (err: any) {
       console.error('Failed to load feed:', err);
       setError(err.message || 'Failed to load activity feed');
+      if (pageNum === 1) {
+        setFeedItems([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -139,10 +165,25 @@ export const DashboardFeed: React.FC<DashboardFeedProps> = ({ userId }) => {
   return (
     <div className="space-y-6">
       <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as typeof activeFilter)}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">All Activity</TabsTrigger>
-          <TabsTrigger value="postings">Postings</TabsTrigger>
-          <TabsTrigger value="events">Events</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 bg-muted/50 p-1 rounded-lg border border-border/40">
+          <TabsTrigger
+            value="all"
+            className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all font-medium"
+          >
+            All Activity
+          </TabsTrigger>
+          <TabsTrigger
+            value="postings"
+            className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all font-medium"
+          >
+            Postings
+          </TabsTrigger>
+          <TabsTrigger
+            value="events"
+            className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all font-medium"
+          >
+            Events
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeFilter} className="space-y-4 mt-6">
@@ -187,6 +228,7 @@ export const DashboardFeed: React.FC<DashboardFeedProps> = ({ userId }) => {
               {hasMore && (
                 <div className="flex justify-center pt-4">
                   <button
+                    type="button"
                     onClick={handleLoadMore}
                     disabled={loading}
                     className="px-6 py-2 text-sm font-medium text-primary hover:text-primary/80 disabled:opacity-50"

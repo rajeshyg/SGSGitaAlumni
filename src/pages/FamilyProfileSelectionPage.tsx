@@ -155,7 +155,7 @@ const useFamilyInvitation = (token: string | undefined) => {
 
 interface FamilyProfileSelectionPageProps {
   // No props needed - uses URL params
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+   
 }
 
 // ============================================================================

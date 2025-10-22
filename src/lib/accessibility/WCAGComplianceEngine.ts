@@ -64,9 +64,7 @@ export class WCAGComplianceEngine {
     }
 
     // Generate compliance report
-    const report = this.generateComplianceReport(violations, passedChecks);
-
-    return report;
+    return this.generateComplianceReport(violations, passedChecks);
   }
 
   public async checkSingleRule(

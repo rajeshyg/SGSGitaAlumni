@@ -298,8 +298,7 @@ export class OTPService implements OTPServiceInterface {
       const response = await apiClient.get(`/api/otp/remaining-attempts/${encodeURIComponent(email)}`);
 
       // response is already the data (not nested in response.data)
-      const attempts = response.remainingAttempts || 3;
-      return attempts;
+      return response.remainingAttempts || 3;
     } catch (error) {
       logError(error as Error, {
         context: 'OTPService.getRemainingOTPAttempts',

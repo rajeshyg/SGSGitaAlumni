@@ -24,82 +24,90 @@ const formatDate = (value: string | null | undefined) => {
 export const DashboardHero: React.FC<DashboardHeroProps> = ({ summary }) => {
   const memberSince = formatDate(summary.memberSince);
   const lastLogin = formatDate(summary.lastLoginAt);
-  const missingFields = summary.missingProfileFields.slice(0, 3);
 
   return (
-    <Card className="relative overflow-hidden border-none bg-gradient-to-r from-primary/15 via-primary/10 to-primary/5 dark:from-primary/10 dark:via-primary/5 dark:to-transparent">
-      <div className="absolute inset-y-0 right-0 w-48 bg-primary/10 blur-3xl dark:bg-primary/20" aria-hidden="true" />
-      <CardHeader className="z-10">
-        <CardTitle className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-gray-100">
-          {summary.greeting}, {summary.firstName || summary.fullName}!
-        </CardTitle>
-        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-300 max-w-2xl">
-          Here's a quick snapshot of your alumni network activity and profile health.
-        </p>
-      </CardHeader>
-      <CardContent className="z-10 grid gap-4 sm:gap-6 md:grid-cols-3">
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-300">Profile completion</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{summary.profileCompletion}%</span>
-              {summary.profileCompletion >= 90 ? (
-                <Badge>Great job</Badge>
-              ) : (
-                <Badge variant="secondary">Let's finish it</Badge>
-              )}
-            </div>
-          </div>
-          <Progress value={summary.profileCompletion} aria-label="Profile completion progress" />
-          {missingFields.length > 0 && (
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
-              Missing details: {missingFields.join(', ')}
-              {summary.missingProfileFields.length > 3 ? '...' : ''}
-            </p>
-          )}
+    <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/40">
+      <div className="container mx-auto px-4 sm:px-6 py-6">
+        {/* Compact Header */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold mb-1">
+            {summary.greeting}, {summary.firstName || summary.fullName}!
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Here's a quick snapshot of your alumni network activity and profile health.
+          </p>
         </div>
 
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-300">Current role</p>
-            <p className="text-base font-medium text-gray-900 dark:text-gray-100">
-              {summary.currentPosition || 'Add your current role'}
-            </p>
-            {summary.company && (
-              <p className="text-sm text-gray-600 dark:text-gray-300">{summary.company}</p>
-            )}
-          </div>
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-300">Primary domain</p>
-            {summary.primaryDomain ? (
-              <Badge variant="outline" className="mt-1">
-                {summary.primaryDomain.name}
-              </Badge>
-            ) : (
-              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Set your primary domain to get tailored opportunities.</p>
-            )}
-          </div>
-        </div>
+        {/* Compact Metrics Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Profile Completion */}
+          <Card className="bg-card/50 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Profile</p>
+                  <p className="text-xl font-bold text-foreground">{summary.profileCompletion}%</p>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-lg">✓</span>
+                </div>
+              </div>
+              <Progress value={summary.profileCompletion} aria-label="Profile completion" className="h-1.5 mt-2" />
+            </CardContent>
+          </Card>
 
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm text-gray-600 dark:text-gray-300">Location</p>
-            <p className="text-base font-medium text-gray-900 dark:text-gray-100">
-              {summary.location || 'Add your location'}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 text-sm text-gray-600 dark:text-gray-300">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Member since</p>
-              <p className="text-sm text-gray-900 dark:text-gray-100">{memberSince || 'Just joined'}</p>
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Last active</p>
-              <p className="text-sm text-gray-900 dark:text-gray-100">{lastLogin || 'Active now'}</p>
-            </div>
-          </div>
+          {/* Current Role */}
+          <Card className="bg-card/50 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">Current Role</p>
+                  <p className="text-sm font-bold text-foreground truncate">
+                    {summary.currentPosition || 'Add role'}
+                  </p>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-lg">💼</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Location */}
+          <Card className="bg-card/50 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">Location</p>
+                  <p className="text-sm font-bold text-foreground truncate">
+                    {summary.location || 'Add location'}
+                  </p>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-lg">📍</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Member Since */}
+          <Card className="bg-card/50 border-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">Member Since</p>
+                  <p className="text-sm font-bold text-foreground truncate">
+                    {memberSince || 'Just joined'}
+                  </p>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-lg">⭐</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

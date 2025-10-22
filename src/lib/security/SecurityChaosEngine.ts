@@ -421,13 +421,11 @@ export class SecurityChaosEngine {
   }
 
   private identifyRecoveryIssues(results: ChaosResult[]): any {
-    const issues = {
+    return {
       manualRecovery: results.filter(r => !r.experiment.recovery.automatic && r.recoveryResult.status === 'manual').length,
       slowRecovery: results.filter(r => r.recoveryResult.duration > 600).length,
       failedRecovery: results.filter(r => !r.recoveryResult.success).length
     };
-
-    return issues;
   }
 
   private generateFailureRecommendations(patterns: any): ChaosRecommendation[] {

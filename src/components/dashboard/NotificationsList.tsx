@@ -36,7 +36,7 @@ export const NotificationsList: React.FC<NotificationsListProps> = ({ notificati
           <CardTitle>Notifications</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">No notifications right now. We'll let you know when something changes.</p>
+          <p className="text-sm text-muted-foreground">No notifications right now. We'll let you know when something changes.</p>
         </CardContent>
       </Card>
     );
@@ -56,10 +56,10 @@ export const NotificationsList: React.FC<NotificationsListProps> = ({ notificati
       </CardHeader>
       <CardContent className="pt-0 space-y-2 sm:space-y-3">
         {notifications.slice(0, 5).map((notification) => {
-          const levelClass = levelClasses[notification.level] || 'border-gray-200 bg-gray-50';
+          const levelClass = levelClasses[notification.level] || 'border-border/60 bg-muted/30';
 
           return (
-            <button
+            <button type="button"
               key={notification.id}
               className={`w-full rounded-lg border p-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/5 dark:hover:bg-primary/10 ${levelClass}`}
               onClick={() => {
@@ -70,13 +70,13 @@ export const NotificationsList: React.FC<NotificationsListProps> = ({ notificati
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <h4 className={`font-medium text-sm sm:text-base truncate ${notification.isRead ? 'text-gray-900 dark:text-gray-100' : 'text-gray-900 dark:text-gray-100'}`}>
+                  <h4 className={`font-medium text-sm sm:text-base truncate ${notification.isRead ? 'text-foreground' : 'text-foreground'}`}>
                     {notification.title}
                   </h4>
-                  <p className="text-xs sm:text-sm mt-1 line-clamp-2 text-gray-600 dark:text-gray-300">
+                  <p className="text-xs sm:text-sm mt-1 line-clamp-2 text-muted-foreground">
                     {notification.message}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     {formatTimestamp(notification.timestamp)}
                   </p>
                 </div>
@@ -90,7 +90,7 @@ export const NotificationsList: React.FC<NotificationsListProps> = ({ notificati
 
         {notifications.length > 5 && (
           <div className="text-center pt-2">
-            <button
+            <button type="button"
               className="text-primary hover:text-primary/80 text-sm font-medium"
               onClick={() => {
                 window.location.href = '/notifications';

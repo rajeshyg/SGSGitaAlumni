@@ -777,6 +777,22 @@ export const APIService = {
   // MESSAGING METHODS
   // ============================================================================
 
+  // Get recent conversations (lightweight preview)
+  getRecentConversations: async (userId?: string | number, limit: number = 5): Promise<Conversation[]> => {
+    try {
+      logger.info('Fetching recent conversations');
+      const qs = `${userId ? `?userId=${userId}&` : '?'}limit=${limit}`;
+      const response = await apiClient.get(`/api/conversations/recent${qs}`);
+      const data = Array.isArray(response) ? response : [];
+      logger.info('Recent conversations retrieved:', data.length);
+      return data as Conversation[];
+    } catch (error) {
+      logger.error('Failed to fetch recent conversations:', error);
+      // Surface empty list to avoid breaking dashboard while backend messaging is in progress
+      return [] as Conversation[];
+    }
+  },
+
   // Get user conversations
   getConversations: async (): Promise<Conversation[]> => {
     try {
@@ -1086,11 +1102,11 @@ export const APIService = {
         const queryString = new URLSearchParams(config.params).toString();
         url = `${endpoint}?${queryString}`;
       }
-      
+
       logger.info(`GET request to ${url}`);
       const response = await apiClient.get(url);
       logger.info(`GET response from ${url}`, response);
-      
+
       return response as T;
     } catch (error) {
       logger.error(`GET request failed for ${endpoint}:`, error);
@@ -1104,7 +1120,7 @@ export const APIService = {
       logger.info(`POST request to ${endpoint}`, data);
       const response = await apiClient.post(endpoint, data || {});
       logger.info(`POST response from ${endpoint}`, response);
-      
+
       return response as T;
     } catch (error) {
       logger.error(`POST request failed for ${endpoint}:`, error);
@@ -1137,7 +1153,7 @@ export const APIService = {
       logger.info(`DELETE request to ${endpoint}`);
       const response = await apiClient.delete(endpoint);
       logger.info(`DELETE response from ${endpoint}`, response);
-      
+
       return response as T;
     } catch (error) {
       logger.error(`DELETE request failed for ${endpoint}:`, error);
