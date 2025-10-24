@@ -49,7 +49,7 @@ function LogoSection() {
         className="h-8 w-auto"
       />
       <div>
-        <h1 className="text-lg font-bold">SGSGita Alumni System</h1>
+        <h1 className="text-lg font-bold">SGS Gita Connect</h1>
         <p className="text-xs text-muted-foreground hidden sm:block">Alumni Management Platform</p>
       </div>
     </div>
@@ -198,7 +198,9 @@ function ProfileSection({ currentProfile, onSwitchProfile, onLogout }: {
       <div className="hidden lg:block text-right">
         <p className="text-sm font-medium">{currentProfile.name}</p>
         <p className="text-xs text-muted-foreground capitalize">
-          {currentProfile.preferences?.professionalStatus || 'member'} • {currentProfile.role}
+          {currentProfile.preferences?.professionalStatus
+            ? `${currentProfile.preferences.professionalStatus} • ${currentProfile.role}`
+            : currentProfile.role}
         </p>
       </div>
       <Avatar className="h-8 w-8 border-2 border-primary/20">

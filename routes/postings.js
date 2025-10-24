@@ -592,12 +592,24 @@ router.get('/matched/:userId', async (req, res) => {
       offset = 0
     } = req.query;
 
+    console.log('[Matched Postings] Fetching preferences for user:', userId);
+
     // Get user preferences
-    const [preferences] = await pool.query(`
-      SELECT primary_domain_id, secondary_domain_ids, areas_of_interest_ids
-      FROM USER_PREFERENCES
-      WHERE user_id = ?
-    `, [userId]);
+    let preferences;
+    try {
+      [preferences] = await pool.query(`
+        SELECT primary_domain_id, secondary_domain_ids, areas_of_interest_ids
+        FROM USER_PREFERENCES
+        WHERE user_id = ?
+      `, [userId]);
+      console.log('[Matched Postings] Query successful, got', preferences.length, 'results');
+    } catch (queryError) {
+      console.error('[Matched Postings] Query error:', queryError.message);
+      console.error('[Matched Postings] Full error:', queryError);
+      throw queryError;
+    }
+
+    console.log('[Matched Postings] Raw preferences:', preferences);
 
     if (preferences.length === 0) {
       // No preferences set - return all postings
@@ -606,8 +618,56 @@ router.get('/matched/:userId', async (req, res) => {
 
     const prefs = preferences[0];
     const primaryDomainId = prefs.primary_domain_id;
-    const secondaryDomainIds = prefs.secondary_domain_ids ? JSON.parse(prefs.secondary_domain_ids) : [];
-    const areasOfInterestIds = prefs.areas_of_interest_ids ? JSON.parse(prefs.areas_of_interest_ids) : [];
+
+    console.log('[Matched Postings] Primary domain ID:', primaryDomainId);
+    console.log('[Matched Postings] Secondary domain IDs (raw):', prefs.secondary_domain_ids, 'Type:', typeof prefs.secondary_domain_ids);
+    console.log('[Matched Postings] Areas of interest IDs (raw):', prefs.areas_of_interest_ids, 'Type:', typeof prefs.areas_of_interest_ids);
+
+    // Parse JSON fields safely - handle both string JSON and Buffer
+    let secondaryDomainIds = [];
+    let areasOfInterestIds = [];
+
+    try {
+      if (prefs.secondary_domain_ids) {
+        if (Buffer.isBuffer(prefs.secondary_domain_ids)) {
+          const str = prefs.secondary_domain_ids.toString();
+          console.log('[Matched Postings] Buffer to string:', str);
+          secondaryDomainIds = JSON.parse(str);
+        } else if (typeof prefs.secondary_domain_ids === 'string') {
+          console.log('[Matched Postings] Parsing string:', prefs.secondary_domain_ids);
+          secondaryDomainIds = JSON.parse(prefs.secondary_domain_ids);
+        } else if (Array.isArray(prefs.secondary_domain_ids)) {
+          console.log('[Matched Postings] Already an array');
+          secondaryDomainIds = prefs.secondary_domain_ids;
+        }
+      }
+      console.log('[Matched Postings] Parsed secondary domain IDs:', secondaryDomainIds);
+    } catch (e) {
+      console.error('[Matched Postings] Error parsing secondary_domain_ids:', e.message);
+      console.error('[Matched Postings] Raw value:', prefs.secondary_domain_ids);
+      secondaryDomainIds = [];
+    }
+
+    try {
+      if (prefs.areas_of_interest_ids) {
+        if (Buffer.isBuffer(prefs.areas_of_interest_ids)) {
+          const str = prefs.areas_of_interest_ids.toString();
+          console.log('[Matched Postings] Buffer to string:', str);
+          areasOfInterestIds = JSON.parse(str);
+        } else if (typeof prefs.areas_of_interest_ids === 'string') {
+          console.log('[Matched Postings] Parsing string:', prefs.areas_of_interest_ids);
+          areasOfInterestIds = JSON.parse(prefs.areas_of_interest_ids);
+        } else if (Array.isArray(prefs.areas_of_interest_ids)) {
+          console.log('[Matched Postings] Already an array');
+          areasOfInterestIds = prefs.areas_of_interest_ids;
+        }
+      }
+      console.log('[Matched Postings] Parsed areas of interest IDs:', areasOfInterestIds);
+    } catch (e) {
+      console.error('[Matched Postings] Error parsing areas_of_interest_ids:', e.message);
+      console.error('[Matched Postings] Raw value:', prefs.areas_of_interest_ids);
+      areasOfInterestIds = [];
+    }
 
     // Build list of all matching domain IDs (including hierarchy)
     const matchingDomainIds = new Set();
@@ -629,10 +689,11 @@ router.get('/matched/:userId', async (req, res) => {
 
     // Get all children of secondary domains
     if (secondaryDomainIds.length > 0) {
+      const placeholders = secondaryDomainIds.map(() => '?').join(',');
       const [secondaryChildren] = await pool.query(`
         SELECT id FROM DOMAINS
-        WHERE parent_domain_id IN (?)
-      `, [secondaryDomainIds]);
+        WHERE parent_domain_id IN (${placeholders})
+      `, secondaryDomainIds);
       secondaryChildren.forEach(child => matchingDomainIds.add(child.id));
     }
 
@@ -645,7 +706,8 @@ router.get('/matched/:userId', async (req, res) => {
           limit: parseInt(limit),
           offset: parseInt(offset),
           hasMore: false
-        }
+        },
+        matchedDomains: 0
       });
     }
 
@@ -806,6 +868,191 @@ router.get('/matched/:userId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching matched postings:', error);
     res.status(500).json({ error: 'Failed to fetch matched postings', details: error.message });
+  }
+});
+
+/**
+ * POST /api/postings/:id/like
+ * Toggle like on a posting
+ * Requires authentication
+ */
+router.post('/:id/like', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check if posting exists
+    const [postings] = await pool.query('SELECT id FROM POSTINGS WHERE id = ?', [id]);
+    if (postings.length === 0) {
+      return res.status(404).json({ error: 'Posting not found' });
+    }
+
+    // Check if user already liked this posting
+    const [existing] = await pool.query(`
+      SELECT id FROM POSTING_LIKES
+      WHERE posting_id = ? AND user_id = ?
+    `, [id, userId]);
+
+    if (existing.length > 0) {
+      // Unlike - remove the like
+      await pool.query(`
+        DELETE FROM POSTING_LIKES
+        WHERE posting_id = ? AND user_id = ?
+      `, [id, userId]);
+
+      // Decrement interest_count
+      await pool.query(`
+        UPDATE POSTINGS
+        SET interest_count = GREATEST(0, interest_count - 1)
+        WHERE id = ?
+      `, [id]);
+    } else {
+      // Like - add the like
+      const likeId = uuidv4();
+      await pool.query(`
+        INSERT INTO POSTING_LIKES (id, posting_id, user_id)
+        VALUES (?, ?, ?)
+      `, [likeId, id, userId]);
+
+      // Increment interest_count
+      await pool.query(`
+        UPDATE POSTINGS
+        SET interest_count = interest_count + 1
+        WHERE id = ?
+      `, [id]);
+    }
+
+    // Get updated like count
+    const [counts] = await pool.query(`
+      SELECT interest_count
+      FROM POSTINGS
+      WHERE id = ?
+    `, [id]);
+
+    res.json({
+      success: true,
+      liked: existing.length === 0,
+      likeCount: counts[0].interest_count
+    });
+  } catch (error) {
+    console.error('Error toggling like:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to toggle like'
+    });
+  }
+});
+
+/**
+ * POST /api/postings/:id/comment
+ * Add comment to a posting
+ * Requires authentication
+ */
+router.post('/:id/comment', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { comment } = req.body;
+    const userId = req.user.id;
+
+    if (!comment || comment.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Comment text is required'
+      });
+    }
+
+    // Check if posting exists
+    const [postings] = await pool.query('SELECT id FROM POSTINGS WHERE id = ?', [id]);
+    if (postings.length === 0) {
+      return res.status(404).json({ error: 'Posting not found' });
+    }
+
+    const commentId = uuidv4();
+    await pool.query(`
+      INSERT INTO POSTING_COMMENTS (id, posting_id, user_id, comment_text)
+      VALUES (?, ?, ?, ?)
+    `, [commentId, id, userId, comment]);
+
+    // Get updated comment count
+    const [counts] = await pool.query(`
+      SELECT COUNT(*) as comment_count
+      FROM POSTING_COMMENTS
+      WHERE posting_id = ?
+    `, [id]);
+
+    // Get user info for the response
+    const [users] = await pool.query(`
+      SELECT first_name, last_name
+      FROM app_users
+      WHERE id = ?
+    `, [userId]);
+
+    res.json({
+      success: true,
+      comment: {
+        id: commentId,
+        posting_id: id,
+        user_id: userId,
+        user_name: users.length > 0 ? `${users[0].first_name} ${users[0].last_name}` : 'Anonymous',
+        comment_text: comment,
+        created_at: new Date()
+      },
+      commentCount: counts[0].comment_count
+    });
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add comment'
+    });
+  }
+});
+
+/**
+ * GET /api/postings/:id/comments
+ * Get comments for a posting
+ */
+router.get('/:id/comments', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit = 20, offset = 0 } = req.query;
+
+    const [comments] = await pool.query(`
+      SELECT
+        pc.id,
+        pc.posting_id,
+        pc.user_id,
+        pc.comment_text,
+        pc.created_at,
+        u.first_name,
+        u.last_name
+      FROM POSTING_COMMENTS pc
+      LEFT JOIN app_users u ON pc.user_id = u.id
+      WHERE pc.posting_id = ?
+      ORDER BY pc.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [id, parseInt(limit), parseInt(offset)]);
+
+    const [countResult] = await pool.query(`
+      SELECT COUNT(*) as total
+      FROM POSTING_COMMENTS
+      WHERE posting_id = ?
+    `, [id]);
+
+    res.json({
+      success: true,
+      comments: comments.map(c => ({
+        ...c,
+        user_name: c.first_name && c.last_name ? `${c.first_name} ${c.last_name}` : 'Anonymous'
+      })),
+      total: countResult[0].total
+    });
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch comments'
+    });
   }
 });
 

@@ -57,7 +57,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
     role: currentUser.role || 'member',
     avatar: data.summary?.avatarUrl || undefined,
     preferences: {
-      professionalStatus: data.summary?.currentPosition || 'member'
+      professionalStatus: data.summary?.currentPosition || undefined
     }
   };
 
@@ -79,7 +79,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full overflow-x-hidden">
       <DashboardHeader
         currentProfile={currentProfile}
         stats={headerStats}
@@ -87,22 +87,22 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
         onLogout={handleLogout}
       />
 
-      <div className="container mx-auto px-4 sm:px-6 py-8">
-        <div className="space-y-6 lg:space-y-8">
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+        <div className="space-y-4 sm:space-y-6 lg:space-y-8 w-full">
           <DashboardHero summary={data.summary} />
 
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full max-w-md grid-cols-2 mb-6 bg-muted/50 p-1 rounded-lg border border-border/40">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full max-w-md grid-cols-2 mb-4 sm:mb-6 bg-muted/50 p-1 rounded-lg border border-border/40">
               <TabsTrigger
                 value="overview"
-                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all"
+                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all text-sm sm:text-base"
               >
                 <LayoutDashboard className="h-4 w-4" />
                 <span className="font-medium">Overview</span>
               </TabsTrigger>
               <TabsTrigger
                 value="feed"
-                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all"
+                className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all text-sm sm:text-base"
               >
                 <Activity className="h-4 w-4" />
                 <span className="font-medium">Feed</span>
@@ -110,9 +110,9 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
             </TabsList>
 
             {/* Overview Tab */}
-            <TabsContent value="overview" className="mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-                <div className="lg:col-span-8 xl:col-span-9 space-y-6 order-2 lg:order-1">
+            <TabsContent value="overview" className="mt-4 sm:mt-6 w-full">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 w-full">
+                <div className="lg:col-span-8 xl:col-span-9 space-y-4 sm:space-y-6 order-2 lg:order-1 w-full">
                   <StatsOverview stats={data.stats} />
                   <PersonalizedPosts userId={userId || ''} limit={3} />
                   <OpportunitiesSpotlight
@@ -122,7 +122,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
                   <ActivityTimeline items={data.recentActivity} />
                 </div>
 
-                <div className="lg:col-span-4 xl:col-span-3 space-y-6 order-1 lg:order-2">
+                <div className="lg:col-span-4 xl:col-span-3 space-y-4 sm:space-y-6 order-1 lg:order-2 w-full">
                   <QuickActions actions={data.quickActions} />
                   <RecentConversations userId={userId} />
                   <PendingActions actions={data.pendingActions} />
@@ -134,7 +134,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
             </TabsContent>
 
             {/* Feed Tab */}
-            <TabsContent value="feed" className="mt-6">
+            <TabsContent value="feed" className="mt-4 sm:mt-6 w-full">
               <DashboardFeed userId={userId || ''} />
             </TabsContent>
           </Tabs>

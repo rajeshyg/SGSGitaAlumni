@@ -5,19 +5,22 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAlumniDirectory } from '../hooks/useAlumniDirectory';
 import { AlumniCard } from '../components/directory/AlumniCard';
 import { DirectorySearch } from '../components/directory/DirectorySearch';
 import { DirectoryFilters } from '../components/directory/DirectoryFilters';
 import { DirectoryPagination } from '../components/directory/DirectoryPagination';
-import { Loader2, Users, AlertCircle } from 'lucide-react';
+import { Loader2, Users, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Alert } from '../components/ui/alert';
+import { Button } from '../components/ui/button';
 import type { AlumniMember } from '../types/directory';
 
 /**
  * AlumniDirectoryPage - Main directory page component
  */
 export const AlumniDirectoryPage: React.FC = () => {
+  const navigate = useNavigate();
   const [perPage, setPerPage] = useState(20);
   const [selectedYear, setSelectedYear] = useState<number | undefined>();
   const [selectedDepartment, setSelectedDepartment] = useState<string | undefined>();
@@ -78,19 +81,32 @@ export const AlumniDirectoryPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <Users className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold">Alumni Directory</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Connect with fellow alumni
-              </p>
+      <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-40">
+        <div className="container mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="min-h-[44px]"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Back</span>
+              </Button>
+              <div className="flex items-center gap-3">
+                <Users className="h-6 w-6 text-primary" />
+                <div>
+                  <h1 className="text-lg sm:text-xl font-bold">Alumni Directory</h1>
+                  <p className="text-xs text-muted-foreground hidden sm:block">
+                    Connect with fellow alumni
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">

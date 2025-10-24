@@ -6,10 +6,16 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { QuickActionsProps } from '../../types/dashboard';
-import { Users, MessageSquare, Briefcase, UserPlus, Settings } from 'lucide-react';
+import { Users, MessageSquare, Briefcase, UserPlus, Settings, PlusCircle } from 'lucide-react';
 
-// Simplified member-focused quick actions (5 key actions in clean list format)
+// Simplified member-focused quick actions (6 key actions in clean list format)
 const staticActions = [
+  {
+    id: 'create-posting',
+    label: 'Create Posting',
+    icon: PlusCircle,
+    href: '/postings/new'
+  },
   {
     id: 'directory',
     label: 'Browse Directory',

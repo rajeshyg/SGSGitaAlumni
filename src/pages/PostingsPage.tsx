@@ -1,21 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import Badge from '../components/ui/badge';
+import { Badge } from '../components/ui/badge';
 import {
   Search,
   Filter,
   Plus,
   Loader2,
-  Briefcase,
-  Users,
-  MapPin,
   Star,
-  Globe
+  ArrowLeft
 } from 'lucide-react';
+import PostingCard from '../components/postings/PostingCard';
 
 /**
  * PostingsPage - Job postings, mentorship opportunities, and events
@@ -149,87 +147,172 @@ const PostingsPage: React.FC = () => {
     setFilteredPostings(filtered);
   };
 
+  const handleLike = async (postingId: string) => {
+    try {
+      const response = await APIService.postGeneric<{
+        success: boolean;
+        liked: boolean;
+        likeCount: number;
+      }>(`/api/postings/${postingId}/like`, {});
+
+      if (response.success) {
+        // Update the posting in the list
+        setPostings(prev =>
+          prev.map(posting =>
+            posting.id === postingId
+              ? { ...posting, interest_count: response.likeCount }
+              : posting
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Failed to toggle like:', err);
+    }
+  };
+
+  const handleComment = async (postingId: string) => {
+    const comment = prompt('Enter your comment:');
+    if (!comment || comment.trim().length === 0) {
+      return;
+    }
+
+    try {
+      const response = await APIService.postGeneric<{
+        success: boolean;
+        comment: {
+          id: string;
+          posting_id: string;
+          user_id: string;
+          user_name: string;
+          comment_text: string;
+          created_at: string;
+        };
+        commentCount: number;
+      }>(`/api/postings/${postingId}/comment`, { comment });
+
+      if (response.success) {
+        alert(`Comment added successfully! Total comments: ${response.commentCount}`);
+      }
+    } catch (err) {
+      console.error('Failed to add comment:', err);
+      alert('Failed to add comment. Please try again.');
+    }
+  };
+
+  const handleShare = async (postingId: string) => {
+    // Copy link to clipboard
+    const url = `${window.location.origin}/postings/${postingId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert('Link copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      alert('Failed to copy link. Please try again.');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">Postings</h1>
-            <p className="text-muted-foreground">
-              Browse jobs, mentorship opportunities, events, and more from the alumni network.
-            </p>
-          </div>
-          <div className="flex gap-2">
+    <div className="min-h-screen bg-background w-full overflow-x-hidden">
+      {/* Header */}
+      <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-40 w-full">
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                className="min-h-[44px] shrink-0"
+              >
+                <ArrowLeft className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Back</span>
+              </Button>
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-lg md:text-xl font-bold truncate">Postings</h1>
+                <p className="text-xs text-muted-foreground hidden md:block">
+                  Browse jobs, mentorship opportunities, events, and more
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 shrink-0">
             {user && (
               <Button
                 variant={showMatchedOnly ? "default" : "outline"}
                 onClick={() => setShowMatchedOnly(!showMatchedOnly)}
-                className="min-h-[44px]"
+                className="min-h-[44px] text-xs sm:text-sm"
+                size="sm"
               >
-                <Star className={`mr-2 h-4 w-4 ${showMatchedOnly ? 'fill-current' : ''}`} />
-                {showMatchedOnly ? 'Matched' : 'Show Matched'}
+                <Star className={`h-4 w-4 ${showMatchedOnly ? 'fill-current sm:mr-2' : 'sm:mr-2'}`} />
+                <span className="hidden sm:inline">{showMatchedOnly ? 'Matched' : 'Show Matched'}</span>
                 {showMatchedOnly && matchedCount > 0 && (
-                  <Badge variant="secondary" className="ml-2">{matchedCount}</Badge>
+                  <Badge variant="secondary" className="ml-1 sm:ml-2 text-xs">{matchedCount}</Badge>
                 )}
               </Button>
             )}
-            <Button onClick={() => navigate('/postings/new')} className="min-h-[44px]">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Posting
-            </Button>
+              <Button onClick={() => navigate('/postings/new')} className="min-h-[44px] text-xs sm:text-sm" size="sm">
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Create</span>
+              </Button>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/* Search and Filters */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row gap-4">
+      {/* Main Content */}
+      <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+        <div className="space-y-4 sm:space-y-6 w-full">
+          {/* Search and Filters */}
+          <Card className="w-full">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
+            <div className="flex flex-col gap-3 sm:gap-4 w-full">
               {/* Search */}
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="w-full relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder="Search postings..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 w-full min-h-[44px]"
                 />
               </div>
 
-              {/* Type Filter */}
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                  className="w-full md:w-[180px] h-10 pl-10 pr-3 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  aria-label="Filter by type"
-                >
-                  <option value="all">All Types</option>
-                  <option value="job">Jobs</option>
-                  <option value="mentorship">Mentorship</option>
-                  <option value="event">Events</option>
-                  <option value="opportunity">Opportunities</option>
-                </select>
-              </div>
+              {/* Filters Row */}
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full">
+                {/* Type Filter */}
+                <div className="relative flex-1">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="w-full h-11 pl-10 pr-3 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    aria-label="Filter by type"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="job">Jobs</option>
+                    <option value="mentorship">Mentorship</option>
+                    <option value="event">Events</option>
+                    <option value="opportunity">Opportunities</option>
+                  </select>
+                </div>
 
-              {/* Domain Filter */}
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <select
-                  value={filterDomain}
-                  onChange={(e) => setFilterDomain(e.target.value)}
-                  className="w-full md:w-[180px] h-10 pl-10 pr-3 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  aria-label="Filter by domain"
-                >
-                  <option value="all">All Domains</option>
-                  <option value="Technology">Technology</option>
-                  <option value="Healthcare">Healthcare</option>
-                  <option value="Business">Business</option>
-                  <option value="Education">Education</option>
-                  <option value="Engineering">Engineering</option>
-                  <option value="Arts & Design">Arts & Design</option>
-                </select>
+                {/* Domain Filter */}
+                <div className="relative flex-1">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <select
+                    value={filterDomain}
+                    onChange={(e) => setFilterDomain(e.target.value)}
+                    className="w-full h-11 pl-10 pr-3 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    aria-label="Filter by domain"
+                  >
+                    <option value="all">All Domains</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Business">Business</option>
+                    <option value="Education">Education</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Arts & Design">Arts & Design</option>
+                  </select>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -266,75 +349,18 @@ const PostingsPage: React.FC = () => {
         ) : (
           <div className="grid gap-4">
             {filteredPostings.map((posting) => (
-              <Card key={posting.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={posting.posting_type === 'offer_support' ? 'bg-blue-500/10 text-blue-600' : 'bg-green-500/10 text-green-600'}>
-                          {posting.posting_type === 'offer_support' ? <Briefcase className="h-4 w-4 mr-1" /> : <Users className="h-4 w-4 mr-1" />}
-                          <span className="capitalize">{posting.posting_type.replace('_', ' ')}</span>
-                        </Badge>
-                        {posting.category_name && (
-                          <Badge variant="outline" className="text-xs">
-                            {posting.category_name}
-                          </Badge>
-                        )}
-                        {posting.location && (
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            {posting.location}
-                          </div>
-                        )}
-                        {posting.urgency_level && posting.urgency_level !== 'low' && (
-                          <Badge variant="destructive" className="text-xs">
-                            {posting.urgency_level}
-                          </Badge>
-                        )}
-                      </div>
-                      <CardTitle className="text-xl mb-2">{posting.title}</CardTitle>
-                      <CardDescription className="line-clamp-2">{posting.content}</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {/* Domains */}
-                    {posting.domains && posting.domains.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {posting.domains.map((domain) => (
-                          <Badge key={domain.id} variant="outline">
-                            {domain.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Tags */}
-                    {posting.tags && posting.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {posting.tags.map((tag) => (
-                          <Badge key={tag.id} variant="secondary" className="text-xs">
-                            {tag.name}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-3 border-t">
-                      <span>
-                        Posted by {posting.author_first_name || posting.contact_name} 
-                        {posting.author_last_name && ` ${posting.author_last_name}`}
-                      </span>
-                      <span>{new Date(posting.published_at || posting.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <PostingCard
+                key={posting.id}
+                posting={posting}
+                showActions={true}
+                onLike={handleLike}
+                onComment={handleComment}
+                onShare={handleShare}
+              />
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

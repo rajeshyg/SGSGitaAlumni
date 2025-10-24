@@ -107,9 +107,12 @@ npm run test:desktop           # Desktop compatibility
 ### Phase 7B: Core Features
 
 #### [Task 7.4: Member Dashboard](./task-7.4-member-dashboard.md)
-- **Status:** 🟡 Planned
+- **Status:** � In Progress - Feed Complete ✅, Mobile Improvements Complete ✅
 - **Description:** Personalized dashboard with real data integration
 - **Prototype Reference:** member-dashboard.tsx
+- **Sub-Tasks:**
+  - [Task 7.4.1: Dashboard Feed Integration](./task-7.4.1-dashboard-feed-integration.md) - ✅ Complete (October 20, 2025)
+  - [Task 7.4.2: Mobile Posting Improvements & Engagement](./task-7.4.2-mobile-posting-improvements.md) - ✅ Complete (October 23, 2025)
 
 #### [Task 7.5: Alumni Directory](./task-7.5-alumni-directory.md)
 - **Status:** 🟡 Planned

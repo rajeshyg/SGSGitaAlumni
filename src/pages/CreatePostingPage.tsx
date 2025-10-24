@@ -1019,7 +1019,6 @@ const CreatePostingPage: React.FC = () => {
               </Button>
               <h1 className="text-lg sm:text-xl font-bold">Create New Posting</h1>
             </div>
-            <Badge variant="outline">Phase 7</Badge>
           </div>
         </div>
       </header>

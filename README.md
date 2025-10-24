@@ -1,4 +1,4 @@
-# SGSGita Alumni System
+# SGS Gita Connect
 
 A modern React-based alumni management platform with advanced data table functionality, theme system, and robust development tooling.
 

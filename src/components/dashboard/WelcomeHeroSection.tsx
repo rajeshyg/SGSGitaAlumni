@@ -48,7 +48,7 @@ function WelcomeHeader({ profile }: { profile: UserProfile }) {
           {getGreeting()}, {profile?.name?.split(' ')[0] || 'User'}!
         </h2>
         <p className="text-muted-foreground max-w-2xl">
-          Welcome to the SGSGita Alumni System. Manage alumni data, track engagement, and oversee system operations.
+          Welcome to SGS Gita Connect. Manage alumni data, track engagement, and oversee system operations.
         </p>
       </div>
       <ActionButtons />
