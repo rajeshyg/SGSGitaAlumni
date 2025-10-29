@@ -57,6 +57,7 @@ interface Posting {
   status: 'draft' | 'pending_review' | 'approved' | 'rejected' | 'expired' | 'active';
   view_count?: number;
   interest_count?: number;
+  comment_count?: number;
   published_at?: string;
   created_at: string;
 }
@@ -72,19 +73,26 @@ const PostingsPage: React.FC = () => {
   const [filteredPostings, setFilteredPostings] = useState<Posting[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [showMatchedOnly, setShowMatchedOnly] = useState(false);
   const [matchedCount, setMatchedCount] = useState<number>(0);
+  const [categories, setCategories] = useState<{id: string; name: string}[]>([]);
 
   // Load postings on mount and when matched filter changes
   useEffect(() => {
     loadPostings();
   }, [showMatchedOnly]);
 
+  // Load categories on mount
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
   // Apply filters whenever search/filter changes
   useEffect(() => {
     applyFilters();
-  }, [searchQuery, filterType, filterDomain, postings]);
+  }, [searchQuery, filterType, filterCategory, filterDomain, postings]);
 
   const loadPostings = async () => {
     setLoading(true);
@@ -121,12 +129,27 @@ const PostingsPage: React.FC = () => {
     }
   };
 
+  const loadCategories = async () => {
+    try {
+      const response = await APIService.get<{categories: {id: string; name: string}[]}>('/api/postings/categories');
+      setCategories(response.categories || []);
+    } catch (err) {
+      console.error('Failed to load categories:', err);
+      setCategories([]);
+    }
+  };
+
   const applyFilters = () => {
     let filtered = postings;
 
-    // Filter by type (posting_type)
+    // Filter by posting type (offer_support or seek_support)
     if (filterType !== 'all') {
       filtered = filtered.filter(p => p.posting_type === filterType);
+    }
+
+    // Filter by category
+    if (filterCategory !== 'all') {
+      filtered = filtered.filter(p => p.category_name === filterCategory);
     }
 
     // Filter by domain
@@ -170,9 +193,8 @@ const PostingsPage: React.FC = () => {
     }
   };
 
-  const handleComment = async (postingId: string) => {
-    const comment = prompt('Enter your comment:');
-    if (!comment || comment.trim().length === 0) {
+  const handleComment = async (postingId: string, commentText: string) => {
+    if (!commentText || commentText.trim().length === 0) {
       return;
     }
 
@@ -188,14 +210,23 @@ const PostingsPage: React.FC = () => {
           created_at: string;
         };
         commentCount: number;
-      }>(`/api/postings/${postingId}/comment`, { comment });
+      }>(`/api/postings/${postingId}/comment`, { comment: commentText });
 
       if (response.success) {
-        alert(`Comment added successfully! Total comments: ${response.commentCount}`);
+        // Update the posting's comment count in the UI
+        setPostings(prev => prev.map(p =>
+          p.id === postingId
+            ? { ...p, comment_count: response.commentCount }
+            : p
+        ));
+        setFilteredPostings(prev => prev.map(p =>
+          p.id === postingId
+            ? { ...p, comment_count: response.commentCount }
+            : p
+        ));
       }
     } catch (err) {
       console.error('Failed to add comment:', err);
-      alert('Failed to add comment. Please try again.');
     }
   };
 
@@ -288,10 +319,24 @@ const PostingsPage: React.FC = () => {
                     aria-label="Filter by type"
                   >
                     <option value="all">All Types</option>
-                    <option value="job">Jobs</option>
-                    <option value="mentorship">Mentorship</option>
-                    <option value="event">Events</option>
-                    <option value="opportunity">Opportunities</option>
+                    <option value="offer_support">Offering Support</option>
+                    <option value="seek_support">Seeking Support</option>
+                  </select>
+                </div>
+
+                {/* Category Filter */}
+                <div className="relative flex-1">
+                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="w-full h-11 pl-10 pr-3 bg-background border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    aria-label="Filter by category"
+                  >
+                    <option value="all">All Categories</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -318,6 +363,21 @@ const PostingsPage: React.FC = () => {
           </CardContent>
         </Card>
 
+        {/* Matched Mode Banner */}
+        {showMatchedOnly && !loading && (
+          <Card className="w-full bg-primary/5 border-primary/20">
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center gap-2 text-sm">
+                <Star className="h-4 w-4 fill-primary text-primary" />
+                <span className="font-medium text-primary">Showing only postings that match your Areas of Interest</span>
+                <span className="text-muted-foreground">
+                  ({filteredPostings.length} matched out of {postings.length} total)
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Results Count */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {loading ? (
@@ -325,11 +385,10 @@ const PostingsPage: React.FC = () => {
           ) : (
             <>
               <span>{filteredPostings.length} posting{filteredPostings.length !== 1 ? 's' : ''} found</span>
-              {showMatchedOnly && (
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-current" />
-                  Matched to your preferences
-                </Badge>
+              {!showMatchedOnly && user && (
+                <span className="text-xs">
+                  (Click "Show Matched" to see only postings matching your preferences)
+                </span>
               )}
             </>
           )}

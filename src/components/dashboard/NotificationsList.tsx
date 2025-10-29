@@ -7,6 +7,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import Badge from '../ui/badge';
 import { NotificationsListProps } from '../../types/dashboard';
+import ProfileCompletion from '../shared/ProfileCompletion';
 
 const levelClasses: Record<string, string> = {
   warning: 'border-amber-200 bg-amber-50 dark:border-amber-400/40 dark:bg-amber-400/10',
@@ -26,7 +27,7 @@ const formatTimestamp = (value: string | Date) => {
   }).format(date);
 };
 
-export const NotificationsList: React.FC<NotificationsListProps> = ({ notifications }) => {
+export const NotificationsList: React.FC<NotificationsListProps> = ({ notifications, profileCompletion }) => {
   const unreadCount = notifications.filter((notification) => !notification.isRead).length;
 
   if (!notifications || notifications.length === 0) {
@@ -57,6 +58,19 @@ export const NotificationsList: React.FC<NotificationsListProps> = ({ notificati
       <CardContent className="pt-0 space-y-2 sm:space-y-3">
         {notifications.slice(0, 5).map((notification) => {
           const levelClass = levelClasses[notification.level] || 'border-border/60 bg-muted/30';
+
+          // If this notification is the profile completion prompt, render the compact profile widget
+          if (/complete your profile/i.test(notification.title)) {
+            return (
+              <div key={notification.id} className={levelClass + ' p-3 rounded-lg'}>
+                <ProfileCompletion
+                  value={profileCompletion ?? 0}
+                  variant="compact"
+                  onAction={() => { if (notification.actionHref) { window.location.href = notification.actionHref; } else { window.location.href = '/preferences'; } }}
+                />
+              </div>
+            );
+          }
 
           return (
             <button type="button"

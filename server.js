@@ -152,14 +152,7 @@ import {
   setPreferencesPool
 } from './routes/preferences.js';
 
-import {
-  getFeed,
-  toggleLike,
-  addComment,
-  shareFeedItem,
-  getComments,
-  setFeedPool
-} from './routes/feed.js';
+
 
 import {
   getMemberDashboard,
@@ -204,7 +197,6 @@ setDomainsPool(pool);
 setPreferencesPool(pool);
 setTagsPool(pool);
 setPostingsPool(pool);
-setFeedPool(pool);
 setDashboardPool(pool);
 
 // Middleware
@@ -525,15 +517,7 @@ app.get('/api/users/:userId/privacy-settings', authenticateToken, getPrivacySett
 app.put('/api/users/:userId/privacy-settings', authenticateToken, updatePrivacySettings);
 app.get('/api/users/:userId/account-settings', authenticateToken, getAccountSettings);
 
-// ============================================================================
-// ACTIVITY FEED ROUTES (Task 7.4.1)
-// ============================================================================
 
-app.get('/api/feed', authenticateToken, getFeed);
-app.post('/api/feed/items/:id/like', authenticateToken, toggleLike);
-app.post('/api/feed/items/:id/comment', authenticateToken, addComment);
-app.post('/api/feed/items/:id/share', authenticateToken, shareFeedItem);
-app.get('/api/feed/items/:id/comments', authenticateToken, getComments);
 
 // ============================================================================
 // TAG ROUTES (Task 7.7.3)

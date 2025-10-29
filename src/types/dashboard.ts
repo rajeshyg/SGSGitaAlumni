@@ -173,6 +173,7 @@ export interface QuickActionsProps {
 
 export interface NotificationsListProps {
   notifications: DashboardNotification[];
+  profileCompletion?: number;
 }
 
 export interface DashboardPendingActionsProps {

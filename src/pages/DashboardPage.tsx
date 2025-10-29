@@ -6,6 +6,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MemberDashboard } from '../components/dashboard/MemberDashboard';
+import { LoadingSpinner } from '../components/ui/loading-spinner';
 import { useAuth } from '../contexts/AuthContext';
 
 const DashboardPage: React.FC = () => {
@@ -35,10 +36,7 @@ const DashboardPage: React.FC = () => {
     console.log('[DashboardPage] Showing loading state');
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
-        </div>
+        <LoadingSpinner size="lg" text="Loading dashboard..." />
       </div>
     );
   }
@@ -47,10 +45,7 @@ const DashboardPage: React.FC = () => {
     console.log('[DashboardPage] Awaiting redirect for unauthenticated user');
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Redirecting...</p>
-        </div>
+        <LoadingSpinner size="lg" text="Redirecting..." />
       </div>
     );
   }
@@ -59,10 +54,7 @@ const DashboardPage: React.FC = () => {
     console.log('[DashboardPage] Admin user, showing redirect loading');
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Redirecting to admin panel...</p>
-        </div>
+        <LoadingSpinner size="lg" text="Redirecting to admin panel..." />
       </div>
     );
   }
@@ -72,7 +64,7 @@ const DashboardPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-md text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <LoadingSpinner size="lg" />
           <p className="text-muted-foreground">
             We&apos;re loading your profile details. If this message persists, please refresh the page or contact support.
           </p>

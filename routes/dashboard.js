@@ -533,10 +533,13 @@ export const getMemberDashboard = async (req, res) => {
 				createdAt: row.created_at
 			}));
 
+			// ActivityTimeline should show activity items (connections, events, achievements)
+			// NOT postings - postings are shown in PersonalizedPosts and DashboardFeed
 			const [activityRows] = await connection.query(`
 				SELECT id, item_type, title, content, author_name, created_at
 				FROM ACTIVITY_FEED
 				WHERE user_id = ?
+				AND item_type IN ('connection', 'event', 'achievement')
 				ORDER BY created_at DESC
 				LIMIT 6
 			`, [requestedUserId]);

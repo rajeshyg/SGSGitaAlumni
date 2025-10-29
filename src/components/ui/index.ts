@@ -52,3 +52,9 @@ export { Separator } from './separator'
 // Advanced Components
 // Domain-specific components removed per Phase 1 correction
 // RoleBadge, StatusBadge, InventoryBadge removed - not reusable
+
+// Feedback & Loading States
+export { Skeleton } from './skeleton'
+export { EmptyState } from './empty-state'
+export { LoadingSpinner } from './loading-spinner'
+export { CommentInput } from './comment-input'

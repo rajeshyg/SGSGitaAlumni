@@ -173,38 +173,48 @@ router.get('/', async (req, res) => {
       let domains = [];
       let tags = [];
 
-      // Handle domains - might be string, Buffer, or already parsed
+      // Handle domains - improved parsing for various formats
       if (posting.domains) {
         if (typeof posting.domains === 'string') {
-          try {
-            domains = JSON.parse(posting.domains);
-          } catch (e) {
-            console.error('Failed to parse domains:', posting.domains);
+          if (posting.domains.startsWith('[') || posting.domains.startsWith('{')) {
+            try {
+              domains = JSON.parse(posting.domains);
+            } catch (e) {
+              console.error('Failed to parse domains JSON:', posting.domains);
+            }
           }
         } else if (Array.isArray(posting.domains)) {
           domains = posting.domains;
         } else if (Buffer.isBuffer(posting.domains)) {
           try {
-            domains = JSON.parse(posting.domains.toString());
+            const str = posting.domains.toString();
+            if (str.startsWith('[') || str.startsWith('{')) {
+              domains = JSON.parse(str);
+            }
           } catch (e) {
             console.error('Failed to parse domains buffer:', e);
           }
         }
       }
 
-      // Handle tags - might be string, Buffer, or already parsed
+      // Handle tags - improved parsing for various formats
       if (posting.tags) {
         if (typeof posting.tags === 'string') {
-          try {
-            tags = JSON.parse(posting.tags);
-          } catch (e) {
-            console.error('Failed to parse tags:', posting.tags);
+          if (posting.tags.startsWith('[') || posting.tags.startsWith('{')) {
+            try {
+              tags = JSON.parse(posting.tags);
+            } catch (e) {
+              console.error('Failed to parse tags JSON:', posting.tags);
+            }
           }
         } else if (Array.isArray(posting.tags)) {
           tags = posting.tags;
         } else if (Buffer.isBuffer(posting.tags)) {
           try {
-            tags = JSON.parse(posting.tags.toString());
+            const str = posting.tags.toString();
+            if (str.startsWith('[') || str.startsWith('{')) {
+              tags = JSON.parse(str);
+            }
           } catch (e) {
             console.error('Failed to parse tags buffer:', e);
           }
@@ -334,10 +344,69 @@ router.get('/:id', async (req, res) => {
 
     const posting = postings[0];
 
-    // Parse JSON fields
-    posting.domains = posting.domains ? JSON.parse(posting.domains) : [];
-    posting.tags = posting.tags ? JSON.parse(posting.tags) : [];
-    posting.attachments = posting.attachments ? JSON.parse(posting.attachments) : [];
+    // Parse JSON fields - handle both valid JSON and object strings
+    if (posting.domains) {
+      if (typeof posting.domains === 'string') {
+        if (posting.domains.startsWith('[') || posting.domains.startsWith('{')) {
+          try {
+            posting.domains = JSON.parse(posting.domains);
+          } catch (e) {
+            console.error('Failed to parse domains JSON:', posting.domains);
+            posting.domains = [];
+          }
+        } else {
+          posting.domains = [];
+        }
+      } else if (Array.isArray(posting.domains)) {
+        posting.domains = posting.domains;
+      } else {
+        posting.domains = [];
+      }
+    } else {
+      posting.domains = [];
+    }
+
+    if (posting.tags) {
+      if (typeof posting.tags === 'string') {
+        if (posting.tags.startsWith('[') || posting.tags.startsWith('{')) {
+          try {
+            posting.tags = JSON.parse(posting.tags);
+          } catch (e) {
+            console.error('Failed to parse tags JSON:', posting.tags);
+            posting.tags = [];
+          }
+        } else {
+          posting.tags = [];
+        }
+      } else if (Array.isArray(posting.tags)) {
+        posting.tags = posting.tags;
+      } else {
+        posting.tags = [];
+      }
+    } else {
+      posting.tags = [];
+    }
+
+    if (posting.attachments) {
+      if (typeof posting.attachments === 'string') {
+        if (posting.attachments.startsWith('[') || posting.attachments.startsWith('{')) {
+          try {
+            posting.attachments = JSON.parse(posting.attachments);
+          } catch (e) {
+            console.error('Failed to parse attachments JSON:', posting.attachments);
+            posting.attachments = [];
+          }
+        } else {
+          posting.attachments = [];
+        }
+      } else if (Array.isArray(posting.attachments)) {
+        posting.attachments = posting.attachments;
+      } else {
+        posting.attachments = [];
+      }
+    } else {
+      posting.attachments = [];
+    }
 
     // Increment view count (async, don't wait)
     pool.query('UPDATE POSTINGS SET view_count = view_count + 1 WHERE id = ?', [id]).catch(console.error);
@@ -669,32 +738,25 @@ router.get('/matched/:userId', async (req, res) => {
       areasOfInterestIds = [];
     }
 
-    // Build list of all matching domain IDs (including hierarchy)
+    // Build list of all matching domain IDs
+    // MATCHING STRATEGY: Only match on Areas of Interest (most specific level)
+    // This ensures we show highly relevant postings, not broad matches
     const matchingDomainIds = new Set();
 
-    // Add user's explicit preferences
-    if (primaryDomainId) matchingDomainIds.add(primaryDomainId);
-    secondaryDomainIds.forEach(id => matchingDomainIds.add(id));
+    // ONLY use Areas of Interest for matching
+    // These are the most specific, granular topics the user selected
     areasOfInterestIds.forEach(id => matchingDomainIds.add(id));
 
-    // Get all children of primary domain
-    if (primaryDomainId) {
-      const [primaryChildren] = await pool.query(`
-        SELECT id FROM DOMAINS
-        WHERE parent_domain_id = ? OR
-              parent_domain_id IN (SELECT id FROM DOMAINS WHERE parent_domain_id = ?)
-      `, [primaryDomainId, primaryDomainId]);
-      primaryChildren.forEach(child => matchingDomainIds.add(child.id));
+    // If user has no areas of interest, fall back to secondary domains
+    if (matchingDomainIds.size === 0 && secondaryDomainIds.length > 0) {
+      console.log('[Matched Postings] No areas of interest, using secondary domains');
+      secondaryDomainIds.forEach(id => matchingDomainIds.add(id));
     }
 
-    // Get all children of secondary domains
-    if (secondaryDomainIds.length > 0) {
-      const placeholders = secondaryDomainIds.map(() => '?').join(',');
-      const [secondaryChildren] = await pool.query(`
-        SELECT id FROM DOMAINS
-        WHERE parent_domain_id IN (${placeholders})
-      `, secondaryDomainIds);
-      secondaryChildren.forEach(child => matchingDomainIds.add(child.id));
+    // If still no matches, fall back to primary domain
+    if (matchingDomainIds.size === 0 && primaryDomainId) {
+      console.log('[Matched Postings] No secondary domains, using primary domain');
+      matchingDomainIds.add(primaryDomainId);
     }
 
     if (matchingDomainIds.size === 0) {
@@ -809,7 +871,12 @@ router.get('/matched/:userId', async (req, res) => {
     query += ' LIMIT ? OFFSET ?';
     params.push(parseInt(limit), parseInt(offset));
 
+    console.log('[Matched Postings] Executing query with', params.length, 'params');
+    console.log('[Matched Postings] Matching domain IDs count:', matchingDomainIds.size);
+
     const [postings] = await pool.query(query, params);
+
+    console.log('[Matched Postings] Query returned', postings.length, 'postings');
 
     // Parse JSON fields
     const parsedPostings = postings.map(posting => {
@@ -818,21 +885,35 @@ router.get('/matched/:userId', async (req, res) => {
 
       if (posting.domains) {
         if (typeof posting.domains === 'string') {
-          try { domains = JSON.parse(posting.domains); } catch (e) {}
+          if (posting.domains.startsWith('[') || posting.domains.startsWith('{')) {
+            try { domains = JSON.parse(posting.domains); } catch (e) {}
+          }
         } else if (Array.isArray(posting.domains)) {
           domains = posting.domains;
         } else if (Buffer.isBuffer(posting.domains)) {
-          try { domains = JSON.parse(posting.domains.toString()); } catch (e) {}
+          try {
+            const str = posting.domains.toString();
+            if (str.startsWith('[') || str.startsWith('{')) {
+              domains = JSON.parse(str);
+            }
+          } catch (e) {}
         }
       }
 
       if (posting.tags) {
         if (typeof posting.tags === 'string') {
-          try { tags = JSON.parse(posting.tags); } catch (e) {}
+          if (posting.tags.startsWith('[') || posting.tags.startsWith('{')) {
+            try { tags = JSON.parse(posting.tags); } catch (e) {}
+          }
         } else if (Array.isArray(posting.tags)) {
           tags = posting.tags;
         } else if (Buffer.isBuffer(posting.tags)) {
-          try { tags = JSON.parse(posting.tags.toString()); } catch (e) {}
+          try {
+            const str = posting.tags.toString();
+            if (str.startsWith('[') || str.startsWith('{')) {
+              tags = JSON.parse(str);
+            }
+          } catch (e) {}
         }
       }
 
@@ -854,6 +935,8 @@ router.get('/matched/:userId', async (req, res) => {
 
     const [countResult] = await pool.query(countQuery, countParams);
     const total = countResult[0].total;
+
+    console.log('[Matched Postings] Returning', parsedPostings.length, 'postings with', matchingDomainIds.size, 'matched domains');
 
     res.json({
       postings: parsedPostings,

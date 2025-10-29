@@ -117,7 +117,7 @@ const CreatePostingPage: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
 
   // User preferences for smart domain suggestions
-  const [userPreferences, setUserPreferences] = useState<{
+  const [, setUserPreferences] = useState<{
     primary_domain_id: string | null;
     secondary_domain_ids: string[];
     areas_of_interest_ids: string[];
@@ -459,14 +459,14 @@ const CreatePostingPage: React.FC = () => {
           <Label>What type of posting is this? *</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <SelectionCard
-              icon={<Briefcase className="h-12 w-12" />}
+              icon={<Briefcase className="h-10 w-10" />}
               title="Offer Support"
               description="Share your expertise, resources, or opportunities"
               selected={formData.posting_type === 'offer_support'}
               onClick={() => updateFormData('posting_type', 'offer_support')}
             />
             <SelectionCard
-              icon={<Users className="h-12 w-12" />}
+              icon={<Users className="h-10 w-10" />}
               title="Seek Support"
               description="Request help, mentorship, or opportunities"
               selected={formData.posting_type === 'seek_support'}
@@ -482,7 +482,7 @@ const CreatePostingPage: React.FC = () => {
             value={formData.category_id}
             onValueChange={(value) => updateFormData('category_id', value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="min-h-[44px]">
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent>
@@ -504,6 +504,7 @@ const CreatePostingPage: React.FC = () => {
             value={formData.title}
             onChange={(e) => updateFormData('title', e.target.value)}
             maxLength={200}
+            className="min-h-[44px]"
           />
           <p className="text-sm text-muted-foreground">
             {formData.title.length}/200 characters (minimum 10)
@@ -662,6 +663,7 @@ const CreatePostingPage: React.FC = () => {
             onChange={(e) => updateFormData('content', e.target.value)}
             rows={8}
             maxLength={2000}
+            className="resize-none"
           />
           <p className="text-sm text-muted-foreground">
             {formData.content.length}/2000 characters (minimum 50)
@@ -678,10 +680,10 @@ const CreatePostingPage: React.FC = () => {
             {formData.tag_ids.map(tagId => {
               const tag = getTagById(tagId);
               return tag ? (
-                <Badge key={tagId} variant="outline">
-                  {tag.name}
+                <Badge key={tagId} variant="outline" className="flex items-center gap-1">
+                  #{tag.name}
                   <X
-                    className="h-3 w-3 ml-1 cursor-pointer"
+                    className="h-3 w-3 ml-1 cursor-pointer hover:text-destructive"
                     onClick={() => removeTag(tagId)}
                   />
                 </Badge>
@@ -689,7 +691,7 @@ const CreatePostingPage: React.FC = () => {
             })}
           </div>
           <Select onValueChange={addTag}>
-            <SelectTrigger>
+            <SelectTrigger className="min-h-[44px]">
               <SelectValue placeholder="Add tag" />
             </SelectTrigger>
             <SelectContent>
@@ -737,7 +739,7 @@ const CreatePostingPage: React.FC = () => {
           <Label>Urgency Level</Label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <SelectionCard
-              icon={<Clock className="h-8 w-8" />}
+              icon={<Clock className="h-6 w-6" />}
               title="Low"
               description="No rush"
               selected={formData.urgency_level === 'low'}
@@ -745,7 +747,7 @@ const CreatePostingPage: React.FC = () => {
               variant="urgency-low"
             />
             <SelectionCard
-              icon={<Clock className="h-8 w-8" />}
+              icon={<Clock className="h-6 w-6" />}
               title="Medium"
               description="Standard"
               selected={formData.urgency_level === 'medium'}
@@ -753,7 +755,7 @@ const CreatePostingPage: React.FC = () => {
               variant="urgency-medium"
             />
             <SelectionCard
-              icon={<Clock className="h-8 w-8" />}
+              icon={<Clock className="h-6 w-6" />}
               title="High"
               description="Soon"
               selected={formData.urgency_level === 'high'}
@@ -761,7 +763,7 @@ const CreatePostingPage: React.FC = () => {
               variant="urgency-high"
             />
             <SelectionCard
-              icon={<Clock className="h-8 w-8" />}
+              icon={<Clock className="h-6 w-6" />}
               title="Critical"
               description="Urgent"
               selected={formData.urgency_level === 'critical'}
@@ -888,6 +890,7 @@ const CreatePostingPage: React.FC = () => {
               value={formData.contact_name}
               onChange={(e) => updateFormData('contact_name', e.target.value)}
               placeholder="Your full name"
+              className="min-h-[44px]"
             />
           </div>
 
@@ -900,6 +903,7 @@ const CreatePostingPage: React.FC = () => {
               value={formData.contact_email}
               onChange={(e) => updateFormData('contact_email', e.target.value)}
               placeholder="your.email@example.com"
+              className="min-h-[44px]"
             />
           </div>
 
@@ -912,6 +916,7 @@ const CreatePostingPage: React.FC = () => {
               placeholder="+1 (555) 123-4567"
               value={formData.contact_phone}
               onChange={(e) => updateFormData('contact_phone', e.target.value)}
+              className="min-h-[44px]"
             />
           </div>
 
@@ -923,21 +928,21 @@ const CreatePostingPage: React.FC = () => {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <SelectionCard
-                icon={<Mail className="h-8 w-8" />}
+                icon={<Mail className="h-6 w-6" />}
                 title="Email"
                 description="Contact via email"
                 selected={formData.preferred_contact_method === 'email'}
                 onClick={() => updateFormData('preferred_contact_method', 'email')}
               />
               <SelectionCard
-                icon={<Phone className="h-8 w-8" />}
+                icon={<Phone className="h-6 w-6" />}
                 title="Phone"
                 description="Contact via phone"
                 selected={formData.preferred_contact_method === 'phone'}
                 onClick={() => updateFormData('preferred_contact_method', 'phone')}
               />
               <SelectionCard
-                icon={<MessageCircle className="h-8 w-8" />}
+                icon={<MessageCircle className="h-6 w-6" />}
                 title="Chat"
                 description="Contact via chat"
                 selected={formData.preferred_contact_method === 'chat'}

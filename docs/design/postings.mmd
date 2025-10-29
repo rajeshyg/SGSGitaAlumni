@@ -1,0 +1,123 @@
+graph TB
+    subgraph "🖥️ UI LAYER - Pages & Routes"
+        PostingsPage["/postings<br/>PostingsPage.tsx<br/>📄 Lists all postings"]
+        MemberDashboard["/dashboard<br/>MemberDashboard.tsx<br/>🏠 Unified dashboard<br/>✅ NO TABS"]
+    end
+
+    subgraph "🎨 UI LAYER - Dashboard Components"
+        MemberDashboard --> PersonalizedPosts["PersonalizedPosts.tsx<br/>✅ Uses PostingCard<br/>✅ Direct API calls"]
+        MemberDashboard --> ActivityTimeline["ActivityTimeline.tsx<br/>✅ Activity items only<br/>NOT postings"]
+        MemberDashboard --> StatsOverview["StatsOverview.tsx<br/>📊 Stats widget"]
+        MemberDashboard --> QuickActions["QuickActions.tsx<br/>⚡ Action buttons"]
+        MemberDashboard --> RecentConversations["RecentConversations.tsx<br/>💬 Chat previews"]
+        MemberDashboard --> OpportunitiesSpotlight["OpportunitiesSpotlight.tsx<br/>🎯 Opportunities"]
+        MemberDashboard --> DomainFocusCard["DomainFocusCard.tsx<br/>🎓 Domain focus"]
+        MemberDashboard --> RecommendedConnections["RecommendedConnections.tsx<br/>👥 Connections"]
+    end
+
+    subgraph "🧩 UI LAYER - Shared Components"
+        PostingCard["PostingCard.tsx<br/>✅ CANONICAL<br/>Single source of truth<br/>Renders: badges, domains,<br/>tags, location, author, actions<br/>💳 Shows posting ID"]
+        NotificationItem["NotificationItem.tsx<br/>🔔 Notification display"]
+        ActionCard["ActionCard.tsx<br/>⚡ Action items"]
+    end
+
+    subgraph "🌐 API LAYER - Services"
+        APIService["APIService.ts<br/>🔌 API Client<br/>Handles all HTTP requests"]
+    end
+
+    subgraph "🌐 API LAYER - Endpoints"
+        PostingsEndpoint["GET /api/postings/:id<br/>📡 Returns full posting<br/>with all joins"]
+        PostingsListEndpoint["GET /api/postings<br/>📡 Returns posting list<br/>✅ SINGLE SOURCE"]
+        LikeEndpoint["POST /api/postings/:id/like<br/>❤️ Like action"]
+        CommentEndpoint["POST /api/postings/:id/comment<br/>💬 Comment action"]
+        ShareEndpoint["POST /api/postings/:id/share<br/>📤 Share action"]
+    end
+
+    subgraph "💾 DATABASE LAYER"
+        PostingsTable[("POSTINGS<br/>────────<br/>id PK<br/>title<br/>content<br/>author_id FK<br/>created_at<br/>published_at<br/>status<br/>posting_type<br/>location<br/>location_type<br/>urgency_level")]
+        
+        UsersTable[("USERS<br/>────────<br/>id PK<br/>first_name<br/>last_name<br/>email")]
+        
+        TagsTable[("TAGS<br/>────────<br/>id PK<br/>name")]
+        
+        DomainsTable[("DOMAINS<br/>────────<br/>id PK<br/>name")]
+        
+        LikesTable[("LIKES<br/>────────<br/>id PK<br/>posting_id FK<br/>user_id FK")]
+        
+        PostingTagsJoin[("posting_tags<br/>────────<br/>posting_id FK<br/>tag_id FK")]
+        
+        PostingDomainsJoin[("posting_domains<br/>────────<br/>posting_id FK<br/>domain_id FK")]
+    end
+
+    subgraph "✅ ARCHITECTURAL IMPROVEMENTS"
+        Resolved1["✅ Simplified data flow<br/>Direct API calls to /api/postings<br/>No feed system complexity"]
+        Resolved2["✅ Unified dashboard<br/>Removed tabs (Overview/Feed)<br/>Single cohesive view"]
+        Resolved3["✅ Consistent posting display<br/>PostingCard used everywhere<br/>Same data source"]
+        Resolved4["✅ Posting ID visibility<br/>Visible in all posting displays<br/>for debugging"]
+    end
+
+    %% PostingsPage flow (CANONICAL PATH)
+    PostingsPage -->|"fetches full postings"| APIService
+    APIService -->|"GET /api/postings"| PostingsListEndpoint
+    PostingsListEndpoint -->|"queries with joins"| PostingsTable
+    PostingsListEndpoint --> UsersTable
+    PostingsListEndpoint --> TagsTable
+    PostingsListEndpoint --> DomainsTable
+    PostingsListEndpoint --> LikesTable
+    PostingsTable -->|"full posting objects"| PostingsPage
+    PostingsPage -->|"✅ canonical props"| PostingCard
+
+    %% Dashboard PersonalizedPosts flow (SAME AS POSTINGS PAGE)
+    PersonalizedPosts -->|"GET /api/postings"| APIService
+    APIService -->|"full postings"| PersonalizedPosts
+    PersonalizedPosts -->|"✅ canonical props"| PostingCard
+
+    %% ActivityTimeline (ACTIVITY ONLY - NO POSTINGS)
+    ActivityTimeline -.->|"✅ renders activity only<br/>connections, events, achievements<br/>NO postings"| ActivityTimelineUI[Activity UI elements]
+
+    %% API Service to endpoints
+    APIService -->|"posting detail"| PostingsEndpoint
+    APIService -->|"like action"| LikeEndpoint
+    APIService -->|"comment action"| CommentEndpoint
+    APIService -->|"share action"| ShareEndpoint
+
+    %% Posting endpoint to DB (full joins)
+    PostingsEndpoint -->|"full query"| PostingsTable
+    PostingsEndpoint --> UsersTable
+    PostingsEndpoint --> PostingTagsJoin
+    PostingsEndpoint --> PostingDomainsJoin
+    PostingsEndpoint --> LikesTable
+
+    %% DB relationships
+    PostingsTable ---|"author_id"| UsersTable
+    PostingsTable ---|"many-to-many"| PostingTagsJoin
+    PostingTagsJoin ---|"tag_id"| TagsTable
+    PostingsTable ---|"many-to-many"| PostingDomainsJoin
+    PostingDomainsJoin ---|"domain_id"| DomainsTable
+    PostingsTable ---|"one-to-many"| LikesTable
+    LikesTable ---|"user_id"| UsersTable
+
+    %% Action handlers
+    PostingCard -->|"onLike(posting.id)"| LikeEndpoint
+    PostingCard -->|"onComment(posting.id)"| CommentEndpoint
+    PostingCard -->|"onShare(posting.id)"| ShareEndpoint
+    LikeEndpoint --> LikesTable
+
+    %% Simplified architecture highlights
+    PersonalizedPosts -.-> Resolved1
+    MemberDashboard -.-> Resolved2
+    PostingCard -.-> Resolved3
+    PostingCard -.-> Resolved4
+
+    %% Styling
+    classDef canonical fill:#22c55e,stroke:#16a34a,stroke-width:4px,color:#fff
+    classDef resolved fill:#10b981,stroke:#059669,stroke-width:3px,color:#fff
+    classDef database fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
+    classDef api fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
+    classDef correct fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+
+    class PostingCard canonical
+    class Resolved1,Resolved2,Resolved3,Resolved4 resolved
+    class PostingsTable,UsersTable,TagsTable,DomainsTable,LikesTable,PostingTagsJoin,PostingDomainsJoin database
+    class PostingsEndpoint,PostingsListEndpoint,LikeEndpoint,CommentEndpoint,ShareEndpoint,APIService api
+    class PersonalizedPosts,ActivityTimeline,MemberDashboard correct

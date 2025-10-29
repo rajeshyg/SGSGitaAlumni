@@ -1,15 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { 
-  MapPin, 
-  Calendar, 
-  Eye, 
+import { CommentInput } from '../ui/comment-input';
+import {
+  MapPin,
+  Calendar,
+  Eye,
   Heart,
   MessageCircle,
   Share2,
-  AlertCircle 
+  AlertCircle
 } from 'lucide-react';
 
 export interface Domain {
@@ -50,21 +51,40 @@ interface PostingCardProps {
   posting: PostingCardData;
   onClick?: () => void;
   onLike?: (postingId: string) => void;
-  onComment?: (postingId: string) => void;
+  onComment?: (postingId: string, commentText: string) => void;
   onShare?: (postingId: string) => void;
   showActions?: boolean;
   className?: string;
 }
 
-export const PostingCard: React.FC<PostingCardProps> = ({ 
-  posting, 
-  onClick, 
+export const PostingCard: React.FC<PostingCardProps> = ({
+  posting,
+  onClick,
   onLike,
   onComment,
   onShare,
   showActions = false,
-  className = '' 
+  className = ''
 }) => {
+  const [showCommentInput, setShowCommentInput] = useState(false);
+  const [commentText, setCommentText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmitComment = async () => {
+    if (!commentText.trim() || !onComment) return;
+
+    setIsSubmitting(true);
+    try {
+      await onComment(posting.id, commentText);
+      setCommentText('');
+      setShowCommentInput(false);
+    } catch (error) {
+      console.error('Failed to submit comment:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const getUrgencyColor = (level?: string) => {
     switch (level) {
       case 'critical': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
@@ -173,15 +193,20 @@ export const PostingCard: React.FC<PostingCardProps> = ({
           )}
         </div>
 
-        {/* Author */}
+        {/* Author and ID */}
         <div className="text-sm text-muted-foreground border-t pt-3">
-          <span>
-            Posted by {
-              posting.author_first_name && posting.author_last_name
-                ? `${posting.author_first_name} ${posting.author_last_name}`
-                : posting.contact_name || 'Anonymous'
-            }
-          </span>
+          <div className="flex items-center justify-between">
+            <span>
+              Posted by {
+                posting.author_first_name && posting.author_last_name
+                  ? `${posting.author_first_name} ${posting.author_last_name}`
+                  : posting.contact_name || 'Anonymous'
+              }
+            </span>
+            <span className="text-xs text-muted-foreground/70 font-mono">
+              ID: {posting.id}
+            </span>
+          </div>
         </div>
 
         {/* Action Buttons */}
@@ -207,7 +232,7 @@ export const PostingCard: React.FC<PostingCardProps> = ({
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onComment(posting.id);
+                  setShowCommentInput(!showCommentInput);
                 }}
                 className="flex-1 min-h-[44px]"
               >
@@ -230,6 +255,21 @@ export const PostingCard: React.FC<PostingCardProps> = ({
               </Button>
             )}
           </div>
+        )}
+
+        {/* Modern Inline Comment Input */}
+        {showActions && showCommentInput && onComment && (
+          <CommentInput
+            value={commentText}
+            onChange={setCommentText}
+            onSubmit={handleSubmitComment}
+            onCancel={() => {
+              setShowCommentInput(false);
+              setCommentText('');
+            }}
+            isSubmitting={isSubmitting}
+            placeholder="Write a comment..."
+          />
         )}
       </CardContent>
     </Card>

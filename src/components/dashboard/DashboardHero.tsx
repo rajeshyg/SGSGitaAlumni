@@ -1,7 +1,6 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Progress } from '../ui/progress';
-import Badge from '../ui/badge';
+import { Card, CardContent } from '../ui/card';
+import ProfileCompletion from '../shared/ProfileCompletion';
 import { DashboardHeroProps } from '../../types/dashboard';
 
 const formatDate = (value: string | null | undefined) => {
@@ -23,7 +22,6 @@ const formatDate = (value: string | null | undefined) => {
 
 export const DashboardHero: React.FC<DashboardHeroProps> = ({ summary }) => {
   const memberSince = formatDate(summary.memberSince);
-  const lastLogin = formatDate(summary.lastLoginAt);
 
   return (
     <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-border/40">
@@ -41,20 +39,7 @@ export const DashboardHero: React.FC<DashboardHeroProps> = ({ summary }) => {
         {/* Compact Metrics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Profile Completion */}
-          <Card className="bg-card/50 border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Profile</p>
-                  <p className="text-xl font-bold text-foreground">{summary.profileCompletion}%</p>
-                </div>
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-lg">✓</span>
-                </div>
-              </div>
-              <Progress value={summary.profileCompletion} aria-label="Profile completion" className="h-1.5 mt-2" />
-            </CardContent>
-          </Card>
+          <ProfileCompletion value={summary.profileCompletion} variant="tile" onAction={() => { window.location.href = '/preferences'; }} />
 
           {/* Current Role */}
           <Card className="bg-card/50 border-primary/20">

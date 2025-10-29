@@ -6,6 +6,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { MetricTile } from './shared';
+import ProfileCompletion from '../shared/ProfileCompletion';
 import { StatsOverviewProps } from '../../types/dashboard';
 
 const formatValue = (value: number) => {
@@ -61,15 +62,26 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ stats }) => {
       </CardHeader>
       <CardContent className="pt-0">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 sm:gap-4">
-          {statItems.map((item) => (
-            <MetricTile
-              key={item.label}
-              label={item.label}
-              value={item.value}
-              helperText={item.helper}
-              accent={item.accent}
-            />
-          ))}
+          {statItems.map((item) => {
+            if (item.label === 'Profile Completion') {
+              // render a unified ProfileCompletion tile instead of a generic metric
+              return (
+                <div key={item.label}>
+                  <ProfileCompletion value={Number(String(item.value).replace('%', ''))} variant="tile" />
+                </div>
+              );
+            }
+
+            return (
+              <MetricTile
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                helperText={item.helper}
+                accent={item.accent}
+              />
+            );
+          })}
         </div>
       </CardContent>
     </Card>

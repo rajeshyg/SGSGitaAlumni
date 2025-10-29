@@ -1,17 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
+import { Skeleton } from '../ui/skeleton';
 import APIService from '../../services/api';
-
-interface FeedPreviewItem {
-  id: string;
-  title: string;
-  item_type: 'posting' | 'event' | 'connection' | 'achievement';
-  like_count: number;
-  comment_count: number;
-  share_count: number;
-  created_at: string;
-}
+import { PostingCard, PostingCardData } from '../postings/PostingCard';
 
 interface PersonalizedPostsProps {
   userId: string | number;
@@ -19,7 +10,7 @@ interface PersonalizedPostsProps {
 }
 
 export const PersonalizedPosts: React.FC<PersonalizedPostsProps> = ({ userId, limit = 3 }) => {
-  const [items, setItems] = useState<FeedPreviewItem[]>([]);
+  const [postings, setPostings] = useState<PostingCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,11 +20,14 @@ export const PersonalizedPosts: React.FC<PersonalizedPostsProps> = ({ userId, li
       try {
         setLoading(true);
         setError(null);
-        const data = await APIService.get(`/api/feed?page=1&limit=${limit}&type=postings&userId=${userId}`) as any;
-        if (isMounted && data?.items) {
-          setItems(data.items.slice(0, limit));
+
+        // Fetch postings from the postings API endpoint
+        const data = await APIService.get(`/api/postings?status=active&limit=${limit}`) as any;
+
+        if (isMounted && data?.postings) {
+          setPostings(data.postings.slice(0, limit));
         } else if (isMounted) {
-          setItems([]);
+          setPostings([]);
         }
       } catch (err: any) {
         if (isMounted) setError(err.message || 'Failed to load posts');
@@ -44,43 +38,44 @@ export const PersonalizedPosts: React.FC<PersonalizedPostsProps> = ({ userId, li
     return () => { isMounted = false };
   }, [userId, limit]);
 
+  const handlePostingClick = (posting: PostingCardData) => {
+    window.location.href = `/postings/${posting.id}`;
+  };
+
   return (
     <Card className="border-border/60 shadow-sm">
-      <CardHeader className="pb-4 sm:pb-5">
-        <CardTitle className="text-xl font-semibold tracking-tight text-foreground">Personalized Posts</CardTitle>
+      <CardHeader className="pb-4 sm:pb-5 flex flex-row items-center justify-between">
+        <CardTitle className="text-xl font-semibold tracking-tight text-foreground">
+          Recent Postings
+        </CardTitle>
+        <a
+          href="/postings"
+          className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+        >
+          View All →
+        </a>
       </CardHeader>
       <CardContent className="pt-0">
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <div className="space-y-3">
+            {[1, 2, 3].map(i => (
+              <Skeleton key={i} className="h-32 w-full rounded-lg" />
+            ))}
+          </div>
         ) : error ? (
           <p className="text-sm text-destructive">{error}</p>
-        ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No personalized posts yet.</p>
+        ) : postings.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No postings available yet.</p>
         ) : (
-          <div className="space-y-3">
-            {items.map(item => (
-              <button type="button"
-                key={item.id}
-                onClick={() => { window.location.href = `/feed/items/${item.id}`; }}
-                className="w-full text-left rounded-lg border border-border/60 bg-card/80 p-4 transition-colors hover:border-primary/40 hover:bg-primary/5"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-base font-semibold text-foreground truncate">{item.title}</h4>
-                      <Badge variant="outline" className="text-xs capitalize">{item.item_type}</Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-xs text-muted-foreground space-x-3">
-                    <span>❤ {item.like_count}</span>
-                    <span>💬 {item.comment_count}</span>
-                    <span>↗ {item.share_count}</span>
-                  </div>
-                </div>
-              </button>
+          <div className="space-y-4">
+            {postings.map(posting => (
+              <PostingCard
+                key={posting.id}
+                posting={posting}
+                onClick={() => handlePostingClick(posting)}
+                showActions={false}
+                className="hover:shadow-md transition-shadow"
+              />
             ))}
           </div>
         )}
