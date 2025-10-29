@@ -256,7 +256,10 @@ export class ProgressiveFormEngine {
    * Create new form session
    */
   createFormSession(invitationToken: string, initialData: any = {}): string {
-    const sessionId = `form_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Generate unique session ID using timestamp and counter
+    const timestamp = Date.now();
+    const counter = this.sessions.size + 1;
+    const sessionId = `form_${timestamp}_${counter}`;
     const session: FormSession = {
       sessionId,
       invitationToken,
