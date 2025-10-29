@@ -1,24 +1,27 @@
 graph TB
     subgraph "🖥️ UI LAYER - Pages & Routes"
-        PostingsPage["/postings<br/>PostingsPage.tsx<br/>📄 Lists all postings"]
-        MemberDashboard["/dashboard<br/>MemberDashboard.tsx<br/>🏠 Unified dashboard<br/>✅ NO TABS"]
+        PostingsPage["/postings<br/>PostingsPage.tsx<br/>📄 Lists all postings<br/>✅ Fixed filters: type, category, domain<br/>✅ Matched postings view"]
+        MemberDashboard["/dashboard<br/>MemberDashboard.tsx<br/>🏠 Unified dashboard<br/>✅ NO TABS<br/>✅ Simplified architecture"]
     end
 
     subgraph "🎨 UI LAYER - Dashboard Components"
-        MemberDashboard --> PersonalizedPosts["PersonalizedPosts.tsx<br/>✅ Uses PostingCard<br/>✅ Direct API calls"]
-        MemberDashboard --> ActivityTimeline["ActivityTimeline.tsx<br/>✅ Activity items only<br/>NOT postings"]
+        MemberDashboard --> PersonalizedPosts["PersonalizedPosts.tsx<br/>✅ Uses PostingCard<br/>✅ Direct API calls<br/>✅ No feed adapter"]
+        MemberDashboard --> ActivityTimeline["ActivityTimeline.tsx<br/>✅ Activity items only<br/>✅ Filtered query<br/>NOT postings"]
         MemberDashboard --> StatsOverview["StatsOverview.tsx<br/>📊 Stats widget"]
         MemberDashboard --> QuickActions["QuickActions.tsx<br/>⚡ Action buttons"]
         MemberDashboard --> RecentConversations["RecentConversations.tsx<br/>💬 Chat previews"]
         MemberDashboard --> OpportunitiesSpotlight["OpportunitiesSpotlight.tsx<br/>🎯 Opportunities"]
         MemberDashboard --> DomainFocusCard["DomainFocusCard.tsx<br/>🎓 Domain focus"]
-        MemberDashboard --> RecommendedConnections["RecommendedConnections.tsx<br/>👥 Connections"]
+        MemberDashboard --> RecommendedConnections["RecommendedConnections.tsx<br/>👥 Connections<br/>✅ Uses ConnectionCard"]
+        MemberDashboard --> PendingActions["PendingActions.tsx<br/>📋 Action items<br/>✅ Uses ActionCard"]
     end
 
-    subgraph "🧩 UI LAYER - Shared Components"
-        PostingCard["PostingCard.tsx<br/>✅ CANONICAL<br/>Single source of truth<br/>Renders: badges, domains,<br/>tags, location, author, actions<br/>💳 Shows posting ID"]
-        NotificationItem["NotificationItem.tsx<br/>🔔 Notification display"]
-        ActionCard["ActionCard.tsx<br/>⚡ Action items"]
+    subgraph "🧩 UI LAYER - Shared Components (NEW)"
+        PostingCard["PostingCard.tsx<br/>✅ CANONICAL<br/>Single source of truth<br/>Renders: badges, domains,<br/>tags, location, author, actions<br/>💳 Shows posting ID<br/>✅ Modern CommentInput"]
+        CommentInput["CommentInput.tsx<br/>💬 Modern inline comment<br/>✅ Replaces browser prompt()<br/>Keyboard shortcuts"]
+        UserProfileCard["UserProfileCard.tsx<br/>👤 Reusable profile display<br/>3 variants: compact/default/detailed"]
+        ConnectionCard["ConnectionCard.tsx<br/>� Reusable connection card<br/>✅ Avatar, badges, actions"]
+        ActionCard["ActionCard.tsx<br/>⚡ Reusable action card<br/>✅ Priority, progress, metadata"]
     end
 
     subgraph "🌐 API LAYER - Services"
@@ -27,52 +30,76 @@ graph TB
 
     subgraph "🌐 API LAYER - Endpoints"
         PostingsEndpoint["GET /api/postings/:id<br/>📡 Returns full posting<br/>with all joins"]
-        PostingsListEndpoint["GET /api/postings<br/>📡 Returns posting list<br/>✅ SINGLE SOURCE"]
+        PostingsListEndpoint["GET /api/postings<br/>📡 Returns posting list<br/>✅ SINGLE SOURCE<br/>✅ With full details<br/>No feed endpoint"]
+        MatchedPostingsEndpoint["GET /api/postings/matched/:userId<br/>🎯 Returns matched postings<br/>✅ Domain-based matching<br/>✅ Uses user preferences"]
+        CategoriesEndpoint["GET /api/postings/categories<br/>📑 Returns category list<br/>✅ For filters"]
         LikeEndpoint["POST /api/postings/:id/like<br/>❤️ Like action"]
         CommentEndpoint["POST /api/postings/:id/comment<br/>💬 Comment action"]
         ShareEndpoint["POST /api/postings/:id/share<br/>📤 Share action"]
     end
 
     subgraph "💾 DATABASE LAYER"
-        PostingsTable[("POSTINGS<br/>────────<br/>id PK<br/>title<br/>content<br/>author_id FK<br/>created_at<br/>published_at<br/>status<br/>posting_type<br/>location<br/>location_type<br/>urgency_level")]
+        PostingsTable[("POSTINGS<br/>────────<br/>id PK<br/>title<br/>content<br/>author_id FK<br/>created_at<br/>published_at<br/>status<br/>posting_type<br/>✅ offer_support / seek_support<br/>category_name<br/>location<br/>location_type<br/>urgency_level")]
         
-        UsersTable[("USERS<br/>────────<br/>id PK<br/>first_name<br/>last_name<br/>email")]
+        UsersTable[("APP_USERS<br/>────────<br/>id PK<br/>first_name<br/>last_name<br/>✅ Fixed NULL names<br/>email")]
         
         TagsTable[("TAGS<br/>────────<br/>id PK<br/>name")]
         
-        DomainsTable[("DOMAINS<br/>────────<br/>id PK<br/>name")]
+        DomainsTable[("DOMAINS<br/>────────<br/>id PK<br/>name<br/>level<br/>✅ Fixed assignments")]
         
         LikesTable[("LIKES<br/>────────<br/>id PK<br/>posting_id FK<br/>user_id FK")]
         
         PostingTagsJoin[("posting_tags<br/>────────<br/>posting_id FK<br/>tag_id FK")]
         
-        PostingDomainsJoin[("posting_domains<br/>────────<br/>posting_id FK<br/>domain_id FK")]
+        PostingDomainsJoin[("posting_domains<br/>────────<br/>posting_id FK<br/>domain_id FK<br/>✅ Corrected data")]
+        
+        ActivityFeed[("ACTIVITY_FEED<br/>────────<br/>id PK<br/>user_id FK<br/>item_type<br/>✅ Filtered: connection,<br/>event, achievement")]
     end
 
     subgraph "✅ ARCHITECTURAL IMPROVEMENTS"
-        Resolved1["✅ Simplified data flow<br/>Direct API calls to /api/postings<br/>No feed system complexity"]
-        Resolved2["✅ Unified dashboard<br/>Removed tabs (Overview/Feed)<br/>Single cohesive view"]
-        Resolved3["✅ Consistent posting display<br/>PostingCard used everywhere<br/>Same data source"]
-        Resolved4["✅ Posting ID visibility<br/>Visible in all posting displays<br/>for debugging"]
+        Resolved1["✅ Removed feed system<br/>routes/feed.js DELETED<br/>DashboardFeed.tsx DELETED<br/>FeedCard.tsx DELETED<br/>feedToPostingAdapter.ts DELETED<br/>500+ lines removed"]
+        Resolved2["✅ Unified dashboard<br/>Removed tabs (Overview/Feed)<br/>Single cohesive view<br/>Direct API integration"]
+        Resolved3["✅ Consistent posting display<br/>PostingCard used everywhere<br/>Same data source<br/>Modern CommentInput"]
+        Resolved4["✅ Fixed data quality<br/>Author names populated<br/>Domain assignments corrected<br/>ActivityTimeline filtered"]
+        Resolved5["✅ Fixed filters<br/>Type: offer_support/seek_support<br/>Category: dynamic loading<br/>Domain: working correctly"]
+        Resolved6["✅ New reusable components<br/>UserProfileCard (3 variants)<br/>ConnectionCard<br/>ActionCard<br/>CommentInput"]
+    end
+
+    subgraph "🔧 FIXES APPLIED"
+        Fix1["🐛 Matched Postings<br/>Fixed domain assignments<br/>3 relevant vs 1 irrelevant<br/>Backend algorithm correct"]
+        Fix2["🐛 Author Names<br/>Fixed NULL first_name/last_name<br/>150+ users updated<br/>No more 'null null'"]
+        Fix3["🐛 Filter Values<br/>Updated to match DB schema<br/>offer_support / seek_support<br/>Dynamic category loading"]
+        Fix4["🐛 UI Professional Polish<br/>Replaced browser prompt()<br/>Fixed overlapping content<br/>Responsive layouts"]
     end
 
     %% PostingsPage flow (CANONICAL PATH)
     PostingsPage -->|"fetches full postings"| APIService
     APIService -->|"GET /api/postings"| PostingsListEndpoint
+    APIService -->|"GET /api/postings/matched/:userId"| MatchedPostingsEndpoint
+    APIService -->|"GET /api/postings/categories"| CategoriesEndpoint
     PostingsListEndpoint -->|"queries with joins"| PostingsTable
     PostingsListEndpoint --> UsersTable
     PostingsListEndpoint --> TagsTable
     PostingsListEndpoint --> DomainsTable
     PostingsListEndpoint --> LikesTable
+    MatchedPostingsEndpoint -->|"domain-based matching"| PostingsTable
+    MatchedPostingsEndpoint --> DomainsTable
+    MatchedPostingsEndpoint --> PostingDomainsJoin
     PostingsTable -->|"full posting objects"| PostingsPage
     PostingsPage -->|"✅ canonical props"| PostingCard
+    PostingCard -->|"modern comment UI"| CommentInput
 
     %% Dashboard PersonalizedPosts flow (SAME AS POSTINGS PAGE)
     PersonalizedPosts -->|"GET /api/postings"| APIService
     APIService -->|"full postings"| PersonalizedPosts
     PersonalizedPosts -->|"✅ canonical props"| PostingCard
 
+    %% Dashboard components using shared cards
+    RecommendedConnections -->|"renders"| ConnectionCard
+    PendingActions -->|"renders"| ActionCard
+
     %% ActivityTimeline (ACTIVITY ONLY - NO POSTINGS)
+    ActivityTimeline -->|"filtered query"| ActivityFeed
     ActivityTimeline -.->|"✅ renders activity only<br/>connections, events, achievements<br/>NO postings"| ActivityTimelineUI[Activity UI elements]
 
     %% API Service to endpoints
@@ -96,6 +123,8 @@ graph TB
     PostingDomainsJoin ---|"domain_id"| DomainsTable
     PostingsTable ---|"one-to-many"| LikesTable
     LikesTable ---|"user_id"| UsersTable
+    ActivityTimeline ---|"queries"| ActivityFeed
+    ActivityFeed ---|"user_id"| UsersTable
 
     %% Action handlers
     PostingCard -->|"onLike(posting.id)"| LikeEndpoint
@@ -103,11 +132,22 @@ graph TB
     PostingCard -->|"onShare(posting.id)"| ShareEndpoint
     LikeEndpoint --> LikesTable
 
-    %% Simplified architecture highlights
+    %% Architecture highlights
     PersonalizedPosts -.-> Resolved1
     MemberDashboard -.-> Resolved2
     PostingCard -.-> Resolved3
-    PostingCard -.-> Resolved4
+    UsersTable -.-> Resolved4
+    PostingsPage -.-> Resolved5
+    ConnectionCard -.-> Resolved6
+    ActionCard -.-> Resolved6
+    UserProfileCard -.-> Resolved6
+    CommentInput -.-> Resolved6
+
+    %% Fixes applied
+    MatchedPostingsEndpoint -.-> Fix1
+    UsersTable -.-> Fix2
+    PostingsListEndpoint -.-> Fix3
+    CommentInput -.-> Fix4
 
     %% Styling
     classDef canonical fill:#22c55e,stroke:#16a34a,stroke-width:4px,color:#fff
@@ -115,9 +155,13 @@ graph TB
     classDef database fill:#8b5cf6,stroke:#7c3aed,stroke-width:2px,color:#fff
     classDef api fill:#f59e0b,stroke:#d97706,stroke-width:2px,color:#fff
     classDef correct fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff
+    classDef newComponent fill:#3b82f6,stroke:#2563eb,stroke-width:3px,color:#fff
+    classDef fixes fill:#ef4444,stroke:#dc2626,stroke-width:2px,color:#fff
 
-    class PostingCard canonical
-    class Resolved1,Resolved2,Resolved3,Resolved4 resolved
-    class PostingsTable,UsersTable,TagsTable,DomainsTable,LikesTable,PostingTagsJoin,PostingDomainsJoin database
-    class PostingsEndpoint,PostingsListEndpoint,LikeEndpoint,CommentEndpoint,ShareEndpoint,APIService api
-    class PersonalizedPosts,ActivityTimeline,MemberDashboard correct
+    class PostingCard,PostingsListEndpoint canonical
+    class Resolved1,Resolved2,Resolved3,Resolved4,Resolved5,Resolved6 resolved
+    class PostingsTable,UsersTable,TagsTable,DomainsTable,LikesTable,PostingTagsJoin,PostingDomainsJoin,ActivityFeed database
+    class PostingsEndpoint,MatchedPostingsEndpoint,CategoriesEndpoint,LikeEndpoint,CommentEndpoint,ShareEndpoint,APIService api
+    class PersonalizedPosts,ActivityTimeline,MemberDashboard,PostingsPage correct
+    class CommentInput,UserProfileCard,ConnectionCard,ActionCard newComponent
+    class Fix1,Fix2,Fix3,Fix4 fixes
