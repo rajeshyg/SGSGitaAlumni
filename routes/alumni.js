@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import { hmacTokenService } from '../src/lib/security/HMACTokenService.js';
 
 // Get database pool - will be passed from main server
 let pool = null;
@@ -369,8 +370,11 @@ export const updateAlumniMember = async (req, res) => {
 
 // Send invitation to alumni member
 export const sendInvitationToAlumni = async (req, res) => {
+  const connection = await pool.getConnection();
+  
   try {
-    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    
     const { id } = req.params;
     const { invitationType = 'alumni', expiresInDays = 7 } = req.body;
     const invitedBy = req.user?.id || 'system'; // Use authenticated user or system
@@ -384,6 +388,7 @@ export const sendInvitationToAlumni = async (req, res) => {
     );
 
     if (memberRows.length === 0) {
+      await connection.rollback();
       connection.release();
       return res.status(404).json({ error: 'Alumni member not found' });
     }
@@ -392,17 +397,19 @@ export const sendInvitationToAlumni = async (req, res) => {
 
     // Check if email exists
     if (!member.email) {
+      await connection.rollback();
       connection.release();
       return res.status(400).json({ error: 'Alumni member has no email address' });
     }
 
-    // Check for existing pending invitation
+    // Check for existing pending invitation with SELECT FOR UPDATE to prevent race conditions
     const [existingRows] = await connection.execute(
-      'SELECT id FROM USER_INVITATIONS WHERE email = ? AND status = "pending"',
+      'SELECT id FROM USER_INVITATIONS WHERE email = ? AND status = "pending" FOR UPDATE',
       [member.email]
     );
 
     if (existingRows.length > 0) {
+      await connection.rollback();
       connection.release();
       return res.status(409).json({ error: 'Alumni member already has a pending invitation' });
     }
@@ -415,11 +422,6 @@ export const sendInvitationToAlumni = async (req, res) => {
       invitationType,
       expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
     });
-
-    // Extract token components for database storage
-    const tokenParts = hmacToken.split('.');
-    const tokenPayload = tokenParts[0] || '';
-    const tokenSignature = tokenParts[1] || '';
 
     // Create invitation
     const invitation = {
@@ -440,19 +442,15 @@ export const sendInvitationToAlumni = async (req, res) => {
       isUsed: false,
       resendCount: 0,
       createdAt: new Date(),
-      updatedAt: new Date(),
-      // HMAC token fields
-      tokenPayload: tokenPayload,
-      tokenSignature: tokenSignature,
-      tokenFormat: 'hmac'
+      updatedAt: new Date()
     };
 
     const insertQuery = `
       INSERT INTO USER_INVITATIONS (
         id, email, invitation_token, invited_by, invitation_type,
         invitation_data, status, sent_at, expires_at, is_used,
-        resend_count, created_at, updated_at, token_payload, token_signature, token_format
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        resend_count, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await connection.execute(insertQuery, [
@@ -468,12 +466,10 @@ export const sendInvitationToAlumni = async (req, res) => {
       invitation.isUsed,
       invitation.resendCount,
       invitation.createdAt,
-      invitation.updatedAt,
-      invitation.tokenPayload,
-      invitation.tokenSignature,
-      invitation.tokenFormat
+      invitation.updatedAt
     ]);
 
+    await connection.commit();
     connection.release();
 
     res.status(201).json({
@@ -482,6 +478,8 @@ export const sendInvitationToAlumni = async (req, res) => {
     });
 
   } catch (error) {
+    await connection.rollback();
+    connection.release();
     console.error('Error sending invitation to alumni member:', error);
     res.status(500).json({ error: 'Failed to send invitation to alumni member' });
   }
@@ -497,8 +495,6 @@ function generateUUID() {
 }
 
 function generateHMACInvitationToken(invitationData) {
-  // Import here to avoid circular dependency
-  const { hmacTokenService } = require('../src/lib/security/HMACTokenService.js');
   const payload = {
     invitationId: invitationData.id,
     email: invitationData.email,

@@ -49,6 +49,8 @@ import {
   createBulkInvitations,
   validateInvitation,
   updateInvitation,
+  resendInvitation,
+  revokeInvitation,
   setInvitationsPool
 } from './routes/invitations.js';
 
@@ -104,6 +106,7 @@ import {
   getTOTPStatus,
   getOTPUserProfile,
   getActiveOTP,
+  getAllActiveOTPs,
   generateTestOTP,
   setOTPPool
 } from './routes/otp.js';
@@ -174,6 +177,8 @@ import {
 
 import postingsRouter, { setPostingsPool } from './routes/postings.js';
 
+import familyMembersRouter from './routes/family-members.js';
+
 // Environment variables already loaded at top of file
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -242,6 +247,8 @@ app.get('/api/invitations/validate/:token', (req, res, next) => {
   next();
 }, validateInvitation);
 app.patch('/api/invitations/:id', updateInvitation);
+app.post('/api/invitations/:id/resend', resendInvitation);
+app.put('/api/invitations/:id/revoke', revokeInvitation);
 
 // ============================================================================
 // ALUMNI MEMBERS ROUTES
@@ -267,6 +274,10 @@ app.post('/api/users/:id/send-invitation', authenticateToken, sendInvitationToUs
 app.get('/api/users/search', searchUsers);
 app.get('/api/users/:id/profile', getUserProfile);
 app.get('/api/users/profile', authenticateToken, getCurrentUserProfile);
+
+// User profiles endpoints (aliases for consistency with frontend API calls)
+app.get('/api/user-profiles/:id', getUserProfile);
+app.put('/api/user-profiles/:id', authenticateToken, updateUser);
 
 // ============================================================================
 // MEMBER DASHBOARD ROUTES
@@ -544,6 +555,11 @@ app.get('/api/admin/tags/pending', authenticateToken, getPendingTags);
 app.use('/api/postings', postingsRouter);
 
 // ============================================================================
+// FAMILY MEMBERS ROUTES
+// ============================================================================
+app.use('/api/family-members', familyMembersRouter);
+
+// ============================================================================
 // OTP ROUTES
 // ============================================================================
 
@@ -556,6 +572,7 @@ app.get('/api/otp/remaining-attempts/:email', getRemainingAttempts);
 app.get('/api/otp/daily-count/:email', getDailyCount);
 app.get('/api/otp/rate-limit/:email', checkRateLimit);
 app.get('/api/otp/active/:email', getActiveOTP);
+app.get('/api/otp/admin/all-active', getAllActiveOTPs); // Admin endpoint to get all active OTPs
 app.post('/api/otp/reset-daily-limit', resetDailyLimit);
 app.post('/api/otp/increment-daily-count', incrementDailyCount);
 app.delete('/api/otp/cleanup-expired', cleanupExpired);

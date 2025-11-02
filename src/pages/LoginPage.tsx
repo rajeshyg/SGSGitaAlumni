@@ -30,6 +30,16 @@ export function LoginPage() {
   useEffect(() => {
     if (isAuthenticated && user) {
       const userRole = user.role?.toLowerCase();
+      const isFamilyAccount = user.is_family_account === 1 || user.is_family_account === true;
+      
+      // For family accounts, redirect to profile selection page
+      if (isFamilyAccount) {
+        console.log('🔄 LoginPage: Family account detected, redirecting to profile selection');
+        navigate('/profile-selection', { replace: true });
+        return;
+      }
+      
+      // For non-family accounts, use normal redirect logic
       const defaultRedirect = userRole === 'admin' ? '/admin' : '/dashboard';
       const from = location.state?.from?.pathname || defaultRedirect;
       console.log('🔄 LoginPage: Authenticated user detected');

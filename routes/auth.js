@@ -124,10 +124,18 @@ export const login = async (req, res) => {
     }
 
     // Find user by email - order by role priority (admin first, then moderator, then member)
+    console.log('🔐 Login: Looking up user by email:', email);
     const [rows] = await connection.execute(
-      'SELECT id, email, password_hash, role, is_active, created_at FROM app_users WHERE email = ? ORDER BY CASE WHEN role = "admin" THEN 1 WHEN role = "moderator" THEN 2 ELSE 3 END, created_at ASC',
+      `SELECT id, email, password_hash, role, is_active, created_at, 
+              is_family_account, family_account_type, primary_family_member_id,
+              first_name, last_name
+       FROM app_users 
+       WHERE email = ? 
+       ORDER BY CASE WHEN role = "admin" THEN 1 WHEN role = "moderator" THEN 2 ELSE 3 END, created_at ASC`,
       [email]
     );
+
+    console.log('🔐 Login: User lookup result:', { found: rows.length > 0, user: rows.length > 0 ? { id: rows[0].id, email: rows[0].email, role: rows[0].role, is_active: rows[0].is_active } : null });
 
     if (rows.length === 0) {
       connection.release();
@@ -158,17 +166,19 @@ export const login = async (req, res) => {
     // FIX 1: Add server-side OTP verification check to prevent authentication bypass
     if (otpVerified) {
       console.log('🔐 Verifying OTP was actually validated...');
-
+      
       // Check that OTP was validated within last 5 minutes
       const [otpCheck] = await connection.execute(
         `SELECT id, used_at FROM OTP_TOKENS
-         WHERE email = ?
+         WHERE email = ? 
            AND is_used = TRUE
            AND used_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
          ORDER BY used_at DESC
          LIMIT 1`,
         [email]
       );
+
+      console.log('🔐 OTP check result:', { found: otpCheck.length > 0, used_at: otpCheck.length > 0 ? otpCheck[0].used_at : null });
 
       if (otpCheck.length === 0) {
         connection.release();
@@ -187,9 +197,7 @@ export const login = async (req, res) => {
         otpId: otpCheck[0].id,
         usedAt: otpCheck[0].used_at
       });
-    }
-
-    // Verify password (skip for OTP-verified logins)
+    }    // Verify password (skip for OTP-verified logins)
     if (!otpVerified) {
       console.log('🔐 Verifying password...');
       const isValidPassword = await bcrypt.compare(password, user.password_hash);
@@ -224,9 +232,14 @@ export const login = async (req, res) => {
     const userResponse = {
       id: user.id,
       email: user.email,
+      firstName: user.first_name || '',
+      lastName: user.last_name || '',
       role: user.role,
       isActive: user.is_active,
-      createdAt: user.created_at
+      createdAt: user.created_at,
+      is_family_account: user.is_family_account,
+      family_account_type: user.family_account_type,
+      primary_family_member_id: user.primary_family_member_id
     };
 
     res.json({

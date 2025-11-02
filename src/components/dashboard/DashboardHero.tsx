@@ -39,7 +39,7 @@ export const DashboardHero: React.FC<DashboardHeroProps> = ({ summary }) => {
         {/* Compact Metrics Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Profile Completion */}
-          <ProfileCompletion value={summary.profileCompletion} variant="tile" onAction={() => { window.location.href = '/preferences'; }} />
+          <ProfileCompletion value={summary.profileCompletion} variant="tile" onAction={() => { window.location.href = '/profile/edit'; }} />
 
           {/* Current Role */}
           <Card className="bg-card/50 border-primary/20">

@@ -81,15 +81,61 @@ export const generateAndSendOTP = async (req, res) => {
     const userId = userRows.length > 0 ? userRows[0].id : null;
     console.log('🔍 [DEBUG] User ID:', userId);
 
+    // FIX: Validate email exists in app_users for login type OTPs
+    // Only registered users (those in app_users) can login
+    if (type === 'login') {
+      console.log('🔍 [DEBUG] Validating email exists in app_users for login OTP...');
+      
+      if (userRows.length === 0) {
+        connection.release();
+        console.log('❌ [DEBUG] Email not found in app_users for login OTP');
+        return res.status(400).json({
+          error: 'Email not found. Please check your email address or register first.'
+        });
+      }
+      console.log('✅ [DEBUG] Email validated for login OTP');
+    }
+
+    // Normalize token type - default to 'login' if not provided or invalid
+    const validTokenTypes = ['login', 'registration', 'password_reset', 'email'];
+    const tokenType = validTokenTypes.includes(type) ? type : 'login';
+    console.log('🔍 [DEBUG] Using token type:', tokenType, '(requested:', type, ')');
+
+    // FIX 3: Invalidate any existing active OTPs for this email and token type
+    // This prevents duplicate OTPs and ensures only one valid OTP exists at a time
+    console.log('🔍 [DEBUG] Checking for existing active OTPs to invalidate...');
+    const [existingOtps] = await connection.execute(`
+      SELECT id, otp_code FROM OTP_TOKENS
+      WHERE email = ?
+        AND token_type = ?
+        AND expires_at > NOW()
+        AND is_used = FALSE
+    `, [email, tokenType]);
+
+    if (existingOtps.length > 0) {
+      console.log(`⚠️ [DEBUG] Found ${existingOtps.length} existing active OTP(s), invalidating them...`);
+      await connection.execute(`
+        UPDATE OTP_TOKENS
+        SET is_used = TRUE, used_at = NOW()
+        WHERE email = ?
+          AND token_type = ?
+          AND expires_at > NOW()
+          AND is_used = FALSE
+      `, [email, tokenType]);
+      console.log('✅ [DEBUG] Previous OTPs invalidated');
+    } else {
+      console.log('✅ [DEBUG] No existing active OTPs found');
+    }
+
     // Insert OTP token - use MySQL NOW() + INTERVAL for expiration to avoid timezone issues
-    console.log('🔍 [DEBUG] Inserting OTP token...');
+    console.log('🔍 [DEBUG] Inserting OTP token with values:', { email, tokenType, userId, expiryMinutes });
     const [insertResult] = await connection.execute(`
       INSERT INTO OTP_TOKENS (
         email, otp_code, token_type, user_id,
         expires_at, created_at
       ) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), NOW())
-    `, [email, otpCode, 'login', userId, expiryMinutes]);
-    console.log('✅ [DEBUG] OTP token inserted successfully, insertId:', insertResult.insertId);
+    `, [email, otpCode, tokenType, userId, expiryMinutes]);
+    console.log('✅ [DEBUG] OTP token inserted successfully, insertId:', insertResult.insertId, 'tokenType:', tokenType);
 
     connection.release();
     console.log('🔍 [DEBUG] Database connection released');
@@ -141,7 +187,10 @@ export const validateOTP = async (req, res) => {
   try {
     const { email, otpCode, tokenType } = req.body;
 
+    console.log('🔍 [VALIDATE_OTP] Request received:', { email, otpCode: otpCode ? '***' + otpCode.slice(-2) : 'missing', tokenType });
+
     if (!email || !otpCode || !tokenType) {
+      console.log('❌ [VALIDATE_OTP] Missing required fields');
       return res.status(400).json({
         error: 'Email, OTP code, and token type are required'
       });
@@ -150,6 +199,7 @@ export const validateOTP = async (req, res) => {
     const connection = await pool.getConnection();
 
     // Find valid OTP token
+    console.log('🔍 [VALIDATE_OTP] Searching for OTP with:', { email, tokenType });
     const [rows] = await connection.execute(`
       SELECT id, otp_code, expires_at, attempt_count, is_used
       FROM OTP_TOKENS
@@ -161,7 +211,20 @@ export const validateOTP = async (req, res) => {
       LIMIT 1
     `, [email, tokenType]);
 
+    console.log('🔍 [VALIDATE_OTP] Query result:', { found: rows.length > 0, rowCount: rows.length });
+
     if (rows.length === 0) {
+      // Check if there's ANY OTP for this email (debugging)
+      const [allOtps] = await connection.execute(`
+        SELECT id, email, token_type, expires_at, is_used, created_at
+        FROM OTP_TOKENS
+        WHERE email = ?
+        ORDER BY created_at DESC
+        LIMIT 5
+      `, [email]);
+      
+      console.log('🔍 [VALIDATE_OTP] All recent OTPs for this email:', allOtps);
+      
       connection.release();
       return res.json({
         isValid: false,
@@ -627,5 +690,45 @@ export const getActiveOTP = async (req, res) => {
   } catch (error) {
     console.error('Get active OTP error:', error);
     res.status(500).json({ error: 'Failed to get active OTP' });
+  }
+};
+
+// Get all active OTPs (admin only)
+export const getAllActiveOTPs = async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+
+    const [rows] = await connection.execute(`
+      SELECT 
+        email,
+        otp_code,
+        token_type,
+        expires_at,
+        created_at
+      FROM OTP_TOKENS
+      WHERE expires_at > NOW()
+        AND is_used = FALSE
+      ORDER BY created_at DESC
+    `);
+
+    connection.release();
+
+    const otps = rows.map(row => ({
+      email: row.email,
+      code: row.otp_code,
+      tokenType: row.token_type,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+      isExpired: false
+    }));
+
+    res.json({
+      count: otps.length,
+      otps
+    });
+
+  } catch (error) {
+    console.error('Get all active OTPs error:', error);
+    res.status(500).json({ error: 'Failed to get active OTPs' });
   }
 };

@@ -53,21 +53,35 @@ export class StreamlinedRegistrationService {
         };
       }
       
-      connection = await this.pool.getConnection();
+      // Add timeout protection for database operations
+      const connectionTimeout = 10000; // 10 seconds
+      connection = await Promise.race([
+        this.pool.getConnection(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), connectionTimeout)
+        )
+      ]);
 
-      console.log('StreamlinedRegistrationService: Executing database query...');
-      const [allRows] = await connection.execute(`
-        SELECT ui.id, ui.invitation_token, ui.email, ui.status, ui.completion_status,
-               ui.is_used, ui.used_at, ui.expires_at, ui.alumni_member_id,
-               ui.invited_by, ui.invitation_type, ui.invitation_data, ui.sent_at,
-               ui.accepted_by, ui.ip_address, ui.resend_count, ui.last_resent_at,
-               ui.created_at, ui.updated_at,
-               am.id as alumni_id, am.first_name, am.last_name, am.email as alumni_email
-        FROM USER_INVITATIONS ui
-        LEFT JOIN alumni_members am ON ui.alumni_member_id = am.id
-        WHERE ui.invitation_token = ?
-        LIMIT 1
-      `, [token]);
+      console.log('StreamlinedRegistrationService: Executing database query with timeout protection...');
+      
+      const queryTimeout = 15000; // 15 seconds for query execution
+      const [allRows] = await Promise.race([
+        connection.execute(`
+          SELECT ui.id, ui.invitation_token, ui.email, ui.status, ui.completion_status,
+                 ui.is_used, ui.used_at, ui.expires_at, ui.alumni_member_id,
+                 ui.invited_by, ui.invitation_type, ui.invitation_data, ui.sent_at,
+                 ui.accepted_by, ui.ip_address, ui.resend_count, ui.last_resent_at,
+                 ui.created_at, ui.updated_at,
+                 am.id as alumni_id, am.first_name, am.last_name, am.email as alumni_email
+          FROM USER_INVITATIONS ui
+          LEFT JOIN alumni_members am ON ui.alumni_member_id = am.id
+          WHERE ui.invitation_token = ?
+          LIMIT 1
+        `, [token]),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Database query timeout after 15 seconds')), queryTimeout)
+        )
+      ]);
 
       console.log('StreamlinedRegistrationService: Query returned', allRows.length, 'rows');
 
@@ -157,6 +171,21 @@ export class StreamlinedRegistrationService {
 
     } catch (error) {
       console.error('Error validating invitation with alumni data:', error);
+      
+      // Check if it's a timeout error
+      if (error.message && error.message.includes('timeout')) {
+        console.error('Database timeout during invitation validation');
+        return {
+          isValid: false,
+          invitation: null,
+          requiresUserInput: false,
+          suggestedFields: [],
+          canOneClickJoin: false,
+          errorType: 'timeout',
+          errorMessage: 'Request timed out. Please try again or check your connection.'
+        };
+      }
+      
       throw new Error('Failed to validate invitation');
     } finally {
       // CRITICAL FIX: Always release the connection

@@ -943,6 +943,127 @@ export const updateInvitation = async (req, res) => {
   }
 };
 
+// Resend invitation
+export const resendInvitation = async (req, res) => {
+  const { createLogger } = await import('../src/utils/logger.js');
+  const logger = createLogger('api/invitations');
+  try {
+    const { id } = req.params;
+    const connection = await pool.getConnection();
+
+    logger.info('Resending invitation:', id);
+
+    // Get the invitation
+    const [invitations] = await connection.execute(
+      'SELECT * FROM USER_INVITATIONS WHERE id = ?',
+      [id]
+    );
+
+    if (invitations.length === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    const invitation = invitations[0];
+
+    // Check if invitation can be resent (not expired, not accepted)
+    if (invitation.status === 'accepted') {
+      connection.release();
+      return res.status(400).json({ error: 'Cannot resend accepted invitation' });
+    }
+
+    if (new Date() > new Date(invitation.expires_at)) {
+      connection.release();
+      return res.status(400).json({ error: 'Cannot resend expired invitation' });
+    }
+
+    // Generate a NEW HMAC token for the resent invitation
+    const expiresInDays = 7; // Default expiry
+    const newExpiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+    
+    const newHmacToken = hmacTokenService.generateToken({
+      id: invitation.id,
+      email: invitation.email,
+      invitationType: invitation.invitation_type || 'alumni',
+      expiresAt: newExpiresAt
+    });
+
+    logger.info('Generated new HMAC token for resend:', { id, tokenLength: newHmacToken.length });
+
+    // Update with new token, resend count, sent_at, and new expiry
+    await connection.execute(
+      `UPDATE USER_INVITATIONS 
+       SET invitation_token = ?, 
+           resend_count = resend_count + 1, 
+           sent_at = NOW(), 
+           expires_at = ?,
+           updated_at = NOW(),
+           last_resent_at = NOW()
+       WHERE id = ?`,
+      [newHmacToken, newExpiresAt, id]
+    );
+
+    connection.release();
+
+    logger.info('Invitation resent successfully with new token:', id);
+    res.json({ 
+      message: 'Invitation resent successfully with new token', 
+      invitationId: id,
+      newExpiresAt: newExpiresAt.toISOString()
+    });
+
+  } catch (error) {
+    logger.error('Error resending invitation:', error);
+    res.status(500).json({ error: 'Failed to resend invitation' });
+  }
+};
+
+// Revoke invitation
+export const revokeInvitation = async (req, res) => {
+  const { createLogger } = await import('../src/utils/logger.js');
+  const logger = createLogger('api/invitations');
+  try {
+    const { id } = req.params;
+    const connection = await pool.getConnection();
+
+    logger.info('Revoking invitation:', id);
+
+    // Get the invitation
+    const [invitations] = await connection.execute(
+      'SELECT * FROM USER_INVITATIONS WHERE id = ?',
+      [id]
+    );
+
+    if (invitations.length === 0) {
+      connection.release();
+      return res.status(404).json({ error: 'Invitation not found' });
+    }
+
+    const invitation = invitations[0];
+
+    // Check if invitation can be revoked (not accepted)
+    if (invitation.status === 'accepted') {
+      connection.release();
+      return res.status(400).json({ error: 'Cannot revoke accepted invitation' });
+    }
+
+    // Update status to revoked
+    await connection.execute(
+      'UPDATE USER_INVITATIONS SET status = "revoked", updated_at = NOW() WHERE id = ?',
+      [id]
+    );
+
+    connection.release();
+
+    logger.info('Invitation revoked successfully:', id);
+    res.json({ message: 'Invitation revoked successfully', invitationId: id });
+
+  } catch (error) {
+    logger.error('Error revoking invitation:', error);
+    res.status(500).json({ error: 'Failed to revoke invitation' });
+  }
+};
+
 // Helper functions
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {

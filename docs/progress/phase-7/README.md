@@ -103,6 +103,8 @@ npm run test:desktop           # Desktop compatibility
 - **🔄 In Progress:** Invitation system, family invitations, age verification
 - **🟡 Pending:** UI integration, email service configuration
 - **📊 Progress:** 75% Complete (Updated October 12, 2025)
+- **Sub-Tasks:**
+  - [Task 7.3.1: Profile Selection Page](./task-7.3.1-profile-selection-page.md) - ✅ Complete (Already Implemented - October 31, 2025)
 
 ### Phase 7B: Core Features
 
@@ -119,9 +121,9 @@ npm run test:desktop           # Desktop compatibility
 - **Description:** Searchable directory with profile cards
 - **Prototype Reference:** alumni-directory.tsx
 
-#### Task 7.6: Profile Management
-- **Status:** 🟡 Planned
-- **Description:** Profile viewing and editing functionality
+#### [Task 7.6: Profile Management](./task-7.6-profile-management.md)
+- **Status:** 🟠 In Progress
+- **Description:** Implement profile viewing and edit flow; wire dashboard "Complete profile" (20%) CTA to profile editor; ensure route from profile avatar/menu responds
 - **Prototype Reference:** Profile screens
 
 #### [Task 7.7: Domain Taxonomy & Preferences System](./task-7.7-domain-taxonomy-system.md)
@@ -133,34 +135,41 @@ npm run test:desktop           # Desktop compatibility
   - [Task 7.7.2: Enhanced Preferences Schema](./task-7.7.2-enhanced-preferences.md) ✅ Complete (2025-10-13)
   - [Task 7.7.3: Tag Management System](./task-7.7.3-tag-management.md) ✅ Complete (2025-10-14)
   - [Task 7.7.8: Auto-Matching System](./task-7.7.8-auto-matching-system.md) ✅ Complete (2025-10-19)
+  - [Task 7.7.5: Domain Selection Limits](./task-7.7.5-domain-limits.md) 🟡 Planned (Enforce 5-domain limit in UI)
+  - [Task 7.7.9: Posting Expiry Logic](./task-7.7.9-expiry-logic.md) 🟡 Planned (Fix MAX(user_date, submission+30 days))
 
 ### Phase 7C: Advanced Features
 
-#### [Task 7.8: Auto-Matching System](./task-7.7.8-auto-matching-system.md)
-- **Status:** ✅ Complete
-- **Description:** Intelligent matching of seekers with helpers based on domains, skills, and preferences
-- **Dependencies:** Task 7.7 (Domain Taxonomy System)
-- **Completed:** 2025-10-19
-
-#### Task 7.9: Messaging System
+#### Task 7.9: Moderator Review System
 - **Status:** 🟡 Planned
-- **Description:** Real-time chat and conversation management
-- **Prototype Reference:** chat.tsx
+- **Description:** Complete moderator review workflow for posting approval/rejection
+- **Sub-Tasks:**
+  - Review queue UI with filtering and sorting
+  - Approval/rejection API endpoints with feedback
+  - Notification system for pending reviews
+  - Scam detection and escalation workflows
+- **Related:** [Task 8.12: Violation Corrections](../phase-8/task-8.12-violation-corrections.md) - Action 6
 
-#### Task 7.9: Messaging System
+#### Task 7.10: Chat & Messaging System
 - **Status:** 🟡 Planned
-- **Description:** Real-time chat and conversation management
-- **Prototype Reference:** chat.tsx
-
-#### Task 7.10: Moderation Tools
-- **Status:** 🟡 Planned
-- **Description:** Content moderation and admin functionality
-- **Prototype Reference:** Moderation screens
+- **Description:** Real-time encrypted chat system with 1-to-1 and group messaging
+- **Requirements:**
+  - Direct Messaging for one-on-one communication
+  - Group Discussions for collaborative conversations
+  - Post-Linked Chats tied to specific help requests
+  - End-to-end encryption with 1-year retention
+- **Related:** [Task 8.12: Violation Corrections](../phase-8/task-8.12-violation-corrections.md) - Action 11
 
 #### Task 7.11: Analytics Dashboard
 - **Status:** 🟡 Planned
-- **Description:** Usage analytics and reporting
-- **Prototype Reference:** Analytics screens
+- **Description:** Usage analytics and reporting for admins
+- **Dependencies:** Task 7.10 (Chat data needed for complete analytics)
+- **Metrics:**
+  - User Activity (login frequency, posting activity)
+  - Popular Categories (most active domains)
+  - Success Metrics (successful help request resolutions)
+  - Help Request Statistics (requests, response rates)
+- **Related:** [Task 8.12: Violation Corrections](../phase-8/task-8.12-violation-corrections.md) - Action 12
 
 ### Phase 7D: Optimization & Deployment
 
@@ -168,11 +177,43 @@ npm run test:desktop           # Desktop compatibility
 - **Status:** 🟡 Planned
 - **Description:** Ensure 100% mobile compatibility and touch optimization
 
-#### Task 7.13: Cross-Platform Testing
+#### Task 7.13: Theme System Compliance
+- **Status:** � In Progress - Validation Complete, Fixes In Progress
+- **Description:** Replace all hardcoded Tailwind colors with CSS theme variables
+- **Priority:** Critical - Affects all UI components
+- **Progress:** Validation script created, 278 violations detected across 26 files
+- **Scope:** 
+  - Replace `bg-blue-600`, `text-gray-900`, etc. with `bg-primary`, `text-foreground`
+  - Update all components in `src/components/**/*.tsx`
+  - Ensure theme switching works correctly
+- **Related:** [Task 8.12: Violation Corrections](../phase-8/task-8.12-violation-corrections.md) - Action 3
+
+#### Task 7.14: Error Boundary Implementation
+- **Status:** 🟡 Planned
+- **Description:** Wrap all page components with ErrorBoundary for stability
+- **Priority:** High
+- **Scope:**
+  - Wrap all page-level components
+  - Create reusable ErrorBoundary component
+  - Add error logging and recovery
+- **Related:** [Task 8.12: Violation Corrections](../phase-8/task-8.12-violation-corrections.md) - Action 9
+
+#### Task 7.15: Service Unit Tests
+- **Status:** 🟡 Planned
+- **Description:** Create unit tests for critical services
+- **Priority:** Medium
+- **Scope:**
+  - FamilyMemberService tests
+  - PreferencesService tests
+  - PostingService tests
+  - 80%+ code coverage target
+- **Related:** [Task 8.12: Violation Corrections](../phase-8/task-8.12-violation-corrections.md) - Action 14
+
+#### Task 7.16: Cross-Platform Testing
 - **Status:** 🟡 Planned
 - **Description:** Comprehensive testing across all platforms
 
-#### Task 7.14: Production Deployment
+#### Task 7.17: Production Deployment
 - **Status:** 🟡 Planned
 - **Description:** Final validation and production deployment
 

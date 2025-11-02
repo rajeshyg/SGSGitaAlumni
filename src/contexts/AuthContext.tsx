@@ -53,7 +53,6 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  console.log('[AuthProvider] Initializing AuthProvider');
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
@@ -243,22 +242,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
    useEffect(() => {
        const checkAuth = async () => {
-         console.log('[AuthContext] Starting auth check on mount');
          const token = localStorage.getItem('authToken');
          const storedRefreshToken = localStorage.getItem('refreshToken');
 
-         console.log('[AuthContext] Token exists:', !!token);
-         console.log('[AuthContext] Refresh token exists:', !!storedRefreshToken);
-
          if (token) {
-           console.log('[AuthContext] Found stored token, initializing API client');
            // Initialize API client with stored tokens
            apiClient.initializeAuth(token, storedRefreshToken || undefined);
            try {
-             console.log('[AuthContext] About to call APIService.getCurrentUser()');
              const user = await APIService.getCurrentUser();
-             console.log('[AuthContext] APIService.getCurrentUser() returned:', user);
-             console.log('[AuthContext] User role from API:', user?.role);
 
            // Store user profile in localStorage for admin components
            const profile = {
@@ -278,7 +269,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
              console.log('[AuthContext] Restored auth, stored profile:', profile);
            }
 
-           console.log('[AuthContext] Auth check successful, setting authenticated state');
            setAuthState({
              user,
              isAuthenticated: true,
@@ -323,7 +313,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
            }
          }
        } else {
-         console.log('[AuthContext] No stored token found, setting unauthenticated state');
          setAuthState(prev => ({ ...prev, isLoading: false }));
        }
      };

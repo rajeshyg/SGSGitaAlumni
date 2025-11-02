@@ -78,6 +78,7 @@ const PostingsPage: React.FC = () => {
   const [showMatchedOnly, setShowMatchedOnly] = useState(false);
   const [matchedCount, setMatchedCount] = useState<number>(0);
   const [categories, setCategories] = useState<{id: string; name: string}[]>([]);
+  const [domains, setDomains] = useState<{id: string; name: string}[]>([]);
 
   // Load postings on mount and when matched filter changes
   useEffect(() => {
@@ -87,6 +88,7 @@ const PostingsPage: React.FC = () => {
   // Load categories on mount
   useEffect(() => {
     loadCategories();
+    loadDomains();
   }, []);
 
   // Apply filters whenever search/filter changes
@@ -114,15 +116,12 @@ const PostingsPage: React.FC = () => {
         params
       });
 
-      console.log('Postings API response:', response);
-
       // API returns {postings: [...], pagination: {...}, matchedDomains?: number}
       setPostings(response.postings || []);
       if (response.matchedDomains !== undefined) {
         setMatchedCount(response.matchedDomains);
       }
     } catch (err) {
-      console.error('Failed to load postings:', err);
       setPostings([]);
     } finally {
       setLoading(false);
@@ -134,8 +133,16 @@ const PostingsPage: React.FC = () => {
       const response = await APIService.get<{categories: {id: string; name: string}[]}>('/api/postings/categories');
       setCategories(response.categories || []);
     } catch (err) {
-      console.error('Failed to load categories:', err);
       setCategories([]);
+    }
+  };
+
+  const loadDomains = async () => {
+    try {
+      const response = await APIService.get<{domains: {id: string; name: string}[]}>('/api/domains');
+      setDomains(response.domains || []);
+    } catch (err) {
+      setDomains([]);
     }
   };
 
@@ -189,7 +196,7 @@ const PostingsPage: React.FC = () => {
         );
       }
     } catch (err) {
-      console.error('Failed to toggle like:', err);
+      // Error handling - silently fail for like action
     }
   };
 
@@ -226,7 +233,7 @@ const PostingsPage: React.FC = () => {
         ));
       }
     } catch (err) {
-      console.error('Failed to add comment:', err);
+      // Error handling - silently fail for comment action
     }
   };
 
@@ -237,7 +244,6 @@ const PostingsPage: React.FC = () => {
       await navigator.clipboard.writeText(url);
       alert('Link copied to clipboard!');
     } catch (err) {
-      console.error('Failed to copy link:', err);
       alert('Failed to copy link. Please try again.');
     }
   };
@@ -350,12 +356,9 @@ const PostingsPage: React.FC = () => {
                     aria-label="Filter by domain"
                   >
                     <option value="all">All Domains</option>
-                    <option value="Technology">Technology</option>
-                    <option value="Healthcare">Healthcare</option>
-                    <option value="Business">Business</option>
-                    <option value="Education">Education</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="Arts & Design">Arts & Design</option>
+                    {domains.map(domain => (
+                      <option key={domain.id} value={domain.name}>{domain.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>

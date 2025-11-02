@@ -77,6 +77,10 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   lastLoginAt?: string;
+  // Family account fields
+  is_family_account?: boolean | number;
+  family_account_type?: 'parent' | 'child' | null;
+  primary_family_member_id?: string | null;
 }
 
 export interface AlumniProfile extends Record<string, unknown> {

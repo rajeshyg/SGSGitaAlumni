@@ -69,7 +69,7 @@ Implement complete Gita Connect alumni networking features including family memb
 - **Family Access:** Shared login for minors with parent oversight
 - **Onboarding Flow:** Guided registration with consent collection
 - **Inactivity Management:** Automated 30-day notification system
-- **Profile Management:** Enhanced profiles with rating display
+- **Profile Management:** Enhanced profiles with rating display (core edit UI tracked in [Phase 7 Task 7.6](../phase-7/task-7.6-profile-management.md))
 
 ## Database Schema Changes
 
@@ -81,11 +81,15 @@ Implement complete Gita Connect alumni networking features including family memb
 - `MODERATION_CRITERIA` - Content validation rules
 - `USER_ACTIVITY_LOG` - Activity tracking for inactivity management
 - `INACTIVITY_NOTIFICATIONS` - Notification management
+- `FAMILY_MEMBERS` - Individual profiles for family members sharing parent email ⭐ NEW
+- `FAMILY_ACCESS_LOG` - Track family member platform access ⭐ NEW
 
 ### Modified Tables:
 - `USER_PROFILES` - Add age verification and parent consent fields
 - `FAMILY_MEMBERS` - Add platform access permissions
 - `POSTINGS` - Enhanced moderation workflow integration
+- `USER_PREFERENCES` - Add family_member_id for individual member preferences ⭐ NEW
+- `app_users` - Add family account indicators and primary member tracking ⭐ NEW
 
 ## Quality Assurance Process
 
@@ -198,6 +202,39 @@ npm run test:accessibility     # WCAG 2.1 AA compliance
 - **Status:** 🟡 Planned
 - **Description:** 30-day notification and account management
 - **Duration:** 1 week
+
+#### [Task 8.11: Family Member System with Shared Email](./task-8.11-family-member-system.md)
+- **Status:** 🟡 Planned
+- **Priority:** Critical
+- **Description:** Multiple family members sharing one parent email with individual profiles and preferences
+- **Duration:** 4 weeks
+- **Dependencies:** Task 8.1 (Age Verification), Task 7.7 (Preferences), Task 7.3 (Auth)
+- **Key Features:**
+  - Netflix-style profile selector ("Who's using Gita Connect?")
+  - Age-based access control (14+ with parent consent, 18+ full access, <14 blocked)
+  - Individual preferences per family member (domains, notifications, privacy)
+  - Parent dashboard for managing all family members
+  - Annual consent renewal for 14-17 year olds
+  - Complete COPPA compliance
+- **Sub-Tasks:**
+  - [Task 8.11.1: Netflix-Style Family Profile Selector](./task-8.11.1-profile-selector.md) - ✅ Complete (October 31, 2025)
+  - [Task 8.11.2: Login Integration with Family Members](./task-8.11.2-login-integration.md) - ✅ Complete (Already Implemented)
+
+#### [Task 8.12: Functional & Technical Violation Corrections](./task-8.12-violation-corrections.md)
+- **Status:** 🟡 Planned
+- **Priority:** Critical - Blocking Further Development
+- **Description:** Systematic correction of 15 violations identified in comprehensive audit (8 functional, 12 technical)
+- **Duration:** 6-8 weeks
+- **Created:** October 31, 2025
+- **Phase Structure:**
+  - **Phase 1 (Critical):** Actions 1-5 - Core functionality blockers (2-3 weeks)
+  - **Phase 2 (High):** Actions 6-10 - Features and security (2-3 weeks)
+  - **Phase 3 (Medium):** Actions 11-15 - Quality and missing features (2-3 weeks)
+- **Documentation Plan:** [Task 8.12 Documentation Plan](./task-8.12-documentation-plan.md)
+- **Related Sub-Tasks:**
+  - [Task 8.11.1: Netflix-Style Profile Selector](./task-8.11.1-profile-selector.md) - Action 1
+  - [Task 8.2.5: API Input Validation](./task-8.2.5-api-validation.md) - Action 4 (to be created)
+  - [Task 8.0.1: Performance Indexes](./task-8.0.1-performance-indexes.md) - Action 13 (to be created)
 
 ### Phase 8E: Testing & Deployment
 

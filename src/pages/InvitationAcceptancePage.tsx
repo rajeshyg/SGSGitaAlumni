@@ -137,19 +137,14 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
 
       console.log('[InvitationAcceptancePage] Generating OTP for email:', email);
 
-      // Generate OTP using OTPService
-      const otpToken = await otpService.generateOTP({
+      // Generate OTP using OTPService (this also sends the OTP via email)
+      await otpService.generateOTP({
         email,
         type: 'registration',
         userId: response.user.id?.toString()
       });
 
-      console.log('[InvitationAcceptancePage] OTP generated successfully');
-
-      // Send OTP via email
-      await otpService.sendOTP(email, otpToken.otpCode, 'registration');
-
-      console.log('[InvitationAcceptancePage] OTP sent to email');
+      console.log('[InvitationAcceptancePage] OTP generated and sent successfully');
 
       // Redirect to OTP verification page
       navigate(`/verify-otp/${encodeURIComponent(email)}`, {

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { APIService, type AlumniProfile, type SearchFilters, type DirectoryParams, type DirectoryResponse, type Posting, type PostingFilters } from '../services/APIService';
+import { APIService, type SearchFilters, type DirectoryParams, type DirectoryResponse, type Posting, type PostingFilters } from '../services/APIService';
 
 // ============================================================================
 // ALUMNI PROFILE HOOKS
@@ -8,9 +8,22 @@ import { APIService, type AlumniProfile, type SearchFilters, type DirectoryParam
 // ============================================================================
 // ALUMNI PROFILE HOOKS
 // ============================================================================
+
+export interface UserExtendedProfile {
+  id?: string;
+  userId?: string;
+  firstName?: string;
+  lastName?: string;
+  currentPosition?: string;
+  company?: string;
+  location?: string;
+  linkedinUrl?: string;
+  bio?: string;
+  [key: string]: unknown;
+}
 
 export function useAlumniProfile(userId?: string) {
-  const [profile, setProfile] = useState<AlumniProfile | null>(null);
+  const [profile, setProfile] = useState<UserExtendedProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +33,23 @@ export function useAlumniProfile(userId?: string) {
     try {
       setIsLoading(true);
       setError(null);
-      const profileData = await APIService.getAlumniProfile(id);
+      let profileData: any | null = null;
+      try {
+        profileData = await APIService.getUserProfile(id);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        // If extended profile is missing (404), attempt to fetch current user or initialize empty profile
+        if (/404/.test(msg)) {
+          try {
+            const current = await APIService.getCurrentUser();
+            profileData = { userId: current.id, firstName: current.firstName, lastName: current.lastName };
+          } catch {
+            profileData = { userId: id };
+          }
+        } else {
+          throw e;
+        }
+      }
       setProfile(profileData);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile';
@@ -30,11 +59,12 @@ export function useAlumniProfile(userId?: string) {
     }
   }, []);
 
-  const updateProfile = useCallback(async (profileData: AlumniProfile) => {
+  const updateProfile = useCallback(async (updates: Partial<UserExtendedProfile>) => {
     try {
       setIsLoading(true);
       setError(null);
-      const updatedProfile = await APIService.updateProfile(profileData);
+      if (!userId) throw new Error('Missing userId for profile update');
+      const updatedProfile = await APIService.updateUserProfile(userId, updates);
       setProfile(updatedProfile);
       return updatedProfile;
     } catch (err) {
@@ -44,7 +74,7 @@ export function useAlumniProfile(userId?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     if (userId) {

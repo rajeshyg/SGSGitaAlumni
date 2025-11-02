@@ -96,20 +96,12 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
 
   const loadRemainingAttempts = async () => {
     try {
-      console.log('[OTPVerificationPage] Checking remaining attempts for:', email);
       const attempts = await otpService.getRemainingOTPAttempts(email);
-      console.log('[OTPVerificationPage] Remaining attempts received:', attempts);
-      console.log('[OTPVerificationPage] Type of attempts:', typeof attempts);
       setRemainingAttempts(attempts);
-      
+
       // Don't show error on page load - only show it after failed validation attempts
       // The validation response will set the error if attempts are exhausted
-      if (attempts === 0) {
-        console.warn('[OTPVerificationPage] No attempts remaining (0 received from API)');
-        // Don't set error here - let the validation attempt show the error
-      }
     } catch (err) {
-      console.error('[OTPVerificationPage] Error loading remaining attempts:', err);
       // Default to 3 attempts if we can't load
       setRemainingAttempts(3);
     }
@@ -229,20 +221,15 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
           try {
             // If we have user credentials from state, use them for automatic login
             if (state?.user) {
-              console.log('[OTPVerificationPage] Authenticating new user after registration...');
-              
               // Create session for the newly registered user using OTP-verified login
               const loginResult = await login({
                 email: email,
                 password: '', // OTP verification serves as authentication
                 otpVerified: true
               });
-
-              console.log('[OTPVerificationPage] Authentication successful:', loginResult);
             }
 
             // Redirect to dashboard
-            console.log('[OTPVerificationPage] Redirecting to dashboard...');
             navigate('/dashboard', {
               replace: true,
               state: {
@@ -252,7 +239,6 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
             });
 
           } catch (authError) {
-            console.error('[OTPVerificationPage] Authentication error:', authError);
             // If auto-login fails, redirect to login page
             navigate('/login', {
               replace: true,
@@ -265,8 +251,6 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
         } else if (otpType === 'login') {
           // For login flow: authenticate the user
           try {
-            console.log('[OTPVerificationPage] Authenticating user after OTP login...');
-            
             // OTP verification serves as authentication for passwordless login
             // Use the login function from useAuth hook to update auth context
             const loginResult = await login({
@@ -275,26 +259,21 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
               otpVerified: true
             });
 
-            console.log('[OTPVerificationPage] Login successful:', loginResult);
-
             // Redirect to appropriate dashboard based on user role
             const redirectTo = state?.redirectTo || '/dashboard';
-            console.log('[OTPVerificationPage] Redirecting to:', redirectTo);
-            navigate(redirectTo, { 
+            navigate(redirectTo, {
               replace: true,
-              state: { 
+              state: {
                 message: 'Login successful!',
                 fromOTPLogin: true
               }
             });
 
           } catch (authError) {
-            console.error('[OTPVerificationPage] Login error:', authError);
             setError('Authentication failed. Please try again or contact support.');
           }
         } else {
           // For other OTP types (password_reset, etc.), just redirect
-          console.log('[OTPVerificationPage] OTP verified, redirecting to:', state?.redirectTo || '/dashboard');
           const redirectTo = state?.redirectTo || '/dashboard';
           navigate(redirectTo, {
             replace: true,

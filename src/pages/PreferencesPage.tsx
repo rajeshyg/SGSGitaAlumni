@@ -19,12 +19,14 @@ import {
   Star,
   AlertCircle,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  UsersRound
 } from 'lucide-react';
 import APIService from '../services/api';
 import NotificationsTab from '../components/preferences/NotificationsTab';
 import PrivacyTab from '../components/preferences/PrivacyTab';
 import AccountTab from '../components/preferences/AccountTab';
+import { ParentDashboard } from '../components/family/ParentDashboard';
 
 /**
  * PreferencesPage - Matches prototype design exactly
@@ -87,6 +89,10 @@ const PreferencesPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState('domains');
+
+  // Check if user has family account
+  const isFamilyAccount = user?.is_family_account === 1 || user?.is_family_account === true;
+  const isParent = user?.family_account_type === 'parent';
 
   // Refs for tab components
   const notificationsTabRef = React.useRef<{ save: () => Promise<void> }>(null);
@@ -426,11 +432,17 @@ const PreferencesPage: React.FC = () => {
           )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className={isFamilyAccount && isParent ? "grid w-full grid-cols-5" : "grid w-full grid-cols-4"}>
               <TabsTrigger value="domains">Domains</TabsTrigger>
               <TabsTrigger value="notifications">Notifications</TabsTrigger>
               <TabsTrigger value="privacy">Privacy</TabsTrigger>
               <TabsTrigger value="account">Account</TabsTrigger>
+              {isFamilyAccount && isParent && (
+                <TabsTrigger value="family">
+                  <UsersRound className="h-4 w-4 mr-2" />
+                  Family
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* Domains Tab */}
@@ -589,6 +601,23 @@ const PreferencesPage: React.FC = () => {
             <TabsContent value="account" className="space-y-6">
               <AccountTab userId={user?.id || ''} />
             </TabsContent>
+
+            {/* Family Tab - Only for family account parents */}
+            {isFamilyAccount && isParent && (
+              <TabsContent value="family" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <UsersRound className="h-5 w-5" />
+                      Family Member Management
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ParentDashboard />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>

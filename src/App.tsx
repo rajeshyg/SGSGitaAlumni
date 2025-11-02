@@ -14,6 +14,8 @@ const InvitationAcceptancePage = lazy(() => import('./pages/InvitationAcceptance
 const OTPVerificationPage = lazy(() => import('./pages/OTPVerificationPage'))
 const FamilyProfileSelectionPage = lazy(() => import('./pages/FamilyProfileSelectionPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage'))
+const FamilyManagePage = lazy(() => import('./pages/FamilyManagePage'))
 
 // Lazy load placeholder components with loading states
 const UploadPage = lazy(() => Promise.resolve({
@@ -93,14 +95,7 @@ const UsersPage = lazy(() => Promise.resolve({
   )
 }))
 
-const ProfileSelectionPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Profile Selection</h1>
-      <p className="text-muted-foreground">Profile selection coming soon...</p>
-    </div>
-  )
-}))
+const ProfileSelectionPage = lazy(() => import('./pages/ProfileSelectionPage'))
 
 const ForgotPasswordPage = lazy(() => Promise.resolve({
   default: () => (
@@ -170,6 +165,25 @@ function App() {
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Profile routes */}
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <ProfileEditPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile/edit" element={
+                <ProtectedRoute>
+                  <ProfileEditPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Family routes */}
+              <Route path="/family/manage" element={
+                <ProtectedRoute>
+                  <FamilyManagePage />
                 </ProtectedRoute>
               } />
 

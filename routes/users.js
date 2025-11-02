@@ -18,6 +18,16 @@ export const updateUser = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
+    // Transform camelCase to snake_case for database compatibility
+    const camelToSnake = (str) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+    
+    // Normalize updates to snake_case
+    const normalizedUpdates = {};
+    Object.keys(updates).forEach(key => {
+      const snakeKey = camelToSnake(key);
+      normalizedUpdates[snakeKey] = updates[key];
+    });
+
     // Build dynamic update query for users table
     const userUpdateFields = [];
     const userUpdateValues = [];
@@ -31,9 +41,9 @@ export const updateUser = async (req, res) => {
     ];
 
     editableUserFields.forEach(field => {
-      if (updates[field] !== undefined) {
+      if (normalizedUpdates[field] !== undefined) {
         userUpdateFields.push(`${field} = ?`);
-        userUpdateValues.push(updates[field]);
+        userUpdateValues.push(normalizedUpdates[field]);
       }
     });
 
@@ -52,10 +62,17 @@ export const updateUser = async (req, res) => {
     }
 
     // Update alumni_profiles if profile data is provided
-    if (updates.alumniProfile) {
-      const profileUpdates = updates.alumniProfile;
+    if (updates.alumniProfile || normalizedUpdates.alumni_profile) {
+      const profileUpdates = updates.alumniProfile || normalizedUpdates.alumni_profile;
       const profileUpdateFields = [];
       const profileUpdateValues = [];
+      
+      // Normalize profile updates to snake_case
+      const normalizedProfileUpdates = {};
+      Object.keys(profileUpdates).forEach(key => {
+        const snakeKey = camelToSnake(key);
+        normalizedProfileUpdates[snakeKey] = profileUpdates[key];
+      });
 
       const editableProfileFields = [
         'family_name', 'father_name', 'batch', 'center_name', 'result',
@@ -63,9 +80,9 @@ export const updateUser = async (req, res) => {
       ];
 
       editableProfileFields.forEach(field => {
-        if (profileUpdates[field] !== undefined) {
+        if (normalizedProfileUpdates[field] !== undefined) {
           profileUpdateFields.push(`${field} = ?`);
-          profileUpdateValues.push(profileUpdates[field]);
+          profileUpdateValues.push(normalizedProfileUpdates[field]);
         }
       });
 
@@ -488,7 +505,10 @@ export const getCurrentUserProfile = async (req, res) => {
         u.role,
         u.is_active,
         u.created_at,
-        u.last_login_at
+        u.last_login_at,
+        u.is_family_account,
+        u.family_account_type,
+        u.primary_family_member_id
       FROM app_users u
       WHERE u.id = ? AND u.is_active = true
     `;
@@ -511,7 +531,10 @@ export const getCurrentUserProfile = async (req, res) => {
       role: row.role,
       isActive: row.is_active,
       createdAt: row.created_at,
-      lastLoginAt: row.last_login_at
+      lastLoginAt: row.last_login_at,
+      is_family_account: row.is_family_account,
+      family_account_type: row.family_account_type,
+      primary_family_member_id: row.primary_family_member_id
     };
 
     res.json(user);
