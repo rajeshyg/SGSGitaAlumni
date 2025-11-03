@@ -29,8 +29,15 @@ export function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
+      console.log('[LoginPage] 🔍 User authenticated, checking family account status...');
+      console.log('[LoginPage] User object:', user);
+      console.log('[LoginPage] is_family_account:', user.is_family_account);
+      console.log('[LoginPage] Type:', typeof user.is_family_account);
+      
       const userRole = user.role?.toLowerCase();
       const isFamilyAccount = user.is_family_account === 1 || user.is_family_account === true;
+      
+      console.log('[LoginPage] isFamilyAccount check:', isFamilyAccount);
       
       // For family accounts, redirect to profile selection page
       if (isFamilyAccount) {
@@ -42,10 +49,7 @@ export function LoginPage() {
       // For non-family accounts, use normal redirect logic
       const defaultRedirect = userRole === 'admin' ? '/admin' : '/dashboard';
       const from = location.state?.from?.pathname || defaultRedirect;
-      console.log('🔄 LoginPage: Authenticated user detected');
-      console.log('👤 User role:', user.role, 'Normalized role:', userRole);
-      console.log('🎯 Default redirect:', defaultRedirect, 'Final redirect to:', from);
-      console.log('📍 Location state:', location.state);
+      console.log('🔄 LoginPage: Non-family account, redirecting to:', from);
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, user, navigate, location]);

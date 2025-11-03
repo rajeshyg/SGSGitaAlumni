@@ -68,77 +68,115 @@ export interface AccessLog {
  * Get all family members for the authenticated user
  */
 export async function getFamilyMembers(): Promise<FamilyMember[]> {
-  const response = await apiClient.get('/family-members');
-  return response.data;
+  const response = await apiClient.get('/api/family-members');
+  // Backend returns { success: true, data: members }
+  // apiClient.get returns the full response, so we need response.data or response itself
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as FamilyMember[];
+  }
+  // If response is already the array
+  return response as FamilyMember[];
 }
 
 /**
  * Get a specific family member by ID
  */
 export async function getFamilyMember(id: string): Promise<FamilyMember> {
-  const response = await apiClient.get(`/family-members/${id}`);
-  return response.data;
+  const response = await apiClient.get(`/api/family-members/${id}`);
+  // Backend returns { success: true, data: member }
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as FamilyMember;
+  }
+  return response as FamilyMember;
 }
 
 /**
  * Create a new family member
  */
 export async function createFamilyMember(data: CreateFamilyMemberRequest): Promise<FamilyMember> {
-  const response = await apiClient.post('/family-members', data);
-  return response.data;
+  const response = await apiClient.post('/api/family-members', data);
+  // Backend returns { success: true, data: member }
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as FamilyMember;
+  }
+  return response as FamilyMember;
 }
 
 /**
  * Update a family member
  */
 export async function updateFamilyMember(id: string, data: UpdateFamilyMemberRequest): Promise<FamilyMember> {
-  const response = await apiClient.put(`/family-members/${id}`, data);
-  return response.data;
+  const response = await apiClient.put(`/api/family-members/${id}`, data);
+  // Backend returns { success: true, data: member }
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as FamilyMember;
+  }
+  return response as FamilyMember;
 }
 
 /**
  * Delete a family member
  */
 export async function deleteFamilyMember(id: string): Promise<void> {
-  await apiClient.delete(`/family-members/${id}`);
+  await apiClient.delete(`/api/family-members/${id}`);
 }
 
 /**
  * Switch to a different family member profile
  */
 export async function switchProfile(id: string): Promise<FamilyMember> {
-  const response = await apiClient.post(`/family-members/${id}/switch`, {});
-  return response.data;
+  const response = await apiClient.post(`/api/family-members/${id}/switch`, {});
+  // Backend returns { success: true, data: member }
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as FamilyMember;
+  }
+  return response as FamilyMember;
 }
 
 /**
  * Grant parent consent for a minor (14-17)
  */
 export async function grantConsent(id: string): Promise<FamilyMember> {
-  const response = await apiClient.post(`/family-members/${id}/consent/grant`, {});
-  return response.data;
+  const response = await apiClient.post(`/api/family-members/${id}/consent/grant`, {});
+  // Backend returns { success: true, data: member }
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as FamilyMember;
+  }
+  return response as FamilyMember;
 }
 
 /**
  * Revoke parent consent
  */
 export async function revokeConsent(id: string, reason?: string): Promise<FamilyMember> {
-  const response = await apiClient.post(`/family-members/${id}/consent/revoke`, { reason });
-  return response.data;
+  const response = await apiClient.post(`/api/family-members/${id}/consent/revoke`, { reason });
+  // Backend returns { success: true, data: member }
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as FamilyMember;
+  }
+  return response as FamilyMember;
 }
 
 /**
  * Check if consent renewal is needed
  */
 export async function checkConsentRenewal(id: string): Promise<{ needsRenewal: boolean; lastCheck?: string }> {
-  const response = await apiClient.get(`/family-members/${id}/consent/check`);
-  return response.data;
+  const response = await apiClient.get(`/api/family-members/${id}/consent/check`);
+  // Backend returns { success: true, data: { needsRenewal, lastCheck } }
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as { needsRenewal: boolean; lastCheck?: string };
+  }
+  return response as { needsRenewal: boolean; lastCheck?: string };
 }
 
 /**
  * Get access logs for all family members
  */
 export async function getAccessLogs(limit: number = 50): Promise<AccessLog[]> {
-  const response = await apiClient.get(`/family-members/logs/access?limit=${limit}`);
-  return response.data;
+  const response = await apiClient.get(`/api/family-members/logs/access?limit=${limit}`);
+  // Backend returns { success: true, data: logs }
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as AccessLog[];
+  }
+  return response as AccessLog[];
 }

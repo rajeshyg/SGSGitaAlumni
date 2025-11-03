@@ -120,6 +120,13 @@ router.delete('/:id', authenticateToken, async (req, res) => {
  */
 router.post('/:id/switch', authenticateToken, async (req, res) => {
   try {
+    console.log('[family-members] 🔄 Switch profile request:', {
+      userId: req.user.id,
+      familyMemberId: req.params.id,
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    
     const member = await FamilyMemberService.switchProfile(
       req.user.id,
       req.params.id,
@@ -127,9 +134,11 @@ router.post('/:id/switch', authenticateToken, async (req, res) => {
       req.get('user-agent')
     );
     
+    console.log('[family-members] ✅ Profile switched successfully:', member);
     res.json({ success: true, data: member, message: 'Profile switched successfully' });
   } catch (error) {
-    console.error('Error switching profile:', error);
+    console.error('[family-members] ❌ Error switching profile:', error);
+    console.error('[family-members] Error stack:', error.stack);
     res.status(500).json({ success: false, error: error.message });
   }
 });

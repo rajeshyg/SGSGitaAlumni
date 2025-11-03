@@ -514,9 +514,9 @@ export const getCurrentUserProfile = async (req, res) => {
     `;
 
     const [rows] = await connection.execute(query, [userId]);
-    connection.release();
 
     if (rows.length === 0) {
+      connection.release();
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -537,6 +537,47 @@ export const getCurrentUserProfile = async (req, res) => {
       primary_family_member_id: row.primary_family_member_id
     };
 
+    // 🆕 If user has an active family member profile, merge that data
+    if (row.primary_family_member_id) {
+      console.log('[getCurrentUserProfile] 👨‍👩‍👧‍👦 Family account detected, fetching active family member:', row.primary_family_member_id);
+      
+      const [memberRows] = await connection.execute(
+        `SELECT 
+          id, first_name, last_name, display_name, current_age, 
+          relationship, access_level, profile_image_url
+         FROM FAMILY_MEMBERS 
+         WHERE id = ? AND parent_user_id = ?`,
+        [row.primary_family_member_id, userId]
+      );
+
+      if (memberRows.length > 0) {
+        const member = memberRows[0];
+        console.log('[getCurrentUserProfile] ✅ Found active family member:', {
+          id: member.id,
+          name: `${member.first_name} ${member.last_name}`,
+          relationship: member.relationship
+        });
+
+        // Override user name with family member name
+        user.firstName = member.first_name;
+        user.lastName = member.last_name;
+        user.displayName = member.display_name;
+        user.currentAge = member.current_age;
+        user.relationship = member.relationship;
+        user.accessLevel = member.access_level;
+        user.profileImageUrl = member.profile_image_url;
+        
+        console.log('[getCurrentUserProfile] 🎭 User data merged with family member:', {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role
+        });
+      } else {
+        console.warn('[getCurrentUserProfile] ⚠️ primary_family_member_id set but member not found:', row.primary_family_member_id);
+      }
+    }
+
+    connection.release();
     res.json(user);
   } catch (error) {
     console.error('Get current user error:', error);

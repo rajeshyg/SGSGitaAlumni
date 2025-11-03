@@ -36,6 +36,7 @@ interface DashboardHeaderProps {
     notifications: { unread: number }
     chat: { totalUnread: number }
   }
+  isFamilyAccount?: boolean
   onSwitchProfile: () => void
   onLogout: () => void
 }
@@ -138,19 +139,23 @@ function MessageMenuItem({ unreadCount }: { unreadCount: number }) {
 }
 
 function ProfileMenuItems({
+  isFamilyAccount,
   onSwitchProfile,
   onLogout
 }: {
+  isFamilyAccount?: boolean
   onSwitchProfile: () => void
   onLogout: () => void
 }) {
   return (
     <>
       <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={onSwitchProfile}>
-        <UserPlus className="h-4 w-4 mr-2" />
-        Switch Profile
-      </DropdownMenuItem>
+      {isFamilyAccount && (
+        <DropdownMenuItem onClick={onSwitchProfile}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Switch Profile
+        </DropdownMenuItem>
+      )}
       <DropdownMenuItem onClick={onLogout}>
         <LogOut className="h-4 w-4 mr-2" />
         Logout
@@ -159,8 +164,9 @@ function ProfileMenuItems({
   )
 }
 
-function MobileMenu({ stats, onSwitchProfile, onLogout }: {
+function MobileMenu({ stats, isFamilyAccount, onSwitchProfile, onLogout }: {
   stats: DashboardHeaderProps['stats']
+  isFamilyAccount?: boolean
   onSwitchProfile: () => void
   onLogout: () => void
 }) {
@@ -181,15 +187,16 @@ function MobileMenu({ stats, onSwitchProfile, onLogout }: {
           </DropdownMenuItem>
           <NotificationMenuItem unreadCount={stats.notifications.unread} />
           <MessageMenuItem unreadCount={stats.chat.totalUnread} />
-          <ProfileMenuItems onSwitchProfile={onSwitchProfile} onLogout={onLogout} />
+          <ProfileMenuItems isFamilyAccount={isFamilyAccount} onSwitchProfile={onSwitchProfile} onLogout={onLogout} />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
   )
 }
 
-function ProfileSection({ currentProfile, onSwitchProfile, onLogout }: {
+function ProfileSection({ currentProfile, isFamilyAccount, onSwitchProfile, onLogout }: {
   currentProfile: UserProfile
+  isFamilyAccount?: boolean
   onSwitchProfile: () => void
   onLogout: () => void
 }) {
@@ -210,10 +217,12 @@ function ProfileSection({ currentProfile, onSwitchProfile, onLogout }: {
         </AvatarFallback>
       </Avatar>
       <div className="hidden md:flex items-center space-x-1">
-        <Button variant="ghost" size="icon" onClick={onSwitchProfile}>
-          <UserPlus className="h-4 w-4" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onLogout}>
+        {isFamilyAccount && (
+          <Button variant="ghost" size="icon" onClick={onSwitchProfile} title="Switch Profile">
+            <UserPlus className="h-4 w-4" />
+          </Button>
+        )}
+        <Button variant="ghost" size="icon" onClick={onLogout} title="Logout">
           <LogOut className="h-4 w-4" />
         </Button>
       </div>
@@ -224,7 +233,7 @@ function ProfileSection({ currentProfile, onSwitchProfile, onLogout }: {
   )
 }
 
-export function DashboardHeader({ currentProfile, stats, onSwitchProfile, onLogout }: DashboardHeaderProps) {
+export function DashboardHeader({ currentProfile, stats, isFamilyAccount, onSwitchProfile, onLogout }: DashboardHeaderProps) {
   return (
     <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4 sm:px-6 py-4">
@@ -233,8 +242,8 @@ export function DashboardHeader({ currentProfile, stats, onSwitchProfile, onLogo
 
           <div className="flex items-center space-x-2">
             <DesktopNavigation stats={stats} />
-            <MobileMenu stats={stats} onSwitchProfile={onSwitchProfile} onLogout={onLogout} />
-            <ProfileSection currentProfile={currentProfile} onSwitchProfile={onSwitchProfile} onLogout={onLogout} />
+            <MobileMenu stats={stats} isFamilyAccount={isFamilyAccount} onSwitchProfile={onSwitchProfile} onLogout={onLogout} />
+            <ProfileSection currentProfile={currentProfile} isFamilyAccount={isFamilyAccount} onSwitchProfile={onSwitchProfile} onLogout={onLogout} />
           </div>
         </div>
       </div>

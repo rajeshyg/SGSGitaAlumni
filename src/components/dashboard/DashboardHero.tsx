@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '../ui/card';
 import ProfileCompletion from '../shared/ProfileCompletion';
 import { DashboardHeroProps } from '../../types/dashboard';
@@ -21,6 +22,7 @@ const formatDate = (value: string | null | undefined) => {
 };
 
 export const DashboardHero: React.FC<DashboardHeroProps> = ({ summary }) => {
+  const navigate = useNavigate();
   const memberSince = formatDate(summary.memberSince);
 
   return (
@@ -42,7 +44,10 @@ export const DashboardHero: React.FC<DashboardHeroProps> = ({ summary }) => {
           <ProfileCompletion value={summary.profileCompletion} variant="tile" onAction={() => { window.location.href = '/profile/edit'; }} />
 
           {/* Current Role */}
-          <Card className="bg-card/50 border-primary/20">
+          <Card 
+            className="bg-card/50 border-primary/20 cursor-pointer hover:bg-card/70 transition-colors"
+            onClick={() => navigate('/profile/edit')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
@@ -59,7 +64,10 @@ export const DashboardHero: React.FC<DashboardHeroProps> = ({ summary }) => {
           </Card>
 
           {/* Location */}
-          <Card className="bg-card/50 border-primary/20">
+          <Card 
+            className="bg-card/50 border-primary/20 cursor-pointer hover:bg-card/70 transition-colors"
+            onClick={() => navigate('/profile/edit')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">

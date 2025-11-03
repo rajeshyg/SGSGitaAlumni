@@ -81,11 +81,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // eslint-disable-next-line no-console
         console.log('[AuthContext] Login response user:', response.user, 'role:', response.user.role);
         console.log('[AuthContext] User role type:', typeof response.user.role, 'Value:', JSON.stringify(response.user.role));
+        console.log('[AuthContext] 🔍 FAMILY ACCOUNT DEBUG:');
+        console.log('  - is_family_account:', response.user.is_family_account);
+        console.log('  - family_account_type:', response.user.family_account_type);
+        console.log('  - primary_family_member_id:', response.user.primary_family_member_id);
+        console.log('  - Type of is_family_account:', typeof response.user.is_family_account);
+        console.log('  - is_family_account === 1:', response.user.is_family_account === 1);
+        console.log('  - is_family_account === true:', response.user.is_family_account === true);
       }
 
       // Store tokens securely
       localStorage.setItem('authToken', response.token);
       localStorage.setItem('refreshToken', response.refreshToken);
+
+      console.log('[AuthContext.login] 🔐 Tokens stored in localStorage');
+      console.log('[AuthContext.login] 🔍 authToken length:', response.token?.length || 0);
+      console.log('[AuthContext.login] 🔍 refreshToken length:', response.refreshToken?.length || 0);
+      console.log('[AuthContext.login] 🔍 refreshToken exists:', !!response.refreshToken);
+      console.log('[AuthContext.login] 🔍 Verification - reading back from localStorage:', localStorage.getItem('refreshToken') ? 'FOUND' : 'NOT FOUND');
 
       // Initialize API client with auth tokens
       apiClient.initializeAuth(response.token, response.refreshToken);
@@ -196,6 +209,46 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await APIService.refreshToken();
       localStorage.setItem('authToken', response.token);
       localStorage.setItem('refreshToken', response.refreshToken);
+      
+      // Initialize API client with new tokens
+      apiClient.initializeAuth(response.token, response.refreshToken);
+      
+      // Use user data from refresh response if available, otherwise fetch
+      const user = response.user || await APIService.getCurrentUser();
+      
+      console.log('[AuthContext.refreshToken] 🔍 Updated user data:', {
+        name: `${user.firstName} ${user.lastName}`,
+        is_family_account: user.is_family_account,
+        primary_family_member_id: user.primary_family_member_id
+      });
+      
+      // Update profile in localStorage
+      const profile = {
+        id: typeof user.id === 'string' ? parseInt(user.id) || 1 : user.id,
+        name: getUserDisplayName(user),
+        role: user.role,
+        avatar: user.profileImageUrl || null,
+        preferences: {
+          professionalStatus: user.role === 'admin' ? 'Administrator' :
+                             user.role === 'moderator' ? 'Moderator' : 'Member'
+        }
+      };
+      localStorage.setItem('currentProfile', JSON.stringify(profile));
+      
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthContext] 🔄 Token refreshed, user data updated:', {
+          name: getUserDisplayName(user),
+          role: user.role,
+          relationship: user.relationship
+        });
+      }
+      
+      // Update auth state with fresh user data
+      setAuthState(prev => ({
+        ...prev,
+        user
+      }));
     } catch (error) {
       // If refresh fails, logout user
       await logout();
@@ -266,7 +319,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
            if (import.meta.env.DEV) {
              // eslint-disable-next-line no-console
-             console.log('[AuthContext] Restored auth, stored profile:', profile);
+             console.log('[AuthContext] 🔄 Restored login from cached tokens, user:', user.email);
+             console.log('[AuthContext] is_family_account:', user.is_family_account);
            }
 
            setAuthState({

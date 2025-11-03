@@ -13,6 +13,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const InvitationAcceptancePage = lazy(() => import('./pages/InvitationAcceptancePage'))
 const OTPVerificationPage = lazy(() => import('./pages/OTPVerificationPage'))
 const FamilyProfileSelectionPage = lazy(() => import('./pages/FamilyProfileSelectionPage'))
+const FamilySettingsPage = lazy(() => import('./pages/FamilySettingsPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage'))
 const FamilyManagePage = lazy(() => import('./pages/FamilyManagePage'))
@@ -144,10 +145,9 @@ function App() {
                   <FamilyProfileSelectionPage />
                 </PublicRoute>
               } />
+              {/* OTP Verification - NOT wrapped in PublicRoute because it handles post-auth navigation */}
               <Route path="/verify-otp/:email?" element={
-                <PublicRoute>
-                  <OTPVerificationPage />
-                </PublicRoute>
+                <OTPVerificationPage />
               } />
               <Route path="/family-invitation/:token" element={
                 <PublicRoute>
@@ -184,6 +184,11 @@ function App() {
               <Route path="/family/manage" element={
                 <ProtectedRoute>
                   <FamilyManagePage />
+                </ProtectedRoute>
+              } />
+              <Route path="/settings/family" element={
+                <ProtectedRoute>
+                  <FamilySettingsPage />
                 </ProtectedRoute>
               } />
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getFamilyMembers, switchProfile, type FamilyMember } from '../../services/familyMemberService';
+import { useAuth } from '../../contexts/AuthContext';
 import { Plus } from 'lucide-react';
 
 interface FamilyProfileSelectorProps {
@@ -21,21 +22,26 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
   showAddButton = true
 }) => {
   const navigate = useNavigate();
+  const { refreshToken } = useAuth(); // Get refreshToken to update auth context
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('[FamilyProfileSelector] Component mounted, loading family members...');
     loadFamilyMembers();
   }, []);
 
   const loadFamilyMembers = async () => {
     try {
+      console.log('[FamilyProfileSelector] Fetching family members from API...');
       setLoading(true);
       const data = await getFamilyMembers();
+      console.log('[FamilyProfileSelector] ✅ Family members loaded:', data);
       setMembers(data);
       setError(null);
     } catch (err) {
+      console.error('[FamilyProfileSelector] ❌ Error loading family members:', err);
       setError('Failed to load family members');
       console.error('Error loading family members:', err);
     } finally {
@@ -56,7 +62,16 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
     }
 
     try {
+      console.log('[FamilyProfileSelector] 🔄 Switching to profile:', member.display_name);
+      
+      // Switch profile on backend (updates primary_family_member_id)
       await switchProfile(member.id);
+      console.log('[FamilyProfileSelector] ✅ Backend switch successful');
+      
+      // 🆕 CRITICAL: Refresh the auth context to get updated user data with family member info
+      console.log('[FamilyProfileSelector] 🔄 Refreshing auth context...');
+      await refreshToken();
+      console.log('[FamilyProfileSelector] ✅ Auth context refreshed with new family member data');
       
       if (onProfileSelected) {
         onProfileSelected(member);

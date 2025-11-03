@@ -65,6 +65,7 @@ export interface TokenResponse {
   token: string;
   refreshToken: string;
   expiresIn: number;
+  user?: User; // Optional user data returned from refresh endpoint
 }
 
 // User & Profile Types
@@ -81,6 +82,12 @@ export interface User {
   is_family_account?: boolean | number;
   family_account_type?: 'parent' | 'child' | null;
   primary_family_member_id?: string | null;
+  // 🆕 Family member fields (populated when primary_family_member_id is set)
+  displayName?: string;
+  currentAge?: number;
+  relationship?: 'self' | 'child' | 'spouse' | 'sibling' | 'guardian';
+  accessLevel?: 'full' | 'supervised' | 'blocked';
+  profileImageUrl?: string;
 }
 
 export interface AlumniProfile extends Record<string, unknown> {
@@ -490,11 +497,28 @@ export const APIService = {
     try {
       logger.info('Refreshing authentication token');
 
-      const response = await apiClient.post('/api/auth/refresh', {});
+      // Get refresh token from localStorage
+      const refreshToken = localStorage.getItem('refreshToken');
+      console.log('[APIService.refreshToken] 🔍 Retrieved from localStorage:', refreshToken ? 'Token exists' : 'NO TOKEN FOUND');
+      console.log('[APIService.refreshToken] 🔍 Token length:', refreshToken?.length || 0);
+      console.log('[APIService.refreshToken] 🔍 Token preview:', refreshToken?.substring(0, 20) + '...');
+      
+      if (!refreshToken) {
+        console.error('[APIService.refreshToken] ❌ No refresh token in localStorage!');
+        console.log('[APIService.refreshToken] 🔍 All localStorage keys:', Object.keys(localStorage));
+        throw new Error('No refresh token available');
+      }
 
+      console.log('[APIService.refreshToken] 📤 Sending refresh request with token...');
+      console.log('[APIService.refreshToken] 📤 Request body:', { refreshToken });
+      const response = await apiClient.post('/api/auth/refresh', { refreshToken });
+      console.log('[APIService.refreshToken] 📥 Response received:', response);
+
+      console.log('[APIService.refreshToken] ✅ Token refresh successful');
       logger.info('Token refresh successful');
       return response as TokenResponse;
     } catch (error) {
+      console.error('[APIService.refreshToken] ❌ Token refresh failed:', error);
       logger.error('Token refresh failed:', error);
       throw new Error('Session expired. Please log in again.');
     }

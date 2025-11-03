@@ -77,6 +77,9 @@ export class SecureAPIClient {
    * Make a secure POST request
    */
   async post<T = any>(endpoint: string, data?: any, options: Omit<RequestOptions, 'method' | 'body'> = {}): Promise<APIResponse<T>> {
+    console.log(`[SecureAPIClient.post] Endpoint: ${endpoint}`);
+    console.log(`[SecureAPIClient.post] Received data:`, data);
+    console.log(`[SecureAPIClient.post] Data type:`, typeof data);
     return this.request<T>(endpoint, { ...options, method: 'POST', body: data });
   }
 
@@ -161,6 +164,8 @@ export class SecureAPIClient {
    * Build request configuration with security headers
    */
   private async buildRequestConfig(options: RequestOptions, requestId: string): Promise<RequestInit> {
+    console.log(`[SecureAPIClient.buildRequestConfig] options.body:`, options.body);
+    
     const headers = new Headers({
       ...this.getSecurityHeaders(),
       'X-Request-ID': requestId,
@@ -176,6 +181,7 @@ export class SecureAPIClient {
     // Prepare body
     let body: string | FormData | undefined;
     if (options.body) {
+      console.log(`[SecureAPIClient.buildRequestConfig] Processing body...`);
       if (options.body instanceof FormData) {
         body = options.body;
         // Don't set Content-Type for FormData, let browser set it with boundary
@@ -186,9 +192,13 @@ export class SecureAPIClient {
           ? await this.encryptSensitiveData(options.body)
           : options.body;
 
+        console.log(`[SecureAPIClient.buildRequestConfig] dataToSend:`, dataToSend);
         body = JSON.stringify(dataToSend);
+        console.log(`[SecureAPIClient.buildRequestConfig] Final body string:`, body);
         headers.set('Content-Type', 'application/json');
       }
+    } else {
+      console.log(`[SecureAPIClient.buildRequestConfig] No body to process`);
     }
 
     return {

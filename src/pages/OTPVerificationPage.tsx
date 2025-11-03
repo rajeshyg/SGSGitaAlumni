@@ -37,7 +37,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState;
-  const { login } = useAuth(); // Get login function from AuthContext
+  const { login, isAuthenticated, user } = useAuth(); // Get auth state
   
   // Services
   const otpService = new OTPService();
@@ -64,6 +64,17 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   // ============================================================================
   // EFFECTS
   // ============================================================================
+
+  // Redirect if already authenticated (e.g., user refreshes page after login)
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('[OTPVerificationPage] User already authenticated, checking family account...');
+      const isFamilyAccount = user.is_family_account === 1 || user.is_family_account === true;
+      const redirectTo = isFamilyAccount ? '/profile-selection' : '/dashboard';
+      console.log('[OTPVerificationPage] Redirecting to:', redirectTo);
+      navigate(redirectTo, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
     if (!email) {
@@ -251,6 +262,8 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
         } else if (otpType === 'login') {
           // For login flow: authenticate the user
           try {
+            console.log('[OTPVerificationPage] 🔐 Starting login authentication...');
+            
             // OTP verification serves as authentication for passwordless login
             // Use the login function from useAuth hook to update auth context
             const loginResult = await login({
@@ -259,8 +272,18 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
               otpVerified: true
             });
 
-            // Redirect to appropriate dashboard based on user role
-            const redirectTo = state?.redirectTo || '/dashboard';
+            console.log('[OTPVerificationPage] ✅ Login successful, checking family account status...');
+            console.log('[OTPVerificationPage] Login result user:', loginResult.user);
+            console.log('[OTPVerificationPage] is_family_account:', loginResult.user.is_family_account);
+            console.log('[OTPVerificationPage] Type:', typeof loginResult.user.is_family_account);
+
+            // Check if this is a family account and redirect accordingly
+            const isFamilyAccount = loginResult.user.is_family_account === 1 || loginResult.user.is_family_account === true;
+            console.log('[OTPVerificationPage] isFamilyAccount check result:', isFamilyAccount);
+            
+            const redirectTo = isFamilyAccount ? '/profile-selection' : (state?.redirectTo || '/dashboard');
+            console.log('[OTPVerificationPage] 🎯 Redirecting to:', redirectTo);
+
             navigate(redirectTo, {
               replace: true,
               state: {
@@ -270,6 +293,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
             });
 
           } catch (authError) {
+            console.error('[OTPVerificationPage] ❌ Authentication failed:', authError);
             setError('Authentication failed. Please try again or contact support.');
           }
         } else {

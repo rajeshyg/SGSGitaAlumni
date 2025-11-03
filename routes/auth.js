@@ -292,7 +292,16 @@ export const refresh = async (req, res) => {
         ]);
 
         const [rows] = await connection.execute(
-          'SELECT id, email, role, is_active FROM app_users WHERE id = ? AND is_active = true',
+          `SELECT 
+            u.id, u.email, u.role, u.is_active,
+            u.first_name, u.last_name,
+            u.is_family_account, u.family_account_type, u.primary_family_member_id,
+            fm.first_name as family_first_name,
+            fm.last_name as family_last_name,
+            fm.display_name as family_display_name
+          FROM app_users u
+          LEFT JOIN FAMILY_MEMBERS fm ON u.primary_family_member_id = fm.id
+          WHERE u.id = ? AND u.is_active = true`,
           [decoded.userId]
         );
         connection.release();
@@ -313,9 +322,22 @@ export const refresh = async (req, res) => {
         const newToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         const newRefreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
+        // Build user object with family member data if applicable
+        const userResponse = {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          firstName: user.family_first_name || user.first_name,
+          lastName: user.family_last_name || user.last_name,
+          is_family_account: user.is_family_account,
+          family_account_type: user.family_account_type,
+          primary_family_member_id: user.primary_family_member_id
+        };
+
         res.json({
           token: newToken,
           refreshToken: newRefreshToken,
+          user: userResponse,
           expiresIn: 3600
         });
 

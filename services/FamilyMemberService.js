@@ -202,45 +202,68 @@ class FamilyMemberService {
    * Switch active profile for a user session
    */
   async switchProfile(parentUserId, familyMemberId, ipAddress, userAgent) {
-    const member = await this.getFamilyMember(familyMemberId, parentUserId);
-    
-    if (!member) {
-      throw new Error('Family member not found');
+    try {
+      console.log('[FamilyMemberService] switchProfile called:', {
+        parentUserId,
+        familyMemberId,
+        ipAddress,
+        userAgent
+      });
+      
+      const member = await this.getFamilyMember(familyMemberId, parentUserId);
+      
+      console.log('[FamilyMemberService] Member found:', member);
+      
+      if (!member) {
+        throw new Error('Family member not found');
+      }
+      
+      if (!member.can_access_platform) {
+        throw new Error('This family member does not have platform access');
+      }
+      
+      console.log('[FamilyMemberService] Updating primary_family_member_id...');
+      
+      // Update user's active family member
+      await db.execute(
+        `UPDATE app_users
+         SET primary_family_member_id = ?
+         WHERE id = ?`,
+        [familyMemberId, parentUserId]
+      );
+      
+      console.log('[FamilyMemberService] Updating last_login_at...');
+      
+      // Update family member's last login
+      await db.execute(
+        `UPDATE FAMILY_MEMBERS
+         SET last_login_at = NOW()
+         WHERE id = ?`,
+        [familyMemberId]
+      );
+      
+      console.log('[FamilyMemberService] Logging access...');
+      
+      // Log the profile switch
+      await db.execute(
+        `INSERT INTO FAMILY_ACCESS_LOG (
+          family_member_id,
+          parent_user_id,
+          access_type,
+          ip_address,
+          user_agent
+        ) VALUES (?, ?, 'profile_switch', ?, ?)`,
+        [familyMemberId, parentUserId, ipAddress, userAgent]
+      );
+      
+      console.log('[FamilyMemberService] Profile switch complete!');
+      
+      return member;
+    } catch (error) {
+      console.error('[FamilyMemberService] switchProfile ERROR:', error);
+      console.error('[FamilyMemberService] Error stack:', error.stack);
+      throw error;
     }
-    
-    if (!member.can_access_platform) {
-      throw new Error('This family member does not have platform access');
-    }
-    
-    // Update user's active family member
-    await db.execute(
-      `UPDATE app_users
-       SET primary_family_member_id = ?
-       WHERE id = ?`,
-      [familyMemberId, parentUserId]
-    );
-    
-    // Update family member's last login
-    await db.execute(
-      `UPDATE FAMILY_MEMBERS
-       SET last_login_at = NOW()
-       WHERE id = ?`,
-      [familyMemberId]
-    );
-    
-    // Log the profile switch
-    await db.execute(
-      `INSERT INTO FAMILY_ACCESS_LOG (
-        family_member_id,
-        parent_user_id,
-        access_type,
-        ip_address,
-        user_agent
-      ) VALUES (?, ?, 'profile_switch', ?, ?)`,
-      [familyMemberId, parentUserId, ipAddress, userAgent]
-    );
-    
-    return member;
   }
   
   /**

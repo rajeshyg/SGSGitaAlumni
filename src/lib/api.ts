@@ -48,12 +48,17 @@ export const apiClient = {
       const method = (options.method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH') || 'GET';
       const data = options.body ? JSON.parse(options.body as string) : undefined;
 
+      console.log(`[apiClient] 📡 ${method} ${endpoint}`);
+      console.log(`[apiClient] Raw body:`, options.body);
+      console.log(`[apiClient] Parsed data:`, data);
+
       let response;
       switch (method) {
         case 'GET':
           response = await secureAPIClient.get(endpoint);
           break;
         case 'POST':
+          console.log(`[apiClient] Calling secureAPIClient.post with data:`, data);
           response = await secureAPIClient.post(endpoint, data);
           break;
         case 'PUT':
@@ -69,9 +74,13 @@ export const apiClient = {
           throw new Error(`Unsupported method: ${method}`);
       }
 
+      console.log(`[apiClient] ✅ ${method} ${endpoint} succeeded`, response.data);
+
       // Convert secure API response to legacy format for compatibility
       return response.data;
     } catch (error: any) {
+      console.error(`[apiClient] ❌ ${options.method || 'GET'} ${endpoint} failed:`, error);
+      
       // Convert secure API errors to legacy error format
       if (error.message?.includes('HTTP')) {
         const statusMatch = error.message.match(/HTTP (\d+)/);
