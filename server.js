@@ -3,6 +3,17 @@ import dotenv from 'dotenv';
 // Load environment variables FIRST
 dotenv.config();
 
+// Import validation schemas
+import {
+  LoginSchema,
+  RegisterSchema,
+  OTPGenerateSchema,
+  OTPVerifySchema,
+  InvitationCreateSchema,
+  InvitationAcceptSchema,
+  PreferencesUpdateSchema
+} from './src/schemas/validation/index.js';
+
 // ============================================================================
 // CRITICAL: Add process-level error handlers to prevent silent crashes
 // ============================================================================
@@ -28,6 +39,7 @@ import { getPool, testDatabaseConnection } from './utils/database.js';
 import { authenticateToken, setAuthMiddlewarePool } from './middleware/auth.js';
 import { loginRateLimit, invitationRateLimit, apiRateLimit, rateLimitStatus, clearRateLimit } from './middleware/rateLimit.js';
 import { monitoringMiddleware } from './middleware/monitoring.js';
+import { validateRequest } from './server/middleware/validation.js';
 
 // Import route modules
 import {
@@ -215,10 +227,10 @@ app.use(monitoringMiddleware);
 // AUTHENTICATION ROUTES
 // ============================================================================
 
-app.post('/api/auth/login', loginRateLimit, login);
+app.post('/api/auth/login', loginRateLimit, validateRequest({ body: LoginSchema }), login);
 app.post('/api/auth/logout', authenticateToken, logout);
 app.post('/api/auth/refresh', refresh);
-app.post('/api/auth/register-from-invitation', (req, res, next) => {
+app.post('/api/auth/register-from-invitation', validateRequest({ body: RegisterSchema }), (req, res, next) => {
   // Reduce verbose logging in production
   if (process.env.NODE_ENV !== 'production') {
     console.log('🔵 ROUTE MATCHED: /api/auth/register-from-invitation');
@@ -227,7 +239,7 @@ app.post('/api/auth/register-from-invitation', (req, res, next) => {
   }
   next();
 }, registerFromInvitation);
-app.post('/api/auth/register-from-family-invitation', registerFromFamilyInvitation);
+app.post('/api/auth/register-from-family-invitation', validateRequest({ body: RegisterSchema }), registerFromFamilyInvitation);
 
 // ============================================================================
 // INVITATION SYSTEM ROUTES
@@ -235,10 +247,10 @@ app.post('/api/auth/register-from-family-invitation', registerFromFamilyInvitati
 
 app.get('/api/invitations', getAllInvitations);
 app.get('/api/invitations/family', getFamilyInvitations);
-app.post('/api/invitations/family', invitationRateLimit, createFamilyInvitation);
+app.post('/api/invitations/family', invitationRateLimit, validateRequest({ body: InvitationCreateSchema }), createFamilyInvitation);
 app.get('/api/invitations/family/validate/:token', validateFamilyInvitation);
-app.patch('/api/invitations/family/:id/accept-profile', acceptFamilyInvitationProfile);
-app.post('/api/invitations', invitationRateLimit, createInvitation);
+app.patch('/api/invitations/family/:id/accept-profile', validateRequest({ body: InvitationAcceptSchema }), acceptFamilyInvitationProfile);
+app.post('/api/invitations', invitationRateLimit, validateRequest({ body: InvitationCreateSchema }), createInvitation);
 app.post('/api/invitations/bulk', invitationRateLimit, createBulkInvitations);
 app.get('/api/invitations/validate/:token', (req, res, next) => {
   if (process.env.NODE_ENV !== 'production') {
@@ -514,7 +526,7 @@ app.delete('/api/admin/domains/:id', authenticateToken, deleteDomain);
 // ============================================================================
 
 app.get('/api/preferences/:userId', authenticateToken, getUserPreferences);
-app.put('/api/preferences/:userId', authenticateToken, updateUserPreferences);
+app.put('/api/preferences/:userId', authenticateToken, validateRequest({ body: PreferencesUpdateSchema }), updateUserPreferences);
 app.get('/api/preferences/domains/available', getAvailableDomains);
 app.post('/api/preferences/validate', validatePreferencesEndpoint);
 
@@ -563,11 +575,11 @@ app.use('/api/family-members', familyMembersRouter);
 // OTP ROUTES
 // ============================================================================
 
-app.post('/api/otp/generate', apiRateLimit, generateAndSendOTP); // New auto-generate endpoint
-app.post('/api/otp/generate-and-send', apiRateLimit, generateAndSendOTP); // Alias for frontend compatibility
-app.post('/api/otp/generate-test', apiRateLimit, generateTestOTP); // Test endpoint
-app.post('/api/otp/send', apiRateLimit, sendOTP);
-app.post('/api/otp/validate', validateOTP);
+app.post('/api/otp/generate', apiRateLimit, validateRequest({ body: OTPGenerateSchema }), generateAndSendOTP); // New auto-generate endpoint
+app.post('/api/otp/generate-and-send', apiRateLimit, validateRequest({ body: OTPGenerateSchema }), generateAndSendOTP); // Alias for frontend compatibility
+app.post('/api/otp/generate-test', apiRateLimit, validateRequest({ body: OTPGenerateSchema }), generateTestOTP); // Test endpoint
+app.post('/api/otp/send', apiRateLimit, validateRequest({ body: OTPGenerateSchema }), sendOTP);
+app.post('/api/otp/validate', validateRequest({ body: OTPVerifySchema }), validateOTP);
 app.get('/api/otp/remaining-attempts/:email', getRemainingAttempts);
 app.get('/api/otp/daily-count/:email', getDailyCount);
 app.get('/api/otp/rate-limit/:email', checkRateLimit);

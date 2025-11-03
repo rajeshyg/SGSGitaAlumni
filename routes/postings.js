@@ -13,6 +13,8 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { authenticateToken } from '../middleware/auth.js';
+import { validateRequest } from '../server/middleware/validation.js';
+import { PostingCreateSchema, PostingUpdateSchema } from '../src/schemas/validation/index.js';
 
 const router = express.Router();
 let pool;
@@ -423,7 +425,7 @@ router.get('/:id', async (req, res) => {
  * Create new posting
  * Requires authentication
  */
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, validateRequest({ body: PostingCreateSchema }), async (req, res) => {
   try {
     const {
       title,
@@ -444,17 +446,7 @@ router.post('/', authenticateToken, async (req, res) => {
       expires_at
     } = req.body;
 
-    // Validation
-    if (!title || !content || !posting_type || !contact_name || !contact_email) {
-      return res.status(400).json({ 
-        error: 'Missing required fields', 
-        required: ['title', 'content', 'posting_type', 'contact_name', 'contact_email']
-      });
-    }
-
-    if (!['offer_support', 'seek_support'].includes(posting_type)) {
-      return res.status(400).json({ error: 'Invalid posting_type. Must be offer_support or seek_support' });
-    }
+    // Removed manual validation - handled by middleware
 
     // Calculate expiry date (30 days from now if not provided)
     const expiryDate = expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -524,7 +516,7 @@ router.post('/', authenticateToken, async (req, res) => {
  * Update posting
  * Requires authentication and ownership
  */
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, validateRequest({ body: PostingUpdateSchema }), async (req, res) => {
   try {
     const { id } = req.params;
     const {

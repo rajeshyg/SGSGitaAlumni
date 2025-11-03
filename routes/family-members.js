@@ -7,6 +7,8 @@
 import express from 'express';
 import FamilyMemberService from '../services/FamilyMemberService.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { validateRequest } from '../server/middleware/validation.js';
+import { FamilyMemberCreateSchema, FamilyMemberUpdateSchema } from '../src/schemas/validation/index.js';
 
 const router = express.Router();
 
@@ -50,7 +52,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
  * POST /api/family-members
  * Create a new family member
  */
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, validateRequest({ body: FamilyMemberCreateSchema }), async (req, res) => {
   try {
     const { firstName, lastName, displayName, birthDate, relationship, profileImageUrl } = req.body;
     
@@ -81,7 +83,7 @@ router.post('/', authenticateToken, async (req, res) => {
  * PUT /api/family-members/:id
  * Update a family member profile
  */
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, validateRequest({ body: FamilyMemberUpdateSchema }), async (req, res) => {
   try {
     const member = await FamilyMemberService.updateFamilyMember(
       req.params.id,
