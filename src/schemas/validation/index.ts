@@ -168,11 +168,16 @@ export const ProfileUpdateSchema = z.object({
 export type ProfileUpdateInput = z.infer<typeof ProfileUpdateSchema>;
 
 export const PreferencesUpdateSchema = z.object({
-  selectedDomains: z.array(UUIDSchema).min(1).max(5, 'Maximum 5 domains allowed'),
-  emailNotifications: z.boolean(),
-  smsNotifications: z.boolean(),
-  pushNotifications: z.boolean(),
-  privacyLevel: z.enum(['PUBLIC', 'ALUMNI_ONLY', 'PRIVATE'])
+  primary_domain_id: UUIDSchema.optional(),
+  secondary_domain_ids: z.array(UUIDSchema).max(3, 'Maximum 3 secondary domains allowed').optional(),
+  areas_of_interest_ids: z.array(UUIDSchema).max(20, 'Maximum 20 areas of interest allowed').optional(),
+  preference_type: z.enum(['seeking', 'offering', 'both']).optional(),
+  max_postings: z.number().int().min(1).max(10).optional(),
+  notification_settings: z.record(z.any()).optional(),
+  privacy_settings: z.record(z.any()).optional(),
+  interface_settings: z.record(z.any()).optional(),
+  is_professional: z.boolean().optional(),
+  education_status: z.enum(['student', 'professional', 'both']).optional()
 });
 
 export type PreferencesUpdateInput = z.infer<typeof PreferencesUpdateSchema>;

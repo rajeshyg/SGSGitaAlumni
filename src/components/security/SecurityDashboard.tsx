@@ -112,7 +112,7 @@ export function SecurityDashboard({
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Shield className="mx-auto h-12 w-12 text-blue-500 animate-pulse" />
+          <Shield className="mx-auto h-12 w-12 text-[var(--color-primary)] animate-pulse" />
           <div className="mt-4 text-lg">Analyzing security posture...</div>
           <div className="mt-2 text-sm text-muted-foreground">This may take a few minutes</div>
         </div>
@@ -124,7 +124,7 @@ export function SecurityDashboard({
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <XCircle className="mx-auto h-12 w-12 text-red-500" />
+          <XCircle className="mx-auto h-12 w-12 text-[var(--color-error)]" />
           <div className="mt-4 text-lg">Failed to load security assessment</div>
           <Button onClick={runNewAssessment} className="mt-4">
             Retry Assessment
@@ -175,25 +175,25 @@ export function SecurityDashboard({
           {/* Security Metrics Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-[var(--color-error)]">
                 {securityAssessment.threatModel.threatScenarios.filter((t: any) => t.likelihood > 0.7).length || 0}
               </div>
               <div className="text-sm text-muted-foreground">High Risk Threats</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
+              <div className="text-2xl font-bold text-[var(--color-warning)]">
                 {securityAssessment.vulnerabilityPredictions.predictions.filter((v: any) => v.priority > 7).length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Critical Vulnerabilities</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-[var(--color-success)]">
                 {Math.round((securityAssessment.zeroTrustAssessment.overallCompliance || 0) * 100)}%
               </div>
               <div className="text-sm text-muted-foreground">Zero Trust Compliance</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-[var(--color-primary)]">
                 {securityAssessment.threatModel.mitigations.length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Active Mitigations</div>
@@ -204,9 +204,9 @@ export function SecurityDashboard({
 
       {/* Security Alerts */}
       {getSecurityAlerts(securityAssessment).map((alert, index) => (
-        <div key={index} className={`p-4 border rounded-lg ${alert.type === 'critical' ? 'border-red-200 bg-red-50' : 'border-yellow-200 bg-yellow-50'}`}>
+        <div key={index} className={`p-4 border rounded-lg ${alert.type === 'critical' ? 'border-[var(--color-error-light)] bg-[var(--color-error-bg)]' : 'border-[var(--color-warning-light)] bg-[var(--color-warning-bg)]'}`}>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <AlertTriangle className="h-4 w-4 text-[var(--color-error)]" />
             <div>
               <strong>{alert.type === 'critical' ? 'Critical' : 'Warning'}:</strong> {alert.message}
               <br />
@@ -272,13 +272,13 @@ function ThreatModelView({ threatModel }: { threatModel: any }) {
               <div className="text-sm text-muted-foreground">Total Threats</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-[var(--color-error)]">
                 {threatModel.threatScenarios.filter((t: any) => t.likelihood > 0.7).length}
               </div>
               <div className="text-sm text-muted-foreground">High Risk</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-[var(--color-success)]">
                 {threatModel.mitigations.length}
               </div>
               <div className="text-sm text-muted-foreground">Mitigations</div>
@@ -315,25 +315,25 @@ function VulnerabilityView({ predictions }: { predictions: any }) {
         <div className="space-y-4">
           <div className="grid grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-[var(--color-error)]">
                 {predictions.predictions.filter((p: any) => p.severity === 'critical').length}
               </div>
               <div className="text-sm text-muted-foreground">Critical</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold text-[var(--color-warning-dark)]">
                 {predictions.predictions.filter((p: any) => p.severity === 'high').length}
               </div>
               <div className="text-sm text-muted-foreground">High</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
+              <div className="text-2xl font-bold text-[var(--color-warning)]">
                 {predictions.predictions.filter((p: any) => p.severity === 'medium').length}
               </div>
               <div className="text-sm text-muted-foreground">Medium</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-[var(--color-success)]">
                 {predictions.predictions.filter((p: any) => p.severity === 'low').length}
               </div>
               <div className="text-sm text-muted-foreground">Low</div>
@@ -370,19 +370,19 @@ function ZeroTrustView({ assessment }: { assessment: any }) {
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-[var(--color-success)]">
                 {Math.round((assessment.overallCompliance || 0) * 100)}%
               </div>
               <div className="text-sm text-muted-foreground">Overall Compliance</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-[var(--color-primary)]">
                 {assessment.gaps?.length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Compliance Gaps</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-[var(--color-primary-dark)]">
                 {assessment.recommendations?.length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Recommendations</div>
@@ -393,7 +393,7 @@ function ZeroTrustView({ assessment }: { assessment: any }) {
             <div className="space-y-2">
               <h4 className="font-semibold">Compliance Gaps</h4>
               {assessment.gaps.slice(0, 3).map((gap: any, index: number) => (
-                <div key={index} className="p-2 border rounded border-red-200 bg-red-50">
+                <div key={index} className="p-2 border rounded border-[var(--color-error-light)] bg-[var(--color-error-bg)]">
                   <div className="font-medium">{gap.area}</div>
                   <div className="text-sm text-muted-foreground">{gap.description}</div>
                 </div>
@@ -416,19 +416,19 @@ function PrivacyView({ assessment }: { assessment: any }) {
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-[var(--color-primary)]">
                 {assessment.piiDetection?.instances.length || 0}
               </div>
               <div className="text-sm text-muted-foreground">PII Instances</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-[var(--color-success)]">
                 {assessment.complianceStatus?.overall ? 'Compliant' : 'Needs Work'}
               </div>
               <div className="text-sm text-muted-foreground">Compliance Status</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold text-[var(--color-warning-dark)]">
                 {assessment.recommendations?.length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Recommendations</div>
@@ -463,19 +463,19 @@ function ComplianceView({ report }: { report: any }) {
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-[var(--color-success)]">
                 {Math.round((report.overallCompliance || 0) * 100)}%
               </div>
               <div className="text-sm text-muted-foreground">Overall Compliance</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-[var(--color-error)]">
                 {report.gaps?.length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Compliance Gaps</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-[var(--color-primary)]">
                 {report.regulationResults?.length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Regulations Checked</div>
@@ -514,19 +514,19 @@ function ChaosView({ results }: { results: any }) {
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-[var(--color-success)]">
                 {Math.round((results.overallResilience || 0) * 100)}%
               </div>
               <div className="text-sm text-muted-foreground">System Resilience</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-[var(--color-error)]">
                 {results.vulnerabilities?.length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Vulnerabilities Found</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-[var(--color-primary)]">
                 {results.experiments?.length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Tests Run</div>

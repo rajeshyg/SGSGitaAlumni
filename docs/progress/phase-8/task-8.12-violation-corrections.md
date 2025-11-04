@@ -48,47 +48,79 @@ Systematic correction of all functional and technical violations identified in t
 ### Implementation Readiness
 **Status:** ✅ **READY TO PROCEED** - Action 5 fixed, can continue with remaining corrections
 
-## Current Progress Summary (November 3, 2025)
+## Current Progress Summary (November 3, 2025 - Late Evening Update)
 
 ### Completed Actions (5/15 = 33%)
 1. ✅ **Action 1:** FamilyProfileSelector Component - Complete
 2. ✅ **Action 2:** ProfileSelectionPage - Complete  
-3. ✅ **Action 4:** API Input Validation - **COMPLETE** (All routes validated + middleware bug fixed)
+3. ✅ **Action 4:** API Input Validation - **COMPLETE** (All routes validated + middleware bug fixed + preferences schema fixed)
 4. ✅ **Action 5:** Login Integration - **COMPLETE** (OTP login schema fixed)
 5. ✅ **Critical Fix:** OTP Login Schema - Password now optional when `otpVerified: true`
+6. ✅ **Critical Fix:** Preferences API Schema - Updated PreferencesUpdateSchema to match actual API fields
+7. ✅ **Critical Fix:** Preferences API Collation - Fixed USER_PREFERENCES JOIN collation mismatches
+8. ✅ **Critical Fix:** Auth Refresh Collation - **NEW** Fixed app_users.primary_family_member_id collation (utf8mb4_0900_ai_ci → utf8mb4_unicode_ci)
 
 ### In Progress (1/15 = 7%)
-6. 🟢 **Action 3:** Theme Variable Compliance - Validation complete, 274 violations detected, ready for fixes
+8. 🟢 **Action 3:** Theme Variable Compliance - 95/274 violations fixed (35%): ParentDashboard, ConsentDialog, FamilyMemberCard complete
 
 ### Pending (9/15 = 60%)
-7. 🟡 **Action 6:** Moderator Review System - Planned
-8. 🟡 **Action 7:** Rate Limiting - Planned
-9. 🟡 **Action 8:** Error Response Standards - Planned
-10. 🟡 **Action 9:** Error Boundaries - Planned
-11. 🟡 **Action 10:** Posting Expiry Logic - Planned
-12. 🟡 **Action 11:** Chat System - Planned
-13. 🟡 **Action 12:** Analytics Dashboard - Planned
-14. 🟡 **Action 13:** Database Indexes - Planned
-15. 🟡 **Action 14:** Service Unit Tests - Planned
-16. 🟡 **Action 15:** Domain Selection Limits - Planned
+9. 🟡 **Action 6:** Moderator Review System - Planned
+10. 🟡 **Action 7:** Rate Limiting - Planned
+11. 🟡 **Action 8:** Error Response Standards - Planned
+12. 🟡 **Action 9:** Error Boundaries - Planned
+13. 🟡 **Action 10:** Posting Expiry Logic - Planned
+14. 🟡 **Action 11:** Chat System - Planned
+15. 🟡 **Action 12:** Analytics Dashboard - Planned
+16. 🟡 **Action 13:** Database Indexes - Planned
+17. 🟡 **Action 14:** Service Unit Tests - Planned
+18. 🟡 **Action 15:** Domain Selection Limits - Planned
 
 ### Key Achievements November 3, 2025
 - ✅ **Critical Schema Fix:** LoginSchema now supports OTP-verified logins with empty password
 - ✅ **Action 5 Completed:** OTP login flow fixed - conditional password validation implemented
 - ✅ **Action 4 Complete:** All API endpoints have comprehensive input validation (15 endpoints across 6 modules)
+- ✅ **Preferences API Fix:** PreferencesUpdateSchema updated to match actual API implementation
+- ✅ **Preferences API Collation Fix:** Resolved 500 Internal Server Error on GET /api/preferences/:userId
+  - Fixed CHAR(36) UUID column collation mismatches across DOMAINS, FAMILY_MEMBERS, USER_PREFERENCES tables
+  - Changed utf8mb4_0900_ai_ci → utf8mb4_unicode_ci for consistency
+  - Handled foreign key constraints during migration
+  - All JOIN queries now work correctly
+- ✅ **Auth Refresh Collation Fix:** Resolved 500 Internal Server Error on POST /api/auth/refresh
+  - Fixed app_users.primary_family_member_id collation mismatch (utf8mb4_0900_ai_ci → utf8mb4_unicode_ci)
+  - Refresh endpoint now correctly JOINs app_users with FAMILY_MEMBERS
+  - Token refresh working for both family and individual accounts
+- ✅ **Theme Compliance Progress:** FamilyMemberCard.tsx completed (13 violations fixed)
+  - Total progress: 95/274 violations (35%)
+  - User-facing components prioritized
+  - Systematic theme variable replacement
 - ✅ Server running successfully on `http://localhost:3001`
 - ✅ All validation tests passing
-- ✅ **OTP Login Flow:** Generate → Verify → Login (with `otpVerified: true`) → Family Selection
-- 📋 **Documentation:** Created comprehensive fix guide at `docs/fixes/otp-login-schema-fix.md`
+- ✅ **Auth Flow Complete:** Generate OTP → Verify → Login → **Refresh Tokens** → Family Selection
+- 📋 **Documentation:** Created comprehensive fix guides:
+  - `docs/fixes/otp-login-schema-fix.md`
+  - `docs/fixes/preferences-schema-fix.md`
+  - `docs/fixes/preferences-collation-fix.md`
+  - `docs/fixes/auth-refresh-collation-fix.md`
+  - `SESSION_SUMMARY_NOV_3_2025.md` (New)
+- 📋 **Migration Scripts:** Created database fix scripts:
+  - `fix-collation-ultimate.js` - Preferences collation fix
+  - `fix-app-users-collation.js` - Auth refresh collation fix
+  - `debug-preferences.js` - Diagnostic tool for testing
+  - `check-collations.js` - Collation audit script
+  - `check-refresh-collations.js` - Auth refresh diagnostics
 
 ### Next Immediate Steps
-1. **REQUIRED:** Manual testing of complete OTP login flow (see `docs/fixes/otp-login-schema-fix.md`)
-2. **High Priority:** Begin Action 3 - Fix theme violations in high-violation files
-   - `ParentDashboard.tsx` (51 violations)
-   - `ConsentDialog.tsx` (36 violations)
-   - `SecurityDashboard.tsx` (29 violations)
-3. **Medium Priority:** Action 6 - Implement moderator review system
-4. **Quick Win:** Action 7 - Add rate limiting to auth endpoints (2 days)
+1. ✅ **RESOLVED:** Auth refresh 500 error fixed - collation mismatch resolved
+2. **Testing Recommended:** Full E2E OTP login flow (Generate → Verify → Login → Refresh → Family Selection)
+3. **In Progress:** Continue Action 3 - Fix theme violations in remaining high-violation files
+   - ✅ `ParentDashboard.tsx` (51 violations) - COMPLETE
+   - ✅ `ConsentDialog.tsx` (36 violations) - COMPLETE
+   - ✅ `FamilyMemberCard.tsx` (13 violations) - COMPLETE (Nov 3, 2025)
+   - 🟡 `InvitationSection.tsx` (16 violations) - Admin component, lower priority
+   - 🟡 `OTPTestPanel.tsx` (15 violations) - Admin component, lower priority
+   - 🟡 Remaining files (135 violations) - Mix of admin and user-facing
+4. **Medium Priority:** Action 6 - Implement moderator review system
+5. **Quick Win:** Action 7 - Add rate limiting to auth endpoints (2 days)
 
 ## Execution Strategy
 

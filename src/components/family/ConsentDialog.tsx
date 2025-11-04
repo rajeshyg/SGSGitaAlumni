@@ -56,16 +56,16 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+      <div className="bg-card rounded-lg shadow-xl max-w-md w-full">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h2 className="text-xl font-semibold text-foreground">
             {action === 'grant' ? 'Grant Parent Consent' : 'Revoke Parent Consent'}
           </h2>
           <button
             onClick={handleClose}
             disabled={isSubmitting}
-            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+            className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
             title="Close"
             aria-label="Close dialog"
           >
@@ -77,7 +77,7 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
           {/* Content */}
           <div className="p-6 space-y-4">
             {/* Member Info */}
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="bg-muted rounded-lg p-4 border border-border">
               <div className="flex items-center gap-3">
                 {member.profile_image_url ? (
                   <img
@@ -86,16 +86,16 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
                     className="w-12 h-12 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <span className="text-white text-lg font-bold">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                    <span className="text-primary-foreground text-lg font-bold">
                       {member.first_name.charAt(0).toUpperCase()}
                       {member.last_name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
                 <div>
-                  <p className="font-semibold text-gray-900">{member.display_name}</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="font-semibold text-foreground">{member.display_name}</p>
+                  <p className="text-sm text-muted-foreground">
                     Age: {member.current_age} • {member.relationship}
                   </p>
                 </div>
@@ -104,14 +104,14 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
 
             {/* Current Status */}
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-gray-600">Current Status:</span>
+              <span className="text-muted-foreground">Current Status:</span>
               {member.parent_consent_given ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-100 text-green-800 rounded-full font-medium">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-accent/10 text-accent rounded-full font-medium">
                   <CheckCircle className="w-4 h-4" />
                   Consent Given
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-yellow-100 text-yellow-800 rounded-full font-medium">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-destructive/10 text-destructive rounded-full font-medium">
                   <AlertCircle className="w-4 h-4" />
                   Consent Required
                 </span>
@@ -121,25 +121,25 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
             {/* Action Message */}
             <div className={`rounded-lg p-4 border ${
               action === 'grant' 
-                ? 'bg-green-50 border-green-200' 
-                : 'bg-orange-50 border-orange-200'
+                ? 'bg-accent/10 border-accent/20' 
+                : 'bg-destructive/10 border-destructive/20'
             }`}>
               <div className="flex items-start gap-3">
                 {action === 'grant' ? (
-                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <CheckCircle className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
                 ) : (
-                  <XCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                  <XCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
                 )}
                 <div className="flex-grow">
                   <p className={`font-semibold mb-1 ${
-                    action === 'grant' ? 'text-green-900' : 'text-orange-900'
+                    action === 'grant' ? 'text-accent-foreground' : 'text-destructive-foreground'
                   }`}>
                     {action === 'grant' 
                       ? 'Allow supervised access' 
                       : 'Remove supervised access'}
                   </p>
                   <p className={`text-sm ${
-                    action === 'grant' ? 'text-green-800' : 'text-orange-800'
+                    action === 'grant' ? 'text-accent-foreground/80' : 'text-destructive-foreground/80'
                   }`}>
                     {action === 'grant'
                       ? `${member.display_name} will be able to access the platform with parental supervision.`
@@ -150,12 +150,12 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
             </div>
 
             {/* COPPA Compliance Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
               <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-900">
+                <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-primary-foreground">
                   <p className="font-semibold mb-1">COPPA Compliance</p>
-                  <ul className="space-y-1 text-blue-800">
+                  <ul className="space-y-1 text-primary-foreground/80">
                     {action === 'grant' ? (
                       <>
                         <li>• As a parent/guardian, you consent to supervised access</li>
@@ -178,15 +178,15 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
             {/* Reason Input for Revoke */}
             {action === 'revoke' && (
               <div>
-                <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                  Reason for Revoking Consent <span className="text-red-500">*</span>
+                <label htmlFor="reason" className="block text-sm font-medium text-foreground mb-2">
+                  Reason for Revoking Consent <span className="text-destructive">*</span>
                 </label>
                 <textarea
                   id="reason"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-background text-foreground"
                   placeholder="Please explain why you're revoking consent..."
                   disabled={isSubmitting}
                   required
@@ -196,7 +196,7 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
 
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-800">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-center gap-2 text-destructive">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm">{error}</span>
               </div>
@@ -204,22 +204,22 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-end gap-3 p-4 border-t border-border bg-muted">
             <button
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 ${
                 action === 'grant'
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-orange-600 hover:bg-orange-700'
+                  ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                  : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
               }`}
             >
               {isSubmitting ? (
