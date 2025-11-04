@@ -105,17 +105,17 @@ const OTPTestPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
+    <div className="bg-card rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">OTP Testing Panel</h2>
-        <p className="text-gray-600">
+        <h2 className="text-2xl font-bold text-foreground mb-2">OTP Testing Panel</h2>
+        <p className="text-muted-foreground">
           Generate and test OTP codes for development and debugging purposes.
         </p>
       </div>
 
       {/* Test Controls */}
-      <div className="bg-gray-50 rounded-lg p-4 mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Generate Test OTP</h3>
+      <div className="bg-muted rounded-lg p-4 mb-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Generate Test OTP</h3>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
           <div className="flex-1">
@@ -124,7 +124,7 @@ const OTPTestPanel: React.FC = () => {
               placeholder="Test email address"
               value={testEmail}
               onChange={(e) => setTestEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
               disabled={loading}
             />
           </div>
@@ -133,7 +133,7 @@ const OTPTestPanel: React.FC = () => {
             <button
               onClick={() => generateTestOTP(testEmail, 'email')}
               disabled={loading || !testEmail}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Mail className="w-4 h-4" />
               Email OTP
@@ -142,7 +142,7 @@ const OTPTestPanel: React.FC = () => {
             <button
               onClick={() => generateTestOTP(testEmail, 'sms')}
               disabled={loading || !testEmail}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-success text-success-foreground rounded-md hover:bg-success/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <MessageSquare className="w-4 h-4" />
               SMS OTP
@@ -151,7 +151,7 @@ const OTPTestPanel: React.FC = () => {
             <button
               onClick={() => generateTestOTP(testEmail, 'totp')}
               disabled={loading || !testEmail}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-md hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Smartphone className="w-4 h-4" />
               TOTP Setup
@@ -160,7 +160,7 @@ const OTPTestPanel: React.FC = () => {
         </div>
 
         {loading && (
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-muted-foreground">
             Generating OTP...
           </div>
         )}
@@ -168,12 +168,12 @@ const OTPTestPanel: React.FC = () => {
 
       {/* Test Results */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800">
+        <h3 className="text-lg font-semibold text-foreground">
           Generated OTPs ({testData.length})
         </h3>
 
         {testData.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-muted-foreground">
             <Mail className="w-12 h-12 mx-auto mb-4 opacity-50" />
             <p>No OTPs generated yet. Use the controls above to create test OTPs.</p>
           </div>
@@ -188,27 +188,27 @@ const OTPTestPanel: React.FC = () => {
                   <div className="flex items-center gap-3">
                     {getMethodIcon(item.type)}
                     <div>
-                      <div className="font-semibold text-gray-900">
+                      <div className="font-semibold text-foreground">
                         {item.type.toUpperCase()} OTP
                       </div>
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         {item.email}
                       </div>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <div className="text-sm font-mono font-bold text-gray-900">
+                    <div className="text-sm font-mono font-bold text-foreground">
                       {item.otpCode}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       Expires in: {formatTimeRemaining(item.expiresAt)}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-3 flex items-center justify-between">
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     Generated: {item.generatedAt.toLocaleTimeString()}
                   </div>
 
@@ -218,7 +218,7 @@ const OTPTestPanel: React.FC = () => {
                         href={item.testUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs px-2 py-1 bg-white text-blue-600 rounded border hover:bg-blue-50 transition-colors"
+                        className="text-xs px-2 py-1 bg-background text-primary rounded border hover:bg-primary/10 transition-colors"
                       >
                         Test Link
                       </a>
@@ -229,7 +229,7 @@ const OTPTestPanel: React.FC = () => {
                         href={item.qrCodeUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs px-2 py-1 bg-white text-purple-600 rounded border hover:bg-purple-50 transition-colors"
+                        className="text-xs px-2 py-1 bg-background text-accent rounded border hover:bg-accent/10 transition-colors"
                       >
                         QR Code
                       </a>
@@ -237,7 +237,7 @@ const OTPTestPanel: React.FC = () => {
 
                     <button
                       onClick={() => copyToClipboard(item.otpCode, item.id)}
-                      className="flex items-center gap-1 text-xs px-2 py-1 bg-white text-gray-600 rounded border hover:bg-gray-50 transition-colors"
+                      className="flex items-center gap-1 text-xs px-2 py-1 bg-background text-muted-foreground rounded border hover:bg-muted transition-colors"
                     >
                       {copiedId === item.id ? (
                         <>
@@ -255,7 +255,7 @@ const OTPTestPanel: React.FC = () => {
                 </div>
 
                 {item.secret && (
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-xs text-muted-foreground">
                     <strong>Secret:</strong> {item.secret}
                   </div>
                 )}
@@ -270,7 +270,7 @@ const OTPTestPanel: React.FC = () => {
         <div className="mt-6 text-center">
           <button
             onClick={() => setTestData([])}
-            className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm text-muted-foreground border border-border rounded-md hover:bg-muted transition-colors"
           >
             Clear All Test OTPs
           </button>

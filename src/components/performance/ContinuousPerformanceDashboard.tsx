@@ -145,25 +145,25 @@ export function ContinuousPerformanceDashboard() {
           {/* Current Metrics Display */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-primary">
                 {performanceData?.currentMetrics.responseTime || 0}ms
               </div>
               <div className="text-sm text-muted-foreground">Response Time</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-success">
                 {performanceData?.currentMetrics.throughput || 0}
               </div>
               <div className="text-sm text-muted-foreground">Requests/sec</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-destructive">
                 {(performanceData?.currentMetrics.errorRate || 0) * 100}%
               </div>
               <div className="text-sm text-muted-foreground">Error Rate</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-accent">
                 {performanceData?.currentMetrics.activeUsers || 0}
               </div>
               <div className="text-sm text-muted-foreground">Active Users</div>
@@ -174,9 +174,9 @@ export function ContinuousPerformanceDashboard() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="text-sm font-medium mb-2">CPU Usage</div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-muted rounded-full h-2">
                 <div
-                  className="bg-blue-600 h-2 rounded-full"
+                  className="bg-primary h-2 rounded-full"
                   style={{ width: `${performanceData?.currentMetrics.cpuUsage || 0}%` }}
                 ></div>
               </div>
@@ -186,9 +186,9 @@ export function ContinuousPerformanceDashboard() {
             </div>
             <div>
               <div className="text-sm font-medium mb-2">Memory Usage</div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-muted rounded-full h-2">
                 <div
-                  className="bg-green-600 h-2 rounded-full"
+                  className="bg-success h-2 rounded-full"
                   style={{ width: `${performanceData?.currentMetrics.memoryUsage || 0}%` }}
                 ></div>
               </div>

@@ -172,8 +172,8 @@ const FormField: React.FC<FormFieldProps> = ({
 
   return (
     <div className="form-field">
-      <Label htmlFor={name} className="block text-sm font-medium text-gray-700 mb-1">
-        {label} {required && <span className="text-red-500">*</span>}
+      <Label htmlFor={name} className="block text-sm font-medium text-foreground mb-1">
+        {label} {required && <span className="text-destructive">*</span>}
       </Label>
 
       <Component
@@ -186,7 +186,7 @@ const FormField: React.FC<FormFieldProps> = ({
       />
 
       {error && (
-        <p className="mt-1 text-sm text-red-600">{error}</p>
+        <p className="mt-1 text-sm text-destructive">{error}</p>
       )}
     </div>
   );

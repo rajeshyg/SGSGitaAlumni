@@ -92,7 +92,7 @@ export function MonitoringDashboard() {
   }
 
   if (loading) return <div className="p-6">Loading monitoring data...</div>
-  if (error) return <div className="p-6 bg-red-50 border border-red-200 rounded text-red-800">Error: {error}</div>
+  if (error) return <div className="p-6 bg-destructive/5 border border-destructive/20 rounded text-destructive">Error: {error}</div>
   if (!data) return <div className="p-6">No monitoring data available</div>
 
   return (
@@ -147,7 +147,7 @@ export function MonitoringDashboard() {
                 <CardTitle className="text-sm font-medium">Errors</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-2xl font-bold text-destructive">
                   {data.errors?.total || 0}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -271,7 +271,7 @@ export function MonitoringDashboard() {
             <CardContent>
               <div className="space-y-2">
                 {data.errors.recent.map((error, index) => (
-                  <div key={index} className="p-2 bg-red-50 rounded text-sm">
+                  <div key={index} className="p-2 bg-destructive/5 rounded text-sm">
                     {error.properties?.message || 'Unknown error'}
                   </div>
                 ))}

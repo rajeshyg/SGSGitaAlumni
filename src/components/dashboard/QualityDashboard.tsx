@@ -61,7 +61,7 @@ export function QualityDashboard({ projectId, timeRange, onRefresh }: QualityDas
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <div className="text-lg">Analyzing quality landscape...</div>
           <div className="text-sm text-muted-foreground mt-2">
             This may take a few moments
@@ -73,15 +73,15 @@ export function QualityDashboard({ projectId, timeRange, onRefresh }: QualityDas
 
   if (error) {
     return (
-      <div className="border border-red-200 bg-red-50 p-6 rounded-lg">
+      <div className="border border-destructive/20 bg-destructive/5 p-6 rounded-lg">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-3">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <span className="text-red-800 font-medium">Quality Analysis Unavailable</span>
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              <span className="text-destructive font-medium">Quality Analysis Unavailable</span>
             </div>
-            <div className="text-red-700 mb-4">{error}</div>
-            <div className="text-sm text-red-600 bg-red-100 p-3 rounded">
+            <div className="text-destructive/90 mb-4">{error}</div>
+            <div className="text-sm text-destructive/80 bg-destructive/10 p-3 rounded">
               <strong>What this means:</strong> The quality analysis tools are not currently providing data.
               This could be due to missing dependencies, configuration issues, or tool failures.
               Check the server logs for detailed error information.
@@ -145,25 +145,25 @@ export function QualityDashboard({ projectId, timeRange, onRefresh }: QualityDas
           />
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-success">
                 {qualityAnalysis.insights.passingChecks}
               </div>
               <div className="text-sm text-muted-foreground">Passing</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
+              <div className="text-2xl font-bold text-warning">
                 {qualityAnalysis.insights.warningChecks}
               </div>
               <div className="text-sm text-muted-foreground">Warnings</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-destructive">
                 {qualityAnalysis.insights.failingChecks}
               </div>
               <div className="text-sm text-muted-foreground">Failing</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-primary">
                 {qualityAnalysis.insights.totalChecks}
               </div>
               <div className="text-sm text-muted-foreground">Total</div>
@@ -268,7 +268,7 @@ export function QualityDashboard({ projectId, timeRange, onRefresh }: QualityDas
                       <ul className="text-xs space-y-1">
                         {rec.actions.slice(0, 2).map((action: string, actionIndex: number) => (
                           <li key={actionIndex} className="flex items-center">
-                            <CheckCircle className="h-3 w-3 mr-1 text-green-600" />
+                            <CheckCircle className="h-3 w-3 mr-1 text-success" />
                             {action}
                           </li>
                         ))}
@@ -315,11 +315,11 @@ function QualityOverview({ analysis }: { analysis: QualityAnalysis }) {
               <div key={key} className="flex items-center justify-between">
                 <span className="text-sm capitalize">{key.replace('Trends', '')}</span>
                 <div className="flex items-center space-x-2">
-                  {trend.trend === 'improving' && <TrendingUp className="h-4 w-4 text-green-600" />}
-                  {trend.trend === 'declining' && <TrendingDown className="h-4 w-4 text-red-600" />}
+                  {trend.trend === 'improving' && <TrendingUp className="h-4 w-4 text-success" />}
+                  {trend.trend === 'declining' && <TrendingDown className="h-4 w-4 text-destructive" />}
                   <span className={`text-sm ${
-                    trend.trend === 'improving' ? 'text-green-600' :
-                    trend.trend === 'declining' ? 'text-red-600' : 'text-gray-600'
+                    trend.trend === 'improving' ? 'text-success' :
+                    trend.trend === 'declining' ? 'text-destructive' : 'text-muted-foreground'
                   }`}>
                     {trend.trend}
                   </span>
@@ -362,13 +362,13 @@ function QualityOverview({ analysis }: { analysis: QualityAnalysis }) {
           <div className="space-y-3">
             {analysis.insights.strengths.slice(0, 2).map((strength: string, index: number) => (
               <div key={index} className="flex items-center space-x-2">
-                <CheckCircle className="h-4 w-4 text-green-600" />
+                <CheckCircle className="h-4 w-4 text-success" />
                 <span className="text-sm">{strength}</span>
               </div>
             ))}
             {analysis.insights.weaknesses.slice(0, 2).map((weakness: string, index: number) => (
               <div key={index} className="flex items-center space-x-2">
-                <XCircle className="h-4 w-4 text-red-600" />
+                <XCircle className="h-4 w-4 text-destructive" />
                 <span className="text-sm">{weakness}</span>
               </div>
             ))}
@@ -411,11 +411,11 @@ function CodeQualityView({ metrics, trends }: { metrics: any, trends: any }) {
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               {trends.trend === 'improving' ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <TrendingUp className="h-4 w-4 text-success" />
               ) : trends.trend === 'declining' ? (
-                <TrendingDown className="h-4 w-4 text-red-600" />
+                <TrendingDown className="h-4 w-4 text-destructive" />
               ) : (
-                <div className="h-4 w-4 rounded-full bg-gray-400" />
+                <div className="h-4 w-4 rounded-full bg-muted" />
               )}
               <span className="capitalize">{trends.trend}</span>
             </div>
@@ -461,11 +461,11 @@ function ArchitectureQualityView({ metrics, trends }: { metrics: any, trends: an
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
               {trends.trend === 'improving' ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <TrendingUp className="h-4 w-4 text-success" />
               ) : trends.trend === 'declining' ? (
-                <TrendingDown className="h-4 w-4 text-red-600" />
+                <TrendingDown className="h-4 w-4 text-destructive" />
               ) : (
-                <div className="h-4 w-4 rounded-full bg-gray-400" />
+                <div className="h-4 w-4 rounded-full bg-muted" />
               )}
               <span className="capitalize">{trends.trend}</span>
             </div>

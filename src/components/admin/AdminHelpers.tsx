@@ -18,7 +18,7 @@ export function ErrorState({ error }: { error: string }) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
-        <div className="text-red-500 text-2xl mb-4">⚠️</div>
+        <div className="text-destructive text-2xl mb-4">⚠️</div>
         <p className="text-muted-foreground">{error}</p>
         <Button
           className="mt-4"

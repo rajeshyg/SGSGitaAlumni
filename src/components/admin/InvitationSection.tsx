@@ -255,21 +255,21 @@ export function InvitationSection() {
         const existingInvitation = invitations.find(inv => inv.email === memberEmail);
 
         if (!existingInvitation) {
-          return <Badge variant="outline" className="text-gray-500">Not Invited</Badge>;
+          return <Badge variant="outline" className="text-muted-foreground">Not Invited</Badge>;
         }
 
         const statusColors: Record<string, string> = {
-          pending: 'bg-yellow-100 text-yellow-800',
-          sent: 'bg-blue-100 text-blue-800',
-          accepted: 'bg-green-100 text-green-800',
-          expired: 'bg-red-100 text-red-800',
-          revoked: 'bg-gray-100 text-gray-800',
+          pending: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+          sent: 'bg-primary/10 text-primary',
+          accepted: 'bg-green-500/10 text-green-700 dark:text-green-400',
+          expired: 'bg-destructive/10 text-destructive',
+          revoked: 'bg-muted text-muted-foreground',
         };
 
         return (
           <Badge
             variant="outline"
-            className={statusColors[existingInvitation.status] || 'bg-gray-100 text-gray-800'}
+            className={statusColors[existingInvitation.status] || 'bg-muted text-muted-foreground'}
           >
             {existingInvitation.status}
           </Badge>
@@ -337,7 +337,7 @@ export function InvitationSection() {
                     size="sm"
                     onClick={() => sendInvitationToMember(row.original.id)}
                     disabled={loading}
-                    className="h-8 px-2 bg-blue-600 hover:bg-blue-700"
+                    className="h-8 px-2 bg-primary hover:bg-primary/90"
                   >
                     Invite
                   </Button>
@@ -684,14 +684,14 @@ export function InvitationSection() {
 
               {/* Clean Testing Panel */}
               {showInvitationUrls && (
-                <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Eye className="h-4 w-4 text-blue-600" />
-                        <CardTitle className="text-sm text-blue-900">Testing Panel</CardTitle>
+                        <Eye className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-sm text-foreground">Testing Panel</CardTitle>
                       </div>
-                      <CardDescription className="text-xs text-blue-700">
+                      <CardDescription className="text-xs text-muted-foreground">
                         Passwordless authentication testing tools
                       </CardDescription>
                     </div>
@@ -700,7 +700,7 @@ export function InvitationSection() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {/* Invitation URLs */}
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                        <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
                           <Link className="h-3 w-3" />
                           Invitation URLs
                         </h4>
@@ -709,10 +709,10 @@ export function InvitationSection() {
                             .filter((inv: any) => inv.status === 'pending' && new Date(inv.expiresAt) > new Date())
                             .slice(0, 10)
                             .map((inv: any) => (
-                            <div key={inv.id} className="flex items-center gap-2 p-2 bg-white rounded border text-xs">
+                            <div key={inv.id} className="flex items-center gap-2 p-2 bg-background rounded border text-xs">
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-gray-900 truncate">{inv.email}</div>
-                                <code className="text-gray-600 font-mono text-xs break-all">
+                                <div className="font-medium text-foreground truncate">{inv.email}</div>
+                                <code className="text-muted-foreground font-mono text-xs break-all">
                                   {generateInvitationUrl(inv.invitationToken)}
                                 </code>
                               </div>
@@ -728,39 +728,39 @@ export function InvitationSection() {
                             </div>
                           ))}
                           {invitations.filter((inv: any) => inv.status === 'pending' && new Date(inv.expiresAt) > new Date()).length === 0 && (
-                            <div className="text-xs text-gray-500 p-2">No active pending invitations</div>
+                            <div className="text-xs text-muted-foreground p-2">No active pending invitations</div>
                           )}
                         </div>
                       </div>
 
                       {/* OTP Generator */}
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                        <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
                           <Key className="h-3 w-3" />
                           Active OTPs ({allActiveOtps.length})
                         </h4>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
                           {allActiveOtps.length === 0 ? (
-                            <div className="text-xs text-gray-500 p-2">No active OTPs</div>
+                            <div className="text-xs text-muted-foreground p-2">No active OTPs</div>
                           ) : (
                             allActiveOtps.map((otp, idx) => {
                               const isExpired = new Date(otp.expiresAt) < new Date();
                               return (
-                                <div key={`${otp.email}-${idx}`} className="flex items-center gap-2 p-2 bg-white rounded border text-xs">
+                                <div key={`${otp.email}-${idx}`} className="flex items-center gap-2 p-2 bg-background rounded border text-xs">
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-gray-900 truncate">{otp.email}</div>
+                                    <div className="font-medium text-foreground truncate">{otp.email}</div>
                                     <div className="flex items-center gap-2">
                                       <code className={`px-2 py-1 rounded text-xs font-mono ${
                                         isExpired
-                                          ? 'bg-red-100 text-red-800'
-                                          : 'bg-green-100 text-green-800'
+                                          ? 'bg-destructive/10 text-destructive'
+                                          : 'bg-green-500/10 text-green-700 dark:text-green-400'
                                       }`}>
                                         {otp.code}
                                       </code>
                                       <Badge variant="outline" className="text-xs">
                                         {otp.tokenType}
                                       </Badge>
-                                      <span className="text-xs text-gray-500">
+                                      <span className="text-xs text-muted-foreground">
                                         {isExpired ? (
                                           'Expired'
                                         ) : (
@@ -871,7 +871,7 @@ export function InvitationSection() {
                                     size="sm"
                                     variant="ghost"
                                     onClick={() => revokeInvitation(inv.id)}
-                                    className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
+                                    className="h-7 px-2 text-xs text-destructive hover:text-destructive/80"
                                   >
                                     Revoke
                                   </Button>
@@ -933,7 +933,7 @@ export function InvitationSection() {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => revokeInvitation(inv.id)}
-                                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
+                                  className="h-7 px-2 text-xs text-destructive hover:text-destructive/80"
                                 >
                                   Revoke
                                 </Button>
