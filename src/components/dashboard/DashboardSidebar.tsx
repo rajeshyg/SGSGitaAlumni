@@ -153,7 +153,7 @@ function SystemStatus() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base font-semibold flex items-center">
-          <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+          <CheckCircle2 className="h-4 w-4 mr-2 text-[--success]" />
           System Status
         </CardTitle>
         <CardDescription className="text-xs">
@@ -202,7 +202,7 @@ function RecentActivity() {
         <div className="space-y-2">
           <div className="flex items-center justify-between p-3 rounded-lg bg-secondary hover:bg-secondary/80 border border-border group cursor-pointer transition-colors">
             <div className="flex items-center space-x-3">
-              <div className="h-2 w-2 rounded-full bg-green-500"></div>
+              <div className="h-2 w-2 rounded-full bg-[--success]"></div>
               <span className="text-sm font-medium">Data file processed</span>
             </div>
             <div className="flex items-center space-x-2">
@@ -211,7 +211,7 @@ function RecentActivity() {
           </div>
           <div className="flex items-center justify-between p-3 rounded-lg bg-secondary hover:bg-secondary/80 border border-border group cursor-pointer transition-colors">
             <div className="flex items-center space-x-3">
-              <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+              <div className="h-2 w-2 rounded-full bg-[--primary]"></div>
               <span className="text-sm font-medium">User login</span>
             </div>
             <div className="flex items-center space-x-2">

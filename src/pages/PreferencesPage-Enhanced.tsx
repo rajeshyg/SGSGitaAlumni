@@ -260,7 +260,7 @@ const PreferencesPage: React.FC = () => {
         )}
 
         {success && (
-          <Alert className="bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400 animate-in slide-in-from-top duration-300">
+          <Alert className="bg-[--success-bg] border-[--success-border] text-[--success-foreground] animate-in slide-in-from-top duration-300">
             <CheckCircle2 className="h-5 w-5" />
             <AlertDescription className="ml-2 font-medium">
               Preferences saved successfully! Your personalized experience is now active.
@@ -357,7 +357,7 @@ const PreferencesPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-8 bg-purple-600 rounded-full" />
+                  <div className="w-2 h-8 bg-[--accent] rounded-full" />
                   <div>
                     <CardTitle className="text-2xl">Secondary Domains</CardTitle>
                     <CardDescription className="text-base mt-1">
@@ -372,7 +372,7 @@ const PreferencesPage: React.FC = () => {
                     {preferences.secondaryDomains.length}/3 domains selected
                   </p>
                   {preferences.secondaryDomains.length >= 3 && (
-                    <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">
+                    <span className="text-xs text-[--warning] font-medium">
                       Maximum reached
                     </span>
                   )}
@@ -419,7 +419,7 @@ const PreferencesPage: React.FC = () => {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-8 bg-blue-600 rounded-full" />
+                    <div className="w-2 h-8 bg-[--primary] rounded-full" />
                     <div>
                       <CardTitle className="text-2xl">Areas of Interest</CardTitle>
                       <CardDescription className="text-base mt-1">

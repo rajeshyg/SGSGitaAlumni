@@ -135,10 +135,10 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-bold text-gray-900">Add Family Member</h2>
+          <h2 className="text-2xl font-bold text-[--foreground]">Add Family Member</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-[--muted-foreground] hover:text-[--foreground] transition-colors"
             title="Close"
             aria-label="Close modal"
           >
@@ -149,14 +149,14 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="bg-[--destructive-bg] border border-[--destructive-border] text-[--destructive-foreground] px-4 py-3 rounded">
               {error}
             </div>
           )}
 
           {/* First Name */}
           <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="firstName" className="block text-sm font-medium text-[--muted-foreground] mb-1">
               First Name *
             </label>
             <input
@@ -166,13 +166,13 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
               value={formData.firstName}
               onChange={handleInputChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
             />
           </div>
 
           {/* Last Name */}
           <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="lastName" className="block text-sm font-medium text-[--muted-foreground] mb-1">
               Last Name *
             </label>
             <input
@@ -182,13 +182,13 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
               value={formData.lastName}
               onChange={handleInputChange}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
             />
           </div>
 
           {/* Display Name */}
           <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="displayName" className="block text-sm font-medium text-[--muted-foreground] mb-1">
               Display Name
             </label>
             <input
@@ -198,13 +198,13 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
               value={formData.displayName}
               onChange={handleInputChange}
               placeholder="Auto-generated from first & last name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
             />
           </div>
 
           {/* Relationship */}
           <div>
-            <label htmlFor="relationship" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="relationship" className="block text-sm font-medium text-[--muted-foreground] mb-1">
               Relationship
             </label>
             <select
@@ -212,7 +212,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
               name="relationship"
               value={formData.relationship}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
             >
               <option value="child">Child</option>
               <option value="spouse">Spouse</option>
@@ -223,7 +223,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
 
           {/* Birth Date */}
           <div>
-            <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="birthDate" className="block text-sm font-medium text-[--muted-foreground] mb-1">
               Birth Date
             </label>
             <input
@@ -233,7 +233,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
               value={formData.birthDate}
               onChange={handleInputChange}
               max={new Date().toISOString().split('T')[0]}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
             />
             {ageMessage && (
               <p className={`text-sm mt-2 ${ageMessage.color} font-medium`}>
@@ -243,8 +243,8 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
           </div>
 
           {/* COPPA Notice */}
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <p className="text-sm text-blue-800">
+          <div className="bg-[--info-bg] border border-[--info-border] rounded-md p-4">
+            <p className="text-sm text-[--info-foreground]">
               <strong>Age Verification:</strong> Members under 14 cannot access the platform per COPPA requirements.
               Members aged 14-17 require parent consent.
             </p>
@@ -256,14 +256,14 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="px-4 py-2 border border-[--border] rounded-md text-[--muted-foreground] hover:bg-[--muted] transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-[--primary] text-[--primary-foreground] rounded-md hover:bg-[--primary]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Adding...' : 'Add Member'}
             </button>

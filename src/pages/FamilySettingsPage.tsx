@@ -122,12 +122,12 @@ const FamilySettingsPage: React.FC = () => {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* COPPA Compliance Notice */}
-        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-8">
+        <div className="bg-[--info-bg] border border-[--info-border] rounded-lg p-4 mb-8">
           <div className="flex items-start gap-3">
-            <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <Shield className="w-5 h-5 text-[--info] flex-shrink-0 mt-0.5" />
             <div className="text-sm">
-              <p className="font-semibold text-blue-900 dark:text-blue-100 mb-1">COPPA Compliance</p>
-              <p className="text-blue-800 dark:text-blue-200">
+              <p className="font-semibold text-[--info-foreground] mb-1">COPPA Compliance</p>
+              <p className="text-[--info-foreground]/90">
                 Family members aged 14-17 require annual parental consent to access the platform. 
                 You can grant or revoke consent at any time.
               </p>
@@ -205,7 +205,7 @@ const FamilySettingsPage: React.FC = () => {
                       ) : (
                         <button
                           onClick={() => handleGrantConsent(member)}
-                          className="px-4 py-2 text-sm font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900 transition-colors"
+                          className="px-4 py-2 text-sm font-medium text-[--success-foreground] bg-[--success-bg] border border-[--success-border] rounded-lg hover:bg-[--success-bg]/80 transition-colors"
                         >
                           Grant Consent
                         </button>
@@ -216,7 +216,7 @@ const FamilySettingsPage: React.FC = () => {
 
                 {/* Status Message */}
                 {member.status === 'pending_consent' && (
-                  <div className="mt-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded p-3 text-sm text-yellow-800 dark:text-yellow-200">
+                  <div className="mt-4 bg-[--warning-bg] border border-[--warning-border] rounded p-3 text-sm text-[--warning-foreground]">
                     <Clock className="w-4 h-4 inline mr-2" />
                     This member cannot access the platform until parental consent is granted.
                   </div>

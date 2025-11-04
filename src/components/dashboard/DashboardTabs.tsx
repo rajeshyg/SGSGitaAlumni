@@ -51,31 +51,31 @@ function SystemStatusCard() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-base font-medium">System Status</CardTitle>
-        <CheckCircle2 className="h-5 w-5 text-green-500" />
+        <CheckCircle2 className="h-5 w-5 text-[--success]" />
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-64">
           <div className="space-y-4">
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center space-x-3">
-                <Database className="h-4 w-4 text-blue-500" />
+                <Database className="h-4 w-4 text-[--primary]" />
                 <span className="text-sm font-medium">Database</span>
               </div>
-              <Badge variant="secondary" className="bg-green-100 text-green-800">Online</Badge>
+              <Badge variant="secondary" className="bg-[--success-bg] text-[--success-foreground]">Online</Badge>
             </div>
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center space-x-3">
-                <Upload className="h-4 w-4 text-purple-500" />
+                <Upload className="h-4 w-4 text-[--accent]" />
                 <span className="text-sm font-medium">File Processing</span>
               </div>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800">Active</Badge>
+              <Badge variant="secondary" className="bg-[--info-bg] text-[--info-foreground]">Active</Badge>
             </div>
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center space-x-3">
-                <BarChart3 className="h-4 w-4 text-orange-500" />
+                <BarChart3 className="h-4 w-4 text-[--warning]" />
                 <span className="text-sm font-medium">Analytics</span>
               </div>
-              <Badge variant="secondary" className="bg-purple-100 text-purple-800">Ready</Badge>
+              <Badge variant="secondary" className="bg-[--accent-bg] text-[--accent-foreground]">Ready</Badge>
             </div>
           </div>
         </ScrollArea>

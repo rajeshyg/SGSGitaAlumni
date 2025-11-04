@@ -223,7 +223,7 @@ const DashboardError: React.FC<DashboardErrorProps> = ({ error, onRetry }) => (
   <div className="min-h-screen bg-background flex items-center justify-center p-4">
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-red-600">Dashboard Error</CardTitle>
+        <CardTitle className="text-destructive">Dashboard Error</CardTitle>
         <CardDescription>
           We encountered an issue loading your dashboard
         </CardDescription>

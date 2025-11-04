@@ -243,15 +243,15 @@ export const NotificationsTab = React.forwardRef<{ save: () => Promise<void> }, 
       </Card>
 
       {/* Info Card */}
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+      <Card className="bg-[--info-bg] border-[--info-border]">
         <CardContent className="pt-6">
           <div className="flex gap-3">
-            <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <Bell className="h-5 w-5 text-[--info] flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              <p className="text-sm font-medium text-[--info-foreground]">
                 Notification Preferences
               </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="text-sm text-[--info-foreground]/80">
                 Your notification settings will be saved when you click the "Save Changes" button at the top of the page.
                 You can adjust these settings at any time.
               </p>

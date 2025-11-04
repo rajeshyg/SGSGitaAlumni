@@ -180,7 +180,7 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
                 
                 {/* Status Indicators */}
                 {member.status === 'pending_consent' && (
-                  <div className="text-yellow-600 dark:text-yellow-400 text-sm mt-1">
+                  <div className="text-[--warning] text-sm mt-1">
                     Needs Consent
                   </div>
                 )}
@@ -190,7 +190,7 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
                   </div>
                 )}
                 {member.access_level === 'supervised' && member.can_access_platform && (
-                  <div className="text-yellow-600 dark:text-yellow-400 text-sm mt-1">
+                  <div className="text-[--warning] text-sm mt-1">
                     Supervised
                   </div>
                 )}

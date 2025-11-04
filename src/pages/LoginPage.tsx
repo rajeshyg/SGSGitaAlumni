@@ -223,7 +223,7 @@ export function LoginPage() {
 
             {/* Success Message from state */}
             {location.state?.message && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+              <div className="bg-[--success-bg] border border-[--success-border] text-[--success-foreground] px-4 py-3 rounded-md text-sm">
                 {location.state.message}
               </div>
             )}
@@ -293,10 +293,10 @@ export function LoginPage() {
             {/* Passwordless Login Toggle */}
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+                <div className="w-full border-t border-[--border]"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">or</span>
+                <span className="px-2 bg-white text-[--muted-foreground]">or</span>
               </div>
             </div>
 

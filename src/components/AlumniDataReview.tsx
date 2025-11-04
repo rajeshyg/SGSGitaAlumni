@@ -26,10 +26,10 @@ export const AlumniDataReview: React.FC<AlumniDataReviewProps> = ({
 
       <CardContent>
         <div className="alumni-data-display">
-          <div className="data-source-notice mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="data-source-notice mb-4 p-3 bg-[--info-bg] border border-[--info-border] rounded-md">
             <div className="flex items-center gap-2">
-              <InfoIcon className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-blue-800">This information comes from your alumni records</span>
+              <InfoIcon className="h-4 w-4 text-[--info]" />
+              <span className="text-sm text-[--info-foreground]">This information comes from your alumni records</span>
             </div>
           </div>
 
@@ -67,10 +67,10 @@ interface ProfileFieldProps {
 
 const ProfileField: React.FC<ProfileFieldProps> = ({ label, value }) => (
   <div className="profile-field">
-    <label className="block text-sm font-medium text-gray-700 mb-1">
+    <label className="block text-sm font-medium text-[--muted-foreground] mb-1">
       {label}
     </label>
-    <div className="text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded border">
+    <div className="text-sm text-[--foreground] bg-[--muted] px-3 py-2 rounded border">
       {value}
     </div>
   </div>

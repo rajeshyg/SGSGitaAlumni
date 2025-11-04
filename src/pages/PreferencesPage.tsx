@@ -423,7 +423,7 @@ const PreferencesPage: React.FC = () => {
           )}
 
           {success && (
-            <Alert className="mb-6 bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400 animate-in slide-in-from-top duration-300">
+            <Alert className="mb-6 bg-[--success-bg] border-[--success-border] text-[--success-foreground] animate-in slide-in-from-top duration-300">
               <CheckCircle2 className="h-5 w-5" />
               <AlertDescription className="ml-2 font-medium">
                 Preferences saved successfully!

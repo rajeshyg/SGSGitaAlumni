@@ -385,7 +385,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
 
   if (!email) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[--muted] flex items-center justify-center p-4">
         <Card className="w-full max-w-md mx-auto">
           <CardHeader>
             <CardTitle>Error</CardTitle>
@@ -410,7 +410,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[--muted] flex items-center justify-center p-4">
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
           <CardTitle>Verify OTP</CardTitle>
@@ -430,13 +430,13 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
           
           {success && (
             <Alert className="mb-4">
-              <AlertDescription className="text-green-600">{success}</AlertDescription>
+              <AlertDescription className="text-[--success]">{success}</AlertDescription>
             </Alert>
           )}
 
           {/* Verification Method Selector */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-[--muted-foreground] mb-2">
               Verification Method
             </label>
             <div className="flex space-x-2">

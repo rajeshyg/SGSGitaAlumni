@@ -41,7 +41,7 @@ export function LazyComponent({
   }, [importFunc, preload])
 
   if (isLoading || !LazyLoadedComponent) {
-    return Fallback ? <Fallback /> : <div className="animate-pulse bg-gray-200 rounded h-8 w-32"></div>
+    return Fallback ? <Fallback /> : <div className="animate-pulse bg-[--muted] rounded h-8 w-32"></div>
   }
 
   return <LazyLoadedComponent {...componentProps} />
