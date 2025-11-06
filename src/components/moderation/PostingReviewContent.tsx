@@ -47,7 +47,7 @@ export function PostingReviewContent({
   }
 
   return (
-    <div className="space-y-6 max-h-[60vh] overflow-y-auto p-1">
+    <div className="space-y-6 p-1">
       <PostingDetails posting={posting} />
       <SubmitterInfo posting={posting} submitterStats={submitterStats} />
       <ModerationHistory history={moderationHistory} />

@@ -229,36 +229,65 @@ router.get('/queue',
           p.created_at,
           p.expires_at,
           p.version,
-          pd.domain_id,
-          d.name as domain_name,
           u.id as submitter_id,
           u.first_name,
           u.last_name,
           u.email as submitter_email,
-          (SELECT COUNT(*) 
-           FROM MODERATION_HISTORY mh 
+          (
+            SELECT JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'id', d.id,
+                'name', d.name,
+                'domain_level', d.domain_level,
+                'is_primary', pd.is_primary
+              )
+            )
+            FROM POSTING_DOMAINS pd
+            JOIN DOMAINS d ON pd.domain_id = d.id
+            WHERE pd.posting_id = p.id
+            ORDER BY pd.is_primary DESC, d.domain_level ASC, d.display_order ASC
+          ) as domains,
+          (SELECT COUNT(*)
+           FROM MODERATION_HISTORY mh
            WHERE mh.posting_id = p.id) as moderation_count,
-          (SELECT COUNT(*) 
+          (SELECT COUNT(*)
            FROM MODERATION_HISTORY mh2
            INNER JOIN POSTINGS p2 ON mh2.posting_id = p2.id
-           WHERE p2.author_id = u.id 
+           WHERE p2.author_id = u.id
            AND mh2.action = 'REJECTED') as submitter_rejection_count
         FROM POSTINGS p
         INNER JOIN app_users u ON p.author_id = u.id
-        LEFT JOIN POSTING_DOMAINS pd ON p.id = pd.posting_id AND pd.is_primary = 1
-        LEFT JOIN DOMAINS d ON pd.domain_id = d.id
+        ${domain ? 'INNER JOIN POSTING_DOMAINS pd_filter ON p.id = pd_filter.posting_id' : ''}
         ${whereClause}
         ${orderByClause}
         LIMIT ? OFFSET ?`,
         [...params, limit, offset]
       );
 
+      // Parse JSON fields for domains
+      const parsedPostings = postings.map(posting => {
+        let domains = [];
+        if (posting.domains) {
+          if (typeof posting.domains === 'string') {
+            try { domains = JSON.parse(posting.domains); } catch (e) { }
+          } else if (Array.isArray(posting.domains)) {
+            domains = posting.domains;
+          } else if (Buffer.isBuffer(posting.domains)) {
+            try { domains = JSON.parse(posting.domains.toString()); } catch (e) { }
+          }
+        }
+        return {
+          ...posting,
+          domains: Array.isArray(domains) ? domains.filter(d => d) : []
+        };
+      });
+
       // Get queue statistics
       const [stats] = await pool.query(
-        `SELECT 
+        `SELECT
           COUNT(CASE WHEN moderation_status = 'PENDING' THEN 1 END) as pending_count,
           COUNT(CASE WHEN moderation_status = 'ESCALATED' THEN 1 END) as escalated_count,
-          COUNT(CASE WHEN moderation_status = 'PENDING' 
+          COUNT(CASE WHEN moderation_status = 'PENDING'
                 AND created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1 END) as urgent_count
         FROM POSTINGS
         WHERE moderation_status IN ('PENDING', 'ESCALATED')`
@@ -267,7 +296,7 @@ router.get('/queue',
       res.json({
         success: true,
         data: {
-          postings,
+          postings: parsedPostings,
           pagination: {
             currentPage: page,
             totalPages,
@@ -338,8 +367,9 @@ router.post('/approve',
 
       // Update posting status (moderated_by is now bigint)
       const [updateResult] = await connection.query(
-        `UPDATE POSTINGS 
+        `UPDATE POSTINGS
          SET moderation_status = 'APPROVED',
+             status = 'active',
              moderated_by = ?,
              moderated_at = NOW(),
              moderator_notes = ?,
@@ -443,8 +473,9 @@ router.post('/reject',
 
       // Update posting status
       const [updateResult] = await connection.query(
-        `UPDATE POSTINGS 
+        `UPDATE POSTINGS
          SET moderation_status = 'REJECTED',
+             status = 'rejected',
              moderated_by = ?,
              moderated_at = NOW(),
              rejection_reason = ?,
@@ -675,7 +706,7 @@ router.get('/posting/:id',
 
       // Get this posting's moderation history
       const [moderationHistory] = await pool.query(
-        `SELECT 
+        `SELECT
           mh.*,
           u.first_name as moderator_first_name,
           u.last_name as moderator_last_name
@@ -686,10 +717,34 @@ router.get('/posting/:id',
         [id]
       );
 
+      // Get all domains (primary, secondary, and areas of interest)
+      const [allDomains] = await pool.query(
+        `SELECT
+          d.id,
+          d.name,
+          d.domain_level,
+          pd.is_primary
+        FROM POSTING_DOMAINS pd
+        INNER JOIN DOMAINS d ON pd.domain_id = d.id
+        WHERE pd.posting_id = ?
+        ORDER BY pd.is_primary DESC, d.domain_level, d.display_order`,
+        [id]
+      );
+
+      // Map database field names to frontend expected names
+      const mappedPosting = {
+        ...posting,
+        description: posting.content, // Map content → description
+        first_name: posting.submitter_first_name,
+        last_name: posting.submitter_last_name,
+        submitter_email: posting.submitter_email,
+        domains: allDomains // Include all domains as array
+      };
+
       res.json({
         success: true,
         data: {
-          posting,
+          posting: mappedPosting,
           submitterStats: submitterStats[0],
           moderationHistory
         }

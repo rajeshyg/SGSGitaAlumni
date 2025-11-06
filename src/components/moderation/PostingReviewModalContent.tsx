@@ -4,7 +4,7 @@
  * The main content of the posting review modal
  */
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PostingReviewContent } from './PostingReviewContent';
 import { PostingReviewFooter } from './PostingReviewFooter';
 import type { PostingDetail, SubmitterStats, ModerationHistoryItem, RejectionReason, EscalationReason } from '../../types/moderation';
@@ -71,18 +71,23 @@ export function PostingReviewModalContent(props: PostingReviewModalContentProps)
 
   return (
     <Dialog open={true} onOpenChange={(open: boolean) => !open && props.onClose()}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Review Posting</DialogTitle>
+          <DialogDescription>
+            Review the posting details, submitter information, and moderation history. You can approve, reject, or escalate this posting.
+          </DialogDescription>
         </DialogHeader>
-        <PostingReviewContent
-          loading={props.loading}
-          error={props.error}
-          posting={props.posting}
-          submitterStats={props.submitterStats}
-          moderationHistory={props.moderationHistory}
-        />
-        <div className="mt-6 pt-4 border-t border-border">
+        <div className="flex-1 overflow-y-auto">
+          <PostingReviewContent
+            loading={props.loading}
+            error={props.error}
+            posting={props.posting}
+            submitterStats={props.submitterStats}
+            moderationHistory={props.moderationHistory}
+          />
+        </div>
+        <div className="flex-shrink-0 mt-4 pt-4 border-t border-border">
           <PostingReviewFooter {...footerProps} />
         </div>
       </DialogContent>

@@ -7,19 +7,25 @@
  * Date: November 3, 2025
  */
 
+export interface Domain {
+  id: string;
+  name: string;
+  domain_level: 'primary' | 'secondary' | 'area_of_interest';
+  is_primary: number;
+}
+
 export interface QueuePosting {
   id: string;
   title: string;
   description: string;
   posting_type: string;
-  domain_id: string;
-  domain_name: string;
+  domains: Domain[];
   moderation_status: 'PENDING' | 'ESCALATED' | 'APPROVED' | 'REJECTED';
   created_at: string;
   expires_at: string | null;
   version: number;
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   submitter_email: string;
   submitter_id: string;
   moderation_count: number;

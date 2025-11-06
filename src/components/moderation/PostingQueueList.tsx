@@ -204,11 +204,11 @@ export function PostingQueueList({ postings, loading, onPostingClick }: PostingQ
                     <div className="flex items-center space-x-2">
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="text-xs">
-                          {posting.first_name[0]}{posting.last_name[0]}
+                          {(posting.first_name?.[0] || 'U')}{(posting.last_name?.[0] || 'U')}
                         </AvatarFallback>
                       </Avatar>
                       <div className="hidden lg:block">
-                        <p className="text-sm font-medium">{posting.first_name} {posting.last_name}</p>
+                        <p className="text-sm font-medium">{posting.first_name || 'Unknown'} {posting.last_name || 'User'}</p>
                         <p className="text-xs text-muted-foreground truncate max-w-[150px]">
                           {posting.submitter_email}
                         </p>
@@ -216,7 +216,26 @@ export function PostingQueueList({ postings, loading, onPostingClick }: PostingQ
                     </div>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell" onClick={() => onPostingClick(posting.id)}>
-                    <span className="text-sm">{posting.domain_name}</span>
+                    <div className="flex flex-wrap gap-1 max-w-[200px]">
+                      {posting.domains && posting.domains.length > 0 ? (
+                        posting.domains.slice(0, 2).map((domain) => (
+                          <Badge
+                            key={domain.id}
+                            variant={domain.is_primary === 1 ? "default" : "outline"}
+                            className="text-xs"
+                          >
+                            {domain.name}
+                          </Badge>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No domains</span>
+                      )}
+                      {posting.domains && posting.domains.length > 2 && (
+                        <Badge variant="secondary" className="text-xs">
+                          +{posting.domains.length - 2}
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell onClick={() => onPostingClick(posting.id)}>
                     <Badge variant={getStatusBadgeVariant(posting.moderation_status)}>
