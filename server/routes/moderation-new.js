@@ -1,0 +1,709 @@
+/**
+ * Moderation API Routes - REWRITTEN
+ * 
+ * Complete rewrite addressing database schema corrections:
+ * - Fixed bigint type for moderated_by and moderator_id
+ * - Proper foreign key constraints
+ * - Corrected collation handling
+ * - Simplified queries without collation casting
+ * 
+ * Endpoints:
+ * - GET /api/moderation/queue - Get moderation queue with filters
+ * - POST /api/moderation/approve - Approve a posting
+ * - POST /api/moderation/reject - Reject a posting with feedback
+ * - POST /api/moderation/escalate - Escalate a posting to admins
+ * - GET /api/moderation/posting/:id - Get full posting details with history
+ * 
+ * Date: November 4, 2025
+ */
+
+import express from 'express';
+import { getPool } from '../../utils/database.js';
+import { z } from 'zod';
+import { validateRequest } from '../middleware/validation.js';
+
+const router = express.Router();
+const pool = getPool();
+
+// ============================================================================
+// VALIDATION SCHEMAS
+// ============================================================================
+
+const QueueQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  domain: z.string().uuid().optional(),
+  status: z.enum(['PENDING', 'ESCALATED', 'all']).default('all'),
+  search: z.string().max(100).optional(),
+  sortBy: z.enum(['oldest', 'newest', 'urgent']).default('oldest')
+});
+
+const ApproveRequestSchema = z.object({
+  postingId: z.string().uuid(),
+  moderatorNotes: z.string().max(1000).optional(),
+  expiryDate: z.string().datetime().optional()
+});
+
+const RejectRequestSchema = z.object({
+  postingId: z.string().uuid(),
+  reason: z.enum(['SPAM', 'INAPPROPRIATE', 'DUPLICATE', 'SCAM', 'INCOMPLETE', 'OTHER']),
+  feedbackToUser: z.string().min(10).max(500),
+  moderatorNotes: z.string().max(1000).optional()
+});
+
+const EscalateRequestSchema = z.object({
+  postingId: z.string().uuid(),
+  escalationReason: z.enum(['SUSPECTED_SCAM', 'POLICY_QUESTION', 'TECHNICAL_ISSUE', 'OTHER']),
+  escalationNotes: z.string().min(10).max(1000)
+});
+
+// ============================================================================
+// VALIDATION MIDDLEWARE (REMOVED - USING SHARED MIDDLEWARE)
+// ============================================================================
+
+// ============================================================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================================================
+
+const requireModerator = async (req, res, next) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    const [rows] = await pool.query(
+      'SELECT id, email, role FROM app_users WHERE id = ?',
+      [req.user.id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const rawRole = rows[0].role;
+    const normalizedRole = typeof rawRole === 'string' ? rawRole.trim().toLowerCase() : '';
+    const isModeratorRole = normalizedRole === 'moderator';
+    const isAdminRole = normalizedRole === 'admin' || normalizedRole === 'super_admin';
+
+    // Normalize role on the request object so downstream handlers see consistent casing
+    if (req.user) {
+      req.user.role = normalizedRole || rawRole;
+    }
+
+    if (!isModeratorRole && !isAdminRole) {
+      return res.status(403).json({
+        success: false,
+        error: 'Moderator or Admin access required',
+        currentRole: rawRole,
+        normalizedRole,
+        isModeratorRole,
+        isAdminRole
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Authentication check failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Authentication check failed',
+      details: error.message
+    });
+  }
+};
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+const sendModerationNotification = async (type, data) => {
+  // TODO: Implement email notifications (Day 5)
+  console.log(`[Notification] ${type}:`, data);
+};
+
+const calculateExpiryDate = (posting, customDate = null) => {
+  if (customDate) {
+    return new Date(customDate);
+  }
+
+  const submissionPlus30 = new Date(posting.created_at);
+  submissionPlus30.setDate(submissionPlus30.getDate() + 30);
+
+  if (posting.expires_at) {
+    const userDate = new Date(posting.expires_at);
+    return userDate > submissionPlus30 ? userDate : submissionPlus30;
+  }
+
+  return submissionPlus30;
+};
+
+// ============================================================================
+// ROUTE: GET /api/moderation/queue
+// ============================================================================
+
+router.get('/queue', 
+  requireModerator,
+  validateRequest({ query: QueueQuerySchema }), 
+  async (req, res) => {
+    try {
+      // Parse and validate query parameters (validation middleware doesn't transform req.query)
+      const page = parseInt(req.query.page) || 1;
+      const limit = Math.min(parseInt(req.query.limit) || 20, 100); // Max 100
+      const domain = req.query.domain;
+      const status = req.query.status || 'all';
+      const search = req.query.search;
+      const sortBy = req.query.sortBy || 'oldest';
+      
+      const offset = (page - 1) * limit;
+
+      // Build WHERE conditions
+      const conditions = [];
+      const params = [];
+
+      // Status filter
+      if (status !== 'all') {
+        conditions.push('p.moderation_status = ?');
+        params.push(status);
+      } else {
+        conditions.push('p.moderation_status IN (?, ?)');
+        params.push('PENDING', 'ESCALATED');
+      }
+
+      // Domain filter (through junction table)
+      if (domain) {
+        conditions.push('pd.domain_id = ?');
+        params.push(domain);
+      }
+
+      // Search filter
+      if (search) {
+        conditions.push('(p.title LIKE ? OR p.content LIKE ?)');
+        const searchPattern = `%${search}%`;
+        params.push(searchPattern, searchPattern);
+      }
+
+      const whereClause = conditions.length > 0 
+        ? `WHERE ${conditions.join(' AND ')}`
+        : '';
+
+      // Build ORDER BY clause
+      let orderByClause;
+      switch (sortBy) {
+        case 'newest':
+          orderByClause = 'ORDER BY p.created_at DESC';
+          break;
+        case 'urgent':
+          orderByClause = 'ORDER BY (p.moderation_status = "ESCALATED") DESC, p.created_at ASC';
+          break;
+        case 'oldest':
+        default:
+          orderByClause = 'ORDER BY p.created_at ASC';
+          break;
+      }
+
+      // Get total count
+      const [countResult] = await pool.query(
+        `SELECT COUNT(DISTINCT p.id) as total 
+         FROM POSTINGS p
+         LEFT JOIN POSTING_DOMAINS pd ON p.id = pd.posting_id
+         ${whereClause}`,
+        params
+      );
+      const totalItems = countResult[0].total;
+      const totalPages = Math.ceil(totalItems / limit);
+
+      // Get queue items with all necessary joins
+      const [postings] = await pool.query(
+        `SELECT DISTINCT
+          p.id,
+          p.title,
+          p.content as description,
+          p.posting_type,
+          p.moderation_status,
+          p.created_at,
+          p.expires_at,
+          p.version,
+          pd.domain_id,
+          d.name as domain_name,
+          u.id as submitter_id,
+          u.first_name,
+          u.last_name,
+          u.email as submitter_email,
+          (SELECT COUNT(*) 
+           FROM MODERATION_HISTORY mh 
+           WHERE mh.posting_id = p.id) as moderation_count,
+          (SELECT COUNT(*) 
+           FROM MODERATION_HISTORY mh2
+           INNER JOIN POSTINGS p2 ON mh2.posting_id = p2.id
+           WHERE p2.author_id = u.id 
+           AND mh2.action = 'REJECTED') as submitter_rejection_count
+        FROM POSTINGS p
+        INNER JOIN app_users u ON p.author_id = u.id
+        LEFT JOIN POSTING_DOMAINS pd ON p.id = pd.posting_id AND pd.is_primary = 1
+        LEFT JOIN DOMAINS d ON pd.domain_id = d.id
+        ${whereClause}
+        ${orderByClause}
+        LIMIT ? OFFSET ?`,
+        [...params, limit, offset]
+      );
+
+      // Get queue statistics
+      const [stats] = await pool.query(
+        `SELECT 
+          COUNT(CASE WHEN moderation_status = 'PENDING' THEN 1 END) as pending_count,
+          COUNT(CASE WHEN moderation_status = 'ESCALATED' THEN 1 END) as escalated_count,
+          COUNT(CASE WHEN moderation_status = 'PENDING' 
+                AND created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1 END) as urgent_count
+        FROM POSTINGS
+        WHERE moderation_status IN ('PENDING', 'ESCALATED')`
+      );
+
+      res.json({
+        success: true,
+        data: {
+          postings,
+          pagination: {
+            currentPage: page,
+            totalPages,
+            totalItems,
+            itemsPerPage: limit,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1
+          },
+          stats: stats[0]
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching moderation queue:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch moderation queue',
+        details: error.message
+      });
+    }
+  }
+);
+
+// ============================================================================
+// ROUTE: POST /api/moderation/approve
+// ============================================================================
+
+router.post('/approve',
+  requireModerator,
+  validateRequest({ body: ApproveRequestSchema }),
+  async (req, res) => {
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      const { postingId, moderatorNotes, expiryDate } = req.body;
+      const moderatorId = req.user.id;
+
+      // Get current posting with row lock
+      const [postings] = await connection.query(
+        'SELECT * FROM POSTINGS WHERE id = ? FOR UPDATE',
+        [postingId]
+      );
+
+      if (postings.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          error: 'Posting not found'
+        });
+      }
+
+      const posting = postings[0];
+
+      // Check if already moderated
+      if (posting.moderation_status !== 'PENDING' && posting.moderation_status !== 'ESCALATED') {
+        await connection.rollback();
+        return res.status(409).json({
+          success: false,
+          error: 'Posting has already been moderated',
+          currentStatus: posting.moderation_status
+        });
+      }
+
+      // Calculate final expiry date
+      const finalExpiryDate = calculateExpiryDate(posting, expiryDate);
+
+      // Update posting status (moderated_by is now bigint)
+      const [updateResult] = await connection.query(
+        `UPDATE POSTINGS 
+         SET moderation_status = 'APPROVED',
+             moderated_by = ?,
+             moderated_at = NOW(),
+             moderator_notes = ?,
+             expires_at = ?,
+             version = version + 1
+         WHERE id = ? AND version = ?`,
+        [moderatorId, moderatorNotes || null, finalExpiryDate, postingId, posting.version]
+      );
+
+      if (updateResult.affectedRows === 0) {
+        await connection.rollback();
+        return res.status(409).json({
+          success: false,
+          error: 'Posting was modified by another moderator. Please refresh and try again.'
+        });
+      }
+
+      // Insert moderation history (moderator_id is now bigint)
+      await connection.query(
+        `INSERT INTO MODERATION_HISTORY 
+         (posting_id, moderator_id, action, moderator_notes)
+         VALUES (?, ?, 'APPROVED', ?)`,
+        [postingId, moderatorId, moderatorNotes || null]
+      );
+
+      await connection.commit();
+
+      // Send notification (async, outside transaction)
+      sendModerationNotification('approval', {
+        postingId,
+        postingTitle: posting.title,
+        authorId: posting.author_id,
+        moderatorId
+      }).catch(err => console.error('Notification failed:', err));
+
+      res.json({
+        success: true,
+        message: 'Posting approved successfully',
+        data: {
+          postingId,
+          status: 'APPROVED',
+          expiresAt: finalExpiryDate
+        }
+      });
+
+    } catch (error) {
+      await connection.rollback();
+      console.error('Error approving posting:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to approve posting',
+        details: error.message
+      });
+    } finally {
+      connection.release();
+    }
+  }
+);
+
+// ============================================================================
+// ROUTE: POST /api/moderation/reject
+// ============================================================================
+
+router.post('/reject',
+  requireModerator,
+  validateRequest({ body: RejectRequestSchema }),
+  async (req, res) => {
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      const { postingId, reason, feedbackToUser, moderatorNotes } = req.body;
+      const moderatorId = req.user.id;
+
+      // Get current posting with row lock
+      const [postings] = await connection.query(
+        'SELECT * FROM POSTINGS WHERE id = ? FOR UPDATE',
+        [postingId]
+      );
+
+      if (postings.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          error: 'Posting not found'
+        });
+      }
+
+      const posting = postings[0];
+
+      // Check if already moderated
+      if (posting.moderation_status !== 'PENDING' && posting.moderation_status !== 'ESCALATED') {
+        await connection.rollback();
+        return res.status(409).json({
+          success: false,
+          error: 'Posting has already been moderated',
+          currentStatus: posting.moderation_status
+        });
+      }
+
+      // Update posting status
+      const [updateResult] = await connection.query(
+        `UPDATE POSTINGS 
+         SET moderation_status = 'REJECTED',
+             moderated_by = ?,
+             moderated_at = NOW(),
+             rejection_reason = ?,
+             moderator_feedback = ?,
+             moderator_notes = ?,
+             version = version + 1
+         WHERE id = ? AND version = ?`,
+        [moderatorId, reason, feedbackToUser, moderatorNotes || null, postingId, posting.version]
+      );
+
+      if (updateResult.affectedRows === 0) {
+        await connection.rollback();
+        return res.status(409).json({
+          success: false,
+          error: 'Posting was modified by another moderator. Please refresh and try again.'
+        });
+      }
+
+      // Insert moderation history
+      await connection.query(
+        `INSERT INTO MODERATION_HISTORY 
+         (posting_id, moderator_id, action, reason, feedback_to_user, moderator_notes)
+         VALUES (?, ?, 'REJECTED', ?, ?, ?)`,
+        [postingId, moderatorId, reason, feedbackToUser, moderatorNotes || null]
+      );
+
+      await connection.commit();
+
+      // Send notification
+      sendModerationNotification('rejection', {
+        postingId,
+        postingTitle: posting.title,
+        authorId: posting.author_id,
+        rejectionReason: reason,
+        feedback: feedbackToUser,
+        moderatorId
+      }).catch(err => console.error('Notification failed:', err));
+
+      res.json({
+        success: true,
+        message: 'Posting rejected successfully',
+        data: {
+          postingId,
+          status: 'REJECTED',
+          reason
+        }
+      });
+
+    } catch (error) {
+      await connection.rollback();
+      console.error('Error rejecting posting:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to reject posting',
+        details: error.message
+      });
+    } finally {
+      connection.release();
+    }
+  }
+);
+
+// ============================================================================
+// ROUTE: POST /api/moderation/escalate
+// ============================================================================
+
+router.post('/escalate',
+  requireModerator,
+  validateRequest({ body: EscalateRequestSchema }),
+  async (req, res) => {
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      const { postingId, escalationReason, escalationNotes } = req.body;
+      const moderatorId = req.user.id;
+
+      // Get current posting with row lock
+      const [postings] = await connection.query(
+        'SELECT * FROM POSTINGS WHERE id = ? FOR UPDATE',
+        [postingId]
+      );
+
+      if (postings.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          error: 'Posting not found'
+        });
+      }
+
+      const posting = postings[0];
+
+      // Cannot escalate already approved/rejected postings
+      if (posting.moderation_status === 'APPROVED' || posting.moderation_status === 'REJECTED') {
+        await connection.rollback();
+        return res.status(409).json({
+          success: false,
+          error: 'Cannot escalate an already moderated posting',
+          currentStatus: posting.moderation_status
+        });
+      }
+
+      // Update posting status
+      const [updateResult] = await connection.query(
+        `UPDATE POSTINGS 
+         SET moderation_status = 'ESCALATED',
+             moderated_by = ?,
+             moderated_at = NOW(),
+             moderator_notes = ?,
+             version = version + 1
+         WHERE id = ? AND version = ?`,
+        [moderatorId, escalationNotes, postingId, posting.version]
+      );
+
+      if (updateResult.affectedRows === 0) {
+        await connection.rollback();
+        return res.status(409).json({
+          success: false,
+          error: 'Posting was modified by another moderator. Please refresh and try again.'
+        });
+      }
+
+      // Insert moderation history
+      await connection.query(
+        `INSERT INTO MODERATION_HISTORY 
+         (posting_id, moderator_id, action, reason, moderator_notes)
+         VALUES (?, ?, 'ESCALATED', ?, ?)`,
+        [postingId, moderatorId, escalationReason, escalationNotes]
+      );
+
+      await connection.commit();
+
+      // Send notification to admins
+      sendModerationNotification('escalation', {
+        postingId,
+        postingTitle: posting.title,
+        authorId: posting.author_id,
+        escalationReason,
+        escalationNotes,
+        moderatorId
+      }).catch(err => console.error('Notification failed:', err));
+
+      res.json({
+        success: true,
+        message: 'Posting escalated to admin team successfully',
+        data: {
+          postingId,
+          status: 'ESCALATED',
+          escalationReason
+        }
+      });
+
+    } catch (error) {
+      await connection.rollback();
+      console.error('Error escalating posting:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to escalate posting',
+        details: error.message
+      });
+    } finally {
+      connection.release();
+    }
+  }
+);
+
+// ============================================================================
+// ROUTE: GET /api/moderation/posting/:id
+// ============================================================================
+
+router.get('/posting/:id',
+  requireModerator,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(id)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid posting ID format'
+        });
+      }
+
+      // Get posting with submitter details
+      const [postings] = await pool.query(
+        `SELECT 
+          p.*,
+          pd.domain_id,
+          d.name as domain_name,
+          u.id as submitter_id,
+          u.first_name as submitter_first_name,
+          u.last_name as submitter_last_name,
+          u.email as submitter_email,
+          u.created_at as submitter_joined_date
+        FROM POSTINGS p
+        INNER JOIN app_users u ON p.author_id = u.id
+        LEFT JOIN POSTING_DOMAINS pd ON p.id = pd.posting_id AND pd.is_primary = 1
+        LEFT JOIN DOMAINS d ON pd.domain_id = d.id
+        WHERE p.id = ?`,
+        [id]
+      );
+
+      if (postings.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Posting not found'
+        });
+      }
+
+      const posting = postings[0];
+
+      // Get submitter's moderation history stats
+      const [submitterStats] = await pool.query(
+        `SELECT 
+          COUNT(*) as total_postings,
+          COUNT(CASE WHEN moderation_status = 'APPROVED' THEN 1 END) as approved_count,
+          COUNT(CASE WHEN moderation_status = 'REJECTED' THEN 1 END) as rejected_count,
+          COUNT(CASE WHEN moderation_status = 'PENDING' THEN 1 END) as pending_count,
+          COUNT(CASE WHEN moderation_status = 'ESCALATED' THEN 1 END) as escalated_count
+        FROM POSTINGS
+        WHERE author_id = ?`,
+        [posting.submitter_id]
+      );
+
+      // Get this posting's moderation history
+      const [moderationHistory] = await pool.query(
+        `SELECT 
+          mh.*,
+          u.first_name as moderator_first_name,
+          u.last_name as moderator_last_name
+        FROM MODERATION_HISTORY mh
+        INNER JOIN app_users u ON mh.moderator_id = u.id
+        WHERE mh.posting_id = ?
+        ORDER BY mh.created_at DESC`,
+        [id]
+      );
+
+      res.json({
+        success: true,
+        data: {
+          posting,
+          submitterStats: submitterStats[0],
+          moderationHistory
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching posting details:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch posting details',
+        details: error.message
+      });
+    }
+  }
+);
+
+export default router;
