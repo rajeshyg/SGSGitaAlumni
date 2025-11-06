@@ -6,11 +6,11 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { QuickActionsProps } from '../../types/dashboard';
-import { Users, MessageSquare, Briefcase, UserPlus, Settings, PlusCircle, UsersRound } from 'lucide-react';
+import { Users, MessageSquare, Briefcase, UserPlus, Settings, PlusCircle, UsersRound, Shield } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Simplified member-focused quick actions (6-7 key actions in clean list format)
-const getStaticActions = (isFamilyAccount: boolean) => {
+const getStaticActions = (isFamilyAccount: boolean, userRole?: string) => {
   const baseActions = [
     {
       id: 'create-posting',
@@ -60,13 +60,24 @@ const getStaticActions = (isFamilyAccount: boolean) => {
     });
   }
 
+  // Add moderation queue for moderators and admins
+  const lowerCaseUserRole = userRole?.toLowerCase();
+  if (lowerCaseUserRole === 'moderator' || lowerCaseUserRole === 'admin') {
+    baseActions.splice(0, 0, {
+      id: 'moderation',
+      label: 'Moderation Queue',
+      icon: Shield,
+      href: '/moderator/queue'
+    });
+  }
+
   return baseActions;
 };
 
 export const QuickActions: React.FC<QuickActionsProps> = () => {
   const { user } = useAuth();
   const isFamilyAccount = user?.is_family_account === 1 || user?.is_family_account === true;
-  const staticActions = getStaticActions(isFamilyAccount);
+  const staticActions = getStaticActions(isFamilyAccount, user?.role);
 
   return (
     <Card className="border-border/60 shadow-sm">

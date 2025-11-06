@@ -32,6 +32,7 @@ const AlumniDirectoryPage = lazy(() => import('./pages/AlumniDirectoryPage'))
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'))
 const PostingsPage = lazy(() => import('./pages/PostingsPage'))
 const CreatePostingPage = lazy(() => import('./pages/CreatePostingPage'))
+const ModerationQueuePage = lazy(() => import('./pages/moderator/ModerationQueuePage').then(module => ({ default: module.ModerationQueuePage })))
 
 const ReportsPage = lazy(() => Promise.resolve({
   default: () => (
@@ -218,6 +219,11 @@ function App() {
               <Route path="/export" element={
                 <ModeratorRoute>
                   <ExportPage />
+                </ModeratorRoute>
+              } />
+              <Route path="/moderator/queue" element={
+                <ModeratorRoute>
+                  <ModerationQueuePage />
                 </ModeratorRoute>
               } />
               <Route path="/users" element={

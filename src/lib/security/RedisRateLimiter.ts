@@ -32,6 +32,9 @@ export interface RateLimitConfig {
     otp: RateLimitPolicy;
     invitations: RateLimitPolicy;
     login: RateLimitPolicy;
+    email: RateLimitPolicy;
+    search: RateLimitPolicy;
+    registration: RateLimitPolicy;
     default: RateLimitPolicy;
   };
 }
@@ -238,8 +241,6 @@ export class RedisRateLimiter {
   async clearLimit(key: string): Promise<void> {
     if (!this.connected) return;
 
-    const now = Date.now();
-    const pattern = `ratelimit:${key}:*`;
     const blockKey = `ratelimit:block:${key}`;
 
     try {
@@ -249,6 +250,7 @@ export class RedisRateLimiter {
 
       // For window keys, we'd need to scan and delete
       // For now, just let them expire naturally
+      // Pattern would be: `ratelimit:${key}:*`
     } catch (error) {
       console.error('Failed to clear rate limit:', error);
     }
@@ -303,6 +305,36 @@ const defaultConfig: RateLimitConfig = {
         enabled: true,
         baseDelayMs: 2000,
         maxDelayMs: 20000
+      }
+    },
+    email: {
+      windowMs: 60 * 60 * 1000, // 1 hour
+      maxRequests: 20, // 20 emails per hour
+      blockDurationMs: 24 * 60 * 60 * 1000, // 24 hours block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 2000,
+        maxDelayMs: 15000
+      }
+    },
+    search: {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 30, // 30 searches per minute
+      blockDurationMs: 5 * 60 * 1000, // 5 minutes block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 500,
+        maxDelayMs: 5000
+      }
+    },
+    registration: {
+      windowMs: 60 * 60 * 1000, // 1 hour
+      maxRequests: 3, // 3 registrations per hour per IP
+      blockDurationMs: 24 * 60 * 60 * 1000, // 24 hours block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 5000,
+        maxDelayMs: 30000
       }
     },
     default: {

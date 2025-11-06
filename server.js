@@ -37,7 +37,7 @@ import { getPool, testDatabaseConnection } from './utils/database.js';
 
 // Import middleware
 import { authenticateToken, setAuthMiddlewarePool } from './middleware/auth.js';
-import { loginRateLimit, invitationRateLimit, apiRateLimit, rateLimitStatus, clearRateLimit } from './middleware/rateLimit.js';
+import { loginRateLimit, invitationRateLimit, apiRateLimit, emailRateLimit, searchRateLimit, registrationRateLimit, otpRateLimit, rateLimitStatus, clearRateLimit } from './middleware/rateLimit.js';
 import { monitoringMiddleware } from './middleware/monitoring.js';
 import { validateRequest } from './server/middleware/validation.js';
 
@@ -191,6 +191,9 @@ import postingsRouter, { setPostingsPool } from './routes/postings.js';
 
 import familyMembersRouter from './routes/family-members.js';
 
+// Moderation router - REWRITTEN Nov 4, 2025
+import moderationRouter from './server/routes/moderation-new.js';
+
 // Environment variables already loaded at top of file
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -230,7 +233,7 @@ app.use(monitoringMiddleware);
 app.post('/api/auth/login', loginRateLimit, validateRequest({ body: LoginSchema }), login);
 app.post('/api/auth/logout', authenticateToken, logout);
 app.post('/api/auth/refresh', refresh);
-app.post('/api/auth/register-from-invitation', validateRequest({ body: RegisterSchema }), (req, res, next) => {
+app.post('/api/auth/register-from-invitation', registrationRateLimit, validateRequest({ body: RegisterSchema }), (req, res, next) => {
   // Reduce verbose logging in production
   if (process.env.NODE_ENV !== 'production') {
     console.log('🔵 ROUTE MATCHED: /api/auth/register-from-invitation');
@@ -239,7 +242,7 @@ app.post('/api/auth/register-from-invitation', validateRequest({ body: RegisterS
   }
   next();
 }, registerFromInvitation);
-app.post('/api/auth/register-from-family-invitation', validateRequest({ body: RegisterSchema }), registerFromFamilyInvitation);
+app.post('/api/auth/register-from-family-invitation', registrationRateLimit, validateRequest({ body: RegisterSchema }), registerFromFamilyInvitation);
 
 // ============================================================================
 // INVITATION SYSTEM ROUTES
@@ -248,48 +251,48 @@ app.post('/api/auth/register-from-family-invitation', validateRequest({ body: Re
 app.get('/api/invitations', getAllInvitations);
 app.get('/api/invitations/family', getFamilyInvitations);
 app.post('/api/invitations/family', invitationRateLimit, validateRequest({ body: InvitationCreateSchema }), createFamilyInvitation);
-app.get('/api/invitations/family/validate/:token', validateFamilyInvitation);
+app.get('/api/invitations/family/validate/:token', apiRateLimit, validateFamilyInvitation);
 app.patch('/api/invitations/family/:id/accept-profile', validateRequest({ body: InvitationAcceptSchema }), acceptFamilyInvitationProfile);
 app.post('/api/invitations', invitationRateLimit, validateRequest({ body: InvitationCreateSchema }), createInvitation);
 app.post('/api/invitations/bulk', invitationRateLimit, createBulkInvitations);
-app.get('/api/invitations/validate/:token', (req, res, next) => {
+app.get('/api/invitations/validate/:token', apiRateLimit, (req, res, next) => {
   if (process.env.NODE_ENV !== 'production') {
     console.log('ROUTE_MATCH: Invitation validation route matched for token:', req.params.token);
   }
   next();
 }, validateInvitation);
-app.patch('/api/invitations/:id', updateInvitation);
-app.post('/api/invitations/:id/resend', resendInvitation);
-app.put('/api/invitations/:id/revoke', revokeInvitation);
+app.patch('/api/invitations/:id', invitationRateLimit, updateInvitation);
+app.post('/api/invitations/:id/resend', invitationRateLimit, resendInvitation);
+app.put('/api/invitations/:id/revoke', invitationRateLimit, revokeInvitation);
 
 // ============================================================================
 // ALUMNI MEMBERS ROUTES
 // ============================================================================
 
-app.get('/api/alumni-members/search', searchAlumniMembers);
-app.get('/api/alumni/directory', getAlumniDirectory);  // New directory endpoint
+app.get('/api/alumni-members/search', searchRateLimit, searchAlumniMembers);
+app.get('/api/alumni/directory', searchRateLimit, getAlumniDirectory);  // New directory endpoint
 app.get('/api/alumni-members/:id', getAlumniMember);
-app.put('/api/alumni-members/:id', updateAlumniMember);
+app.put('/api/alumni-members/:id', apiRateLimit, updateAlumniMember);
 app.post('/api/alumni-members/:id/send-invitation', authenticateToken, sendInvitationToAlumni);
 
 // ============================================================================
 // USER MANAGEMENT ROUTES
 // ============================================================================
 
-app.put('/api/users/:id', authenticateToken, updateUser);
+app.put('/api/users/:id', authenticateToken, apiRateLimit, updateUser);
 app.post('/api/users/:id/send-invitation', authenticateToken, sendInvitationToUser);
 
 // ============================================================================
 // USER SEARCH & PROFILE ROUTES
 // ============================================================================
 
-app.get('/api/users/search', searchUsers);
+app.get('/api/users/search', searchRateLimit, searchUsers);
 app.get('/api/users/:id/profile', getUserProfile);
 app.get('/api/users/profile', authenticateToken, getCurrentUserProfile);
 
 // User profiles endpoints (aliases for consistency with frontend API calls)
 app.get('/api/user-profiles/:id', getUserProfile);
-app.put('/api/user-profiles/:id', authenticateToken, updateUser);
+app.put('/api/user-profiles/:id', authenticateToken, apiRateLimit, updateUser);
 
 // ============================================================================
 // MEMBER DASHBOARD ROUTES
@@ -504,12 +507,12 @@ app.get('/api/export', (req, res) => {
 // EMAIL ROUTES
 // ============================================================================
 
-app.post('/api/email/send', sendEmail);
-app.get('/api/email/delivery/:emailId', getEmailDeliveryStatus);
+app.post('/api/email/send', emailRateLimit, sendEmail);
+app.get('/api/email/delivery/:emailId', apiRateLimit, getEmailDeliveryStatus);
 app.get('/api/email/templates/:templateId', getEmailTemplate);
 
 // ============================================================================
-// DOMAIN ROUTES (Task 7.7.1)
+// DOMAIN ROUTES
 // ============================================================================
 
 app.get('/api/domains', getAllDomains);
@@ -517,9 +520,9 @@ app.get('/api/domains/primary', getPrimaryDomains);
 app.get('/api/domains/hierarchy', getDomainHierarchy);
 app.get('/api/domains/:id', getDomainById);
 app.get('/api/domains/:id/children', getDomainChildren);
-app.post('/api/admin/domains', authenticateToken, createDomain);
-app.put('/api/admin/domains/:id', authenticateToken, updateDomain);
-app.delete('/api/admin/domains/:id', authenticateToken, deleteDomain);
+app.post('/api/admin/domains', authenticateToken, apiRateLimit, createDomain);
+app.put('/api/admin/domains/:id', authenticateToken, apiRateLimit, updateDomain);
+app.delete('/api/admin/domains/:id', authenticateToken, apiRateLimit, deleteDomain);
 
 // ============================================================================
 // PREFERENCES ROUTES (Task 7.7.2)
@@ -551,20 +554,26 @@ app.get('/api/tags', getTags);
 app.get('/api/tags/search', searchTagsEndpoint);
 app.get('/api/tags/suggested', getSuggestedTagsEndpoint);
 app.get('/api/tags/popular', getPopularTagsEndpoint);
-app.post('/api/tags', authenticateToken, createTag);
+app.post('/api/tags', authenticateToken, apiRateLimit, createTag);
 
 // Posting tag endpoints
 app.get('/api/postings/:id/tags', getPostingTagsEndpoint);
 app.post('/api/postings/:id/tags', authenticateToken, addPostingTags);
 
 // Admin tag endpoints
-app.post('/api/admin/tags/:id/approve', authenticateToken, approveTagEndpoint);
+app.post('/api/admin/tags/:id/approve', authenticateToken, apiRateLimit, approveTagEndpoint);
 app.get('/api/admin/tags/pending', authenticateToken, getPendingTags);
 
 // ============================================================================
 // POSTINGS ROUTES
 // ============================================================================
 app.use('/api/postings', postingsRouter);
+
+// ============================================================================
+// MODERATION ROUTES
+// ============================================================================
+// All moderation routes require authentication and moderator/admin role
+app.use('/api/moderation', authenticateToken, apiRateLimit, moderationRouter);
 
 // ============================================================================
 // FAMILY MEMBERS ROUTES
@@ -579,7 +588,7 @@ app.post('/api/otp/generate', apiRateLimit, validateRequest({ body: OTPGenerateS
 app.post('/api/otp/generate-and-send', apiRateLimit, validateRequest({ body: OTPGenerateSchema }), generateAndSendOTP); // Alias for frontend compatibility
 app.post('/api/otp/generate-test', apiRateLimit, validateRequest({ body: OTPGenerateSchema }), generateTestOTP); // Test endpoint
 app.post('/api/otp/send', apiRateLimit, validateRequest({ body: OTPGenerateSchema }), sendOTP);
-app.post('/api/otp/validate', validateRequest({ body: OTPVerifySchema }), validateOTP);
+app.post('/api/otp/validate', otpRateLimit, validateRequest({ body: OTPVerifySchema }), validateOTP);
 app.get('/api/otp/remaining-attempts/:email', getRemainingAttempts);
 app.get('/api/otp/daily-count/:email', getDailyCount);
 app.get('/api/otp/rate-limit/:email', checkRateLimit);
@@ -590,7 +599,7 @@ app.post('/api/otp/increment-daily-count', incrementDailyCount);
 app.delete('/api/otp/cleanup-expired', cleanupExpired);
 
 // Multi-factor OTP routes
-app.post('/api/users/totp/setup', setupTOTP);
+app.post('/api/users/totp/setup', otpRateLimit, setupTOTP);
 app.get('/api/users/totp/status/:email', getTOTPStatus);
 app.get('/api/users/profile/:email', getOTPUserProfile);
 
