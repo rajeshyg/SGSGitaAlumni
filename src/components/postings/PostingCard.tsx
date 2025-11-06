@@ -18,6 +18,7 @@ export interface Domain {
   name: string;
   icon?: string;
   color_code?: string;
+  domain_level?: string;
 }
 
 export interface Tag {
@@ -151,14 +152,42 @@ export const PostingCard: React.FC<PostingCardProps> = ({
           {posting.content}
         </p>
 
-        {/* Domains */}
+        {/* Domains - 3-Level Hierarchy */}
         {posting.domains && posting.domains.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {posting.domains.map((domain) => (
-              <Badge key={domain.id} variant="secondary" className="text-xs">
-                {domain.name}
-              </Badge>
-            ))}
+          <div className="space-y-1">
+            {/* Primary Domain */}
+            {posting.domains.filter(d => d.domain_level === 'primary').length > 0 && (
+              <div className="flex flex-wrap gap-1 items-center">
+                <span className="text-xs font-semibold text-muted-foreground">Primary:</span>
+                {posting.domains.filter(d => d.domain_level === 'primary').map(domain => (
+                  <Badge key={domain.id} variant="default" className="text-xs">
+                    {domain.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {/* Secondary Domains */}
+            {posting.domains.filter(d => d.domain_level === 'secondary').length > 0 && (
+              <div className="flex flex-wrap gap-1 items-center">
+                <span className="text-xs font-semibold text-muted-foreground">Secondary:</span>
+                {posting.domains.filter(d => d.domain_level === 'secondary').map(domain => (
+                  <Badge key={domain.id} variant="outline" className="text-xs">
+                    {domain.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {/* Areas of Interest */}
+            {posting.domains.filter(d => d.domain_level === 'area_of_interest').length > 0 && (
+              <div className="flex flex-wrap gap-1 items-center">
+                <span className="text-xs font-semibold text-muted-foreground">Areas:</span>
+                {posting.domains.filter(d => d.domain_level === 'area_of_interest').map(domain => (
+                  <Badge key={domain.id} variant="secondary" className="text-xs">
+                    {domain.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

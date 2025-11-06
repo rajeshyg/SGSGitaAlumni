@@ -294,6 +294,123 @@ router.get('/categories', async (req, res) => {
 });
 
 /**
+ * GET /api/postings/my/:userId
+ * Get all postings created by a specific user (regardless of status)
+ * Used for "My Postings" view
+ */
+router.get('/my/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+
+    // SECURITY: Ensure user can only access their own postings
+    if (req.user.id.toString() !== userId.toString()) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        details: 'You can only view your own postings'
+      });
+    }
+
+    const query = `
+      SELECT DISTINCT
+        p.id,
+        p.title,
+        p.content,
+        p.posting_type,
+        p.category_id,
+        pc.name as category_name,
+        p.urgency_level,
+        p.location,
+        p.location_type,
+        p.duration,
+        p.contact_name,
+        p.contact_email,
+        p.contact_phone,
+        p.status,
+        p.moderation_status,
+        p.expires_at,
+        p.view_count,
+        p.interest_count,
+        p.max_connections,
+        p.is_pinned,
+        p.published_at,
+        p.created_at,
+        p.updated_at,
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT('id', d.id, 'name', d.name, 'icon', d.icon, 'color_code', d.color_code, 'domain_level', d.domain_level)
+          )
+          FROM POSTING_DOMAINS pd
+          JOIN DOMAINS d ON pd.domain_id = d.id
+          WHERE pd.posting_id = p.id
+        ) as domains,
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT('id', t.id, 'name', t.name, 'tag_type', t.tag_type)
+          )
+          FROM POSTING_TAGS pt
+          JOIN TAGS t ON pt.tag_id = t.id
+          WHERE pt.posting_id = p.id
+        ) as tags
+      FROM POSTINGS p
+      LEFT JOIN POSTING_CATEGORIES pc ON p.category_id = pc.id
+      WHERE p.author_id = ?
+      ORDER BY p.created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+
+    const [postings] = await pool.query(query, [userId, parseInt(limit), parseInt(offset)]);
+
+    // Parse JSON fields
+    const parsedPostings = postings.map(posting => {
+      let domains = [];
+      let tags = [];
+
+      // Parse domains
+      if (posting.domains) {
+        if (typeof posting.domains === 'string') {
+          try { domains = JSON.parse(posting.domains); } catch (e) { }
+        } else if (Array.isArray(posting.domains)) {
+          domains = posting.domains;
+        } else if (Buffer.isBuffer(posting.domains)) {
+          try { domains = JSON.parse(posting.domains.toString()); } catch (e) { }
+        }
+      }
+
+      // Parse tags
+      if (posting.tags) {
+        if (typeof posting.tags === 'string') {
+          try { tags = JSON.parse(posting.tags); } catch (e) { }
+        } else if (Array.isArray(posting.tags)) {
+          tags = posting.tags;
+        } else if (Buffer.isBuffer(posting.tags)) {
+          try { tags = JSON.parse(posting.tags.toString()); } catch (e) { }
+        }
+      }
+
+      return {
+        ...posting,
+        domains: Array.isArray(domains) ? domains.filter(d => d) : [],
+        tags: Array.isArray(tags) ? tags.filter(t => t) : []
+      };
+    });
+
+    res.json({
+      success: true,
+      postings: parsedPostings,
+      pagination: {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        total: parsedPostings.length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user postings:', error);
+    res.status(500).json({ error: 'Failed to fetch user postings', details: error.message });
+  }
+});
+
+/**
  * GET /api/postings/:id
  * Get single posting with full details
  */
@@ -463,7 +580,7 @@ router.post('/', authenticateToken, validateRequest({ body: PostingCreateSchema 
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_review', NOW())
     `, [
       postingId,
-      req.user.userId,
+      req.user.id,
       title,
       content,
       posting_type,
@@ -482,9 +599,15 @@ router.post('/', authenticateToken, validateRequest({ body: PostingCreateSchema 
 
     // Insert domain associations
     if (domain_ids.length > 0) {
-      const domainValues = domain_ids.map(domain_id => [uuidv4(), postingId, domain_id]);
+      // Mark the first domain as primary (assumes frontend sends primary domain first)
+      const domainValues = domain_ids.map((domain_id, index) => [
+        uuidv4(),
+        postingId,
+        domain_id,
+        index === 0 ? 1 : 0  // is_primary: 1 for first domain, 0 for others
+      ]);
       await pool.query(`
-        INSERT INTO POSTING_DOMAINS (id, posting_id, domain_id)
+        INSERT INTO POSTING_DOMAINS (id, posting_id, domain_id, is_primary)
         VALUES ?
       `, [domainValues]);
     }
@@ -542,7 +665,7 @@ router.put('/:id', authenticateToken, validateRequest({ body: PostingUpdateSchem
       return res.status(404).json({ error: 'Posting not found' });
     }
 
-    if (existingPostings[0].author_id !== req.user.userId) {
+    if (existingPostings[0].author_id !== req.user.id) {
       return res.status(403).json({ error: 'Unauthorized to update this posting' });
     }
 
@@ -572,8 +695,14 @@ router.put('/:id', authenticateToken, validateRequest({ body: PostingUpdateSchem
     if (domain_ids !== undefined) {
       await pool.query('DELETE FROM POSTING_DOMAINS WHERE posting_id = ?', [id]);
       if (domain_ids.length > 0) {
-        const domainValues = domain_ids.map(domain_id => [uuidv4(), id, domain_id]);
-        await pool.query('INSERT INTO POSTING_DOMAINS (id, posting_id, domain_id) VALUES ?', [domainValues]);
+        // Mark the first domain as primary (assumes frontend sends primary domain first)
+        const domainValues = domain_ids.map((domain_id, index) => [
+          uuidv4(),
+          id,
+          domain_id,
+          index === 0 ? 1 : 0  // is_primary: 1 for first domain, 0 for others
+        ]);
+        await pool.query('INSERT INTO POSTING_DOMAINS (id, posting_id, domain_id, is_primary) VALUES ?', [domainValues]);
       }
     }
 
@@ -601,7 +730,7 @@ router.put('/:id', authenticateToken, validateRequest({ body: PostingUpdateSchem
 
 /**
  * DELETE /api/postings/:id
- * Delete posting
+ * Archive posting (soft delete - marks as 'archived' instead of hard delete)
  * Requires authentication and ownership
  */
 router.delete('/:id', authenticateToken, async (req, res) => {
@@ -614,17 +743,17 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Posting not found' });
     }
 
-    if (existingPostings[0].author_id !== req.user.userId) {
+    if (existingPostings[0].author_id !== req.user.id) {
       return res.status(403).json({ error: 'Unauthorized to delete this posting' });
     }
 
-    // Delete posting (CASCADE will handle related records)
-    await pool.query('DELETE FROM POSTINGS WHERE id = ?', [id]);
+    // Soft delete: mark as archived instead of hard delete
+    await pool.query('UPDATE POSTINGS SET status = ? WHERE id = ?', ['archived', id]);
 
-    res.json({ message: 'Posting deleted successfully' });
+    res.json({ message: 'Posting archived successfully' });
   } catch (error) {
-    console.error('Error deleting posting:', error);
-    res.status(500).json({ error: 'Failed to delete posting', details: error.message });
+    console.error('Error archiving posting:', error);
+    res.status(500).json({ error: 'Failed to archive posting', details: error.message });
   }
 });
 
