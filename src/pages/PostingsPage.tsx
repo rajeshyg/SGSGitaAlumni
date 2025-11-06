@@ -286,6 +286,17 @@ const PostingsPage: React.FC = () => {
                 )}
               </Button>
             )}
+              {user && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/postings/my')}
+                  className="min-h-[44px] text-xs sm:text-sm"
+                  size="sm"
+                >
+                  <span className="hidden sm:inline">My Postings</span>
+                  <span className="sm:hidden">Mine</span>
+                </Button>
+              )}
               <Button onClick={() => navigate('/postings/new')} className="min-h-[44px] text-xs sm:text-sm" size="sm">
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Create</span>

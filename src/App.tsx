@@ -31,7 +31,10 @@ const UploadPage = lazy(() => Promise.resolve({
 const AlumniDirectoryPage = lazy(() => import('./pages/AlumniDirectoryPage'))
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'))
 const PostingsPage = lazy(() => import('./pages/PostingsPage'))
+const MyPostingsPage = lazy(() => import('./pages/MyPostingsPage'))
+const PostingDetailPage = lazy(() => import('./pages/PostingDetailPage'))
 const CreatePostingPage = lazy(() => import('./pages/CreatePostingPage'))
+const EditPostingPage = lazy(() => import('./pages/EditPostingPage'))
 const ModerationQueuePage = lazy(() => import('./pages/moderator/ModerationQueuePage').then(module => ({ default: module.ModerationQueuePage })))
 
 const ReportsPage = lazy(() => Promise.resolve({
@@ -248,9 +251,24 @@ function App() {
                   <PostingsPage />
                 </ProtectedRoute>
               } />
+              <Route path="/postings/my" element={
+                <ProtectedRoute>
+                  <MyPostingsPage />
+                </ProtectedRoute>
+              } />
               <Route path="/postings/new" element={
                 <ProtectedRoute>
                   <CreatePostingPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/postings/:id/edit" element={
+                <ProtectedRoute>
+                  <EditPostingPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/postings/:id" element={
+                <ProtectedRoute>
+                  <PostingDetailPage />
                 </ProtectedRoute>
               } />
               <Route path="/reports" element={

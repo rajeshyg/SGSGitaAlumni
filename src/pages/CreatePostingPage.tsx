@@ -359,7 +359,9 @@ const CreatePostingPage: React.FC = () => {
       const draftData = {
         ...formData,
         status: 'draft',
-        expires_at: formData.expiry_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: formData.expiry_date
+          ? new Date(formData.expiry_date + 'T00:00:00Z').toISOString()
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       };
 
       await APIService.postGeneric('/api/postings', draftData);
@@ -406,7 +408,9 @@ const CreatePostingPage: React.FC = () => {
         ...formData,
         domain_ids, // API expects domain_ids array
         status: 'pending_review',
-        expires_at: formData.expiry_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: formData.expiry_date
+          ? new Date(formData.expiry_date + 'T00:00:00Z').toISOString()
+          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       };
 
       // Remove the 3-level fields as API doesn't expect them
