@@ -362,6 +362,22 @@ router.get('/my/:userId', authenticateToken, asyncHandler(async (req, res) => {
   console.log(`[GET /api/postings/my/:userId] Retrieved ${postings.length} postings for user ${userId}`);
   console.log('[GET /api/postings/my/:userId] Raw postings from DB:', postings.map(p => ({ id: p.id, title: p.title, status: p.status })));
 
+  // Log status breakdown
+  const statusCounts = postings.reduce((acc, p) => {
+    acc[p.status] = (acc[p.status] || 0) + 1;
+    return acc;
+  }, {});
+  console.log('[GET /api/postings/my/:userId] Status breakdown from DB:', statusCounts);
+  console.log('[GET /api/postings/my/:userId] Archived posts count:', statusCounts['archived'] || 0);
+
+  // Log any archived posts specifically
+  const archivedPostings = postings.filter(p => p.status === 'archived');
+  if (archivedPostings.length > 0) {
+    console.log('[GET /api/postings/my/:userId] Found archived postings:', archivedPostings.map(p => ({ id: p.id, title: p.title, status: p.status })));
+  } else {
+    console.log('[GET /api/postings/my/:userId] NO archived postings found in response');
+  }
+
   // Parse JSON fields
   const parsedPostings = postings.map(posting => {
     let domains = [];
@@ -764,6 +780,7 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
 
   // Soft delete: mark as archived instead of hard delete
   console.log('[DELETE /api/postings/:id] Archiving posting - current status:', existingPostings[0].status);
+  console.log('[DELETE /api/postings/:id] About to set status to: archived (string value)');
   const updateResult = await pool.query('UPDATE POSTINGS SET status = ? WHERE id = ?', ['archived', id]).catch(err => {
     console.error('[DELETE /api/postings/:id] Failed to update posting:', err.message);
     throw ServerError.database('archive posting');
@@ -772,10 +789,14 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
   console.log('[DELETE /api/postings/:id] Update result:', updateResult);
 
   // Verify the update worked
-  const [verifyPostings] = await pool.query('SELECT id, status FROM POSTINGS WHERE id = ?', [id]).catch(err => {
+  const [verifyPostings] = await pool.query('SELECT id, status, status as status_verified FROM POSTINGS WHERE id = ?', [id]).catch(err => {
     console.error('[DELETE /api/postings/:id] Failed to verify update:', err.message);
   });
   console.log('[DELETE /api/postings/:id] Verification - posting after update:', verifyPostings);
+  if (verifyPostings && verifyPostings.length > 0) {
+    console.log('[DELETE /api/postings/:id] Updated status is:', verifyPostings[0].status);
+    console.log('[DELETE /api/postings/:id] Is status === "archived"?', verifyPostings[0].status === 'archived');
+  }
 
   res.json({
     success: true,
