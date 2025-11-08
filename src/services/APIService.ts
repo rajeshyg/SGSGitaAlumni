@@ -468,7 +468,10 @@ export const APIService = {
       ]);
 
       logger.info('Login successful for user:', credentials.email);
-      return response as AuthResponse;
+
+      // Extract data from new response format if present
+      const data = response?.data || response;
+      return data as AuthResponse;
     } catch (error) {
       logger.error('Login failed:', error);
       if (error instanceof Error && error.message.includes('timeout')) {
@@ -502,7 +505,7 @@ export const APIService = {
       console.log('[APIService.refreshToken] 🔍 Retrieved from localStorage:', refreshToken ? 'Token exists' : 'NO TOKEN FOUND');
       console.log('[APIService.refreshToken] 🔍 Token length:', refreshToken?.length || 0);
       console.log('[APIService.refreshToken] 🔍 Token preview:', refreshToken?.substring(0, 20) + '...');
-      
+
       if (!refreshToken) {
         console.error('[APIService.refreshToken] ❌ No refresh token in localStorage!');
         console.log('[APIService.refreshToken] 🔍 All localStorage keys:', Object.keys(localStorage));
@@ -514,9 +517,12 @@ export const APIService = {
       const response = await apiClient.post('/api/auth/refresh', { refreshToken });
       console.log('[APIService.refreshToken] 📥 Response received:', response);
 
+      // Extract data from new response format if present
+      const data = response?.data || response;
+
       console.log('[APIService.refreshToken] ✅ Token refresh successful');
       logger.info('Token refresh successful');
-      return response as TokenResponse;
+      return data as TokenResponse;
     } catch (error) {
       console.error('[APIService.refreshToken] ❌ Token refresh failed:', error);
       logger.error('Token refresh failed:', error);
@@ -532,7 +538,10 @@ export const APIService = {
       const response = await apiClient.post('/api/auth/register', userData);
 
       logger.info('Registration successful for user:', userData.email);
-      return response as AuthResponse;
+
+      // Extract data from new response format if present
+      const data = response?.data || response;
+      return data as AuthResponse;
     } catch (error) {
       logger.error('Registration failed:', error);
       throw new Error('Registration failed. Please check your information and try again.');
@@ -826,7 +835,7 @@ export const APIService = {
     try {
       logger.info('Fetching user conversations');
 
-      const response = await apiClient.get('/api/messages/conversations');
+      const response = await apiClient.get('/api/conversations');
 
       logger.info('Conversations retrieved');
       return response as Conversation[];
@@ -841,7 +850,7 @@ export const APIService = {
     try {
       logger.info('Fetching messages for conversation:', conversationId);
 
-      const response = await apiClient.get(`/api/messages/${conversationId}`);
+      const response = await apiClient.get(`/api/conversations/${conversationId}/messages`);
 
       logger.info('Messages retrieved for conversation:', conversationId);
       return response as Message[];
@@ -856,7 +865,10 @@ export const APIService = {
     try {
       logger.info('Sending message to conversation:', message.conversationId);
 
-      const response = await apiClient.post('/api/messages/send', message);
+      const response = await apiClient.post(`/api/conversations/${message.conversationId}/messages`, {
+        content: message.content,
+        messageType: message.messageType || 'TEXT'
+      });
 
       logger.info('Message sent successfully');
       return response as Message;
