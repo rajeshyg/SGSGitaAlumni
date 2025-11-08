@@ -2,13 +2,15 @@
  * E2E Tests for Complete Posts Workflow
  *
  * Tests the end-to-end posting lifecycle including:
- * - Creating a posting
+ * - Creating a posting with domain hierarchy (Primary → Secondary → Areas)
  * - Viewing in My Postings page
  * - View button functionality (PostingDetailPage)
  * - Edit button functionality (EditPostingPage)
- * - Delete button functionality
+ * - Domain editing with auto-clearing child areas
+ * - Archive/Delete functionality with "Show Archived" toggle
  * - Moderator approval flow
  * - Public posting visibility
+ * - Status transitions (Draft → Pending → Active → Archived)
  *
  * Test Users:
  * - Admin: datta.rajesh@gmail.com
@@ -616,6 +618,381 @@ test.describe('Posts Workflow - Edge Cases', () => {
 
       // Verify navigation back to detail page or my postings
       await expect(page).toHaveURL(/\/postings/);
+    }
+  });
+});
+
+test.describe('Posts Workflow - Archive & Restore', () => {
+  test('User can archive a pending posting', async ({ page }) => {
+    console.log('[Test] Testing archive functionality...');
+
+    // Login as individual user
+    await loginAsUser(page, 'testuser@example.com');
+
+    // Navigate to My Postings
+    await page.goto('/postings/my');
+    await page.waitForLoadState('networkidle');
+
+    // Get initial count of visible postings
+    const initialPostings = await page.locator('article, [data-testid="posting-card"]').count();
+    console.log(`[Test] Initial postings count: ${initialPostings}`);
+
+    // Find a pending posting to archive
+    const pendingPosting = page.locator('text=Pending Review').or(page.locator('text=Draft')).first();
+
+    if (await pendingPosting.isVisible({ timeout: 5000 }).catch(() => false)) {
+      // Get the posting title for later verification
+      const postingCard = pendingPosting.locator('..').locator('..');
+      const postingTitle = await postingCard.locator('h3, h2, h1').first().textContent();
+      console.log(`[Test] Archiving posting: "${postingTitle}"`);
+
+      // Find and click Delete button
+      const deleteButton = postingCard.locator('button:has-text("Delete")').or(postingCard.locator('button:has-text("Archive")'));
+      await deleteButton.click();
+
+      // Handle confirmation dialog
+      page.once('dialog', dialog => {
+        console.log('[Test] Confirmation dialog appeared:', dialog.message());
+        expect(dialog.message()).toContain('archive');
+        dialog.accept();
+      });
+
+      // Wait for deletion/archival to complete
+      await page.waitForTimeout(2000);
+
+      // Verify posting is no longer visible in default view
+      const visiblePostings = await page.locator('article, [data-testid="posting-card"]').count();
+      console.log(`[Test] Postings after archive: ${visiblePostings}`);
+      expect(visiblePostings).toBeLessThan(initialPostings);
+
+      // Toggle "Show Archived" checkbox
+      console.log('[Test] Toggling "Show Archived" checkbox...');
+      const showArchivedCheckbox = page.locator('input[type="checkbox"]').filter({ hasText: /Show Archived/i });
+      await showArchivedCheckbox.check();
+      await page.waitForTimeout(1000);
+
+      // Verify archived posting now appears
+      const archivedPosting = page.locator(`text="${postingTitle}"`).first();
+      await expect(archivedPosting).toBeVisible({ timeout: 5000 });
+
+      // Verify it has "Archived" badge
+      const archivedBadge = page.locator('text=Archived').first();
+      await expect(archivedBadge).toBeVisible();
+      console.log('[Test] ✓ Archive functionality working correctly!');
+    } else {
+      console.log('[Test] No pending/draft postings found to test archive - creating one...');
+
+      // Create a draft posting for testing
+      await page.goto('/postings/new');
+      await page.waitForLoadState('networkidle');
+
+      // Quick draft creation (minimal fields)
+      await page.locator('h3:has-text("Offer Support")').click();
+      await page.waitForTimeout(500);
+
+      const categoryTrigger = page.locator('button').filter({ hasText: /Select a category/i });
+      await categoryTrigger.click();
+      await page.waitForTimeout(500);
+      await page.locator('[role="option"]').first().click();
+
+      await page.fill('input#title', 'Test Posting for Archive');
+      await page.click('button:has-text("Save as Draft")');
+
+      await page.waitForURL(/\/postings\/my/, { timeout: 10000 });
+
+      // Now retry archive test
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+
+      const draftPosting = page.locator('text=Test Posting for Archive').first();
+      await expect(draftPosting).toBeVisible();
+
+      const draftCard = draftPosting.locator('..').locator('..');
+      const deleteBtn = draftCard.locator('button:has-text("Delete")');
+      await deleteBtn.click();
+
+      page.once('dialog', dialog => dialog.accept());
+      await page.waitForTimeout(2000);
+
+      // Verify archived
+      const showArchivedCheckbox = page.locator('input[type="checkbox"]').filter({ hasText: /Show Archived/i });
+      await showArchivedCheckbox.check();
+      await page.waitForTimeout(1000);
+
+      await expect(page.locator('text=Test Posting for Archive')).toBeVisible();
+      await expect(page.locator('text=Archived')).toBeVisible();
+    }
+  });
+
+  test('Archived posts are hidden by default and shown with toggle', async ({ page }) => {
+    // Login as individual user
+    await loginAsUser(page, 'testuser@example.com');
+
+    // Navigate to My Postings
+    await page.goto('/postings/my');
+    await page.waitForLoadState('networkidle');
+
+    // Check if "Show Archived" checkbox exists
+    const showArchivedCheckbox = page.locator('input[type="checkbox"]').filter({ hasText: /Show Archived/i });
+    await expect(showArchivedCheckbox).toBeVisible();
+
+    // Verify checkbox is unchecked by default
+    expect(await showArchivedCheckbox.isChecked()).toBe(false);
+
+    // Get count of visible postings (should not include archived)
+    const visibleWithoutArchived = await page.locator('article, [data-testid="posting-card"]').count();
+
+    // Check the checkbox
+    await showArchivedCheckbox.check();
+    await page.waitForTimeout(1000);
+
+    // Get count with archived included
+    const visibleWithArchived = await page.locator('article, [data-testid="posting-card"]').count();
+
+    // Log results
+    console.log(`[Test] Postings without archived: ${visibleWithoutArchived}`);
+    console.log(`[Test] Postings with archived: ${visibleWithArchived}`);
+
+    // If there are archived posts, count should increase or stay same
+    expect(visibleWithArchived).toBeGreaterThanOrEqual(visibleWithoutArchived);
+
+    // Uncheck to verify filtering works both ways
+    await showArchivedCheckbox.uncheck();
+    await page.waitForTimeout(1000);
+
+    const visibleAfterUncheck = await page.locator('article, [data-testid="posting-card"]').count();
+    expect(visibleAfterUncheck).toBe(visibleWithoutArchived);
+  });
+});
+
+test.describe('Posts Workflow - Domain Editing Enhancements', () => {
+  test('Edit page shows only relevant areas of interest based on selected secondary domains', async ({ page }) => {
+    console.log('[Test] Testing domain hierarchy filtering in Edit page...');
+
+    // Login as individual user
+    await loginAsUser(page, 'testuser@example.com');
+
+    // Navigate to My Postings
+    await page.goto('/postings/my');
+    await page.waitForLoadState('networkidle');
+
+    // Find first editable posting
+    const editButton = page.locator('button:has-text("Edit")').first();
+
+    if (await editButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await editButton.click();
+      await page.waitForURL(/\/postings\/[a-zA-Z0-9-]+\/edit$/, { timeout: 10000 });
+      await page.waitForTimeout(2000); // Wait for form to load
+
+      // Verify Primary Domain section exists
+      const primaryDomainSection = page.locator('text=/Primary Domain/i');
+      await expect(primaryDomainSection).toBeVisible();
+
+      // Select a primary domain if not already selected
+      const primaryTrigger = page.locator('button').filter({ hasText: /Select primary domain/i });
+      const isPrimarySelected = !(await primaryTrigger.isVisible({ timeout: 2000 }).catch(() => false));
+
+      if (!isPrimarySelected) {
+        console.log('[Test] Selecting primary domain...');
+        await primaryTrigger.click();
+        await page.waitForTimeout(500);
+        await page.locator('[role="option"]').first().click();
+        await page.waitForTimeout(1000);
+      }
+
+      // Get initial count of Areas of Interest checkboxes
+      const initialAreasCount = await page.locator('input[type="checkbox"]').filter({ hasText: /area/i }).count();
+      console.log(`[Test] Initial areas of interest visible: ${initialAreasCount}`);
+
+      // Select a secondary domain
+      console.log('[Test] Selecting secondary domain...');
+      const secondaryCheckboxes = page.locator('label').filter({ hasText: /Secondary Domain/i }).locator('..').locator('input[type="checkbox"]');
+      const secondaryCount = await secondaryCheckboxes.count();
+
+      if (secondaryCount > 0) {
+        const firstSecondary = secondaryCheckboxes.first();
+        const isChecked = await firstSecondary.isChecked();
+
+        if (!isChecked) {
+          await firstSecondary.check();
+          await page.waitForTimeout(1000);
+        }
+
+        // Get count of areas after selecting secondary
+        const areasAfterSecondary = await page.locator('text=/Areas of Interest/i').locator('..').locator('input[type="checkbox"]').count();
+        console.log(`[Test] Areas of interest after selecting secondary: ${areasAfterSecondary}`);
+
+        // Areas should now be visible (filtered to this secondary's children)
+        expect(areasAfterSecondary).toBeGreaterThan(0);
+
+        console.log('[Test] ✓ Domain hierarchy filtering working correctly!');
+      } else {
+        console.log('[Test] No secondary domains available for selection');
+      }
+    } else {
+      console.log('[Test] No editable postings found to test domain filtering');
+    }
+  });
+
+  test('Deselecting secondary domain auto-clears its child areas of interest', async ({ page }) => {
+    console.log('[Test] Testing auto-clear of child areas when removing secondary domain...');
+
+    // Login as individual user
+    await loginAsUser(page, 'testuser@example.com');
+
+    // Navigate to My Postings and edit a posting
+    await page.goto('/postings/my');
+    await page.waitForLoadState('networkidle');
+
+    const editButton = page.locator('button:has-text("Edit")').first();
+
+    if (await editButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await editButton.click();
+      await page.waitForURL(/\/postings\/[a-zA-Z0-9-]+\/edit$/, { timeout: 10000 });
+      await page.waitForTimeout(2000);
+
+      // Select a primary domain if needed
+      const primaryTrigger = page.locator('button').filter({ hasText: /Select primary domain/i });
+      if (await primaryTrigger.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await primaryTrigger.click();
+        await page.waitForTimeout(500);
+        await page.locator('[role="option"]').first().click();
+        await page.waitForTimeout(1000);
+      }
+
+      // Find secondary domain checkboxes
+      const secondarySection = page.locator('text=/Secondary Domain/i').locator('..');
+      const secondaryCheckboxes = secondarySection.locator('input[type="checkbox"]');
+      const secondaryCount = await secondaryCheckboxes.count();
+
+      if (secondaryCount >= 2) {
+        // Select first secondary domain
+        console.log('[Test] Selecting first secondary domain...');
+        const firstSecondary = secondaryCheckboxes.first();
+        await firstSecondary.check();
+        await page.waitForTimeout(1000);
+
+        // Select some areas of interest for this secondary
+        const areasSection = page.locator('text=/Areas of Interest/i').locator('..');
+        const areaCheckboxes = areasSection.locator('input[type="checkbox"]');
+        const areasCount = await areaCheckboxes.count();
+
+        if (areasCount > 0) {
+          console.log(`[Test] Selecting ${Math.min(2, areasCount)} areas of interest...`);
+          for (let i = 0; i < Math.min(2, areasCount); i++) {
+            await areaCheckboxes.nth(i).check();
+            await page.waitForTimeout(300);
+          }
+
+          // Get count of checked areas
+          const checkedAreasCount = await areaCheckboxes.filter({ checked: true }).count();
+          console.log(`[Test] Checked areas before deselecting secondary: ${checkedAreasCount}`);
+          expect(checkedAreasCount).toBeGreaterThan(0);
+
+          // Now deselect the first secondary domain
+          console.log('[Test] Deselecting secondary domain...');
+          await firstSecondary.uncheck();
+          await page.waitForTimeout(1000);
+
+          // Verify that areas are auto-unchecked
+          // Note: The areas might disappear from UI entirely if filtering is working
+          const remainingCheckedAreas = await areaCheckboxes.filter({ checked: true }).count();
+          console.log(`[Test] Checked areas after deselecting secondary: ${remainingCheckedAreas}`);
+
+          // Areas should be cleared (either unchecked or hidden)
+          expect(remainingCheckedAreas).toBeLessThan(checkedAreasCount);
+          console.log('[Test] ✓ Child areas auto-cleared successfully!');
+        } else {
+          console.log('[Test] No areas of interest available for the selected secondary');
+        }
+      } else {
+        console.log('[Test] Not enough secondary domains to test removal');
+      }
+    } else {
+      console.log('[Test] No editable postings found');
+    }
+  });
+
+  test('Domain changes persist after saving in Edit page', async ({ page }) => {
+    console.log('[Test] Testing domain persistence after edit...');
+
+    // Login as individual user
+    await loginAsUser(page, 'testuser@example.com');
+
+    // Navigate to My Postings
+    await page.goto('/postings/my');
+    await page.waitForLoadState('networkidle');
+
+    const editButton = page.locator('button:has-text("Edit")').first();
+
+    if (await editButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await editButton.click();
+      await page.waitForURL(/\/postings\/[a-zA-Z0-9-]+\/edit$/, { timeout: 10000 });
+      await page.waitForTimeout(2000);
+
+      // Change primary domain
+      const primaryTrigger = page.locator('button').filter({ hasText: /primary domain/i }).first();
+      if (await primaryTrigger.isVisible({ timeout: 2000 }).catch(() => false)) {
+        console.log('[Test] Changing primary domain...');
+        await primaryTrigger.click();
+        await page.waitForTimeout(500);
+
+        // Select second option (to ensure it's different)
+        const options = page.locator('[role="option"]');
+        const optionCount = await options.count();
+        if (optionCount > 1) {
+          await options.nth(1).click();
+        } else {
+          await options.first().click();
+        }
+        await page.waitForTimeout(1000);
+      }
+
+      // Select at least one secondary domain
+      const secondaryCheckboxes = page.locator('label').filter({ hasText: /Secondary/i }).locator('..').locator('input[type="checkbox"]');
+      const secondaryCount = await secondaryCheckboxes.count();
+
+      let selectedSecondaryLabel = '';
+      if (secondaryCount > 0) {
+        console.log('[Test] Selecting secondary domain...');
+        const secondaryToSelect = secondaryCheckboxes.first();
+        await secondaryToSelect.check();
+        await page.waitForTimeout(500);
+
+        // Get the label of selected secondary for verification
+        selectedSecondaryLabel = await secondaryToSelect.locator('..').textContent() || '';
+        console.log(`[Test] Selected secondary: "${selectedSecondaryLabel.trim()}"`);
+      }
+
+      // Save changes
+      console.log('[Test] Saving changes...');
+      const saveButton = page.locator('button:has-text("Save")').or(page.locator('button:has-text("Update")'));
+      await saveButton.click();
+
+      // Wait for save to complete (redirect or success message)
+      await page.waitForTimeout(3000);
+
+      // Navigate back to edit page to verify persistence
+      await page.goto('/postings/my');
+      await page.waitForLoadState('networkidle');
+
+      const editButtonAgain = page.locator('button:has-text("Edit")').first();
+      await editButtonAgain.click();
+      await page.waitForURL(/\/postings\/[a-zA-Z0-9-]+\/edit$/, { timeout: 10000 });
+      await page.waitForTimeout(2000);
+
+      // Verify domain selections persisted
+      if (selectedSecondaryLabel) {
+        const persistedSecondary = page.locator(`label:has-text("${selectedSecondaryLabel.trim()}")`).locator('input[type="checkbox"]');
+        const isChecked = await persistedSecondary.isChecked();
+        console.log(`[Test] Secondary domain "${selectedSecondaryLabel.trim()}" persisted: ${isChecked}`);
+        expect(isChecked).toBe(true);
+        console.log('[Test] ✓ Domain changes persisted successfully!');
+      } else {
+        console.log('[Test] Could not verify secondary domain persistence - no secondary was selected');
+      }
+    } else {
+      console.log('[Test] No editable postings found');
     }
   });
 });

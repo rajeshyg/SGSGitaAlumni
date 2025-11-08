@@ -147,9 +147,9 @@ const calculateExpiryDate = (posting, customDate = null) => {
 // ROUTE: GET /api/moderation/queue
 // ============================================================================
 
-router.get('/queue', 
+router.get('/queue',
   requireModerator,
-  validateRequest({ query: QueueQuerySchema }), 
+  validateRequest({ query: QueueQuerySchema }),
   async (req, res) => {
     try {
       // Parse and validate query parameters (validation middleware doesn't transform req.query)
@@ -159,20 +159,28 @@ router.get('/queue',
       const status = req.query.status || 'all';
       const search = req.query.search;
       const sortBy = req.query.sortBy || 'oldest';
-      
+
       const offset = (page - 1) * limit;
+
+      console.log('[MODERATION_QUEUE] Fetching queue with params:', { page, limit, domain, status, search, sortBy });
 
       // Build WHERE conditions
       const conditions = [];
       const params = [];
 
-      // Status filter
+      // Status filter - using 'status' field instead of redundant 'moderation_status'
       if (status !== 'all') {
-        conditions.push('p.moderation_status = ?');
-        params.push(status);
+        // Map moderation status to posting status
+        if (status === 'PENDING') {
+          conditions.push("p.status = 'pending_review'");
+        } else if (status === 'ESCALATED') {
+          conditions.push("p.status = 'escalated'");
+        } else {
+          conditions.push('p.status = ?');
+          params.push(status);
+        }
       } else {
-        conditions.push('p.moderation_status IN (?, ?)');
-        params.push('PENDING', 'ESCALATED');
+        conditions.push("p.status IN ('pending_review', 'escalated')");
       }
 
       // Domain filter (through junction table)
@@ -188,9 +196,12 @@ router.get('/queue',
         params.push(searchPattern, searchPattern);
       }
 
-      const whereClause = conditions.length > 0 
+      const whereClause = conditions.length > 0
         ? `WHERE ${conditions.join(' AND ')}`
         : '';
+
+      console.log('[MODERATION_QUEUE] WHERE clause:', whereClause);
+      console.log('[MODERATION_QUEUE] Query params:', params);
 
       // Build ORDER BY clause
       let orderByClause;
@@ -199,7 +210,7 @@ router.get('/queue',
           orderByClause = 'ORDER BY p.created_at DESC';
           break;
         case 'urgent':
-          orderByClause = 'ORDER BY (p.moderation_status = "ESCALATED") DESC, p.created_at ASC';
+          orderByClause = 'ORDER BY (p.status = "escalated") DESC, p.created_at ASC';
           break;
         case 'oldest':
         default:
@@ -218,6 +229,8 @@ router.get('/queue',
       const totalItems = countResult[0].total;
       const totalPages = Math.ceil(totalItems / limit);
 
+      console.log('[MODERATION_QUEUE] Total items found:', totalItems);
+
       // Get queue items with all necessary joins
       const [postings] = await pool.query(
         `SELECT DISTINCT
@@ -225,7 +238,7 @@ router.get('/queue',
           p.title,
           p.content as description,
           p.posting_type,
-          p.moderation_status,
+          p.status as moderation_status,
           p.created_at,
           p.expires_at,
           p.version,
@@ -264,6 +277,11 @@ router.get('/queue',
         [...params, limit, offset]
       );
 
+      console.log('[MODERATION_QUEUE] Postings fetched:', postings.length);
+      if (postings.length > 0) {
+        console.log('[MODERATION_QUEUE] First posting:', { id: postings[0].id, title: postings[0].title, status: postings[0].moderation_status });
+      }
+
       // Parse JSON fields for domains
       const parsedPostings = postings.map(posting => {
         let domains = [];
@@ -282,15 +300,15 @@ router.get('/queue',
         };
       });
 
-      // Get queue statistics
+      // Get queue statistics - using 'status' field
       const [stats] = await pool.query(
         `SELECT
-          COUNT(CASE WHEN moderation_status = 'PENDING' THEN 1 END) as pending_count,
-          COUNT(CASE WHEN moderation_status = 'ESCALATED' THEN 1 END) as escalated_count,
-          COUNT(CASE WHEN moderation_status = 'PENDING'
+          COUNT(CASE WHEN status = 'pending_review' THEN 1 END) as pending_count,
+          COUNT(CASE WHEN status = 'escalated' THEN 1 END) as escalated_count,
+          COUNT(CASE WHEN status = 'pending_review'
                 AND created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1 END) as urgent_count
         FROM POSTINGS
-        WHERE moderation_status IN ('PENDING', 'ESCALATED')`
+        WHERE status IN ('pending_review', 'escalated')`
       );
 
       res.json({

@@ -36,7 +36,10 @@ export const DateSchema = z
 
 export const PhoneSchema = z
   .string()
-  .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format')
+  .refine(
+    (val) => val === '' || /^\+?[1-9]\d{1,14}$/.test(val),
+    'Invalid phone number format'
+  )
   .optional();
 
 // ============================================
@@ -168,6 +171,8 @@ export const PostingUpdateSchema = z.object({
   location_type: z.enum(['remote', 'in-person', 'hybrid']).optional(),
   duration: z.string().max(100).optional(),
   max_connections: z.number().int().min(1).max(100).optional(),
+  domain_ids: z.array(UUIDSchema).max(10, 'Maximum 10 domains allowed').optional(),
+  tag_ids: z.array(UUIDSchema).max(10, 'Maximum 10 tags allowed').optional(),
   expires_at: z.string().datetime().optional()
 });
 

@@ -189,7 +189,9 @@ const EditPostingPage = () => {
         location: formData.location || null,
         location_type: formData.location_type,
         duration: formData.duration || null,
-        expires_at: formData.expires_at || null,
+        expires_at: formData.expires_at
+          ? new Date(formData.expires_at + 'T00:00:00Z').toISOString()
+          : null,
         contact_name: formData.contact_name || null,
         contact_phone: formData.contact_phone || null,
         contact_country: formData.contact_country || null,
@@ -209,12 +211,33 @@ const EditPostingPage = () => {
 
   const handleDomainToggle = (domainId: string, level: 'secondary' | 'area_of_interest') => {
     setFormData(prev => {
-      const key = level === 'secondary' ? 'secondary_domain_ids' : 'areas_of_interest_ids';
-      const current = prev[key];
-      const updated = current.includes(domainId)
-        ? current.filter(id => id !== domainId)
-        : [...current, domainId];
-      return { ...prev, [key]: updated };
+      if (level === 'secondary') {
+        const isRemoving = prev.secondary_domain_ids.includes(domainId);
+        const updatedSecondaries = isRemoving
+          ? prev.secondary_domain_ids.filter(id => id !== domainId)
+          : [...prev.secondary_domain_ids, domainId];
+
+        // If removing a secondary, also remove its child areas of interest
+        if (isRemoving) {
+          const areasToRemove = allDomains
+            .filter(d => d.domain_level === 'area_of_interest' && d.parent_domain_id === domainId)
+            .map(d => d.id);
+
+          return {
+            ...prev,
+            secondary_domain_ids: updatedSecondaries,
+            areas_of_interest_ids: prev.areas_of_interest_ids.filter(id => !areasToRemove.includes(id))
+          };
+        }
+
+        return { ...prev, secondary_domain_ids: updatedSecondaries };
+      } else {
+        // Handle areas of interest toggle
+        const updated = prev.areas_of_interest_ids.includes(domainId)
+          ? prev.areas_of_interest_ids.filter(id => id !== domainId)
+          : [...prev.areas_of_interest_ids, domainId];
+        return { ...prev, areas_of_interest_ids: updated };
+      }
     });
   };
 
@@ -222,7 +245,11 @@ const EditPostingPage = () => {
   const secondaryDomains = allDomains.filter(
     d => d.domain_level === 'secondary' && d.parent_domain_id === formData.primary_domain_id
   );
-  const areasOfInterest = allDomains.filter(d => d.domain_level === 'area_of_interest');
+  const areasOfInterest = allDomains.filter(
+    d => d.domain_level === 'area_of_interest' &&
+    d.parent_domain_id &&
+    formData.secondary_domain_ids.includes(d.parent_domain_id)
+  );
 
   if (loading) {
     return (

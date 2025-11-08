@@ -54,6 +54,14 @@ const MyPostingsPage = () => {
 
     try {
       const response = await APIService.get<{postings: Posting[]; pagination: any}>(`/api/postings/my/${user.id}`);
+      console.log('[MyPostingsPage] Loaded postings:', response.postings?.length, 'total');
+      console.log('[MyPostingsPage] Status breakdown:', {
+        active: response.postings?.filter(p => p.status === 'active').length,
+        pending: response.postings?.filter(p => p.status === 'pending_review').length,
+        draft: response.postings?.filter(p => p.status === 'draft').length,
+        rejected: response.postings?.filter(p => p.status === 'rejected').length,
+        archived: response.postings?.filter(p => p.status === 'archived').length
+      });
       setPostings(response.postings || []);
     } catch (err: any) {
       console.error('Failed to load postings:', err);
@@ -65,14 +73,13 @@ const MyPostingsPage = () => {
   };
 
   const handleDelete = async (postingId: string) => {
-    if (!confirm('Are you sure you want to archive this posting? You can view archived posts by toggling the "Show Archived" option.')) return;
+    const confirmed = window.confirm('Are you sure you want to archive this posting?\n\nYou can view archived posts by toggling the "Show Archived" option.');
+    if (!confirmed) return;
 
     try {
       await APIService.deleteGeneric(`/api/postings/${postingId}`);
-      // Mark as archived in UI instead of removing
-      setPostings(prev => prev.map(p =>
-        p.id === postingId ? { ...p, status: 'archived' } : p
-      ));
+      // Reload data to get updated status from backend
+      await loadMyPostings();
     } catch (err: any) {
       alert(err.message || 'Failed to archive posting');
     }

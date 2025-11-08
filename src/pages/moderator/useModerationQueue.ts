@@ -28,7 +28,7 @@ const getInitialFilters = (): QueueFiltersType => ({
   domain: undefined,
   status: undefined,
   search: '',
-  sortBy: 'oldest'
+  sortBy: 'newest'
 });
 
 const getInitialPagination = () => ({
