@@ -78,10 +78,18 @@ const MyPostingsPage = () => {
 
     try {
       await APIService.deleteGeneric(`/api/postings/${postingId}`);
-      // Reload data to get updated status from backend
+      
+      // Optimistic update: immediately update local state to reflect archived status
+      setPostings(prev => prev.map(p =>
+        p.id === postingId ? { ...p, status: 'archived' } : p
+      ));
+      
+      // Also reload data from backend to ensure consistency
       await loadMyPostings();
     } catch (err: any) {
       alert(err.message || 'Failed to archive posting');
+      // Reload to revert any optimistic updates
+      await loadMyPostings();
     }
   };
 

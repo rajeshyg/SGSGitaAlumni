@@ -102,7 +102,7 @@ const PostingsPage: React.FC = () => {
     try {
       let endpoint = '/api/postings';
       const params: any = {
-        status: 'active',
+        // Don't specify status - let backend default to showing active and approved
         limit: 50
       };
 

@@ -432,8 +432,9 @@ test.describe('Posts Workflow - Complete User Journey', () => {
     const updatedCard = getPostingCard(page, postingTitle);
     await expect(updatedCard).toBeVisible();
 
-    // Verify domain badges are present (at least primary domain should show)
-    const domainBadges = updatedCard.locator('.badge, [class*="badge"]');
+    // Verify domain badges are present (using actual Badge component classes)
+    // Badge component renders as: inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs
+    const domainBadges = updatedCard.locator('.inline-flex.items-center.rounded-full');
     expect(await domainBadges.count()).toBeGreaterThan(0);
 
     console.log('[Test 7] ✓ Test user successfully modified domains and areas of interest');
@@ -459,23 +460,27 @@ test.describe('Posts Workflow - Complete User Journey', () => {
     await postingInQueue.click();
     await page.waitForTimeout(1000);
 
-    // Look for Reject button and click it
-    const rejectButton = page.locator('button').filter({ hasText: /Reject/i }).first();
+    // Look for Reject button and click it (this shows the rejection form)
+    const rejectButton = page.locator('button').filter({ hasText: /^Reject$/i });
     await expect(rejectButton).toBeVisible({ timeout: 10000 });
     await rejectButton.click();
+    await page.waitForTimeout(500);
 
-    // Fill rejection reason if prompted
-    const reasonTextarea = page.locator('textarea').filter({ hasText: /reason/i });
-    if (await reasonTextarea.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await reasonTextarea.fill('Automated test rejection');
-    }
+    // Fill rejection form - Select reason from dropdown
+    const reasonSelect = page.locator('[role="combobox"]').first();
+    await reasonSelect.click();
+    await page.waitForTimeout(300);
+    // Select first option (SPAM)
+    await page.locator('[role="option"]').first().click();
+    await page.waitForTimeout(300);
 
-    // Confirm rejection
-    const confirmButton = page.locator('button').filter({ hasText: /Confirm|Submit/i });
-    if (await confirmButton.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await confirmButton.click();
-    }
+    // Fill feedback textarea (required, 10-500 chars)
+    const feedbackTextarea = page.locator('textarea').filter({ hasText: /Feedback to User/i });
+    await feedbackTextarea.fill('Automated test rejection - this posting does not meet community guidelines.');
 
+    // Click Confirm Rejection button
+    const confirmButton = page.locator('button').filter({ hasText: /Confirm Rejection/i });
+    await confirmButton.click();
     await page.waitForTimeout(2000);
 
     // Verify rejection by checking test user's My Postings
