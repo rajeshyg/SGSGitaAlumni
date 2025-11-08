@@ -253,11 +253,6 @@ export class SecureAPIClient {
       headers[key] = value;
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-
     let data: T;
     const contentType = response.headers.get('content-type');
 
@@ -269,6 +264,29 @@ export class SecureAPIClient {
       }
     } else {
       data = (await response.text()) as unknown as T;
+    }
+
+    // Handle error responses (both standardized new format and legacy formats)
+    if (!response.ok) {
+      // Check for new standardized error format
+      if (typeof data === 'object' && data !== null && 'success' in data && !data.success && 'error' in data) {
+        const errorObj = (data as any).error;
+        const errorMessage = errorObj?.message || `HTTP ${response.status}`;
+        const errorCode = errorObj?.code || 'UNKNOWN_ERROR';
+        const errorDetails = errorObj?.details || undefined;
+
+        const error = new Error(errorMessage);
+        (error as any).code = errorCode;
+        (error as any).status = response.status;
+        (error as any).details = errorDetails;
+        (error as any).isStandardError = true;
+
+        throw error;
+      }
+
+      // Fall back to generic error if response text exists
+      const errorText = typeof data === 'string' ? data : `HTTP ${response.status}`;
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     return {

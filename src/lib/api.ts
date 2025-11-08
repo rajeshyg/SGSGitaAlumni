@@ -80,8 +80,29 @@ export const apiClient = {
       return response.data;
     } catch (error: any) {
       console.error(`[apiClient] ❌ ${options.method || 'GET'} ${endpoint} failed:`, error);
-      
-      // Convert secure API errors to legacy error format
+
+      // Handle standardized error format from backend
+      if (error.isStandardError || (error.code && error.status)) {
+        const code = error.code || 'UNKNOWN_ERROR';
+        const status = error.status || 500;
+        const message = error.message || 'An error occurred';
+        const details = error.details || undefined;
+
+        console.error(`[apiClient] StandardError: ${code} (${status}) - ${message}`, details);
+
+        // Handle specific error codes
+        if (code.startsWith('AUTH_')) {
+          throw new AuthenticationError(message);
+        }
+
+        if (status === 401 || status === 403) {
+          throw new AuthenticationError(message);
+        }
+
+        throw new APIError(message, code, status, details);
+      }
+
+      // Handle legacy HTTP error messages
       if (error.message?.includes('HTTP')) {
         const statusMatch = error.message.match(/HTTP (\d+)/);
         const status = statusMatch ? parseInt(statusMatch[1]) : 500;
