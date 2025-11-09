@@ -81,11 +81,13 @@ export const MessageList: React.FC<MessageListProps> = ({
   loading = false
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    // Use scrollIntoView for smoother scrolling
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }, [messages]);
 
@@ -361,6 +363,8 @@ export const MessageList: React.FC<MessageListProps> = ({
             })}
           </div>
         ))}
+        {/* Invisible element at bottom for auto-scroll target */}
+        <div ref={messagesEndRef} />
       </div>
     </ScrollArea>
   );

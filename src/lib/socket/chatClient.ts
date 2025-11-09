@@ -322,22 +322,27 @@ class ChatClient {
 
   /**
    * Send typing indicator
+   * @param conversationId - Conversation ID (string UUID or number)
+   * @param userId - User ID of the typer
+   * @param userName - Display name of the typer
    */
-  public sendTypingIndicator(conversationId: number): void {
+  public sendTypingIndicator(conversationId: string | number, userId?: number, userName?: string): void {
     if (!this.isSocketConnected()) {
       return;
     }
-    this.socket?.emit('typing:start', { conversationId });
+    this.socket?.emit('typing:start', { conversationId, userId, userName });
   }
 
   /**
    * Stop typing indicator
+   * @param conversationId - Conversation ID (string UUID or number)
+   * @param userId - User ID of the typer
    */
-  public stopTypingIndicator(conversationId: number): void {
+  public stopTypingIndicator(conversationId: string | number, userId?: number): void {
     if (!this.isSocketConnected()) {
       return;
     }
-    this.socket?.emit('typing:stop', { conversationId });
+    this.socket?.emit('typing:stop', { conversationId, userId });
   }
 
   /**

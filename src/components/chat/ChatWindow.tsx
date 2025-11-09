@@ -452,22 +452,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // Handle typing indicators
   const handleTyping = useCallback(() => {
-    if (selectedConversationId) {
-      const conversationIdNum = parseInt(selectedConversationId, 10);
-      if (!isNaN(conversationIdNum)) {
-        chatClient.sendTypingIndicator(conversationIdNum);
-      }
+    if (selectedConversationId && user) {
+      const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10);
+      chatClient.sendTypingIndicator(
+        selectedConversationId,
+        userId,
+        `${user.firstName} ${user.lastName}`.trim()
+      );
     }
-  }, [selectedConversationId]);
+  }, [selectedConversationId, user]);
 
   const handleStopTyping = useCallback(() => {
-    if (selectedConversationId) {
-      const conversationIdNum = parseInt(selectedConversationId, 10);
-      if (!isNaN(conversationIdNum)) {
-        chatClient.stopTypingIndicator(conversationIdNum);
-      }
+    if (selectedConversationId && user) {
+      const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10);
+      chatClient.stopTypingIndicator(selectedConversationId, userId);
     }
-  }, [selectedConversationId]);
+  }, [selectedConversationId, user]);
 
   // Setup event listeners
 
