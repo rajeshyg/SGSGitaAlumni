@@ -11,7 +11,7 @@ import APIService from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Zap, Tag, FileText, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Zap, Tag, FileText, MessageSquare, Heart, Users } from 'lucide-react';
 
 interface Posting {
   id: string;
@@ -59,6 +59,9 @@ const PostingDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creatingConversation, setCreatingConversation] = useState(false);
+  const [hasExpressedInterest, setHasExpressedInterest] = useState(false);
+  const [isExpressingInterest, setIsExpressingInterest] = useState(false);
+  const [isJoiningGroup, setIsJoiningGroup] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -118,6 +121,62 @@ const PostingDetailPage = () => {
       setError(err.message || 'Failed to start conversation. Please try again.');
     } finally {
       setCreatingConversation(false);
+    }
+  };
+
+  // Handle expressing interest in a post
+  const handleExpressInterest = async () => {
+    if (!posting || !user) return;
+
+    setIsExpressingInterest(true);
+    setError(null);
+
+    try {
+      // Call like/interest endpoint
+      await APIService.postGeneric(`/api/postings/${posting.id}/like`, {});
+      setHasExpressedInterest(true);
+    } catch (err: any) {
+      console.error('Failed to express interest:', err);
+      setError(err.message || 'Failed to express interest. Please try again.');
+    } finally {
+      setIsExpressingInterest(false);
+    }
+  };
+
+  // Handle joining group discussion
+  const handleJoinGroupChat = async () => {
+    if (!posting || !user) return;
+
+    setIsJoiningGroup(true);
+    setError(null);
+
+    try {
+      // Check if group conversation exists for this post
+      const existingGroup = await APIService.get(`/api/conversations/group/${posting.id}`);
+
+      if (existingGroup && existingGroup.id) {
+        // Add current user to existing group
+        await APIService.postGeneric(`/api/conversations/${existingGroup.id}/add-participant`, {
+          userId: user.id
+        });
+        navigate(`/chat?conversationId=${existingGroup.id}`);
+      } else {
+        // Create new group conversation
+        const response = await APIService.postGeneric('/api/conversations', {
+          type: 'POST_LINKED',
+          postingId: posting.id,
+          isGroup: true,
+          name: posting.title,
+          participantIds: [posting.author_id, user.id]
+        });
+        const conversationId = response.data?.id || response.id;
+        navigate(`/chat?conversationId=${conversationId}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to join group discussion:', err);
+      setError(err.message || 'Failed to join group discussion. Please try again.');
+    } finally {
+      setIsJoiningGroup(false);
     }
   };
 
@@ -185,9 +244,47 @@ const PostingDetailPage = () => {
           Back
         </Button>
 
-        <div className="flex gap-2">
-          {/* Message Author Button (for non-owners) */}
-          {!isOwner && posting.author_id !== user?.id && (
+        <div className="flex gap-2 flex-wrap">
+          {/* Express Interest Section (for non-owners on approved posts) */}
+          {!isOwner && posting.author_id !== user?.id && posting.status === 'approved' && (
+            <>
+              {!hasExpressedInterest ? (
+                <Button
+                  variant="default"
+                  onClick={handleExpressInterest}
+                  disabled={isExpressingInterest}
+                  className="flex items-center gap-2"
+                >
+                  <Heart className="h-4 w-4" />
+                  {isExpressingInterest ? 'Expressing...' : 'Express Interest'}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    variant="default"
+                    onClick={handleJoinGroupChat}
+                    disabled={isJoiningGroup}
+                    className="flex items-center gap-2"
+                  >
+                    <Users className="h-4 w-4" />
+                    {isJoiningGroup ? 'Joining...' : 'Join Group Discussion'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleMessageAuthor}
+                    disabled={creatingConversation}
+                    className="flex items-center gap-2"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    {creatingConversation ? 'Starting...' : 'Chat with Author'}
+                  </Button>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Legacy Message Author Button (kept for backward compatibility) */}
+          {!isOwner && posting.author_id !== user?.id && posting.status !== 'approved' && (
             <Button
               variant="outline"
               onClick={handleMessageAuthor}
@@ -418,6 +515,35 @@ const PostingDetailPage = () => {
                     </div>
                   </a>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Contact Information (shown after expressing interest) */}
+          {hasExpressedInterest && !isOwner && (
+            <div className="pt-4 border-t border-border">
+              <h3 className="font-medium text-foreground mb-3">Contact Information</h3>
+              <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <span className="font-medium text-sm w-24">Name:</span>
+                  <span className="text-sm text-muted-foreground">
+                    {posting.author_first_name} {posting.author_last_name}
+                  </span>
+                </div>
+                {posting.author_email && (
+                  <div className="flex items-start gap-2">
+                    <span className="font-medium text-sm w-24">Email:</span>
+                    <a
+                      href={`mailto:${posting.author_email}`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      {posting.author_email}
+                    </a>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-4 pt-3 border-t border-border">
+                  ℹ️ Contact information is shared only after expressing interest in the post.
+                </p>
               </div>
             </div>
           )}

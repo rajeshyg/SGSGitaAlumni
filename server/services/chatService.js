@@ -23,10 +23,11 @@ import { v4 as uuidv4 } from 'uuid';
  * @param {string} [data.name] - Conversation name (required for GROUP)
  * @param {string} [data.postingId] - Posting ID (required for POST_LINKED)
  * @param {number[]} data.participantIds - Array of user IDs to add as participants
+ * @param {string} [data.initialMessage] - Optional initial message to send
  * @returns {Promise<object>} Created conversation
  */
 async function createConversation(userId, data) {
-  const { type, name, postingId, participantIds } = data;
+  const { type, name, postingId, participantIds, initialMessage } = data;
 
   // Validate data based on type
   if (type === 'GROUP' && !name) {
@@ -116,6 +117,22 @@ async function createConversation(userId, data) {
        WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
       [conversationId]
     );
+
+    // Send initial message if provided
+    if (initialMessage) {
+      const messageId = uuidv4();
+      await connection.execute(
+        `INSERT INTO MESSAGES (id, conversation_id, sender_id, content, message_type, created_at)
+         VALUES (?, ?, ?, ?, 'TEXT', NOW())`,
+        [messageId, conversationId, userId, initialMessage]
+      );
+
+      // Update last_message_at on conversation
+      await connection.execute(
+        `UPDATE CONVERSATIONS SET last_message_at = NOW() WHERE id = ?`,
+        [conversationId]
+      );
+    }
 
     connection.release();
 
@@ -1039,6 +1056,79 @@ async function archiveConversation(conversationId, userId) {
   }
 }
 
+/**
+ * Get group conversation for a specific posting
+ *
+ * @param {string} postingId - Posting ID
+ * @returns {Promise<object|null>} Group conversation or null if not found
+ */
+async function getGroupConversationByPostingId(postingId) {
+  const connection = await getPool().getConnection();
+
+  try {
+    // Find existing group conversation for this posting
+    const [conversations] = await connection.execute(
+      `SELECT
+        c.*,
+        p.title as posting_title
+       FROM CONVERSATIONS c
+       LEFT JOIN POSTINGS p ON c.posting_id = p.id
+       WHERE c.posting_id = ? AND c.type = 'POST_LINKED' AND c.is_archived = FALSE
+       ORDER BY c.created_at DESC
+       LIMIT 1`,
+      [postingId]
+    );
+
+    if (conversations.length === 0) {
+      return null;
+    }
+
+    const conversation = conversations[0];
+
+    // Get participants
+    const [participants] = await connection.execute(
+      `SELECT
+        cp.id as participant_id,
+        cp.role,
+        cp.joined_at,
+        cp.last_read_at,
+        cp.is_muted,
+        u.id as user_id,
+        u.first_name,
+        u.last_name,
+        u.email
+       FROM CONVERSATION_PARTICIPANTS cp
+       JOIN app_users u ON cp.user_id = u.id
+       WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
+      [conversation.id]
+    );
+
+    return {
+      id: conversation.id,
+      type: conversation.type,
+      name: conversation.name,
+      postingId: conversation.posting_id,
+      postingTitle: conversation.posting_title,
+      participants: participants.map(p => ({
+        participantId: p.participant_id,
+        userId: p.user_id,
+        firstName: p.first_name,
+        lastName: p.last_name,
+        email: p.email,
+        role: p.role,
+        joinedAt: p.joined_at,
+        lastReadAt: p.last_read_at,
+        isMuted: Boolean(p.is_muted)
+      })),
+      createdAt: conversation.created_at,
+      lastMessageAt: conversation.last_message_at,
+      isArchived: Boolean(conversation.is_archived)
+    };
+  } finally {
+    connection.release();
+  }
+}
+
 export {
   createConversation,
   getConversations,
@@ -1052,5 +1142,6 @@ export {
   addParticipant,
   removeParticipant,
   markAsRead,
-  archiveConversation
+  archiveConversation,
+  getGroupConversationByPostingId
 };

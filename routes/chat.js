@@ -131,6 +131,81 @@ export const getConversationById = asyncHandler(async (req, res) => {
 });
 
 /**
+ * GET /api/conversations/group/:postingId
+ * Get group conversation for a specific posting
+ */
+export const getGroupConversationByPostingId = asyncHandler(async (req, res) => {
+  const { postingId } = req.params;
+
+  console.log('[Chat API] Get group conversation by posting ID:', { postingId, userId: req.user.id });
+
+  const conversation = await chatService.getGroupConversationByPostingId(postingId);
+
+  if (!conversation) {
+    return res.status(404).json({
+      success: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: 'No group conversation found for this posting'
+      }
+    });
+  }
+
+  res.json({
+    success: true,
+    data: conversation
+  });
+});
+
+/**
+ * POST /api/conversations/:id/add-participant
+ * Add current user to an existing conversation
+ */
+export const addCurrentUserToConversation = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { userId } = req.body;
+
+  console.log('[Chat API] Add current user to conversation:', { conversationId: id, userId: userId || req.user.id });
+
+  // Use provided userId or current user's ID
+  const targetUserId = userId || req.user.id;
+
+  // Add participant (with MEMBER role by default)
+  const participant = await chatService.addParticipant(
+    id,
+    req.user.id,  // Current user making the request
+    targetUserId,  // User to add
+    'MEMBER'
+  );
+
+  // Notify via WebSocket
+  if (io) {
+    const socketHelpers = await import('../server/socket/chatSocket.js');
+    
+    // Notify the added user
+    socketHelpers.sendToUser(io, targetUserId, 'conversation:added', {
+      conversationId: id,
+      addedBy: {
+        id: req.user.id,
+        firstName: req.user.first_name,
+        lastName: req.user.last_name
+      }
+    });
+
+    // Notify existing participants
+    socketHelpers.broadcastToConversation(io, id, 'conversation:participant:added', {
+      conversationId: id,
+      participant
+    }, req.user.id);
+  }
+
+  res.status(201).json({
+    success: true,
+    data: participant
+  });
+});
+
+/**
  * POST /api/conversations/:id/archive
  * Archive a conversation
  */
@@ -610,9 +685,19 @@ export default function registerChatRoutes(router) {
     getConversations
   );
 
+  router.get('/api/conversations/group/:postingId',
+    rateLimit('chat-read', { useUserId: true }),
+    getGroupConversationByPostingId
+  );
+
   router.get('/api/conversations/:id',
     rateLimit('chat-read', { useUserId: true }),
     getConversationById
+  );
+
+  router.post('/api/conversations/:id/add-participant',
+    rateLimit('chat-write', { useUserId: true }),
+    addCurrentUserToConversation
   );
 
   router.post('/api/conversations/:id/archive',

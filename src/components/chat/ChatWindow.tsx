@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
-import { X, ArrowLeft, Users, Home } from 'lucide-react';
+import { X, ArrowLeft, Users, Home, Link as LinkIcon } from 'lucide-react';
 import { ConversationList, type Conversation } from './ConversationList';
 import { MessageList, type Message } from './MessageList';
 import { MessageInput } from './MessageInput';
@@ -532,7 +532,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     <Card className="flex flex-col h-full w-full" data-testid="chat-window">
       {/* Header */}
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 flex-1">
           {/* Back to dashboard button */}
           <Button
             variant="ghost"
@@ -553,10 +553,30 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <CardTitle className="text-xl font-semibold">
-            {getConversationDisplayName(selectedConversation)}
-          </CardTitle>
+          
+          {/* Conversation Title and Post Link */}
+          <div className="flex flex-col flex-1 min-w-0">
+            <CardTitle className="text-xl font-semibold">
+              {getConversationDisplayName(selectedConversation)}
+            </CardTitle>
+            
+            {/* Post Link for POST_LINKED conversations */}
+            {selectedConversation?.type === 'POST_LINKED' && selectedConversation.postingId && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                <LinkIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => navigate(`/postings/${selectedConversation.postingId}`)}
+                  className="h-auto p-0 text-sm font-normal text-muted-foreground hover:text-primary underline-offset-4"
+                >
+                  View Original Post
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
+        
         <div className="flex items-center space-x-2">
           {selectedConversation && (
             <Button variant="ghost" size="icon" title="Conversation info">
