@@ -18,9 +18,9 @@ export const LogViewer: React.FC = () => {
     socketUrl: window.location.origin
   });
 
-  // Set default to false to start minimized
+  // Set default to minimized and make it collapsible
   const [isVisible, setIsVisible] = useState(() => {
-    // Try to get the stored preference, default to false (minimized)
+    // Try to get the stored preference, default to false (minimized/button only)
     const stored = localStorage.getItem('log-viewer-visible');
     return stored ? JSON.parse(stored) : false;
   });
@@ -34,17 +34,34 @@ export const LogViewer: React.FC = () => {
   useEffect(() => {
     const intervalId = setInterval(() => {
       if (isVisible) {
-        setLogs(logger.getLogHistory());
+        // Get logs from logger if available
+        try {
+          const logHistory = logger?.getLogHistory?.() || [];
+          setLogs(logHistory);
+        } catch (error) {
+          console.error('Error getting log history:', error);
+          setLogs([]);
+        }
 
         if (activeTab === 'socket') {
-          // Update socket status
-          const status = chatClient.getStatus();
-          setSocketStatus({
-            connected: status.connected,
-            queuedMessages: status.queuedMessages,
-            reconnectAttempts: status.reconnectAttempts,
-            socketUrl: window.location.origin
-          });
+          // Update socket status from chatClient
+          try {
+            const isConnected = chatClient?.isSocketConnected?.() || false;
+            const status = chatClient?.getStatus?.() || {
+              connected: isConnected,
+              queuedMessages: 0,
+              reconnectAttempts: 0
+            };
+            
+            setSocketStatus({
+              connected: status.connected,
+              queuedMessages: status.queuedMessages || 0,
+              reconnectAttempts: status.reconnectAttempts || 0,
+              socketUrl: window.location.origin
+            });
+          } catch (error) {
+            console.error('Error getting socket status:', error);
+          }
         }
       }
     }, 1000);
@@ -58,13 +75,14 @@ export const LogViewer: React.FC = () => {
 
   if (!isVisible) {
     return (
-      <div
-        className="fixed bottom-4 right-4 bg-blue-500 text-white p-2 rounded-full shadow-lg cursor-pointer z-50 hover:bg-blue-600 transition-colors"
+      <button
+        className="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg cursor-pointer z-50 transition-all hover:scale-110"
         onClick={() => setIsVisible(true)}
         title="Show Debug Panel"
+        aria-label="Open Debug Panel"
       >
-        🔧
-      </div>
+        <Info className="w-5 h-5" />
+      </button>
     );
   }
 
