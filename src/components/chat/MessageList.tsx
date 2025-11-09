@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { MoreVertical, Trash2, Edit, Reply } from 'lucide-react';
+import { MoreVertical, Trash2, Edit, Reply, Forward, Check, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
 export interface Message {
@@ -34,6 +34,10 @@ export interface Message {
     userName: string;
     emoji: string;
   }>;
+  readBy?: Array<{
+    userId: number;
+    readAt: string;
+  }>;
 }
 
 interface MessageListProps {
@@ -42,6 +46,7 @@ interface MessageListProps {
   onEditMessage?: (messageId: string, content: string) => void;
   onDeleteMessage?: (messageId: string) => void;
   onReplyMessage?: (messageId: string) => void;
+  onForwardMessage?: (messageId: string) => void;
   onReactToMessage?: (messageId: string, emoji: string) => void;
   loading?: boolean;
 }
@@ -52,6 +57,7 @@ export const MessageList: React.FC<MessageListProps> = ({
   onEditMessage,
   onDeleteMessage,
   onReplyMessage,
+  onForwardMessage,
   onReactToMessage,
   loading = false
 }) => {
@@ -190,6 +196,27 @@ export const MessageList: React.FC<MessageListProps> = ({
                           <p className="text-sm">This message was deleted</p>
                         ) : (
                           <>
+                            {/* Reply context */}
+                            {message.replyToMessageId && (() => {
+                              const repliedMessage = messages.find(m => m.id === message.replyToMessageId);
+                              return repliedMessage ? (
+                                <div className={`mb-2 pb-2 border-l-2 pl-2 ${
+                                  isOwnMessage ? 'border-primary-foreground/30' : 'border-border'
+                                }`}>
+                                  <p className={`text-xs font-medium ${
+                                    isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                                  }`}>
+                                    {repliedMessage.senderName}
+                                  </p>
+                                  <p className={`text-xs truncate ${
+                                    isOwnMessage ? 'text-primary-foreground/60' : 'text-muted-foreground/80'
+                                  }`}>
+                                    {repliedMessage.content}
+                                  </p>
+                                </div>
+                              ) : null;
+                            })()}
+
                             <p className="text-sm whitespace-pre-wrap break-words">
                               {message.content}
                             </p>
@@ -201,13 +228,24 @@ export const MessageList: React.FC<MessageListProps> = ({
                           </>
                         )}
 
-                        {/* Timestamp */}
+                        {/* Timestamp with read status */}
                         <p
-                          className={`text-xs mt-1 ${
+                          className={`text-xs mt-1 flex items-center gap-1 ${
                             isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
                           }`}
                         >
-                          {format(new Date(message.createdAt), 'HH:mm')}
+                          <span>{format(new Date(message.createdAt), 'HH:mm')}</span>
+                          {/* Show read indicators for own messages */}
+                          {isOwnMessage && message.readBy && message.readBy.length > 0 && (
+                            <span title={`Read by ${message.readBy.length} user(s)`}>
+                              <CheckCheck className="h-3 w-3" />
+                            </span>
+                          )}
+                          {isOwnMessage && (!message.readBy || message.readBy.length === 0) && (
+                            <span title="Delivered">
+                              <Check className="h-3 w-3" />
+                            </span>
+                          )}
                         </p>
                       </div>
 
@@ -249,6 +287,12 @@ export const MessageList: React.FC<MessageListProps> = ({
                                 <DropdownMenuItem onClick={() => onReplyMessage(message.id)}>
                                   <Reply className="mr-2 h-4 w-4" />
                                   Reply
+                                </DropdownMenuItem>
+                              )}
+                              {onForwardMessage && (
+                                <DropdownMenuItem onClick={() => onForwardMessage(message.id)}>
+                                  <Forward className="mr-2 h-4 w-4" />
+                                  Forward
                                 </DropdownMenuItem>
                               )}
                               {onReactToMessage && (

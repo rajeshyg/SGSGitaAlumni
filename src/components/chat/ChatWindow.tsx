@@ -11,9 +11,10 @@ import { X, ArrowLeft, Users } from 'lucide-react';
 import { ConversationList, type Conversation } from './ConversationList';
 import { MessageList, type Message } from './MessageList';
 import { MessageInput } from './MessageInput';
+import { ConversationSelectorDialog } from './ConversationSelectorDialog';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../lib/api';
-import { chatClient, type ChatMessage } from '../../lib/socket/chatClient';
+import { chatClient } from '../../lib/socket/chatClient';
 
 interface ChatWindowProps {
   onClose?: () => void;
@@ -33,6 +34,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Map<number, string>>(new Map());
+  const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
+  const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+  const [messageToForward, setMessageToForward] = useState<Message | undefined>(undefined);
 
   // Initialize socket connection on mount
   useEffect(() => {
@@ -128,6 +132,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     });
   }, []);
 
+  // Handle read receipts
+  const handleReadReceipt = useCallback((data: any) => {
+    console.log('📖 Read receipt received:', data);
+    // Update message read status in state
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === data.messageId
+          ? { ...msg, readBy: [...(msg.readBy || []), { userId: data.userId, readAt: data.readAt }] }
+          : msg
+      )
+    );
+  }, []);
+
   // Setup socket event listeners
   useEffect(() => {
     chatClient.on('message:new', handleNewMessage);
@@ -135,6 +152,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     chatClient.on('message:deleted', handleMessageDeleted);
     chatClient.on('typing:start', handleTypingStart);
     chatClient.on('typing:stop', handleTypingStop);
+    chatClient.on('read:receipt', handleReadReceipt);
 
     return () => {
       chatClient.off('message:new', handleNewMessage);
@@ -142,8 +160,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       chatClient.off('message:deleted', handleMessageDeleted);
       chatClient.off('typing:start', handleTypingStart);
       chatClient.off('typing:stop', handleTypingStop);
+      chatClient.off('read:receipt', handleReadReceipt);
     };
-  }, [handleNewMessage, handleMessageEdited, handleMessageDeleted, handleTypingStart, handleTypingStop]);
+  }, [handleNewMessage, handleMessageEdited, handleMessageDeleted, handleTypingStart, handleTypingStop, handleReadReceipt]);
 
   // Load conversations on mount
   useEffect(() => {
@@ -224,6 +243,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       }));
       
       setMessages(transformedMessages);
+
+      // Mark messages as read after loading
+      if (transformedMessages.length > 0) {
+        const lastMessage = transformedMessages[transformedMessages.length - 1];
+        const conversationIdNum = parseInt(conversationId, 10);
+        if (!isNaN(conversationIdNum) && lastMessage.id) {
+          chatClient.markAsRead(conversationIdNum, parseInt(lastMessage.id, 10));
+        }
+      }
     } catch (error) {
       console.error('Failed to load messages:', error);
     } finally {
@@ -245,14 +273,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         content,
         messageType: 'TEXT',
         createdAt: new Date().toISOString(),
+        replyToMessageId: replyToMessage?.id,
       };
 
       setMessages(prev => [...prev, optimisticMessage]);
 
       const response = await apiClient.post(`/api/conversations/${selectedConversationId}/messages`, {
         content,
-        messageType: 'TEXT'
+        messageType: 'TEXT',
+        replyToId: replyToMessage?.id
       });
+
+      // Clear reply context after sending
+      setReplyToMessage(undefined);
 
       const rawMessage = response.data || response;
       // Transform server response to match frontend Message interface
@@ -345,6 +378,46 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  const handleReplyMessage = (messageId: string) => {
+    const messageToReply = messages.find(msg => msg.id === messageId);
+    if (messageToReply) {
+      setReplyToMessage(messageToReply);
+    }
+  };
+
+  const handleCancelReply = () => {
+    setReplyToMessage(undefined);
+  };
+
+  const handleForwardMessage = (messageId: string) => {
+    const messageToForwardData = messages.find(msg => msg.id === messageId);
+    if (messageToForwardData) {
+      setMessageToForward(messageToForwardData);
+      setForwardDialogOpen(true);
+    }
+  };
+
+  const handleForwardToConversation = async (targetConversationId: string) => {
+    if (!messageToForward || !user) return;
+
+    try {
+      // Send the forwarded message to the target conversation
+      await apiClient.post(`/api/conversations/${targetConversationId}/messages`, {
+        content: `📩 Forwarded message:\n\n${messageToForward.content}`,
+        messageType: 'TEXT'
+      });
+
+      console.log('✅ Message forwarded successfully to conversation:', targetConversationId);
+      
+      // Clear forward state
+      setMessageToForward(undefined);
+      setForwardDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to forward message:', error);
+      // Could show error toast here
+    }
+  };
+
   // Handle typing indicators
   const handleTyping = useCallback(() => {
     if (selectedConversationId) {
@@ -363,6 +436,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       }
     }
   }, [selectedConversationId]);
+
+  // Setup event listeners
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
@@ -435,6 +510,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 currentUserId={typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10)}
                 onEditMessage={handleEditMessage}
                 onDeleteMessage={handleDeleteMessage}
+                onReplyMessage={handleReplyMessage}
+                onForwardMessage={handleForwardMessage}
                 onReactToMessage={handleReactToMessage}
                 loading={messagesLoading}
               />
@@ -448,6 +525,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 onSendMessage={handleSendMessage}
                 onTyping={handleTyping}
                 onStopTyping={handleStopTyping}
+                replyToMessage={replyToMessage}
+                onCancelReply={handleCancelReply}
               />
             </>
           ) : (
@@ -464,6 +543,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
           )}
         </div>
       </CardContent>
+
+      {/* Forward Message Dialog */}
+      <ConversationSelectorDialog
+        open={forwardDialogOpen}
+        onOpenChange={setForwardDialogOpen}
+        conversations={conversations}
+        onSelectConversation={handleForwardToConversation}
+        currentConversationId={selectedConversationId}
+      />
     </Card>
   );
 };

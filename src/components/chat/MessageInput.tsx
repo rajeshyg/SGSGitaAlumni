@@ -6,7 +6,8 @@
 import React, { useState, useRef, KeyboardEvent } from 'react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { Send, Paperclip, Smile } from 'lucide-react';
+import { Send, Paperclip, Smile, X } from 'lucide-react';
+import { type Message } from './MessageList';
 
 interface MessageInputProps {
   onSendMessage: (content: string) => void;
@@ -14,6 +15,8 @@ interface MessageInputProps {
   onStopTyping?: () => void;
   disabled?: boolean;
   placeholder?: string;
+  replyToMessage?: Message;
+  onCancelReply?: () => void;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -21,7 +24,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onTyping,
   onStopTyping,
   disabled = false,
-  placeholder = 'Type a message...'
+  placeholder = 'Type a message...',
+  replyToMessage,
+  onCancelReply
 }) => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -91,6 +96,29 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   return (
     <div className="border-t p-4 bg-background">
+      {/* Reply preview */}
+      {replyToMessage && (
+        <div className="mb-2 p-2 bg-muted rounded-lg flex items-start justify-between">
+          <div className="flex-1 overflow-hidden">
+            <div className="text-xs font-semibold text-primary mb-1">
+              Replying to {replyToMessage.senderName}
+            </div>
+            <div className="text-sm text-muted-foreground truncate">
+              {replyToMessage.content}
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 shrink-0 ml-2"
+            onClick={onCancelReply}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       <div className="flex items-end space-x-2">
         {/* Attachment button (future feature) */}
         <Button
