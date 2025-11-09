@@ -237,12 +237,18 @@ async function getConversations(userId, filters = {}) {
         [conv.id]
       );
 
-      // Get participant count
-      const [participantCount] = await connection.execute(
-        `SELECT COUNT(*) as count
-         FROM CONVERSATION_PARTICIPANTS
-         WHERE conversation_id = ? AND left_at IS NULL`,
-        [conv.id]
+      // Get participants with details (excluding current user for DIRECT chats)
+      const [participants] = await connection.execute(
+        `SELECT
+          cp.user_id,
+          cp.role,
+          u.first_name,
+          u.last_name,
+          u.profile_image_url
+         FROM CONVERSATION_PARTICIPANTS cp
+         JOIN app_users u ON cp.user_id = u.id
+         WHERE cp.conversation_id = ? AND cp.left_at IS NULL AND cp.user_id != ?`,
+        [conv.id, userId]
       );
 
       result.push({
@@ -255,7 +261,15 @@ async function getConversations(userId, filters = {}) {
           firstName: conv.creator_first_name,
           lastName: conv.creator_last_name
         },
-        participantCount: participantCount[0].count,
+        participants: participants.map(p => ({
+          userId: p.user_id,
+          displayName: `${p.first_name} ${p.last_name}`.trim(),
+          firstName: p.first_name,
+          lastName: p.last_name,
+          profileImageUrl: p.profile_image_url,
+          role: p.role
+        })),
+        participantCount: participants.length + 1, // +1 for current user
         lastMessage: lastMessage[0] ? {
           id: lastMessage[0].id,
           content: lastMessage[0].content,
