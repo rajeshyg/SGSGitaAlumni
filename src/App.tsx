@@ -82,14 +82,7 @@ const ResponsesPage = lazy(() => Promise.resolve({
   )
 }))
 
-const ChatPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Messages</h1>
-      <p className="text-muted-foreground">Chat functionality coming soon...</p>
-    </div>
-  )
-}))
+const ChatPage = lazy(() => import('./pages/ChatPage'))
 
 const UsersPage = lazy(() => Promise.resolve({
   default: () => (

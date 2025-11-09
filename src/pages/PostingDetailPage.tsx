@@ -11,7 +11,7 @@ import APIService from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Zap, Tag, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Zap, Tag, FileText, MessageSquare } from 'lucide-react';
 
 interface Posting {
   id: string;
@@ -58,6 +58,7 @@ const PostingDetailPage = () => {
   const [posting, setPosting] = useState<Posting | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creatingConversation, setCreatingConversation] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -90,6 +91,33 @@ const PostingDetailPage = () => {
       navigate('/postings/my');
     } catch (err: any) {
       alert(err.message || 'Failed to delete posting');
+    }
+  };
+
+  const handleMessageAuthor = async () => {
+    if (!posting || !user) return;
+
+    setCreatingConversation(true);
+    setError(null);
+
+    try {
+      // Create a POST_LINKED conversation
+      const response = await APIService.postGeneric('/api/conversations', {
+        type: 'POST_LINKED',
+        postingId: posting.id,
+        participantIds: [posting.author_id]
+      });
+
+      // Extract conversation ID from response
+      const conversationId = response.data?.id || response.id;
+
+      // Navigate to chat with the new conversation selected
+      navigate(`/chat?conversationId=${conversationId}`);
+    } catch (err: any) {
+      console.error('Failed to create conversation:', err);
+      setError(err.message || 'Failed to start conversation. Please try again.');
+    } finally {
+      setCreatingConversation(false);
     }
   };
 
@@ -157,30 +185,46 @@ const PostingDetailPage = () => {
           Back
         </Button>
 
-        {isOwner && (
-          <div className="flex gap-2">
-            {canEdit && (
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/postings/${posting.id}/edit`)}
-                className="flex items-center gap-2"
-              >
-                <Edit className="h-4 w-4" />
-                Edit
-              </Button>
-            )}
-            {canDelete && (
-              <Button
-                variant="outline"
-                onClick={handleDelete}
-                className="flex items-center gap-2 text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="flex gap-2">
+          {/* Message Author Button (for non-owners) */}
+          {!isOwner && posting.author_id !== user?.id && (
+            <Button
+              variant="outline"
+              onClick={handleMessageAuthor}
+              disabled={creatingConversation}
+              className="flex items-center gap-2"
+            >
+              <MessageSquare className="h-4 w-4" />
+              {creatingConversation ? 'Starting...' : 'Message Author'}
+            </Button>
+          )}
+
+          {/* Edit/Delete Buttons (for owners) */}
+          {isOwner && (
+            <>
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/postings/${posting.id}/edit`)}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
+              )}
+              {canDelete && (
+                <Button
+                  variant="outline"
+                  onClick={handleDelete}
+                  className="flex items-center gap-2 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Main Content */}

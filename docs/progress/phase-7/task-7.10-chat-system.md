@@ -1,10 +1,20 @@
 # Task 7.10: Chat & Messaging System
 
-**Status:** 🟡 Planned
+**Status:** 🟡 In Progress (80% Complete)
 **Priority:** Medium
-**Duration:** 3 weeks (15 days)
+**Duration:** 3 weeks (15 days) - 2 weeks completed
 **Parent Task:** Phase 7 - Advanced Features
 **Related:** [Task 8.12: Violation Corrections](../phase-8/task-8.12-violation-corrections.md) - Action 11
+**Last Updated:** November 8, 2025
+
+## Current Status
+- ✅ Backend fully implemented and tested
+- ✅ Frontend core components created
+- ❌ **Missing:** UI to create new conversations (blocking manual testing)
+- ❌ **Missing:** Post-linked chat integration
+- ❌ E2E tests need assertion fixes
+
+**See:** [CHAT_SYSTEM_IMPLEMENTATION_STATUS.md](../../CHAT_SYSTEM_IMPLEMENTATION_STATUS.md) for detailed progress.
 
 ## Overview
 Implement complete real-time chat and messaging system with end-to-end encryption, supporting 1-to-1 direct messaging, group discussions, and post-linked chats tied to specific help requests.
@@ -195,13 +205,19 @@ export class ChatWebSocket {
 
 ## Success Criteria
 
-- [ ] Users can send/receive real-time messages
-- [ ] All messages encrypted end-to-end
-- [ ] Group chats support up to 50 participants
-- [ ] Post-linked chats work correctly
-- [ ] Message history retained for 1 year
-- [ ] WebSocket connections stable
-- [ ] Mobile-responsive chat interface
+- [x] Users can send/receive real-time messages (✅ API works, needs conversation creation UI)
+- [ ] All messages encrypted end-to-end (Post-MVP feature)
+- [ ] Group chats support up to 50 participants (Backend ready, needs UI)
+- [ ] Post-linked chats work correctly (Backend ready, needs button on PostingDetailPage)
+- [ ] Message history retained for 1 year (✅ Database configured)
+- [x] WebSocket connections stable (✅ Implemented and tested)
+- [x] Mobile-responsive chat interface (✅ Components are responsive)
+
+## Remaining Work (Est. 4-5 hours)
+1. **NewConversationDialog component** - User picker + conversation creation (2-3 hours)
+2. **PostingDetailPage integration** - "Message Author" button (1 hour)
+3. **Fix E2E test assertions** - Replace fake `|| true` checks (1 hour)
+4. **Manual testing** - Verify end-to-end workflow (ongoing)
 
 ## Dependencies
 

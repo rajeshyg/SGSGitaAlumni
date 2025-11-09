@@ -202,3 +202,92 @@ export const PostingFilterSchema = z.object({
 });
 
 export type PostingFilterInput = z.infer<typeof PostingFilterSchema>;
+
+// ============================================
+// CHAT & MESSAGING SCHEMAS (Task 7.10)
+// ============================================
+
+export const ConversationTypeSchema = z.enum(['DIRECT', 'GROUP', 'POST_LINKED']);
+
+export const MessageTypeSchema = z.enum(['TEXT', 'IMAGE', 'FILE', 'LINK', 'SYSTEM']);
+
+// Create Conversation Schema
+export const CreateConversationSchema = z.object({
+  type: ConversationTypeSchema,
+  name: z.string().min(1).max(200).optional(), // Required for GROUP, optional for others
+  postingId: UUIDSchema.optional(), // Required for POST_LINKED
+  participantIds: z.array(z.number().int()).min(1).max(50) // 1-50 participants
+}).refine(data => {
+  // GROUP conversations must have a name
+  if (data.type === 'GROUP' && !data.name) {
+    return false;
+  }
+  // POST_LINKED conversations must have a postingId
+  if (data.type === 'POST_LINKED' && !data.postingId) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Invalid conversation configuration for type'
+});
+
+export type CreateConversationInput = z.infer<typeof CreateConversationSchema>;
+
+// Send Message Schema
+export const SendMessageSchema = z.object({
+  conversationId: UUIDSchema,
+  content: z.string().min(1).max(10000), // 10k chars max
+  messageType: MessageTypeSchema.default('TEXT'),
+  mediaUrl: z.string().url().max(500).optional(),
+  mediaMetadata: z.object({
+    fileName: z.string().max(255).optional(),
+    fileSize: z.number().int().positive().optional(),
+    mimeType: z.string().max(100).optional()
+  }).optional(),
+  replyToId: UUIDSchema.optional() // For threaded replies
+});
+
+export type SendMessageInput = z.infer<typeof SendMessageSchema>;
+
+// Edit Message Schema
+export const EditMessageSchema = z.object({
+  messageId: UUIDSchema,
+  content: z.string().min(1).max(10000)
+});
+
+export type EditMessageInput = z.infer<typeof EditMessageSchema>;
+
+// Add Reaction Schema
+export const AddReactionSchema = z.object({
+  messageId: UUIDSchema,
+  emoji: z.string().min(1).max(10) // Support multi-character emojis
+});
+
+export type AddReactionInput = z.infer<typeof AddReactionSchema>;
+
+// Add Participant Schema
+export const AddParticipantSchema = z.object({
+  conversationId: UUIDSchema,
+  userId: z.number().int(),
+  role: z.enum(['ADMIN', 'MEMBER']).default('MEMBER')
+});
+
+export type AddParticipantInput = z.infer<typeof AddParticipantSchema>;
+
+// Get Messages Schema (pagination + filters)
+export const GetMessagesSchema = z.object({
+  conversationId: UUIDSchema,
+  ...PaginationSchema.shape,
+  before: DateSchema.optional(), // Get messages before this timestamp
+  after: DateSchema.optional() // Get messages after this timestamp
+});
+
+export type GetMessagesInput = z.infer<typeof GetMessagesSchema>;
+
+// Mark as Read Schema
+export const MarkAsReadSchema = z.object({
+  conversationId: UUIDSchema,
+  messageId: UUIDSchema.optional() // If omitted, mark all messages in conversation as read
+});
+
+export type MarkAsReadInput = z.infer<typeof MarkAsReadSchema>;

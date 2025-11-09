@@ -9,6 +9,8 @@ import FamilyMemberService from '../services/FamilyMemberService.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { validateRequest } from '../server/middleware/validation.js';
 import { FamilyMemberCreateSchema, FamilyMemberUpdateSchema } from '../src/schemas/validation/index.js';
+import { ValidationError, ResourceError, ServerError } from '../server/errors/ApiError.js';
+import { asyncHandler } from '../server/middleware/errorHandler.js';
 
 const router = express.Router();
 
@@ -16,198 +18,144 @@ const router = express.Router();
  * GET /api/family-members
  * Get all family members for the authenticated user
  */
-router.get('/', authenticateToken, async (req, res) => {
-  try {
-    const members = await FamilyMemberService.getFamilyMembers(req.user.id);
-    res.json({ success: true, data: members });
-  } catch (error) {
-    console.error('Error fetching family members:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+router.get('/', authenticateToken, asyncHandler(async (req, res) => {
+  const members = await FamilyMemberService.getFamilyMembers(req.user.id);
+  res.json({ success: true, data: members });
+}));
 
 /**
  * GET /api/family-members/:id
  * Get a specific family member
  */
-router.get('/:id', authenticateToken, async (req, res) => {
-  try {
-    const member = await FamilyMemberService.getFamilyMember(
-      req.params.id,
-      req.user.id
-    );
-    
-    if (!member) {
-      return res.status(404).json({ success: false, error: 'Family member not found' });
-    }
-    
-    res.json({ success: true, data: member });
-  } catch (error) {
-    console.error('Error fetching family member:', error);
-    res.status(500).json({ success: false, error: error.message });
+router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
+  const member = await FamilyMemberService.getFamilyMember(
+    req.params.id,
+    req.user.id
+  );
+
+  if (!member) {
+    throw ResourceError.notFound('Family member');
   }
-});
+
+  res.json({ success: true, data: member });
+}));
 
 /**
  * POST /api/family-members
  * Create a new family member
  */
-router.post('/', authenticateToken, validateRequest({ body: FamilyMemberCreateSchema }), async (req, res) => {
-  try {
-    const { firstName, lastName, displayName, birthDate, relationship, profileImageUrl } = req.body;
-    
-    if (!firstName || !lastName) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'First name and last name are required' 
-      });
-    }
-    
-    const member = await FamilyMemberService.createFamilyMember(req.user.id, {
-      firstName,
-      lastName,
-      displayName,
-      birthDate,
-      relationship,
-      profileImageUrl
-    });
-    
-    res.status(201).json({ success: true, data: member });
-  } catch (error) {
-    console.error('Error creating family member:', error);
-    res.status(500).json({ success: false, error: error.message });
+router.post('/', authenticateToken, validateRequest({ body: FamilyMemberCreateSchema }), asyncHandler(async (req, res) => {
+  const { firstName, lastName, displayName, birthDate, relationship, profileImageUrl } = req.body;
+
+  if (!firstName || !lastName) {
+    throw ValidationError.missingField('First name and last name');
   }
-});
+
+  const member = await FamilyMemberService.createFamilyMember(req.user.id, {
+    firstName,
+    lastName,
+    displayName,
+    birthDate,
+    relationship,
+    profileImageUrl
+  });
+
+  res.status(201).json({ success: true, data: member });
+}));
 
 /**
  * PUT /api/family-members/:id
  * Update a family member profile
  */
-router.put('/:id', authenticateToken, validateRequest({ body: FamilyMemberUpdateSchema }), async (req, res) => {
-  try {
-    const member = await FamilyMemberService.updateFamilyMember(
-      req.params.id,
-      req.user.id,
-      req.body
-    );
-    
-    res.json({ success: true, data: member });
-  } catch (error) {
-    console.error('Error updating family member:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+router.put('/:id', authenticateToken, validateRequest({ body: FamilyMemberUpdateSchema }), asyncHandler(async (req, res) => {
+  const member = await FamilyMemberService.updateFamilyMember(
+    req.params.id,
+    req.user.id,
+    req.body
+  );
+
+  res.json({ success: true, data: member });
+}));
 
 /**
  * DELETE /api/family-members/:id
  * Delete a family member
  */
-router.delete('/:id', authenticateToken, async (req, res) => {
-  try {
-    const result = await FamilyMemberService.deleteFamilyMember(
-      req.params.id,
-      req.user.id
-    );
-    
-    res.json(result);
-  } catch (error) {
-    console.error('Error deleting family member:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
+  const result = await FamilyMemberService.deleteFamilyMember(
+    req.params.id,
+    req.user.id
+  );
+
+  res.json(result);
+}));
 
 /**
  * POST /api/family-members/:id/switch
  * Switch to a different family member profile
  */
-router.post('/:id/switch', authenticateToken, async (req, res) => {
-  try {
-    console.log('[family-members] 🔄 Switch profile request:', {
-      userId: req.user.id,
-      familyMemberId: req.params.id,
-      ip: req.ip,
-      userAgent: req.get('user-agent')
-    });
-    
-    const member = await FamilyMemberService.switchProfile(
-      req.user.id,
-      req.params.id,
-      req.ip,
-      req.get('user-agent')
-    );
-    
-    console.log('[family-members] ✅ Profile switched successfully:', member);
-    res.json({ success: true, data: member, message: 'Profile switched successfully' });
-  } catch (error) {
-    console.error('[family-members] ❌ Error switching profile:', error);
-    console.error('[family-members] Error stack:', error.stack);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+router.post('/:id/switch', authenticateToken, asyncHandler(async (req, res) => {
+  console.log('[family-members] Switch profile request:', {
+    userId: req.user.id,
+    familyMemberId: req.params.id,
+    ip: req.ip,
+    userAgent: req.get('user-agent')
+  });
+
+  const member = await FamilyMemberService.switchProfile(
+    req.user.id,
+    req.params.id,
+    req.ip,
+    req.get('user-agent')
+  );
+
+  console.log('[family-members] Profile switched successfully:', member);
+  res.json({ success: true, data: member, message: 'Profile switched successfully' });
+}));
 
 /**
  * POST /api/family-members/:id/consent/grant
  * Grant parent consent for a minor
  */
-router.post('/:id/consent/grant', authenticateToken, async (req, res) => {
-  try {
-    const member = await FamilyMemberService.grantParentConsent(
-      req.params.id,
-      req.user.id
-    );
-    
-    res.json({ success: true, data: member, message: 'Consent granted successfully' });
-  } catch (error) {
-    console.error('Error granting consent:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+router.post('/:id/consent/grant', authenticateToken, asyncHandler(async (req, res) => {
+  const member = await FamilyMemberService.grantParentConsent(
+    req.params.id,
+    req.user.id
+  );
+
+  res.json({ success: true, data: member, message: 'Consent granted successfully' });
+}));
 
 /**
  * POST /api/family-members/:id/consent/revoke
  * Revoke parent consent for a minor
  */
-router.post('/:id/consent/revoke', authenticateToken, async (req, res) => {
-  try {
-    const member = await FamilyMemberService.revokeParentConsent(
-      req.params.id,
-      req.user.id
-    );
-    
-    res.json({ success: true, data: member, message: 'Consent revoked successfully' });
-  } catch (error) {
-    console.error('Error revoking consent:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+router.post('/:id/consent/revoke', authenticateToken, asyncHandler(async (req, res) => {
+  const member = await FamilyMemberService.revokeParentConsent(
+    req.params.id,
+    req.user.id
+  );
+
+  res.json({ success: true, data: member, message: 'Consent revoked successfully' });
+}));
 
 /**
  * GET /api/family-members/:id/consent/check
  * Check if consent renewal is needed
  */
-router.get('/:id/consent/check', authenticateToken, async (req, res) => {
-  try {
-    const result = await FamilyMemberService.checkConsentRenewal(req.params.id);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    console.error('Error checking consent:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+router.get('/:id/consent/check', authenticateToken, asyncHandler(async (req, res) => {
+  const result = await FamilyMemberService.checkConsentRenewal(req.params.id);
+  res.json({ success: true, data: result });
+}));
 
 /**
  * GET /api/family-members/logs/access
  * Get access logs for all family members
  */
-router.get('/logs/access', authenticateToken, async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 50;
-    const logs = await FamilyMemberService.getAccessLogs(req.user.id, limit);
-    res.json({ success: true, data: logs });
-  } catch (error) {
-    console.error('Error fetching access logs:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+router.get('/logs/access', authenticateToken, asyncHandler(async (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const logs = await FamilyMemberService.getAccessLogs(req.user.id, limit);
+  res.json({ success: true, data: logs });
+}));
 
 export default router;

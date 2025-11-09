@@ -115,18 +115,46 @@ export const testUsers: TestUser[] = [
     profileComplete: true
   },
   {
-    id: '5',
-    email: 'inactive@example.com',
-    password: 'InactivePass123!',
-    firstName: 'Inactive',
+    id: '6',
+    email: 'testuser1@example.com',
+    password: 'TestPassword123!',
+    firstName: 'Test',
+    lastName: 'User One',
+    role: 'member',
+    isActive: true,
+    profileComplete: true
+  },
+  {
+    id: '7',
+    email: 'testuser2@example.com',
+    password: 'TestPassword123!',
+    firstName: 'Test',
+    lastName: 'User Two',
+    role: 'member',
+    isActive: true,
+    profileComplete: true
+  },
+  {
+    id: '8',
+    email: 'testuser@example.com',
+    password: 'TestUser123!',
+    firstName: 'Test',
     lastName: 'User',
     role: 'member',
-    isActive: false,
-    profileComplete: false
+    isActive: true,
+    profileComplete: true
+  },
+  {
+    id: '9',
+    email: 'moderator@test.com',
+    password: 'TestMod123!',
+    firstName: 'Test',
+    lastName: 'Moderator',
+    role: 'moderator',
+    isActive: true,
+    profileComplete: true
   }
 ];
-
-// Test Family Members
 export const testFamilyMembers: TestFamilyMember[] = [
   {
     id: '1',

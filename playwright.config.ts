@@ -45,6 +45,11 @@ export default defineConfig({
     /* Extra HTTP headers */
     extraHTTPHeaders: {
       'Accept-Language': 'en-US,en;q=0.9'
+    },
+    /* Headed mode with slow motion when SLOW_MO is set */
+    headless: process.env.SLOW_MO ? false : undefined,
+    launchOptions: {
+      slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO) : 0,
     }
   },
 

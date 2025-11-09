@@ -35,6 +35,11 @@ export interface RateLimitConfig {
     email: RateLimitPolicy;
     search: RateLimitPolicy;
     registration: RateLimitPolicy;
+    'chat-create': RateLimitPolicy;
+    'chat-read': RateLimitPolicy;
+    'chat-write': RateLimitPolicy;
+    'chat-message': RateLimitPolicy;
+    'chat-reaction': RateLimitPolicy;
     default: RateLimitPolicy;
   };
 }
@@ -335,6 +340,54 @@ const defaultConfig: RateLimitConfig = {
         enabled: true,
         baseDelayMs: 5000,
         maxDelayMs: 30000
+      }
+    },
+    'chat-create': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 20, // 20 conversation creations per minute
+      blockDurationMs: 5 * 60 * 1000, // 5 minutes block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 1000,
+        maxDelayMs: 5000
+      }
+    },
+    'chat-read': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 200, // 200 read operations per minute
+      progressiveDelay: {
+        enabled: false,
+        baseDelayMs: 0,
+        maxDelayMs: 0
+      }
+    },
+    'chat-write': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 60, // 60 write operations per minute
+      blockDurationMs: 2 * 60 * 1000, // 2 minutes block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 500,
+        maxDelayMs: 3000
+      }
+    },
+    'chat-message': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 60, // 60 messages per minute
+      blockDurationMs: 5 * 60 * 1000, // 5 minutes block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 1000,
+        maxDelayMs: 5000
+      }
+    },
+    'chat-reaction': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 120, // 120 reactions per minute
+      progressiveDelay: {
+        enabled: false,
+        baseDelayMs: 0,
+        maxDelayMs: 0
       }
     },
     default: {

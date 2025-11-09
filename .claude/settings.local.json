@@ -15,7 +15,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(dir:*)",
-      "Bash(set BASE_URL=http://localhost:5181)"
+      "Bash(set BASE_URL=http://localhost:5181)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(start /B node server.js)",
+      "Bash(task kill:*)",
+      "Bash(set BASE_URL=http://localhost:3001:*)"
     ],
     "deny": [],
     "ask": []

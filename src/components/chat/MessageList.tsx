@@ -1,0 +1,296 @@
+// ============================================================================
+// MESSAGE LIST COMPONENT
+// ============================================================================
+// Displays messages in a conversation with reactions and read receipts
+
+import React, { useEffect, useRef } from 'react';
+import { ScrollArea } from '../ui/scroll-area';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { MoreVertical, Trash2, Edit, Reply } from 'lucide-react';
+import { format } from 'date-fns';
+
+export interface Message {
+  id: string;  // UUID
+  conversationId: string;  // UUID
+  senderId: number;  // User ID is still a number
+  senderName: string;
+  senderAvatar?: string;
+  content: string;
+  messageType: 'TEXT' | 'IMAGE' | 'FILE' | 'LINK' | 'SYSTEM';
+  createdAt: string;
+  editedAt?: string;
+  deletedAt?: string;
+  replyToMessageId?: string;  // UUID
+  reactions?: Array<{
+    id: string;  // UUID
+    userId: number;
+    userName: string;
+    emoji: string;
+  }>;
+}
+
+interface MessageListProps {
+  messages: Message[];
+  currentUserId: number;
+  onEditMessage?: (messageId: string, content: string) => void;
+  onDeleteMessage?: (messageId: string) => void;
+  onReplyMessage?: (messageId: string) => void;
+  onReactToMessage?: (messageId: string, emoji: string) => void;
+  loading?: boolean;
+}
+
+export const MessageList: React.FC<MessageListProps> = ({
+  messages,
+  currentUserId,
+  onEditMessage,
+  onDeleteMessage,
+  onReplyMessage,
+  onReactToMessage,
+  loading = false
+}) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const groupMessagesByDate = (messages: Message[]) => {
+    const groups: Record<string, Message[]> = {};
+
+    messages.forEach(message => {
+      const dateKey = format(new Date(message.createdAt), 'yyyy-MM-dd');
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(message);
+    });
+
+    return groups;
+  };
+
+  const formatDateSeparator = (date: string): string => {
+    const messageDate = new Date(date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (format(messageDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd')) {
+      return 'Today';
+    } else if (format(messageDate, 'yyyy-MM-dd') === format(yesterday, 'yyyy-MM-dd')) {
+      return 'Yesterday';
+    } else {
+      return format(messageDate, 'MMM d, yyyy');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col space-y-4 p-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex items-start space-x-3 animate-pulse">
+            <div className="w-10 h-10 rounded-full bg-muted" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-muted rounded w-1/4" />
+              <div className="h-12 bg-muted rounded w-3/4" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (messages.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8">
+        <p className="text-lg font-medium">No messages yet</p>
+        <p className="text-sm mt-2">Be the first to send a message</p>
+      </div>
+    );
+  }
+
+  const groupedMessages = groupMessagesByDate(messages);
+
+  return (
+    <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <div className="flex flex-col space-y-4">
+        {Object.entries(groupedMessages).map(([date, dateMessages]) => (
+          <div key={date}>
+            {/* Date separator */}
+            <div className="flex justify-center my-4">
+              <span className="bg-muted px-3 py-1 rounded-full text-xs text-muted-foreground">
+                {formatDateSeparator(date)}
+              </span>
+            </div>
+
+            {/* Messages for this date */}
+            {dateMessages.map((message, index) => {
+              const isOwnMessage = message.senderId === currentUserId;
+              const showAvatar = !isOwnMessage && (
+                index === 0 ||
+                dateMessages[index - 1].senderId !== message.senderId
+              );
+
+              return (
+                <div
+                  key={message.id}
+                  className={`flex items-start space-x-3 mb-2 ${
+                    isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''
+                  }`}
+                >
+                  {/* Avatar */}
+                  {showAvatar && !isOwnMessage && (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={message.senderAvatar} alt={message.senderName} />
+                      <AvatarFallback className="text-xs">
+                        {getInitials(message.senderName)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  {!showAvatar && !isOwnMessage && <div className="w-8" />}
+
+                  {/* Message content */}
+                  <div className={`flex-1 max-w-[70%] ${isOwnMessage ? 'flex justify-end' : ''}`}>
+                    <div className="group relative">
+                      {/* Sender name (only for others' messages) */}
+                      {!isOwnMessage && showAvatar && (
+                        <p className="text-xs font-medium text-muted-foreground mb-1 ml-1">
+                          {message.senderName}
+                        </p>
+                      )}
+
+                      {/* Message bubble */}
+                      <div
+                        className={`rounded-lg px-4 py-2 ${
+                          isOwnMessage
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted'
+                        } ${message.deletedAt ? 'opacity-50 italic' : ''}`}
+                      >
+                        {message.deletedAt ? (
+                          <p className="text-sm">This message was deleted</p>
+                        ) : (
+                          <>
+                            <p className="text-sm whitespace-pre-wrap break-words">
+                              {message.content}
+                            </p>
+                            {message.editedAt && (
+                              <p className="text-xs opacity-70 mt-1">
+                                (edited)
+                              </p>
+                            )}
+                          </>
+                        )}
+
+                        {/* Timestamp */}
+                        <p
+                          className={`text-xs mt-1 ${
+                            isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                          }`}
+                        >
+                          {format(new Date(message.createdAt), 'HH:mm')}
+                        </p>
+                      </div>
+
+                      {/* Reactions */}
+                      {message.reactions && message.reactions.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1 ml-1">
+                          {message.reactions.map((reaction) => (
+                            <button
+                              key={reaction.id}
+                              className="bg-muted hover:bg-muted/80 rounded-full px-2 py-0.5 text-xs flex items-center space-x-1"
+                              title={reaction.userName}
+                            >
+                              <span>{reaction.emoji}</span>
+                              <span className="text-xs text-muted-foreground">1</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Message actions menu */}
+                      {!message.deletedAt && (
+                        <div
+                          className={`absolute top-0 ${
+                            isOwnMessage ? 'left-0 -translate-x-full' : 'right-0 translate-x-full'
+                          } opacity-0 group-hover:opacity-100 transition-opacity`}
+                        >
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align={isOwnMessage ? 'end' : 'start'}>
+                              {onReplyMessage && (
+                                <DropdownMenuItem onClick={() => onReplyMessage(message.id)}>
+                                  <Reply className="mr-2 h-4 w-4" />
+                                  Reply
+                                </DropdownMenuItem>
+                              )}
+                              {onReactToMessage && (
+                                <DropdownMenuItem onClick={() => onReactToMessage(message.id, '👍')}>
+                                  👍 React
+                                </DropdownMenuItem>
+                              )}
+                              {isOwnMessage && onEditMessage && (
+                                <DropdownMenuItem onClick={() => {
+                                  const newContent = prompt('Edit message:', message.content);
+                                  if (newContent && newContent !== message.content) {
+                                    onEditMessage(message.id, newContent);
+                                  }
+                                }}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                              )}
+                              {isOwnMessage && onDeleteMessage && (
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (confirm('Delete this message?')) {
+                                      onDeleteMessage(message.id);
+                                    }
+                                  }}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </ScrollArea>
+  );
+};

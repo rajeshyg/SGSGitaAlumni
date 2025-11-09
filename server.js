@@ -40,6 +40,7 @@ import { authenticateToken, setAuthMiddlewarePool } from './middleware/auth.js';
 import { loginRateLimit, invitationRateLimit, apiRateLimit, emailRateLimit, searchRateLimit, registrationRateLimit, otpRateLimit, rateLimitStatus, clearRateLimit } from './middleware/rateLimit.js';
 import { monitoringMiddleware } from './middleware/monitoring.js';
 import { validateRequest } from './server/middleware/validation.js';
+import { errorHandler, notFoundHandler } from './server/middleware/errorHandler.js';
 
 // Import route modules
 import {
@@ -193,6 +194,10 @@ import familyMembersRouter from './routes/family-members.js';
 
 // Moderation router - REWRITTEN Nov 4, 2025
 import moderationRouter from './server/routes/moderation-new.js';
+
+// Chat routes and socket server
+import registerChatRoutes, { setChatIO } from './routes/chat.js';
+import { initializeChatSocket } from './server/socket/chatSocket.js';
 
 // Environment variables already loaded at top of file
 const app = express();
@@ -581,6 +586,11 @@ app.use('/api/moderation', authenticateToken, apiRateLimit, moderationRouter);
 app.use('/api/family-members', familyMembersRouter);
 
 // ============================================================================
+// CHAT & MESSAGING ROUTES
+// ============================================================================
+registerChatRoutes(app);
+
+// ============================================================================
 // OTP ROUTES
 // ============================================================================
 
@@ -603,6 +613,16 @@ app.post('/api/users/totp/setup', otpRateLimit, setupTOTP);
 app.get('/api/users/totp/status/:email', getTOTPStatus);
 app.get('/api/users/profile/:email', getOTPUserProfile);
 
+// ============================================================================
+// ERROR HANDLING MIDDLEWARE
+// ============================================================================
+// IMPORTANT: Must be registered AFTER all routes
+// 404 handler for undefined routes
+app.use(notFoundHandler);
+
+// Global error handler (must be last)
+app.use(errorHandler);
+
 // Start server
 // Note: Redis rate limiter is initialized automatically via constructor
 import { redisRateLimiter } from './src/lib/security/RedisRateLimiter.ts';
@@ -624,6 +644,11 @@ const server = app.listen(PORT, async () => {
     console.log(`🚀 Backend API server running on http://localhost:${PORT}`);
     console.log(`📊 MySQL Database: ${process.env.DB_NAME}`);
     console.log(`🏠 Host: ${process.env.DB_HOST}`);
+
+    // Initialize Socket.IO for chat system
+    const chatIO = initializeChatSocket(server);
+    setChatIO(chatIO);
+    console.log('💬 Chat Socket.IO server initialized');
 
     // TEMPORARILY DISABLE DATABASE TEST DURING STARTUP
     // TODO: Fix database connection hanging issue
