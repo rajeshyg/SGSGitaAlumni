@@ -14,6 +14,14 @@
 - ❌ **Missing:** Post-linked chat integration
 - ❌ E2E tests need assertion fixes
 
+### Issues discovered (short)
+- ❌ Chat loads the entire conversation history up-front (needs lazy / paged loading to reduce network cost)
+- ❌ Chat is not reliably integrated with the Posts module — when a chat is opened from a post the header should show the post title and/or the conversation should be created/tied to the posting
+- ❌ No back-navigation or dashboard link from the chat window (users can't quickly return)
+- ❌ Chat UI does not fully occupy available screen real-estate (large empty margins present; see screenshot)
+- ❌ Long messages can obscure their timestamps — timestamp visibility needs to be fixed for long messages
+- ❌ Basic features are missing: clear read/unread indicators and conversation search/filtering
+
 **See:** [CHAT_SYSTEM_IMPLEMENTATION_STATUS.md](../../CHAT_SYSTEM_IMPLEMENTATION_STATUS.md) for detailed progress.
 
 ## Overview
@@ -213,11 +221,29 @@ export class ChatWebSocket {
 - [x] WebSocket connections stable (✅ Implemented and tested)
 - [x] Mobile-responsive chat interface (✅ Components are responsive)
 
-## Remaining Work (Est. 4-5 hours)
-1. **NewConversationDialog component** - User picker + conversation creation (2-3 hours)
-2. **PostingDetailPage integration** - "Message Author" button (1 hour)
-3. **Fix E2E test assertions** - Replace fake `|| true` checks (1 hour)
-4. **Manual testing** - Verify end-to-end workflow (ongoing)
+## Remaining Work (Updated & concise)
+Below are the prioritized items to resume work in the next session. Estimates are rough and conservative; individual items can be split as needed.
+
+1. Implement lazy loading for messages (2-4 hours)
+  - Load the most recent N messages on open and provide a "Load earlier messages" control at the top to fetch older messages (server-side pagination or offset/limit). Acceptance: initial load is limited, "load earlier" fetches older messages without blocking UX.
+
+2. Finish Posts ↔ Chat integration (1-3 hours)
+  - Ensure conversations opened from a post are created/linked via `posting_id` and the chat header displays the post title when present. Acceptance: header shows post title for post-linked chats; conversations contain `posting_id`.
+
+3. Add back navigation / dashboard link in `ChatWindow.tsx` (0.5-1 hour)
+  - Add a visible back button that returns to the previous route or dashboard. Acceptance: clicking returns user to prior page.
+
+4. Adjust chat layout to occupy available screen area (0.5-1.5 hours)
+  - Update container CSS/layout so left panel and chat window use sensible widths and chat area takes remaining vertical space. Acceptance: screenshot whitespace reduced and chat fills intended area responsively.
+
+5. Fix timestamp visibility for long messages (0.5-1 hour)
+  - Ensure timestamps are always visible (truncate/wrap long messages or position timestamp so it remains visible). Acceptance: message timestamp visible for sample long messages.
+
+6. Add read/unread indicators and basic conversation search/filter (1.5-3 hours)
+  - Add read status to conversation list and a simple search/filter input. Acceptance: unread state visible and search returns filtered conversations.
+
+7. Manual verification & E2E updates (ongoing)
+  - After code changes, restart backend, run manual cross-browser checks, and update E2E assertions as needed.
 
 ## Dependencies
 
