@@ -62,6 +62,13 @@ class ChatClient {
     return new Promise((resolve, reject) => {
       try {
         const socketUrl = `${window.location.origin}`;
+        
+        console.log('🔌 Initializing socket connection:', {
+          socketUrl,
+          hasToken: !!token,
+          tokenLength: token?.length || 0,
+          origin: window.location.origin
+        });
 
         this.socket = io(socketUrl, {
           auth: {
@@ -89,6 +96,12 @@ class ChatClient {
         // Connection failed
         this.socket.on('connect_error', (error: any) => {
           console.error('❌ Chat socket connection error:', error);
+          console.error('❌ Error details:', {
+            message: error.message,
+            description: error.description,
+            context: error.context,
+            type: error.type
+          });
           this.isConnected = false;
           this.emit('connection:error', error);
           reject(error);
@@ -141,7 +154,12 @@ class ChatClient {
 
     // New message received
     this.socket.on('message:new', (data: ChatMessage) => {
-      console.log('📨 New message received:', data);
+      console.log('📨 New message received from socket:', {
+        messageId: data.id,
+        conversationId: data.conversationId,
+        senderId: data.senderId,
+        contentPreview: data.content?.substring(0, 50)
+      });
       this.emit('message:new', data);
     });
 
@@ -270,24 +288,36 @@ class ChatClient {
   /**
    * Join a conversation room for real-time updates
    */
-  public joinConversation(conversationId: number): void {
+  public joinConversation(conversationId: number | string): void {
     if (!this.isSocketConnected()) {
-      console.warn('Socket not connected, queuing join request');
+      console.warn('🔴 Socket not connected, cannot join conversation:', conversationId);
       return;
     }
-    this.socket?.emit('conversation:join', { conversationId }, (response: any) => {
-      console.log('Joined conversation:', conversationId, response);
+    console.log('🔵 Attempting to join conversation:', conversationId);
+    
+    // Emit with conversationId and callback for acknowledgment
+    this.socket?.emit('conversation:join', conversationId, (response: any) => {
+      if (response?.success) {
+        console.log('✅ Successfully joined conversation:', conversationId, 'Room:', response.room);
+      } else {
+        console.error('❌ Failed to join conversation:', conversationId);
+      }
     });
   }
 
   /**
    * Leave a conversation room
    */
-  public leaveConversation(conversationId: number): void {
+  public leaveConversation(conversationId: number | string): void {
     if (!this.isSocketConnected()) {
       return;
     }
-    this.socket?.emit('conversation:leave', { conversationId });
+    
+    this.socket?.emit('conversation:leave', conversationId, (response: any) => {
+      if (response?.success) {
+        console.log('✅ Successfully left conversation:', conversationId);
+      }
+    });
   }
 
   /**
@@ -409,6 +439,11 @@ class ChatClient {
 // ============================================================================
 
 export const chatClient = new ChatClient();
+
+// Make chatClient globally accessible for debugging
+if (typeof window !== 'undefined') {
+  (window as any).chatClient = chatClient;
+}
 
 // ============================================================================
 // EXPORTS

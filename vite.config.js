@@ -39,6 +39,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         cache: false
+      },
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        ws: true  // Enable WebSocket proxying
       }
     }
   },

@@ -37,37 +37,25 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
   const [messageToForward, setMessageToForward] = useState<Message | undefined>(undefined);
-
-  // Initialize socket connection on mount
-  useEffect(() => {
-    const initializeSocket = async () => {
-      if (!chatClient.isSocketConnected() && user) {
-        try {
-          const token = localStorage.getItem('token');
-          if (token) {
-            await chatClient.connect(token);
-            console.log('✅ Chat socket connected');
-          }
-        } catch (error) {
-          console.error('Failed to connect chat socket:', error);
-        }
-      }
-    };
-
-    initializeSocket();
-  }, [user]);
+  const [socketConnected, setSocketConnected] = useState(chatClient.isSocketConnected());
 
   // Handle new messages from socket
   const handleNewMessage = useCallback((data: any) => {
     console.log('📨 New message received from socket:', data);
+    console.log('📨 Current conversation ID:', selectedConversationId);
+    console.log('📨 Message conversation ID:', data.conversationId);
+    console.log('📨 IDs match?', String(data.conversationId) === String(selectedConversationId));
 
     // Transform socket message format to component format
+    // Backend sends: { messageId, conversationId, sender: {id, firstName, lastName}, content, ... }
     const newMessage: Message = {
-      id: data.id,
+      id: data.messageId || data.id,  // Backend sends 'messageId'
       conversationId: data.conversationId,
-      senderId: data.senderId,
-      senderName: data.senderName || 'Unknown',
-      senderAvatar: data.senderAvatar,
+      senderId: data.sender?.id || data.senderId,  // Backend sends sender object
+      senderName: data.sender
+        ? `${data.sender.firstName} ${data.sender.lastName}`.trim()
+        : data.senderName || 'Unknown',
+      senderAvatar: data.sender?.profileImageUrl || data.senderAvatar,
       content: data.content,
       messageType: data.messageType || 'TEXT',
       createdAt: data.createdAt,
@@ -78,14 +66,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     };
 
     // Only add if for current conversation
-    if (data.conversationId === selectedConversationId) {
+    if (String(data.conversationId) === String(selectedConversationId)) {
       setMessages(prev => {
         // Check if message already exists (avoid duplicates)
-        if (prev.some(msg => msg.id === newMessage.id)) {
+        if (prev.some(msg => String(msg.id) === String(newMessage.id))) {
+          console.log('⚠️ Message already exists, skipping');
           return prev;
         }
+        console.log('✅ Adding new message to list:', newMessage);
         return [...prev, newMessage];
       });
+    } else {
+      console.log('ℹ️ Message for different conversation, not adding to current view');
     }
   }, [selectedConversationId]);
 
@@ -145,22 +137,45 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   }, []);
 
-  // Setup socket event listeners
+  // Monitor socket connection status and setup event listeners
   useEffect(() => {
+    // Update socket connected state
+    setSocketConnected(chatClient.isSocketConnected());
+
+    // Listen for connection events
+    const handleConnectionEstablished = () => {
+      console.log('✅ Socket connection established');
+      setSocketConnected(true);
+    };
+
+    const handleConnectionError = () => {
+      console.log('❌ Socket connection lost');
+      setSocketConnected(false);
+    };
+
+    chatClient.on('connection:established', handleConnectionEstablished);
+    chatClient.on('connection:error', handleConnectionError);
+
+    // Setup message event listeners
     chatClient.on('message:new', handleNewMessage);
     chatClient.on('message:edited', handleMessageEdited);
     chatClient.on('message:deleted', handleMessageDeleted);
     chatClient.on('typing:start', handleTypingStart);
     chatClient.on('typing:stop', handleTypingStop);
     chatClient.on('read:receipt', handleReadReceipt);
+    console.log('✅ Socket event listeners registered');
 
+    // Cleanup listeners on unmount
     return () => {
+      chatClient.off('connection:established', handleConnectionEstablished);
+      chatClient.off('connection:error', handleConnectionError);
       chatClient.off('message:new', handleNewMessage);
       chatClient.off('message:edited', handleMessageEdited);
       chatClient.off('message:deleted', handleMessageDeleted);
       chatClient.off('typing:start', handleTypingStart);
       chatClient.off('typing:stop', handleTypingStop);
       chatClient.off('read:receipt', handleReadReceipt);
+      console.log('🧹 Socket event listeners cleaned up');
     };
   }, [handleNewMessage, handleMessageEdited, handleMessageDeleted, handleTypingStart, handleTypingStop, handleReadReceipt]);
 
@@ -175,21 +190,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       loadMessages(selectedConversationId);
 
       // Join conversation room for real-time updates
-      const conversationIdNum = parseInt(selectedConversationId, 10);
-      if (!isNaN(conversationIdNum)) {
-        chatClient.joinConversation(conversationIdNum);
-        console.log(`Joined conversation ${conversationIdNum}`);
-      }
+      console.log(`🔵 Attempting to join conversation: ${selectedConversationId}`);
+      
+      // Use the conversation ID as-is (don't parse UUIDs)
+      chatClient.joinConversation(selectedConversationId);
+      console.log(`✅ Joined conversation ${selectedConversationId}`);
 
       // Clear typing users when switching conversations
       setTypingUsers(new Map());
 
       return () => {
         // Leave conversation room when switching away
-        if (!isNaN(conversationIdNum)) {
-          chatClient.leaveConversation(conversationIdNum);
-          console.log(`Left conversation ${conversationIdNum}`);
-        }
+        chatClient.leaveConversation(selectedConversationId);
+        console.log(`👋 Left conversation ${selectedConversationId}`);
       };
     }
   }, [selectedConversationId]);

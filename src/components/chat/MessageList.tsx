@@ -110,6 +110,13 @@ export const MessageList: React.FC<MessageListProps> = ({
       groups[dateKey].push(message);
     });
 
+    // Sort messages within each date group chronologically (oldest first)
+    Object.keys(groups).forEach(dateKey => {
+      groups[dateKey].sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    });
+
     return groups;
   };
 

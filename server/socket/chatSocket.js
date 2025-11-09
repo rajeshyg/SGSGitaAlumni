@@ -67,15 +67,28 @@ export function initializeChatSocket(httpServer) {
     socket.broadcast.emit('user:online', { userId });
 
     // Join conversation rooms
-    socket.on('conversation:join', (conversationId) => {
-      socket.join(`conversation:${conversationId}`);
-      console.log(`[Chat Socket] User ${userId} joined conversation ${conversationId}`);
+    socket.on('conversation:join', (conversationId, callback) => {
+      const room = `conversation:${conversationId}`;
+      socket.join(room);
+      console.log(`[Chat Socket] User ${userId} joined conversation ${conversationId} (room: ${room})`);
+      console.log(`[Chat Socket] Socket ${socket.id} is now in rooms:`, Array.from(socket.rooms));
+      
+      // Send acknowledgment to client
+      if (typeof callback === 'function') {
+        callback({ success: true, conversationId, room });
+      }
     });
 
     // Leave conversation rooms
-    socket.on('conversation:leave', (conversationId) => {
-      socket.leave(`conversation:${conversationId}`);
-      console.log(`[Chat Socket] User ${userId} left conversation ${conversationId}`);
+    socket.on('conversation:leave', (conversationId, callback) => {
+      const room = `conversation:${conversationId}`;
+      socket.leave(room);
+      console.log(`[Chat Socket] User ${userId} left conversation ${conversationId} (room: ${room})`);
+      
+      // Send acknowledgment to client
+      if (typeof callback === 'function') {
+        callback({ success: true, conversationId });
+      }
     });
 
     // Handle new messages
@@ -217,16 +230,33 @@ export function sendToUser(io, userId, event, data) {
  */
 export function broadcastToConversation(io, conversationId, event, data, excludeUserId = null) {
   const room = `conversation:${conversationId}`;
+  
+  // Get all sockets in the room for debugging
+  const socketsInRoom = io.sockets.adapter.rooms.get(room);
+  console.log(`[Socket Broadcast] Room ${room} has ${socketsInRoom?.size || 0} sockets:`, 
+    socketsInRoom ? Array.from(socketsInRoom) : []);
+  
+  console.log(`[Socket Broadcast] Sending ${event} to room ${room}:`, {
+    dataKeys: Object.keys(data),
+    excludeUserId,
+    activeUsers: Array.from(activeUsers.keys())
+  });
+
   if (excludeUserId) {
     const socketIds = activeUsers.get(excludeUserId);
-    if (socketIds) {
-      socketIds.forEach(socketId => {
-        io.to(room).except(socketId).emit(event, data);
-      });
+    console.log(`[Socket Broadcast] Excluding user ${excludeUserId}, socketIds:`, Array.from(socketIds || []));
+    if (socketIds && socketIds.size > 0) {
+      // Convert Set to Array for except()
+      const socketIdsArray = Array.from(socketIds);
+      console.log(`[Socket Broadcast] Broadcasting to room ${room}, excluding sockets:`, socketIdsArray);
+      io.to(room).except(socketIdsArray).emit(event, data);
     } else {
+      console.log(`[Socket Broadcast] No sockets to exclude, broadcasting to entire room`);
       io.to(room).emit(event, data);
     }
   } else {
+    console.log(`[Socket Broadcast] No user to exclude, broadcasting to entire room`);
     io.to(room).emit(event, data);
   }
+  console.log(`[Socket Broadcast] Broadcast complete for event ${event}`);
 }

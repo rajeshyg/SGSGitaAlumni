@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { APIService, type User, type LoginCredentials, type RegisterData, type AuthResponse } from '../services/APIService';
 import { AuthErrorHandler, type AuthError } from '../lib/auth/errorHandling';
 import { apiClient } from '../lib/api';
+import { chatClient } from '../lib/socket/chatClient';
 
 // ============================================================================
 // AUTHENTICATION CONTEXT TYPES
@@ -103,6 +104,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Initialize API client with auth tokens
       apiClient.initializeAuth(response.token, response.refreshToken);
 
+      // Initialize chat socket connection
+      chatClient.connect(response.token).catch(error => {
+        console.error('[AuthContext] Failed to connect chat socket:', error);
+      });
+
       // Store user profile in localStorage for admin components
       const profile = {
         id: typeof response.user.id === 'string' ? parseInt(response.user.id) || 1 : response.user.id,
@@ -194,6 +200,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear API client auth tokens
       apiClient.clearAuth();
 
+      // Disconnect chat socket
+      chatClient.disconnect();
+
       setAuthState({
         user: null,
         isAuthenticated: false,
@@ -212,7 +221,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Initialize API client with new tokens
       apiClient.initializeAuth(response.token, response.refreshToken);
-      
+
+      // Reconnect chat socket with new token
+      chatClient.disconnect();
+      chatClient.connect(response.token).catch(error => {
+        console.error('[AuthContext] Failed to reconnect chat socket after token refresh:', error);
+      });
+
       // Use user data from refresh response if available, otherwise fetch
       const user = response.user || await APIService.getCurrentUser();
       
@@ -301,6 +316,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
          if (token) {
            // Initialize API client with stored tokens
            apiClient.initializeAuth(token, storedRefreshToken || undefined);
+
+           // Initialize chat socket connection on auth restore
+           chatClient.connect(token).catch(error => {
+             console.error('[AuthContext] Failed to connect chat socket on auth restore:', error);
+           });
+
            try {
              const user = await APIService.getCurrentUser();
 

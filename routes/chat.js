@@ -218,6 +218,18 @@ export const sendMessage = asyncHandler(async (req, res) => {
   // Broadcast message via WebSocket
   if (io) {
     const socketHelpers = await import('../server/socket/chatSocket.js');
+    console.log('[Chat API] Broadcasting message via WebSocket:', {
+      conversationId: id,
+      conversationIdType: typeof id,
+      messageId: message.id,
+      senderId: req.user.id,
+      io: !!io
+    });
+    
+    // Log the exact room name that will be used
+    const roomName = `conversation:${id}`;
+    console.log('[Chat API] Broadcasting to room:', roomName);
+    
     socketHelpers.broadcastToConversation(io, id, 'message:new', {
       messageId: message.id,
       conversationId: message.conversationId,
@@ -229,6 +241,9 @@ export const sendMessage = asyncHandler(async (req, res) => {
       replyToId: message.replyToId,
       createdAt: message.createdAt
     }, req.user.id);
+    console.log('[Chat API] Message broadcast completed');
+  } else {
+    console.warn('[Chat API] Socket.IO not initialized, message not broadcast');
   }
 
   res.status(201).json({
