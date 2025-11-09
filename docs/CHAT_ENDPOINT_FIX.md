@@ -114,6 +114,23 @@ The fix ensures all consumers use the new system consistently.
 - **Message**: "Fix critical chat API endpoint mismatches in APIService"
 - **Files Changed**: src/services/APIService.ts (19 insertions, 7 deletions)
 
+## Follow-up Fixes (Session 3 - November 8, 2025)
+
+After this endpoint fix, additional bugs were discovered and fixed:
+
+### SQL Parameter Binding Fix (Commit: cea5b82)
+- **Problem:** MySQL error "Incorrect arguments to mysqld_stmt_execute" 
+- **Fix:** Changed `LIMIT ? OFFSET ?` to `LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`
+- **Files:** chatService.js, moderation-new.js
+
+### Data Transformation Layer (Commit: 2090eb5)
+- **Problem:** TypeError "Cannot read properties of undefined"
+- **Fix:** Added transformation in ChatWindow.tsx to convert API format (sender.id/firstName/lastName) to frontend format (senderId/senderName)
+- **Result:** Messages now display correctly with proper sender names
+
+### Current Status: 85% Complete
+Core chat functionality working. Recipients need page refresh (WebSocket listeners not yet connected).
+
 ## Testing
 Run these commands to verify:
 ```bash
@@ -123,3 +140,5 @@ npx playwright test tests/e2e/chat-workflow.spec.ts --project=chromium
 
 # Expected: 10 passed
 ```
+
+````

@@ -3,7 +3,7 @@
 // ============================================================================
 // Main chat interface combining conversation list, messages, and input
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
@@ -13,6 +13,7 @@ import { MessageList, type Message } from './MessageList';
 import { MessageInput } from './MessageInput';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../lib/api';
+import { chatClient, type ChatMessage } from '../../lib/socket/chatClient';
 
 interface ChatWindowProps {
   onClose?: () => void;
@@ -31,16 +32,146 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Map<number, string>>(new Map());
+
+  // Initialize socket connection on mount
+  useEffect(() => {
+    const initializeSocket = async () => {
+      if (!chatClient.isSocketConnected() && user) {
+        try {
+          const token = localStorage.getItem('token');
+          if (token) {
+            await chatClient.connect(token);
+            console.log('✅ Chat socket connected');
+          }
+        } catch (error) {
+          console.error('Failed to connect chat socket:', error);
+        }
+      }
+    };
+
+    initializeSocket();
+  }, [user]);
+
+  // Handle new messages from socket
+  const handleNewMessage = useCallback((data: any) => {
+    console.log('📨 New message received from socket:', data);
+
+    // Transform socket message format to component format
+    const newMessage: Message = {
+      id: data.id,
+      conversationId: data.conversationId,
+      senderId: data.senderId,
+      senderName: data.senderName || 'Unknown',
+      senderAvatar: data.senderAvatar,
+      content: data.content,
+      messageType: data.messageType || 'TEXT',
+      createdAt: data.createdAt,
+      editedAt: data.editedAt,
+      deletedAt: data.deletedAt,
+      replyToMessageId: data.replyToId,
+      reactions: data.reactions
+    };
+
+    // Only add if for current conversation
+    if (data.conversationId === selectedConversationId) {
+      setMessages(prev => {
+        // Check if message already exists (avoid duplicates)
+        if (prev.some(msg => msg.id === newMessage.id)) {
+          return prev;
+        }
+        return [...prev, newMessage];
+      });
+    }
+  }, [selectedConversationId]);
+
+  // Handle message edits from socket
+  const handleMessageEdited = useCallback((data: any) => {
+    console.log('✏️ Message edited from socket:', data);
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === data.messageId
+          ? { ...msg, content: data.content, editedAt: data.editedAt }
+          : msg
+      )
+    );
+  }, []);
+
+  // Handle message deletions from socket
+  const handleMessageDeleted = useCallback((data: any) => {
+    console.log('🗑️ Message deleted from socket:', data);
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === data.messageId
+          ? { ...msg, deletedAt: data.deletedAt }
+          : msg
+      )
+    );
+  }, []);
+
+  // Handle typing indicators
+  const handleTypingStart = useCallback((data: any) => {
+    if (data.conversationId === selectedConversationId && data.userId !== user?.id) {
+      setTypingUsers(prev => {
+        const newMap = new Map(prev);
+        newMap.set(data.userId, data.userName);
+        return newMap;
+      });
+    }
+  }, [selectedConversationId, user?.id]);
+
+  const handleTypingStop = useCallback((data: any) => {
+    setTypingUsers(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(data.userId);
+      return newMap;
+    });
+  }, []);
+
+  // Setup socket event listeners
+  useEffect(() => {
+    chatClient.on('message:new', handleNewMessage);
+    chatClient.on('message:edited', handleMessageEdited);
+    chatClient.on('message:deleted', handleMessageDeleted);
+    chatClient.on('typing:start', handleTypingStart);
+    chatClient.on('typing:stop', handleTypingStop);
+
+    return () => {
+      chatClient.off('message:new', handleNewMessage);
+      chatClient.off('message:edited', handleMessageEdited);
+      chatClient.off('message:deleted', handleMessageDeleted);
+      chatClient.off('typing:start', handleTypingStart);
+      chatClient.off('typing:stop', handleTypingStop);
+    };
+  }, [handleNewMessage, handleMessageEdited, handleMessageDeleted, handleTypingStart, handleTypingStop]);
 
   // Load conversations on mount
   useEffect(() => {
     loadConversations();
   }, []);
 
-  // Load messages when conversation changes
+  // Load messages and join conversation room when conversation changes
   useEffect(() => {
     if (selectedConversationId) {
       loadMessages(selectedConversationId);
+
+      // Join conversation room for real-time updates
+      const conversationIdNum = parseInt(selectedConversationId, 10);
+      if (!isNaN(conversationIdNum)) {
+        chatClient.joinConversation(conversationIdNum);
+        console.log(`Joined conversation ${conversationIdNum}`);
+      }
+
+      // Clear typing users when switching conversations
+      setTypingUsers(new Map());
+
+      return () => {
+        // Leave conversation room when switching away
+        if (!isNaN(conversationIdNum)) {
+          chatClient.leaveConversation(conversationIdNum);
+          console.log(`Left conversation ${conversationIdNum}`);
+        }
+      };
     }
   }, [selectedConversationId]);
 
@@ -214,6 +345,25 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     }
   };
 
+  // Handle typing indicators
+  const handleTyping = useCallback(() => {
+    if (selectedConversationId) {
+      const conversationIdNum = parseInt(selectedConversationId, 10);
+      if (!isNaN(conversationIdNum)) {
+        chatClient.sendTypingIndicator(conversationIdNum);
+      }
+    }
+  }, [selectedConversationId]);
+
+  const handleStopTyping = useCallback(() => {
+    if (selectedConversationId) {
+      const conversationIdNum = parseInt(selectedConversationId, 10);
+      if (!isNaN(conversationIdNum)) {
+        chatClient.stopTypingIndicator(conversationIdNum);
+      }
+    }
+  }, [selectedConversationId]);
+
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
   return (
@@ -288,7 +438,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 onReactToMessage={handleReactToMessage}
                 loading={messagesLoading}
               />
-              <MessageInput onSendMessage={handleSendMessage} />
+              {/* Show typing indicators */}
+              {typingUsers.size > 0 && (
+                <div className="px-4 py-2 text-sm text-muted-foreground italic">
+                  {Array.from(typingUsers.values()).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+                </div>
+              )}
+              <MessageInput
+                onSendMessage={handleSendMessage}
+                onTyping={handleTyping}
+                onStopTyping={handleStopTyping}
+              />
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-center p-8">
