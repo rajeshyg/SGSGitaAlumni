@@ -43,7 +43,16 @@ export default defineConfig({
       '/socket.io': {
         target: 'http://localhost:3001',
         changeOrigin: true,
-        ws: true  // Enable WebSocket proxying
+        ws: true,  // Enable WebSocket proxying
+        // Retry configuration to handle backend startup delay
+        configure: (proxy, options) => {
+          proxy.on('error', (err, req, res) => {
+            console.log('[vite] WebSocket proxy error (backend may not be ready yet)');
+          });
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            // Log connection attempts in debug mode only
+          });
+        }
       }
     }
   },

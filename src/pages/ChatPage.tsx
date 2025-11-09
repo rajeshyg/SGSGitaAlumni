@@ -7,8 +7,8 @@ import { ChatWindow } from '../components/chat/ChatWindow';
  */
 export default function ChatPage() {
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="h-screen bg-background overflow-hidden">
+      <div className="h-full max-w-7xl mx-auto p-2 sm:p-4">
         <ChatWindow />
       </div>
     </div>

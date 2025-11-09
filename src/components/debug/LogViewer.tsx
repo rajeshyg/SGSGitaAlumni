@@ -4,6 +4,9 @@ import { X, Maximize2, Minimize2, Trash2, Wifi, RefreshCw, Info } from 'lucide-r
 import { chatClient } from '../../lib/socket/chatClient';
 
 export const LogViewer: React.FC = () => {
+  // Only show in development mode
+  const isDevelopment = import.meta.env.DEV;
+  
   const [logs, setLogs] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'logs' | 'socket'>('logs');
   const [socketStatus, setSocketStatus] = useState<{
@@ -25,6 +28,11 @@ export const LogViewer: React.FC = () => {
     return stored ? JSON.parse(stored) : false;
   });
   const [isMaximized, setIsMaximized] = useState(false);
+
+  // Don't render anything in production
+  if (!isDevelopment) {
+    return null;
+  }
 
   useEffect(() => {
     // Save visibility preference
@@ -68,20 +76,20 @@ export const LogViewer: React.FC = () => {
     return () => clearInterval(intervalId);
   }, [isVisible, activeTab]);
 
-  // Determine container classes based on maximized state
+  // Determine container classes based on maximized state - fixed to left side
   const containerClasses = isMaximized
-    ? 'fixed inset-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden flex flex-col z-50'
-    : 'fixed bottom-4 right-4 w-96 h-80 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden flex flex-col z-50';
+    ? 'fixed inset-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden flex flex-col z-40'
+    : 'fixed bottom-4 left-4 w-96 h-80 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden flex flex-col z-40';
 
   if (!isVisible) {
     return (
       <button
-        className="fixed bottom-4 right-4 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg cursor-pointer z-50 transition-all hover:scale-110"
+        className="fixed bottom-4 left-4 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-lg cursor-pointer z-40 transition-all hover:scale-110"
         onClick={() => setIsVisible(true)}
         title="Show Debug Panel"
         aria-label="Open Debug Panel"
       >
-        <Info className="w-5 h-5" />
+        <Info className="w-4 h-4" />
       </button>
     );
   }

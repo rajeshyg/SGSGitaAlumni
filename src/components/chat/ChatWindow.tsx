@@ -529,9 +529,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   return (
-    <Card className="flex flex-col h-[calc(100vh-8rem)] w-full max-w-6xl mx-auto" data-testid="chat-window">
+    <Card className="flex flex-col h-full w-full" data-testid="chat-window">
       {/* Header */}
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 flex-shrink-0">
         <div className="flex items-center space-x-2">
           {/* Back to dashboard button */}
           <Button
