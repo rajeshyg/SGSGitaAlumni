@@ -109,19 +109,20 @@ export function initializeChatSocket(httpServer) {
     });
 
     // Handle typing indicators
-    socket.on('typing:start', ({ conversationId }) => {
-      socket.to(`conversation:${conversationId}`).emit('typing:user', {
-        userId,
-        conversationId,
-        isTyping: true
+    socket.on('typing:start', ({ conversationId, userId: typingUserId, userName }) => {
+      console.log(`[Chat Socket] User ${userId} (${userName}) started typing in conversation ${conversationId}`);
+      socket.to(`conversation:${conversationId}`).emit('typing:start', {
+        userId: typingUserId || userId,
+        userName: userName || socket.email || 'User',
+        conversationId
       });
     });
 
-    socket.on('typing:stop', ({ conversationId }) => {
-      socket.to(`conversation:${conversationId}`).emit('typing:user', {
-        userId,
-        conversationId,
-        isTyping: false
+    socket.on('typing:stop', ({ conversationId, userId: typingUserId }) => {
+      console.log(`[Chat Socket] User ${userId} stopped typing in conversation ${conversationId}`);
+      socket.to(`conversation:${conversationId}`).emit('typing:stop', {
+        userId: typingUserId || userId,
+        conversationId
       });
     });
 

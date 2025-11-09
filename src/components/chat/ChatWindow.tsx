@@ -473,6 +473,28 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
+  // Helper function to get conversation display name
+  const getConversationDisplayName = (conversation: Conversation | undefined): string => {
+    if (!conversation) return 'Messages';
+    
+    if (conversation.name) {
+      return conversation.name;
+    }
+
+    // For DIRECT conversations, show the other participant's name
+    if (conversation.type === 'DIRECT' && conversation.participants?.length > 0) {
+      return conversation.participants[0].displayName;
+    }
+
+    // For GROUP conversations, show participant names
+    if (conversation.type === 'GROUP' && conversation.participants?.length > 0) {
+      const names = conversation.participants.map(p => p.displayName).slice(0, 3);
+      return names.join(', ');
+    }
+
+    return 'Chat';
+  };
+
   return (
     <Card className="flex flex-col h-[600px] w-full max-w-4xl" data-testid="chat-window">
       {/* Header */}
@@ -489,9 +511,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </Button>
           )}
           <CardTitle className="text-xl font-semibold">
-            {selectedConversation
-              ? selectedConversation.name || 'Chat'
-              : 'Messages'}
+            {getConversationDisplayName(selectedConversation)}
           </CardTitle>
         </div>
         <div className="flex items-center space-x-2">
