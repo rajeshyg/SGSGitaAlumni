@@ -88,9 +88,11 @@ async function createConversation(userId, data) {
         c.*,
         u.first_name as creator_first_name,
         u.last_name as creator_last_name,
-        u.email as creator_email
+        u.email as creator_email,
+        p.title as posting_title
        FROM CONVERSATIONS c
        LEFT JOIN app_users u ON c.created_by = u.id
+       LEFT JOIN POSTINGS p ON c.posting_id = p.id
        WHERE c.id = ?`,
       [conversationId]
     );
@@ -122,6 +124,7 @@ async function createConversation(userId, data) {
       type: conversation.type,
       name: conversation.name,
       postingId: conversation.posting_id,
+      postingTitle: conversation.posting_title,  // Include posting title
       createdBy: {
         id: conversation.created_by,
         firstName: conversation.creator_first_name,
@@ -196,10 +199,12 @@ async function getConversations(userId, filters = {}) {
         c.*,
         u.first_name as creator_first_name,
         u.last_name as creator_last_name,
+        p.title as posting_title,
         0 as unread_count
        FROM CONVERSATIONS c
        INNER JOIN CONVERSATION_PARTICIPANTS cp ON c.id = cp.conversation_id
        LEFT JOIN app_users u ON c.created_by = u.id
+       LEFT JOIN POSTINGS p ON c.posting_id = p.id
        WHERE cp.user_id = ? AND cp.left_at IS NULL`;
 
     const conversationParams = [userId];
@@ -237,7 +242,10 @@ async function getConversations(userId, filters = {}) {
         [conv.id]
       );
 
-      // Get participants with details (excluding current user for DIRECT chats)
+      // Get participants with details (excluding current user)
+      // For DIRECT chats: Returns the other participant (1 person)
+      // For GROUP chats: Returns other participants (for display names)
+      // Note: Frontend only displays first 3 names, but we return all for flexibility
       const [participants] = await connection.execute(
         `SELECT
           cp.user_id,
@@ -247,7 +255,8 @@ async function getConversations(userId, filters = {}) {
           u.profile_image_url
          FROM CONVERSATION_PARTICIPANTS cp
          JOIN app_users u ON cp.user_id = u.id
-         WHERE cp.conversation_id = ? AND cp.left_at IS NULL AND cp.user_id != ?`,
+         WHERE cp.conversation_id = ? AND cp.left_at IS NULL AND cp.user_id != ?
+         ORDER BY cp.joined_at ASC`,
         [conv.id, userId]
       );
 
@@ -256,6 +265,7 @@ async function getConversations(userId, filters = {}) {
         type: conv.type,
         name: conv.name,
         postingId: conv.posting_id,
+        postingTitle: conv.posting_title,  // Include posting title for POST_LINKED conversations
         createdBy: {
           id: conv.created_by,
           firstName: conv.creator_first_name,

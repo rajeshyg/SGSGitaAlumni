@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
-import { X, ArrowLeft, Users } from 'lucide-react';
+import { X, ArrowLeft, Users, Home } from 'lucide-react';
 import { ConversationList, type Conversation } from './ConversationList';
 import { MessageList, type Message } from './MessageList';
 import { MessageInput } from './MessageInput';
@@ -15,6 +15,7 @@ import { ConversationSelectorDialog } from './ConversationSelectorDialog';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiClient } from '../../lib/api';
 import { chatClient } from '../../lib/socket/chatClient';
+import { useNavigate } from 'react-router-dom';
 
 interface ChatWindowProps {
   onClose?: () => void;
@@ -26,6 +27,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   initialConversationId
 }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string | undefined>(
     initialConversationId
@@ -33,11 +35,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [typingUsers, setTypingUsers] = useState<Map<number, string>>(new Map());
   const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
   const [messageToForward, setMessageToForward] = useState<Message | undefined>(undefined);
-  const [socketConnected, setSocketConnected] = useState(chatClient.isSocketConnected());
 
   // Handle new messages from socket
   const handleNewMessage = useCallback((data: any) => {
@@ -139,18 +143,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // Monitor socket connection status and setup event listeners
   useEffect(() => {
-    // Update socket connected state
-    setSocketConnected(chatClient.isSocketConnected());
-
     // Listen for connection events
     const handleConnectionEstablished = () => {
       console.log('✅ Socket connection established');
-      setSocketConnected(true);
     };
 
     const handleConnectionError = () => {
       console.log('❌ Socket connection lost');
-      setSocketConnected(false);
     };
 
     chatClient.on('connection:established', handleConnectionEstablished);
@@ -187,6 +186,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   // Load messages and join conversation room when conversation changes
   useEffect(() => {
     if (selectedConversationId) {
+      // Reset pagination state when switching conversations
+      setCurrentPage(1);
+      setHasMoreMessages(true);
+      
       loadMessages(selectedConversationId);
 
       // Join conversation room for real-time updates
@@ -245,11 +248,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     setSelectedConversationId(conversationId);
   };
 
-  const loadMessages = async (conversationId: string) => {
+  const loadMessages = async (conversationId: string, page: number = 1, append: boolean = false) => {
     try {
-      setMessagesLoading(true);
-      const response = await apiClient.get(`/api/conversations/${conversationId}/messages`);
-      const rawMessages = response.data || response || [];
+      if (append) {
+        setLoadingOlderMessages(true);
+      } else {
+        setMessagesLoading(true);
+      }
+      
+      const response = await apiClient.get(`/api/conversations/${conversationId}/messages?page=${page}&limit=50`);
+      
+      const responseData = response.data || response;
+      const rawMessages = responseData.data || responseData.messages || responseData || [];
       
       // Transform API response to match frontend Message interface
       const transformedMessages = rawMessages.map((msg: any) => ({
@@ -274,10 +284,21 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         }))
       }));
       
-      setMessages(transformedMessages);
+      if (append) {
+        // Prepend older messages to the beginning
+        setMessages(prev => [...transformedMessages, ...prev]);
+      } else {
+        // Replace messages on initial load
+        setMessages(transformedMessages);
+      }
 
-      // Mark messages as read after loading
-      if (transformedMessages.length > 0) {
+      // Check if there are more messages
+      const totalPages = responseData.totalPages || Math.ceil((responseData.total || 0) / 50);
+      setHasMoreMessages(page < totalPages);
+      setCurrentPage(page);
+
+      // Mark messages as read after loading (only for initial load)
+      if (!append && transformedMessages.length > 0) {
         const lastMessage = transformedMessages[transformedMessages.length - 1];
         const conversationIdNum = parseInt(conversationId, 10);
         if (!isNaN(conversationIdNum) && lastMessage.id) {
@@ -288,6 +309,13 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       console.error('Failed to load messages:', error);
     } finally {
       setMessagesLoading(false);
+      setLoadingOlderMessages(false);
+    }
+  };
+
+  const handleLoadOlderMessages = () => {
+    if (selectedConversationId && !loadingOlderMessages && hasMoreMessages) {
+      loadMessages(selectedConversationId, currentPage + 1, true);
     }
   };
 
@@ -477,6 +505,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const getConversationDisplayName = (conversation: Conversation | undefined): string => {
     if (!conversation) return 'Messages';
     
+    // For POST_LINKED conversations, show the posting title
+    if (conversation.type === 'POST_LINKED' && conversation.postingTitle) {
+      return `📌 ${conversation.postingTitle}`;
+    }
+
     if (conversation.name) {
       return conversation.name;
     }
@@ -496,10 +529,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   return (
-    <Card className="flex flex-col h-[600px] w-full max-w-4xl" data-testid="chat-window">
+    <Card className="flex flex-col h-[calc(100vh-8rem)] w-full max-w-6xl mx-auto" data-testid="chat-window">
       {/* Header */}
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <div className="flex items-center space-x-2">
+          {/* Back to dashboard button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/dashboard')}
+            title="Back to Dashboard"
+          >
+            <Home className="h-5 w-5" />
+          </Button>
+          
           {selectedConversationId && (
             <Button
               variant="ghost"
@@ -534,8 +577,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <CardContent className="flex-1 p-0 flex overflow-hidden">
         {/* Conversation list (left sidebar) */}
         <div
-          className={`w-80 border-r ${
-            selectedConversationId ? 'hidden lg:block' : 'block w-full lg:w-80'
+          className={`w-full lg:w-80 border-r ${
+            selectedConversationId ? 'hidden lg:block' : 'block'
           }`}
           data-testid="conversation-list"
         >
@@ -566,6 +609,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 onForwardMessage={handleForwardMessage}
                 onReactToMessage={handleReactToMessage}
                 loading={messagesLoading}
+                onLoadOlderMessages={handleLoadOlderMessages}
+                loadingOlderMessages={loadingOlderMessages}
+                hasMoreMessages={hasMoreMessages}
               />
               {/* Show typing indicators */}
               {typingUsers.size > 0 && (

@@ -8,7 +8,8 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { MessageSquarePlus } from 'lucide-react';
+import { Input } from '../ui/input';
+import { MessageSquarePlus, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { NewConversationDialog } from './NewConversationDialog';
 
@@ -16,6 +17,8 @@ export interface Conversation {
   id: string;  // UUID
   type: 'DIRECT' | 'GROUP' | 'POST_LINKED';
   name?: string;
+  postingId?: string;  // For POST_LINKED conversations
+  postingTitle?: string;  // For displaying post title
   lastMessage?: {
     content: string;
     createdAt: string;
@@ -47,6 +50,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   loading = false
 }) => {
   const [showNewConversationDialog, setShowNewConversationDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleConversationCreated = (conversationId: string) => {
     if (onConversationCreated) {
@@ -55,6 +59,11 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   };
 
   const getConversationName = (conversation: Conversation): string => {
+    // For POST_LINKED conversations, show the posting title
+    if (conversation.type === 'POST_LINKED' && conversation.postingTitle) {
+      return `📌 ${conversation.postingTitle}`;
+    }
+
     if (conversation.name) {
       return conversation.name;
     }
@@ -89,10 +98,34 @@ export const ConversationList: React.FC<ConversationListProps> = ({
       .slice(0, 2);
   };
 
+  // Filter conversations based on search query
+  const filteredConversations = conversations.filter((conversation) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const name = getConversationName(conversation).toLowerCase();
+    const lastMessageContent = conversation.lastMessage?.content?.toLowerCase() || '';
+    
+    return name.includes(query) || lastMessageContent.includes(query);
+  });
+
   return (
     <>
-      {/* Header with New Message Button */}
-      <div className="p-4 border-b border-border">
+      {/* Header with Search and New Message Button */}
+      <div className="p-4 border-b border-border space-y-3">
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        
+        {/* New Message Button */}
         <Button
           onClick={() => setShowNewConversationDialog(true)}
           className="w-full"
@@ -116,15 +149,24 @@ export const ConversationList: React.FC<ConversationListProps> = ({
             </div>
           ))}
         </div>
-      ) : conversations.length === 0 ? (
+      ) : filteredConversations.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center text-muted-foreground">
-          <p className="text-lg font-medium">No conversations yet</p>
-          <p className="text-sm mt-2">Click "New Message" to start chatting</p>
+          {searchQuery ? (
+            <>
+              <p className="text-lg font-medium">No conversations found</p>
+              <p className="text-sm mt-2">Try a different search term</p>
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-medium">No conversations yet</p>
+              <p className="text-sm mt-2">Click "New Message" to start chatting</p>
+            </>
+          )}
         </div>
       ) : (
         <ScrollArea className="h-full">
           <div className="flex flex-col space-y-1 p-2">
-            {conversations.map((conversation) => {
+            {filteredConversations.map((conversation) => {
               const isSelected = conversation.id === selectedConversationId;
               const conversationName = getConversationName(conversation);
               const avatarUrl = getConversationAvatar(conversation);

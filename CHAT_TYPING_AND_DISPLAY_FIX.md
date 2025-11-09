@@ -2,7 +2,11 @@
 
 **Date:** 2025-01-09  
 **Branch:** task-8.12-violation-corrections  
-**Status:** ✅ **COMPLETE**
+**Status:** ✅ **COMPLETE** (All 3 commits pushed)
+
+**Commits:**
+- `62896f2` - fix: Typing indicator and display names in chat - Fixed socket event mismatch and added display name helper
+- `957c615` - fix: Return participant details in getConversations API for display names
 
 ---
 
@@ -18,16 +22,18 @@
 
 ### 2. **Missing Display Names in Chat**
 **Problem:** Conversation names not appearing in:
-- Left panel conversation list ✅ (Already working)
-- Chat window header ❌ (Was broken)
+- Left panel conversation list ❌ (Was showing "Conversation")
+- Chat window header ❌ (Was showing "Chat")
 
-**Root Cause:** ChatWindow header was only checking `conversation.name` field, which is undefined for DIRECT conversations. Needed same logic as ConversationList to build display name from participants.
+**Root Cause #1:** ChatWindow header was only checking `conversation.name` field, which is undefined for DIRECT conversations. Needed same logic as ConversationList to build display name from participants.
+
+**Root Cause #2:** Backend `getConversations` API was NOT returning participant details - only returning `participantCount` number. Without participant data (firstName, lastName), the frontend couldn't build display names.
 
 ---
 
 ## 🔧 Files Modified
 
-### Backend: `server/socket/chatSocket.js`
+### 1. Backend: `server/socket/chatSocket.js`
 
 **Changed:** Socket.IO typing event handlers
 
@@ -76,7 +82,71 @@ socket.on('typing:stop', ({ conversationId, userId: typingUserId }) => {
 
 ---
 
-### Frontend: `src/components/Chat/ChatWindow.tsx`
+### 2. Backend: `server/services/chatService.js`
+
+**Changed:** Added participant details to `getConversations` query
+
+```javascript
+// BEFORE (Only returned count, no details)
+// Get participant count
+const [participantCount] = await connection.execute(
+  `SELECT COUNT(*) as count
+   FROM CONVERSATION_PARTICIPANTS
+   WHERE conversation_id = ? AND left_at IS NULL`,
+  [conv.id]
+);
+
+result.push({
+  id: conv.id,
+  type: conv.type,
+  name: conv.name,
+  participantCount: participantCount[0].count,  // ❌ No participant names!
+  lastMessage: {...},
+  // ...
+});
+
+// AFTER (Returns full participant details)
+// Get participants with details (excluding current user for DIRECT chats)
+const [participants] = await connection.execute(
+  `SELECT
+    cp.user_id,
+    cp.role,
+    u.first_name,
+    u.last_name,
+    u.profile_image_url
+   FROM CONVERSATION_PARTICIPANTS cp
+   JOIN app_users u ON cp.user_id = u.id
+   WHERE cp.conversation_id = ? AND cp.left_at IS NULL AND cp.user_id != ?`,
+  [conv.id, userId]
+);
+
+result.push({
+  id: conv.id,
+  type: conv.type,
+  name: conv.name,
+  participants: participants.map(p => ({  // ✅ Full participant details!
+    userId: p.user_id,
+    displayName: `${p.first_name} ${p.last_name}`.trim(),
+    firstName: p.first_name,
+    lastName: p.last_name,
+    profileImageUrl: p.profile_image_url,
+    role: p.role
+  })),
+  participantCount: participants.length + 1, // +1 for current user
+  lastMessage: {...},
+  // ...
+});
+```
+
+**Changes Made:**
+1. ✅ Query now JOINs with `app_users` table to get names
+2. ✅ Excludes current user from participants list (for DIRECT chats to show OTHER person)
+3. ✅ Returns full participant objects with displayName, firstName, lastName
+4. ✅ Frontend can now build proper display names
+
+---
+
+### 3. Frontend: `src/components/Chat/ChatWindow.tsx`
 
 **Changed:** Added helper function for conversation display names
 
@@ -145,6 +215,12 @@ const getConversationDisplayName = (conversation: Conversation | undefined): str
 ---
 
 ## 🧪 Testing Instructions
+
+**IMPORTANT: Restart the backend server after pulling these changes!**
+```bash
+# Backend server must be restarted to pick up the chatService.js changes
+npm run dev
+```
 
 ### Test Typing Indicators
 

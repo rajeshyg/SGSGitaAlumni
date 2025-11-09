@@ -56,6 +56,9 @@ interface MessageListProps {
   onForwardMessage?: (messageId: string) => void;  // Callback for forwarding messages
   onReactToMessage?: (messageId: string, emoji: string) => void;  // Callback for adding reactions
   loading?: boolean;  // Loading state indicator
+  onLoadOlderMessages?: () => void;  // Callback to load older messages
+  loadingOlderMessages?: boolean;  // Loading state for older messages
+  hasMoreMessages?: boolean;  // Whether there are more messages to load
 }
 
 /**
@@ -78,7 +81,10 @@ export const MessageList: React.FC<MessageListProps> = ({
   onReplyMessage,
   onForwardMessage,
   onReactToMessage,
-  loading = false
+  loading = false,
+  onLoadOlderMessages,
+  loadingOlderMessages = false,
+  hasMoreMessages = false
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -167,6 +173,20 @@ export const MessageList: React.FC<MessageListProps> = ({
   return (
     <ScrollArea className="flex-1 p-4" ref={scrollRef}>
       <div className="flex flex-col space-y-4">
+        {/* Load earlier messages button */}
+        {hasMoreMessages && onLoadOlderMessages && (
+          <div className="flex justify-center mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onLoadOlderMessages}
+              disabled={loadingOlderMessages}
+            >
+              {loadingOlderMessages ? 'Loading...' : 'Load earlier messages'}
+            </Button>
+          </div>
+        )}
+
         {Object.entries(groupedMessages).map(([date, dateMessages]) => (
           <div key={date}>
             {/* Date separator */}
@@ -255,27 +275,27 @@ export const MessageList: React.FC<MessageListProps> = ({
                             )}
                           </>
                         )}
-
-                        {/* Timestamp with read status */}
-                        <p
-                          className={`text-xs mt-1 flex items-center gap-1 ${
-                            isOwnMessage ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                          }`}
-                        >
-                          <span>{format(new Date(message.createdAt), 'HH:mm')}</span>
-                          {/* Show read indicators for own messages */}
-                          {isOwnMessage && message.readBy && message.readBy.length > 0 && (
-                            <span title={`Read by ${message.readBy.length} user(s)`}>
-                              <CheckCheck className="h-3 w-3" />
-                            </span>
-                          )}
-                          {isOwnMessage && (!message.readBy || message.readBy.length === 0) && (
-                            <span title="Delivered">
-                              <Check className="h-3 w-3" />
-                            </span>
-                          )}
-                        </p>
                       </div>
+
+                      {/* Timestamp with read status - placed outside bubble */}
+                      <p
+                        className={`text-xs mt-1 ml-1 flex items-center gap-1 ${
+                          isOwnMessage ? 'text-muted-foreground justify-end' : 'text-muted-foreground'
+                        }`}
+                      >
+                        <span>{format(new Date(message.createdAt), 'HH:mm')}</span>
+                        {/* Show read indicators for own messages */}
+                        {isOwnMessage && message.readBy && message.readBy.length > 0 && (
+                          <span title={`Read by ${message.readBy.length} user(s)`}>
+                            <CheckCheck className="h-3 w-3" />
+                          </span>
+                        )}
+                        {isOwnMessage && (!message.readBy || message.readBy.length === 0) && (
+                          <span title="Delivered">
+                            <Check className="h-3 w-3" />
+                          </span>
+                        )}
+                      </p>
 
                       {/* Reactions */}
                       {message.reactions && message.reactions.length > 0 && (
