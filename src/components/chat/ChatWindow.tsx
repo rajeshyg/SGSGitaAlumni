@@ -198,7 +198,26 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     try {
       setLoading(true);
       const response = await apiClient.get('/api/conversations');
-      setConversations(response.data || response || []);
+      const rawConversations = response.data || response || [];
+
+      // Transform conversations to ensure all required fields are present
+      const transformedConversations = (Array.isArray(rawConversations) ? rawConversations : rawConversations.data || []).map((conv: any) => ({
+        id: conv.id,
+        type: conv.type || 'DIRECT',
+        name: conv.name,
+        lastMessage: conv.lastMessage,
+        unreadCount: conv.unreadCount || 0,
+        participants: Array.isArray(conv.participants) ? conv.participants.map((p: any) => ({
+          userId: p.userId || p.id,
+          displayName: p.displayName || `${p.firstName} ${p.lastName}`.trim() || 'Unknown',
+          avatarUrl: p.avatarUrl || p.profileImageUrl
+        })) : [],
+        createdAt: conv.createdAt,
+        updatedAt: conv.updatedAt
+      }));
+
+      console.log('Transformed conversations:', transformedConversations);
+      setConversations(transformedConversations);
     } catch (error) {
       console.error('Failed to load conversations:', error);
     } finally {

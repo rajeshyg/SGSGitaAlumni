@@ -39,12 +39,11 @@ export const ConversationSelectorDialog: React.FC<ConversationSelectorDialogProp
   // Filter conversations based on search query
   const filteredConversations = conversations.filter(conv => {
     if (conv.id === currentConversationId) return false; // Exclude current conversation
+    if (!conv.participants || conv.participants.length === 0) return false; // Skip conversations with no participants
     const query = searchQuery.toLowerCase();
-    const participantNames = conv.participants.map(p => p.displayName).join(', ');
-    return (
-      conv.name?.toLowerCase().includes(query) ||
-      participantNames.toLowerCase().includes(query)
-    );
+    const participantNames = conv.participants.map(p => p?.displayName || 'Unknown').join(', ');
+    const conversationName = conv.name || participantNames;
+    return conversationName.toLowerCase().includes(query);
   });
 
   const handleSelect = (conversationId: string) => {
@@ -92,8 +91,8 @@ export const ConversationSelectorDialog: React.FC<ConversationSelectorDialogProp
           ) : (
             <div className="space-y-2">
               {filteredConversations.map((conversation) => {
-                const participantNames = conversation.participants.map(p => p.displayName).join(', ');
-                const avatarUrl = conversation.participants[0]?.avatarUrl;
+                const participantNames = conversation.participants?.map(p => p.displayName).join(', ') || '';
+                const avatarUrl = conversation.participants?.[0]?.avatarUrl;
                 const displayName = conversation.name || participantNames;
                 
                 return (

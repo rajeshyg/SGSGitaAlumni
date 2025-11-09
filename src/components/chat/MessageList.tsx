@@ -16,41 +16,60 @@ import {
 import { MoreVertical, Trash2, Edit, Reply, Forward, Check, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 
+/**
+ * Message Interface
+ * Represents a single message in a conversation with all metadata
+ */
 export interface Message {
-  id: string;  // UUID
-  conversationId: string;  // UUID
-  senderId: number;  // User ID is still a number
-  senderName: string;
-  senderAvatar?: string;
-  content: string;
-  messageType: 'TEXT' | 'IMAGE' | 'FILE' | 'LINK' | 'SYSTEM';
-  createdAt: string;
-  editedAt?: string;
-  deletedAt?: string;
-  replyToMessageId?: string;  // UUID
-  reactions?: Array<{
-    id: string;  // UUID
-    userId: number;
-    userName: string;
-    emoji: string;
+  id: string;  // UUID - Unique message identifier
+  conversationId: string;  // UUID - Parent conversation
+  senderId: number;  // User ID of message sender
+  senderName: string;  // Display name of sender
+  senderAvatar?: string;  // Optional avatar URL
+  content: string;  // Message text content
+  messageType: 'TEXT' | 'IMAGE' | 'FILE' | 'LINK' | 'SYSTEM';  // Message category
+  createdAt: string;  // ISO timestamp of message creation
+  editedAt?: string;  // ISO timestamp if message was edited
+  deletedAt?: string;  // ISO timestamp if message was deleted (soft delete)
+  replyToMessageId?: string;  // UUID of message being replied to
+  reactions?: Array<{  // User reactions to this message
+    id: string;  // UUID - Reaction identifier
+    userId: number;  // User who reacted
+    userName: string;  // Display name of reactor
+    emoji: string;  // Emoji character
   }>;
-  readBy?: Array<{
-    userId: number;
-    readAt: string;
+  readBy?: Array<{  // Read receipts tracking
+    userId: number;  // User who read the message
+    readAt: string;  // ISO timestamp of when message was read
   }>;
 }
 
+/**
+ * MessageList Component Props
+ */
 interface MessageListProps {
-  messages: Message[];
-  currentUserId: number;
-  onEditMessage?: (messageId: string, content: string) => void;
-  onDeleteMessage?: (messageId: string) => void;
-  onReplyMessage?: (messageId: string) => void;
-  onForwardMessage?: (messageId: string) => void;
-  onReactToMessage?: (messageId: string, emoji: string) => void;
-  loading?: boolean;
+  messages: Message[];  // Array of messages to display
+  currentUserId: number;  // Current logged-in user's ID (for own message detection)
+  onEditMessage?: (messageId: string, content: string) => void;  // Callback for editing messages
+  onDeleteMessage?: (messageId: string) => void;  // Callback for deleting messages
+  onReplyMessage?: (messageId: string) => void;  // Callback for replying to messages
+  onForwardMessage?: (messageId: string) => void;  // Callback for forwarding messages
+  onReactToMessage?: (messageId: string, emoji: string) => void;  // Callback for adding reactions
+  loading?: boolean;  // Loading state indicator
 }
 
+/**
+ * MessageList Component
+ * 
+ * Displays a scrollable list of messages in a conversation with:
+ * - Date separators (Today, Yesterday, specific dates)
+ * - User avatars and names
+ * - Reply context showing quoted messages
+ * - Read receipts (✓ delivered, ✓✓ read)
+ * - Message actions (reply, forward, edit, delete, react)
+ * - Reactions display
+ * - Auto-scroll to bottom on new messages
+ */
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   currentUserId,
