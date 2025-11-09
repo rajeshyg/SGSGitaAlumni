@@ -67,7 +67,32 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     try {
       setMessagesLoading(true);
       const response = await apiClient.get(`/api/conversations/${conversationId}/messages`);
-      setMessages(response.data || response || []);
+      const rawMessages = response.data || response || [];
+      
+      // Transform API response to match frontend Message interface
+      const transformedMessages = rawMessages.map((msg: any) => ({
+        id: msg.id,
+        conversationId: msg.conversationId,
+        senderId: msg.sender?.id || msg.senderId,
+        senderName: msg.sender 
+          ? `${msg.sender.firstName} ${msg.sender.lastName}` 
+          : msg.senderName || 'Unknown',
+        senderAvatar: msg.senderAvatar,
+        content: msg.content,
+        messageType: msg.messageType,
+        createdAt: msg.createdAt,
+        editedAt: msg.editedAt,
+        deletedAt: msg.deletedAt,
+        replyToMessageId: msg.replyToId,
+        reactions: msg.reactions?.map((r: any) => ({
+          id: r.id,
+          userId: r.userId,
+          userName: `${r.userFirstName} ${r.userLastName}`,
+          emoji: r.emoji
+        }))
+      }));
+      
+      setMessages(transformedMessages);
     } catch (error) {
       console.error('Failed to load messages:', error);
     } finally {
@@ -98,10 +123,33 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         messageType: 'TEXT'
       });
 
-      const newMessage = response.data || response;
+      const rawMessage = response.data || response;
+      // Transform server response to match frontend Message interface
+      const transformedMessage: Message = {
+        id: rawMessage.id,
+        conversationId: rawMessage.conversationId,
+        senderId: rawMessage.sender?.id || rawMessage.senderId,
+        senderName: rawMessage.sender 
+          ? `${rawMessage.sender.firstName} ${rawMessage.sender.lastName}` 
+          : rawMessage.senderName || 'Unknown',
+        senderAvatar: rawMessage.senderAvatar,
+        content: rawMessage.content,
+        messageType: rawMessage.messageType,
+        createdAt: rawMessage.createdAt,
+        editedAt: rawMessage.editedAt,
+        deletedAt: rawMessage.deletedAt,
+        replyToMessageId: rawMessage.replyToId,
+        reactions: rawMessage.reactions?.map((r: any) => ({
+          id: r.id,
+          userId: r.userId,
+          userName: `${r.userFirstName} ${r.userLastName}`,
+          emoji: r.emoji
+        }))
+      };
+      
       // Replace optimistic message with server response
       setMessages(prev =>
-        prev.map(msg => (msg.id === optimisticMessage.id ? newMessage : msg))
+        prev.map(msg => (msg.id === optimisticMessage.id ? transformedMessage : msg))
       );
     } catch (error) {
       console.error('Failed to send message:', error);

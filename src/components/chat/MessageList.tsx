@@ -64,7 +64,8 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
   }, [messages]);
 
-  const getInitials = (name: string): string => {
+  const getInitials = (name: string | undefined): string => {
+    if (!name) return '??';
     return name
       .split(' ')
       .map(n => n[0])
