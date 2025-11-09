@@ -42,6 +42,21 @@ async function createConversation(userId, data) {
   const connection = await getPool().getConnection();
 
   try {
+    // Validate all participants exist before starting transaction
+    if (allParticipantIds.length > 0) {
+      const placeholders = allParticipantIds.map(() => '?').join(',');
+      const [users] = await connection.execute(
+        `SELECT id FROM app_users WHERE id IN (${placeholders}) AND is_active = true`,
+        allParticipantIds
+      );
+
+      if (users.length !== allParticipantIds.length) {
+        const foundIds = users.map(u => u.id);
+        const missingIds = allParticipantIds.filter(id => !foundIds.includes(id));
+        throw new Error(`Invalid participant IDs: ${missingIds.join(', ')}. Users must exist and be active.`);
+      }
+    }
+
     await connection.beginTransaction();
 
     const conversationId = uuidv4();
@@ -130,8 +145,9 @@ async function createConversation(userId, data) {
     };
   } catch (error) {
     await connection.rollback();
-    connection.release();
     throw error;
+  } finally {
+    connection.release();
   }
 }
 
@@ -197,8 +213,7 @@ async function getConversations(userId, filters = {}) {
       conversationSQL += ' AND c.is_archived = FALSE';
     }
 
-    conversationSQL += ' ORDER BY c.last_message_at DESC LIMIT ? OFFSET ?';
-    conversationParams.push(limit, offset);
+    conversationSQL += ` ORDER BY c.last_message_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
 
     const [conversations] = await connection.execute(conversationSQL, conversationParams);
 
@@ -281,85 +296,85 @@ async function getConversations(userId, filters = {}) {
 async function getConversationById(conversationId, userId) {
   const connection = await getPool().getConnection();
 
-  // Check if user is a participant
-  const [participation] = await connection.execute(
-    `SELECT id FROM CONVERSATION_PARTICIPANTS
-     WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
-    [conversationId, userId]
-  );
+  try {
+    // Check if user is a participant
+    const [participation] = await connection.execute(
+      `SELECT id FROM CONVERSATION_PARTICIPANTS
+       WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
+      [conversationId, userId]
+    );
 
-  if (participation.length === 0) {
+    if (participation.length === 0) {
+      throw new Error('You do not have access to this conversation');
+    }
+
+    // Get conversation details
+    const [conversations] = await connection.execute(
+      `SELECT
+        c.*,
+        u.first_name as creator_first_name,
+        u.last_name as creator_last_name,
+        u.email as creator_email
+       FROM CONVERSATIONS c
+       LEFT JOIN app_users u ON c.created_by = u.id
+       WHERE c.id = ?`,
+      [conversationId]
+    );
+
+    if (conversations.length === 0) {
+      throw new Error('Conversation not found');
+    }
+
+    const conversation = conversations[0];
+
+    // Get participants
+    const [participants] = await connection.execute(
+      `SELECT
+        cp.id as participant_id,
+        cp.role,
+        cp.joined_at,
+        cp.last_read_at,
+        cp.is_muted,
+        u.id as user_id,
+        u.first_name,
+        u.last_name,
+        u.email
+       FROM CONVERSATION_PARTICIPANTS cp
+       JOIN app_users u ON cp.user_id = u.id
+       WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
+      [conversationId]
+    );
+
+    return {
+      id: conversation.id,
+      type: conversation.type,
+      name: conversation.name,
+      postingId: conversation.posting_id,
+      createdBy: {
+        id: conversation.created_by,
+        firstName: conversation.creator_first_name,
+        lastName: conversation.creator_last_name,
+        email: conversation.creator_email
+      },
+      participants: participants.map(p => ({
+        participantId: p.participant_id,
+        userId: p.user_id,
+        firstName: p.first_name,
+        lastName: p.last_name,
+        email: p.email,
+        role: p.role,
+        joinedAt: p.joined_at,
+        lastReadAt: p.last_read_at,
+        isMuted: Boolean(p.is_muted)
+      })),
+      createdAt: conversation.created_at,
+      lastMessageAt: conversation.last_message_at,
+      isArchived: Boolean(conversation.is_archived),
+      archivedAt: conversation.archived_at
+    };
+  } finally {
     connection.release();
-    throw new Error('You do not have access to this conversation');
   }
-
-  // Get conversation details
-  const [conversations] = await connection.execute(
-    `SELECT
-      c.*,
-      u.first_name as creator_first_name,
-      u.last_name as creator_last_name,
-      u.email as creator_email
-     FROM CONVERSATIONS c
-     LEFT JOIN app_users u ON c.created_by = u.id
-     WHERE c.id = ?`,
-    [conversationId]
-  );
-
-  if (conversations.length === 0) {
-    connection.release();
-    throw new Error('Conversation not found');
-  }
-
-  const conversation = conversations[0];
-
-  // Get participants
-  const [participants] = await connection.execute(
-    `SELECT
-      cp.id as participant_id,
-      cp.role,
-      cp.joined_at,
-      cp.last_read_at,
-      cp.is_muted,
-      u.id as user_id,
-      u.first_name,
-      u.last_name,
-      u.email
-     FROM CONVERSATION_PARTICIPANTS cp
-     JOIN app_users u ON cp.user_id = u.id
-     WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
-    [conversationId]
-  );
-
-  connection.release();
-
-  return {
-    id: conversation.id,
-    type: conversation.type,
-    name: conversation.name,
-    postingId: conversation.posting_id,
-    createdBy: {
-      id: conversation.created_by,
-      firstName: conversation.creator_first_name,
-      lastName: conversation.creator_last_name,
-      email: conversation.creator_email
-    },
-    participants: participants.map(p => ({
-      participantId: p.participant_id,
-      userId: p.user_id,
-      firstName: p.first_name,
-      lastName: p.last_name,
-      email: p.email,
-      role: p.role,
-      joinedAt: p.joined_at,
-      lastReadAt: p.last_read_at,
-      isMuted: Boolean(p.is_muted)
-    })),
-    createdAt: conversation.created_at,
-    lastMessageAt: conversation.last_message_at,
-    isArchived: Boolean(conversation.is_archived),
-    archivedAt: conversation.archived_at
-  };
 }
 
 /**
@@ -457,9 +472,14 @@ async function sendMessage(userId, data) {
       deletedAt: message.deleted_at
     };
   } catch (error) {
-    await connection.rollback();
-    connection.release();
+    if (connection) {
+      await connection.rollback();
+    }
     throw error;
+  } finally {
+    if (connection) {
+      connection.release();
+    }
   }
 }
 
@@ -480,111 +500,112 @@ async function getMessages(conversationId, userId, pagination = {}) {
 
   const connection = await getPool().getConnection();
 
-  // Check if user is a participant
-  const [participation] = await connection.execute(
-    `SELECT id FROM CONVERSATION_PARTICIPANTS
-     WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
-    [conversationId, userId]
-  );
-
-  if (participation.length === 0) {
-    connection.release();
-    throw new Error('You are not a participant in this conversation');
-  }
-
-  // Build WHERE clause
-  const whereClauses = ['m.conversation_id = ?', 'm.deleted_at IS NULL'];
-  const queryParams = [conversationId];
-
-  if (before) {
-    whereClauses.push('m.created_at < ?');
-    queryParams.push(before);
-  }
-
-  if (after) {
-    whereClauses.push('m.created_at > ?');
-    queryParams.push(after);
-  }
-
-  const whereClause = whereClauses.join(' AND ');
-
-  // Get total count
-  const [countResult] = await connection.execute(
-    `SELECT COUNT(*) as total FROM MESSAGES m WHERE ${whereClause}`,
-    queryParams
-  );
-
-  const total = countResult[0].total;
-  const offset = (page - 1) * limit;
-
-  // Get messages
-  const [messages] = await connection.execute(
-    `SELECT
-      m.*,
-      u.first_name as sender_first_name,
-      u.last_name as sender_last_name,
-      u.email as sender_email
-     FROM MESSAGES m
-     JOIN app_users u ON m.sender_id = u.id
-     WHERE ${whereClause}
-     ORDER BY m.created_at DESC
-     LIMIT ? OFFSET ?`,
-    [...queryParams, limit, offset]
-  );
-
-  // Get reactions for each message
-  const result = [];
-  for (const msg of messages) {
-    const [reactions] = await connection.execute(
-      `SELECT
-        mr.id,
-        mr.emoji,
-        mr.created_at,
-        u.id as user_id,
-        u.first_name,
-        u.last_name
-       FROM MESSAGE_REACTIONS mr
-       JOIN app_users u ON mr.user_id = u.id
-       WHERE mr.message_id = ?`,
-      [msg.id]
+  try {
+    // Check if user is a participant
+    const [participation] = await connection.execute(
+      `SELECT id FROM CONVERSATION_PARTICIPANTS
+       WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
+      [conversationId, userId]
     );
 
-    result.push({
-      id: msg.id,
-      conversationId: msg.conversation_id,
-      sender: {
-        id: msg.sender_id,
-        firstName: msg.sender_first_name,
-        lastName: msg.sender_last_name,
-        email: msg.sender_email
-      },
-      content: msg.content,
-      messageType: msg.message_type,
-      mediaUrl: msg.media_url,
-      mediaMetadata: msg.media_metadata ? JSON.parse(msg.media_metadata) : null,
-      replyToId: msg.reply_to_id,
-      reactions: reactions.map(r => ({
-        id: r.id,
-        emoji: r.emoji,
-        userId: r.user_id,
-        userFirstName: r.first_name,
-        userLastName: r.last_name,
-        createdAt: r.created_at
-      })),
-      createdAt: msg.created_at,
-      editedAt: msg.edited_at
-    });
+    if (participation.length === 0) {
+      throw new Error('You are not a participant in this conversation');
+    }
+
+    // Build WHERE clause
+    const whereClauses = ['m.conversation_id = ?', 'm.deleted_at IS NULL'];
+    const queryParams = [conversationId];
+
+    if (before) {
+      whereClauses.push('m.created_at < ?');
+      queryParams.push(before);
+    }
+
+    if (after) {
+      whereClauses.push('m.created_at > ?');
+      queryParams.push(after);
+    }
+
+    const whereClause = whereClauses.join(' AND ');
+
+    // Get total count
+    const [countResult] = await connection.execute(
+      `SELECT COUNT(*) as total FROM MESSAGES m WHERE ${whereClause}`,
+      queryParams
+    );
+
+    const total = countResult[0].total;
+    const offset = (page - 1) * limit;
+
+    // Get messages
+    const [messages] = await connection.execute(
+      `SELECT
+        m.*,
+        u.first_name as sender_first_name,
+        u.last_name as sender_last_name,
+        u.email as sender_email
+       FROM MESSAGES m
+       JOIN app_users u ON m.sender_id = u.id
+       WHERE ${whereClause}
+       ORDER BY m.created_at DESC
+       LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
+      queryParams
+    );
+
+    // Get reactions for each message
+    const result = [];
+    for (const msg of messages) {
+      const [reactions] = await connection.execute(
+        `SELECT
+          mr.id,
+          mr.emoji,
+          mr.created_at,
+          u.id as user_id,
+          u.first_name,
+          u.last_name
+         FROM MESSAGE_REACTIONS mr
+         JOIN app_users u ON mr.user_id = u.id
+         WHERE mr.message_id = ?`,
+        [msg.id]
+      );
+
+      result.push({
+        id: msg.id,
+        conversationId: msg.conversation_id,
+        sender: {
+          id: msg.sender_id,
+          firstName: msg.sender_first_name,
+          lastName: msg.sender_last_name,
+          email: msg.sender_email
+        },
+        content: msg.content,
+        messageType: msg.message_type,
+        mediaUrl: msg.media_url,
+        mediaMetadata: msg.media_metadata ? JSON.parse(msg.media_metadata) : null,
+        replyToId: msg.reply_to_id,
+        reactions: reactions.map(r => ({
+          id: r.id,
+          emoji: r.emoji,
+          userId: r.user_id,
+          userFirstName: r.first_name,
+          userLastName: r.last_name,
+          createdAt: r.created_at
+        })),
+        createdAt: msg.created_at,
+        editedAt: msg.edited_at
+      });
+    }
+
+    return {
+      data: result,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit)
+    };
+  } finally {
+    connection.release();
   }
-
-  connection.release();
-
-  return {
-    data: result,
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit)
-  };
 }
 
 /**
@@ -598,59 +619,59 @@ async function getMessages(conversationId, userId, pagination = {}) {
 async function editMessage(messageId, userId, content) {
   const connection = await getPool().getConnection();
 
-  // Check if user is the sender
-  const [messages] = await connection.execute(
-    `SELECT conversation_id, sender_id FROM MESSAGES WHERE id = ? AND deleted_at IS NULL`,
-    [messageId]
-  );
+  try {
+    // Check if user is the sender
+    const [messages] = await connection.execute(
+      `SELECT conversation_id, sender_id FROM MESSAGES WHERE id = ? AND deleted_at IS NULL`,
+      [messageId]
+    );
 
-  if (messages.length === 0) {
+    if (messages.length === 0) {
+      throw new Error('Message not found');
+    }
+
+    if (messages[0].sender_id !== userId) {
+      throw new Error('You can only edit your own messages');
+    }
+
+    // Update message
+    await connection.execute(
+      `UPDATE MESSAGES SET content = ?, edited_at = NOW() WHERE id = ?`,
+      [content, messageId]
+    );
+
+    // Fetch updated message
+    const [updatedMessages] = await connection.execute(
+      `SELECT
+        m.*,
+        u.first_name as sender_first_name,
+        u.last_name as sender_last_name,
+        u.email as sender_email
+       FROM MESSAGES m
+       JOIN app_users u ON m.sender_id = u.id
+       WHERE m.id = ?`,
+      [messageId]
+    );
+
+    const message = updatedMessages[0];
+
+    return {
+      id: message.id,
+      conversationId: message.conversation_id,
+      sender: {
+        id: message.sender_id,
+        firstName: message.sender_first_name,
+        lastName: message.sender_last_name,
+        email: message.sender_email
+      },
+      content: message.content,
+      messageType: message.message_type,
+      createdAt: message.created_at,
+      editedAt: message.edited_at
+    };
+  } finally {
     connection.release();
-    throw new Error('Message not found');
   }
-
-  if (messages[0].sender_id !== userId) {
-    connection.release();
-    throw new Error('You can only edit your own messages');
-  }
-
-  // Update message
-  await connection.execute(
-    `UPDATE MESSAGES SET content = ?, edited_at = NOW() WHERE id = ?`,
-    [content, messageId]
-  );
-
-  // Fetch updated message
-  const [updatedMessages] = await connection.execute(
-    `SELECT
-      m.*,
-      u.first_name as sender_first_name,
-      u.last_name as sender_last_name,
-      u.email as sender_email
-     FROM MESSAGES m
-     JOIN app_users u ON m.sender_id = u.id
-     WHERE m.id = ?`,
-    [messageId]
-  );
-
-  connection.release();
-
-  const message = updatedMessages[0];
-
-  return {
-    id: message.id,
-    conversationId: message.conversation_id,
-    sender: {
-      id: message.sender_id,
-      firstName: message.sender_first_name,
-      lastName: message.sender_last_name,
-      email: message.sender_email
-    },
-    content: message.content,
-    messageType: message.message_type,
-    createdAt: message.created_at,
-    editedAt: message.edited_at
-  };
 }
 
 /**
@@ -663,34 +684,34 @@ async function editMessage(messageId, userId, content) {
 async function deleteMessage(messageId, userId) {
   const connection = await getPool().getConnection();
 
-  // Check if user is the sender or admin
-  const [messages] = await connection.execute(
-    `SELECT m.sender_id, cp.role
-     FROM MESSAGES m
-     JOIN CONVERSATION_PARTICIPANTS cp ON m.conversation_id = cp.conversation_id
-     WHERE m.id = ? AND cp.user_id = ? AND m.deleted_at IS NULL`,
-    [messageId, userId]
-  );
+  try {
+    // Check if user is the sender or admin
+    const [messages] = await connection.execute(
+      `SELECT m.sender_id, cp.role
+       FROM MESSAGES m
+       JOIN CONVERSATION_PARTICIPANTS cp ON m.conversation_id = cp.conversation_id
+       WHERE m.id = ? AND cp.user_id = ? AND m.deleted_at IS NULL`,
+      [messageId, userId]
+    );
 
-  if (messages.length === 0) {
+    if (messages.length === 0) {
+      throw new Error('Message not found');
+    }
+
+    const message = messages[0];
+
+    if (message.sender_id !== userId && message.role !== 'ADMIN') {
+      throw new Error('You can only delete your own messages or be an admin');
+    }
+
+    // Soft delete message
+    await connection.execute(
+      `UPDATE MESSAGES SET deleted_at = NOW() WHERE id = ?`,
+      [messageId]
+    );
+  } finally {
     connection.release();
-    throw new Error('Message not found');
   }
-
-  const message = messages[0];
-
-  if (message.sender_id !== userId && message.role !== 'ADMIN') {
-    connection.release();
-    throw new Error('You can only delete your own messages or be an admin');
-  }
-
-  // Soft delete message
-  await connection.execute(
-    `UPDATE MESSAGES SET deleted_at = NOW() WHERE id = ?`,
-    [messageId]
-  );
-
-  connection.release();
 }
 
 /**
@@ -742,8 +763,6 @@ async function addReaction(messageId, userId, emoji) {
       [reactionId]
     );
 
-    connection.release();
-
     const reaction = reactions[0];
 
     return {
@@ -758,11 +777,12 @@ async function addReaction(messageId, userId, emoji) {
       createdAt: reaction.created_at
     };
   } catch (error) {
-    connection.release();
     if (error.code === 'ER_DUP_ENTRY') {
       throw new Error('You have already reacted with this emoji');
     }
     throw error;
+  } finally {
+    connection.release();
   }
 }
 
@@ -776,24 +796,25 @@ async function addReaction(messageId, userId, emoji) {
 async function removeReaction(reactionId, userId) {
   const connection = await getPool().getConnection();
 
-  // Check if user owns the reaction
-  const [reactions] = await connection.execute(
-    `SELECT id FROM MESSAGE_REACTIONS WHERE id = ? AND user_id = ?`,
-    [reactionId, userId]
-  );
+  try {
+    // Check if user owns the reaction
+    const [reactions] = await connection.execute(
+      `SELECT id FROM MESSAGE_REACTIONS WHERE id = ? AND user_id = ?`,
+      [reactionId, userId]
+    );
 
-  if (reactions.length === 0) {
+    if (reactions.length === 0) {
+      throw new Error('Reaction not found or you do not own this reaction');
+    }
+
+    // Delete reaction
+    await connection.execute(
+      `DELETE FROM MESSAGE_REACTIONS WHERE id = ?`,
+      [reactionId]
+    );
+  } finally {
     connection.release();
-    throw new Error('Reaction not found or you do not own this reaction');
   }
-
-  // Delete reaction
-  await connection.execute(
-    `DELETE FROM MESSAGE_REACTIONS WHERE id = ?`,
-    [reactionId]
-  );
-
-  connection.release();
 }
 
 /**
@@ -856,8 +877,6 @@ async function addParticipant(conversationId, userId, targetUserId, role = 'MEMB
       [participantId]
     );
 
-    connection.release();
-
     const participant = participants[0];
 
     return {
@@ -870,8 +889,9 @@ async function addParticipant(conversationId, userId, targetUserId, role = 'MEMB
       joinedAt: participant.joined_at
     };
   } catch (error) {
-    connection.release();
     throw error;
+  } finally {
+    connection.release();
   }
 }
 
@@ -886,26 +906,27 @@ async function addParticipant(conversationId, userId, targetUserId, role = 'MEMB
 async function removeParticipant(conversationId, userId, targetUserId) {
   const connection = await getPool().getConnection();
 
-  // Check if user is an admin of the conversation
-  const [participation] = await connection.execute(
-    `SELECT role FROM CONVERSATION_PARTICIPANTS
-     WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
-    [conversationId, userId]
-  );
+  try {
+    // Check if user is an admin of the conversation
+    const [participation] = await connection.execute(
+      `SELECT role FROM CONVERSATION_PARTICIPANTS
+       WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
+      [conversationId, userId]
+    );
 
-  if (participation.length === 0 || participation[0].role !== 'ADMIN') {
+    if (participation.length === 0 || participation[0].role !== 'ADMIN') {
+      throw new Error('Only admins can remove participants');
+    }
+
+    // Mark participant as left (don't delete for history)
+    await connection.execute(
+      `UPDATE CONVERSATION_PARTICIPANTS SET left_at = NOW()
+       WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
+      [conversationId, targetUserId]
+    );
+  } finally {
     connection.release();
-    throw new Error('Only admins can remove participants');
   }
-
-  // Mark participant as left (don't delete for history)
-  await connection.execute(
-    `UPDATE CONVERSATION_PARTICIPANTS SET left_at = NOW()
-     WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
-    [conversationId, targetUserId]
-  );
-
-  connection.release();
 }
 
 /**
@@ -919,45 +940,46 @@ async function removeParticipant(conversationId, userId, targetUserId) {
 async function markAsRead(conversationId, userId, messageId = null) {
   const connection = await getPool().getConnection();
 
-  // Check if user is a participant
-  const [participation] = await connection.execute(
-    `SELECT id FROM CONVERSATION_PARTICIPANTS
-     WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
-    [conversationId, userId]
-  );
+  try {
+    // Check if user is a participant
+    const [participation] = await connection.execute(
+      `SELECT id FROM CONVERSATION_PARTICIPANTS
+       WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
+      [conversationId, userId]
+    );
 
-  if (participation.length === 0) {
-    connection.release();
-    throw new Error('You are not a participant in this conversation');
-  }
+    if (participation.length === 0) {
+      throw new Error('You are not a participant in this conversation');
+    }
 
-  if (messageId) {
-    // Mark specific message as read
-    const receiptId = uuidv4();
+    if (messageId) {
+      // Mark specific message as read
+      const receiptId = uuidv4();
 
-    try {
-      await connection.execute(
-        `INSERT INTO MESSAGE_READ_RECEIPTS (id, message_id, user_id, read_at)
-         VALUES (?, ?, ?, NOW())
-         ON DUPLICATE KEY UPDATE read_at = NOW()`,
-        [receiptId, messageId, userId]
-      );
-    } catch (error) {
-      // Ignore duplicate key errors
-      if (error.code !== 'ER_DUP_ENTRY') {
-        throw error;
+      try {
+        await connection.execute(
+          `INSERT INTO MESSAGE_READ_RECEIPTS (id, message_id, user_id, read_at)
+           VALUES (?, ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE read_at = NOW()`,
+          [receiptId, messageId, userId]
+        );
+      } catch (error) {
+        // Ignore duplicate key errors
+        if (error.code !== 'ER_DUP_ENTRY') {
+          throw error;
+        }
       }
     }
+
+    // Update last_read_at in conversation_participants
+    await connection.execute(
+      `UPDATE CONVERSATION_PARTICIPANTS SET last_read_at = NOW()
+       WHERE conversation_id = ? AND user_id = ?`,
+      [conversationId, userId]
+    );
+  } finally {
+    connection.release();
   }
-
-  // Update last_read_at in conversation_participants
-  await connection.execute(
-    `UPDATE CONVERSATION_PARTICIPANTS SET last_read_at = NOW()
-     WHERE conversation_id = ? AND user_id = ?`,
-    [conversationId, userId]
-  );
-
-  connection.release();
 }
 
 /**
@@ -970,26 +992,27 @@ async function markAsRead(conversationId, userId, messageId = null) {
 async function archiveConversation(conversationId, userId) {
   const connection = await getPool().getConnection();
 
-  // Check if user is an admin of the conversation
-  const [participation] = await connection.execute(
-    `SELECT role FROM CONVERSATION_PARTICIPANTS
-     WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
-    [conversationId, userId]
-  );
+  try {
+    // Check if user is an admin of the conversation
+    const [participation] = await connection.execute(
+      `SELECT role FROM CONVERSATION_PARTICIPANTS
+       WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
+      [conversationId, userId]
+    );
 
-  if (participation.length === 0 || participation[0].role !== 'ADMIN') {
+    if (participation.length === 0 || participation[0].role !== 'ADMIN') {
+      throw new Error('Only admins can archive conversations');
+    }
+
+    // Archive conversation
+    await connection.execute(
+      `UPDATE CONVERSATIONS SET is_archived = TRUE, archived_at = NOW()
+       WHERE id = ?`,
+      [conversationId]
+    );
+  } finally {
     connection.release();
-    throw new Error('Only admins can archive conversations');
   }
-
-  // Archive conversation
-  await connection.execute(
-    `UPDATE CONVERSATIONS SET is_archived = TRUE, archived_at = NOW()
-     WHERE id = ?`,
-    [conversationId]
-  );
-
-  connection.release();
 }
 
 export {
