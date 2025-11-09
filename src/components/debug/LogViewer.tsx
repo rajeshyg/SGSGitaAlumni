@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { logger } from '../../utils/logger';
-import { X, Maximize2, Minimize2, Trash2, Wifi, RefreshCw, Info } from 'lucide-react';
+import { X, Maximize2, Minimize2, Trash2, Wifi, Info } from 'lucide-react';
 import { chatClient } from '../../lib/socket/chatClient';
 
 export const LogViewer: React.FC = () => {
@@ -87,9 +87,9 @@ export const LogViewer: React.FC = () => {
         className="fixed bottom-4 left-4 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full shadow-lg cursor-pointer z-40 transition-all hover:scale-110"
         onClick={() => setIsVisible(true)}
         title="Show Debug Panel"
-        aria-label="Open Debug Panel"
+        aria-label="Show Debug Panel"
       >
-        <Info className="w-4 h-4" />
+        <Info className="w-4 h-4" aria-hidden="true" />
       </button>
     );
   }
@@ -123,24 +123,28 @@ export const LogViewer: React.FC = () => {
           <button
             onClick={() => setIsMaximized(!isMaximized)}
             title={isMaximized ? 'Minimize' : 'Maximize'}
+            aria-label={isMaximized ? 'Minimize Panel' : 'Maximize Panel'}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
-            {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            {isMaximized ? <Minimize2 className="w-4 h-4" aria-hidden="true" /> : <Maximize2 className="w-4 h-4" aria-hidden="true" />}
           </button>
           {activeTab === 'logs' && (
             <button
               onClick={() => { logger.clearLogHistory(); setLogs([]); }}
               title="Clear Logs"
+              aria-label="Clear Logs"
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
           <button
             onClick={() => setIsVisible(false)}
+            title="Close Debug Panel"
+            aria-label="Close Debug Panel"
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
       </div>
