@@ -518,17 +518,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const getConversationDisplayName = (conversation: Conversation | undefined): string => {
     if (!conversation) return 'Messages';
     
-    // For POST_LINKED group conversations, show the posting title
+    // For POST_LINKED conversations, always show the posting title (consistent with sidebar)
+    // This applies to both 1-on-1 and group conversations about a posting
     if (conversation.type === 'POST_LINKED' && conversation.postingTitle) {
-      // Check if it's a group chat by looking at participant count
-      const participantCount = (conversation.participants?.length || 0) + 1; // +1 for current user
-      if (participantCount > 2) {
-        return `🔗 ${conversation.postingTitle}`;
-      }
-      // For 1-on-1 POST_LINKED, show "Chat with [Name]"
-      if (conversation.participants?.length > 0) {
-        return `Chat with ${conversation.participants[0].displayName}`;
-      }
+      return `🔗 ${conversation.postingTitle}`;
     }
 
     if (conversation.name) {

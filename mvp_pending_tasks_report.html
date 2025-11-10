@@ -8,8 +8,8 @@
         body { font-family: Arial, sans-serif; margin: 20px; }
         table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
-        th { background-color: #f2f2f2; position: sticky; top: 0; }
-        .category { font-weight: bold; background-color: #cce5ff; }
+        th { background-color: #333; color: white; position: sticky; top: 0; }
+        .category { font-weight: bold; }
         .before { color: #0066cc; }
         .after { color: #009900; }
         tr.critical { background-color: #f5c6cb; }
@@ -33,6 +33,7 @@
             text-orientation: mixed;
             width: 25px;
             text-align: center;
+            font-weight: bold;
         }
         .category-icon {
             font-size: 18px;
@@ -101,7 +102,7 @@
     <table id="mainTable">
         <thead>
             <tr>
-                <th class="category-header"><span class="category-icon">📁</span>Category</th>
+                <th class="category-header"></th>
                 <th>Feature/Task</th>
                 <th>Status</th>
                 <th>Timeline</th>
@@ -113,21 +114,21 @@
             </tr>
         </thead>
         <tbody>
-            <tr class="category">
+            <tr>
                 <td rowspan="4" class="category-cell"><span class="category-icon">🔒</span>Auth & Security</td>
                 <td>Login & Registration - Invitation-based authentication, OTP verification, family account support</td>
                 <td class="complete">Complete</td>
-                <td class="before">Foundation (before 10/11)</td>
+                <td class="before">Before 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
                 <td class="col-blocker">-</td>
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
-            <tr class="low">
+            <tr>
                 <td>Password Reset - Secure password reset with email verification</td>
                 <td class="pending">Pending</td>
-                <td class="before">Foundation (before 10/11)</td>
+                <td class="before">-</td>
                 <td class="col-priority">Low</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -137,7 +138,7 @@
             <tr>
                 <td>Age Verification - Parent consent for children with supervised access, restricts young members</td>
                 <td class="in-progress">In Progress</td>
-                <td class="after">Integrated (after 10/11)</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -147,7 +148,7 @@
             <tr>
                 <td>Family Accounts - Shared email for family members with individual profiles</td>
                 <td class="complete">Complete</td>
-                <td class="after">Full integration (after 10/11)</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -155,11 +156,11 @@
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
 
-            <tr class="category">
+            <tr>
                 <td rowspan="7" class="category-cell"><span class="category-icon">👥</span>User Mgmt</td>
                 <td>Alumni Profiles - Detailed profile viewing and editing capabilities</td>
                 <td class="in-progress">In Progress</td>
-                <td class="before">Basic structure (before 10/11)</td>
+                <td class="before">Before 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -168,7 +169,7 @@
             </tr>
             <tr>
                 <td>Profile Pictures and Additional Attributes - Enhanced profile display with photos and extended fields</td>
-                <td class="pending">Not Started</td>
+                <td class="pending">Pending</td>
                 <td>-</td>
                 <td class="col-priority">Low</td>
                 <td class="col-effort">1 week</td>
@@ -179,16 +180,16 @@
             <tr>
                 <td>Profile Selection - Netflix-style family member selector</td>
                 <td class="complete">Complete</td>
-                <td class="after">UI implementation (after 10/11)</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
                 <td class="col-blocker">-</td>
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
-            <tr class="medium">
+            <tr>
                 <td>Complete Profile Management UI - Profile editing interface (Task 7.6)</td>
-                <td class="in-progress">Backend Complete, UI In Progress</td>
+                <td class="in-progress">In Progress</td>
                 <td>-</td>
                 <td class="col-priority">Medium</td>
                 <td class="col-effort">1 week</td>
@@ -196,9 +197,9 @@
                 <td class="col-blocker">No - Can launch with basic profile editing</td>
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
-            <tr class="medium">
+            <tr>
                 <td>Enforce 5-Domain Limit - UI validation for domain selection (Action 16)</td>
-                <td class="pending">Not Started</td>
+                <td class="pending">Pending</td>
                 <td>-</td>
                 <td class="col-priority">Medium</td>
                 <td class="col-effort">1 day</td>
@@ -209,7 +210,7 @@
             <tr>
                 <td>User Preferences Setting - Domain, sub-domain and areas of interest configuration</td>
                 <td class="in-progress">In Progress</td>
-                <td class="after">Started after 10/11</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -217,21 +218,21 @@
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
             <tr>
-                <td>Matching Posts Feature - Advanced search based on user preferences</td>
-                <td class="pending">Not Started</td>
-                <td>-</td>
-                <td class="col-priority">Medium</td>
-                <td class="col-effort">3 days</td>
-                <td class="col-dependencies">User preferences complete</td>
-                <td class="col-blocker">No - Search enhancement</td>
+                <td>Matching Posts Feature - Allows users to search postings by Domain, Sub-Domain and Areas of Interest</td>
+                <td class="complete">Complete</td>
+                <td class="after">After 10/11</td>
+                <td class="col-priority">-</td>
+                <td class="col-effort">-</td>
+                <td class="col-dependencies">-</td>
+                <td class="col-blocker">-</td>
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
 
-            <tr class="category">
+            <tr>
                 <td rowspan="3" class="category-cell"><span class="category-icon">📋</span>Directory</td>
                 <td>Alumni Directory - Searchable directory with profile cards and filters</td>
                 <td class="complete">Complete</td>
-                <td class="before">Core functionality (before 10/11)</td>
+                <td class="before">Before 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -240,7 +241,7 @@
             </tr>
             <tr>
                 <td>Profile Pictures and Additional Attributes - Enhanced profile display with photos and extended fields</td>
-                <td class="pending">Not Started</td>
+                <td class="pending">Pending</td>
                 <td>-</td>
                 <td class="col-priority">Low</td>
                 <td class="col-effort">1 week</td>
@@ -251,7 +252,7 @@
             <tr>
                 <td>Advanced Search - Domain-based filtering and pagination</td>
                 <td class="complete">Complete</td>
-                <td class="before">Basic search (before 10/11)</td>
+                <td class="before">Before 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -259,11 +260,11 @@
                 <td class="col-notes"><textarea placeholder="We also have matching posts feature advanced search based on the user preferences. Add an entry if it not added already. Other than feature for user to set their domain, sub-domain and area of interests then add an entry for it."></textarea></td>
             </tr>
 
-            <tr class="category">
+            <tr>
                 <td rowspan="4" class="category-cell"><span class="category-icon">📝</span>Postings</td>
                 <td>Job Postings - Job posting creation, editing, and management</td>
                 <td class="complete">Complete</td>
-                <td class="after">Built from scratch after 10/11</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -273,14 +274,14 @@
             <tr>
                 <td>Posting Engagement - Like, comment, and interaction features</td>
                 <td class="in-progress">In Progress</td>
-                <td class="after">Started after 10/11</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
                 <td class="col-blocker">-</td>
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
-            <tr class="high">
+            <tr>
                 <td>Fix Posting Expiry Logic - Implement MAX(user_date, submission+30 days) (Action 11)</td>
                 <td class="in-progress">In Progress</td>
                 <td>-</td>
@@ -291,9 +292,9 @@
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
             <tr>
-                <td>Domain Taxonomy - Hierarchical domain structure and preferences</td>
+                <td>Domain Taxonomy - Allows users to create posts and assign Domain, Sub-Domain and Area</td>
                 <td class="in-progress">In Progress</td>
-                <td class="after">Started after 10/11</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -301,11 +302,11 @@
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
 
-            <tr class="category">
+            <tr>
                 <td rowspan="4" class="category-cell"><span class="category-icon">💬</span>Messaging</td>
                 <td>Basic Chat - 1-to-1 and group messaging</td>
                 <td class="complete">Complete</td>
-                <td class="after">Started after 10/11</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -315,7 +316,7 @@
             <tr>
                 <td>Real-time Chat - WebSocket implementation with typing indicators</td>
                 <td class="complete">Complete</td>
-                <td class="after">Full implementation (after 10/11)</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -325,14 +326,14 @@
             <tr>
                 <td>Post-Linked Chats - Chats tied to specific posts</td>
                 <td class="complete">Complete</td>
-                <td class="after">Integration complete (after 10/11)</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
                 <td class="col-blocker">-</td>
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
-            <tr class="high">
+            <tr>
                 <td>Chat Integration with Posts - Direct chat from postings, context preservation</td>
                 <td class="in-progress">In Progress</td>
                 <td>-</td>
@@ -343,11 +344,11 @@
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
 
-            <tr class="category">
+            <tr>
                 <td rowspan="2" class="category-cell"><span class="category-icon">📊</span>Dashboard</td>
                 <td>Member Dashboard - Dynamic dashboard features based on role with links</td>
                 <td class="complete">Complete</td>
-                <td class="before">Core dashboard (before 10/11)</td>
+                <td class="before">Before 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -357,7 +358,7 @@
             <tr>
                 <td>Feed Integration - Real-time personalized content feed</td>
                 <td class="complete">Complete</td>
-                <td class="after">Mobile improvements (after 10/11)</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -365,20 +366,20 @@
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
 
-            <tr class="category">
+            <tr>
                 <td rowspan="3" class="category-cell"><span class="category-icon">✅</span>Moderation</td>
                 <td>Content Moderation - Posting approval/rejection workflow</td>
                 <td class="complete">Complete</td>
-                <td class="after">Backend complete (after 10/11)</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
                 <td class="col-blocker">-</td>
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
-            <tr class="critical">
+            <tr>
                 <td>Complete Moderator Review System - Posting review queue system (Action 8)</td>
-                <td class="in-progress">Backend Complete, Frontend 30%</td>
+                <td class="complete">Complete</td>
                 <td>-</td>
                 <td class="col-priority">Critical</td>
                 <td class="col-effort">2 weeks</td>
@@ -389,7 +390,7 @@
             <tr>
                 <td>Admin Tools - Admin interface for user and content management</td>
                 <td class="complete">Complete</td>
-                <td class="before">Basic admin (before 10/11)</td>
+                <td class="before">Before 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -397,11 +398,11 @@
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
 
-            <tr class="category">
+            <tr>
                 <td rowspan="2" class="category-cell"><span class="category-icon">🎨</span>UI/UX</td>
                 <td>Theme Compliance - CSS theme variables replacing hardcoded colors</td>
                 <td class="complete">Complete</td>
-                <td class="after">All violations fixed (after 10/11)</td>
+                <td class="after">After 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -411,7 +412,7 @@
             <tr>
                 <td>Cross-Platform Support - 100% compatible across mobile, tablet, desktop</td>
                 <td class="complete">Complete</td>
-                <td class="before">Core compatibility (before 10/11)</td>
+                <td class="before">Before 10/11</td>
                 <td class="col-priority">-</td>
                 <td class="col-effort">-</td>
                 <td class="col-dependencies">-</td>
@@ -419,10 +420,42 @@
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
 
-            <tr class="category">
+            <tr>
+                <td rowspan="3" class="category-cell"><span class="category-icon">🔔</span>Notifications</td>
+                <td>Email Notifications - Welcome emails, password reset, posting approvals</td>
+                <td class="pending">Pending</td>
+                <td>-</td>
+                <td class="col-priority">Medium</td>
+                <td class="col-effort">1 week</td>
+                <td class="col-dependencies">Email service configured</td>
+                <td class="col-blocker">No - UX enhancement, can launch without</td>
+                <td class="col-notes"><textarea placeholder=""></textarea></td>
+            </tr>
+            <tr>
+                <td>In-App Notifications - Real-time notifications for messages, approvals, updates</td>
+                <td class="pending">Pending</td>
+                <td>-</td>
+                <td class="col-priority">Low</td>
+                <td class="col-effort">1 week</td>
+                <td class="col-dependencies">WebSocket system complete</td>
+                <td class="col-blocker">No - Feature enhancement</td>
+                <td class="col-notes"><textarea placeholder=""></textarea></td>
+            </tr>
+            <tr>
+                <td>Push Notifications - Mobile push notifications for important updates</td>
+                <td class="pending">Pending</td>
+                <td>-</td>
+                <td class="col-priority">Low</td>
+                <td class="col-effort">3 days</td>
+                <td class="col-dependencies">Mobile app ready</td>
+                <td class="col-blocker">No - Mobile enhancement</td>
+                <td class="col-notes"><textarea placeholder=""></textarea></td>
+            </tr>
+
+            <tr>
                 <td rowspan="2" class="category-cell"><span class="category-icon">⭐</span>Rating</td>
                 <td>Rating Structure Implementation - Gold/Silver/Bronze rating system</td>
-                <td class="pending">Not Started</td>
+                <td class="pending">Pending</td>
                 <td>-</td>
                 <td class="col-priority">Medium</td>
                 <td class="col-effort">2 weeks</td>
@@ -430,9 +463,9 @@
                 <td class="col-blocker">No - Can launch without, community feature</td>
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
-            <tr class="medium">
+            <tr>
                 <td>Contribution Tracking System - Automated point system for community engagement</td>
-                <td class="pending">Not Started</td>
+                <td class="pending">Pending</td>
                 <td>-</td>
                 <td class="col-priority">Medium</td>
                 <td class="col-effort">1 week</td>
@@ -441,17 +474,6 @@
                 <td class="col-notes"><textarea placeholder=""></textarea></td>
             </tr>
 
-            <tr class="category">
-                <td rowspan="1" class="category-cell"><span class="category-icon">🧪</span>Quality</td>
-                <td>Write Unit Tests - Unit tests for core services (Action 15)</td>
-                <td class="in-progress">In Progress</td>
-                <td>-</td>
-                <td class="col-priority">Low</td>
-                <td class="col-effort">2 weeks</td>
-                <td class="col-dependencies">Services stable</td>
-                <td class="col-blocker">No - Testing enhancement</td>
-                <td class="col-notes"><textarea placeholder=""></textarea></td>
-            </tr>
         </tbody>
     </table>
     </div>
@@ -459,22 +481,23 @@
 
     <h2>MVP Launch Readiness Summary</h2>
     <ul>
-        <li><strong>Total Tasks:</strong> 34 (27 business + 7 technical)</li>
-        <li><strong>Completed:</strong> 15 tasks</li>
+        <li><strong>Total Tasks:</strong> 35 (26 business + 9 technical)</li>
+        <li><strong>Completed:</strong> 16 tasks</li>
         <li><strong>In Progress:</strong> 5 tasks</li>
         <li><strong>Pending:</strong> 14 tasks</li>
-        <li><strong>Critical Blockers (Must Fix):</strong> 4 tasks (Actions 8-11) - ~3 weeks total</li>
-        <li><strong>High Priority (Should Fix):</strong> Profile management completion + Chat integration - ~2 weeks</li>
-        <li><strong>Medium Priority (Nice to Fix):</strong> 4 tasks - ~4 days</li>
-        <li><strong>Low Priority (Post-MVP):</strong> Unit tests - 2 weeks</li>
+        <li><strong>Critical Blockers (Must Fix):</strong> 3 tasks (Actions 9-11) - ~2 weeks total</li>
+        <li><strong>High Priority (Should Fix):</strong> Profile management completion + Chat integration + Deployment setup + Pilot testing - ~5 weeks</li>
+        <li><strong>Medium Priority (Nice to Fix):</strong> 6 tasks - ~1 week</li>
+        <li><strong>Low Priority (Post-MVP):</strong> Notifications + Rating system + Unit tests - ~6 weeks</li>
     </ul>
 
     <h2>Recommended MVP Launch Timeline</h2>
     <ol>
         <li><strong>Week 1:</strong> Complete Actions 9-11 (error handling, boundaries, expiry logic) - 1 week</li>
-        <li><strong>Week 2:</strong> Complete Action 8 (moderator review system) + Chat integration - 1 week</li>
-        <li><strong>Week 3:</strong> Complete profile management UI and final testing - 1 week</li>
-        <li><strong>Week 4:</strong> MVP Launch with monitoring and quick fixes as needed</li>
+        <li><strong>Week 2:</strong> Complete profile management UI and chat integration - 1 week</li>
+        <li><strong>Week 3:</strong> Deployment setup and pilot user testing preparation - 1 week</li>
+        <li><strong>Week 4:</strong> Pilot testing, feedback incorporation, and final production deployment - 1 week</li>
+        <li><strong>Week 5:</strong> MVP Launch with monitoring and quick fixes as needed</li>
     </ol>
 
     <h2>Current MVP Feature Set</h2>
@@ -487,10 +510,17 @@
         <li>✅ Member dashboard with feed</li>
         <li>✅ Mobile-responsive design</li>
         <li>✅ Admin management tools</li>
-        <li>🔄 Content moderation (in progress)</li>
-        <li>🔄 Profile management (in progress)</li>
+        <li>✅ Content moderation system</li>
+        <li>🔄 Profile management (backend complete, UI in progress)</li>
         <li>🔄 Chat-post integration (in progress)</li>
-        <li>🔄 Rating & recognition system (planned)</li>
+        <li>🔄 Posting expiry logic (in progress)</li>
+        <li>🔄 Domain taxonomy system (in progress)</li>
+        <li>🔄 User preferences and matching (in progress)</li>
+        <li>🔄 Age verification (in progress)</li>
+        <li>❌ Notifications system (pending)</li>
+        <li>❌ Rating & recognition system (pending)</li>
+        <li>❌ Deployment & production setup (pending)</li>
+        <li>❌ Pilot user testing & QA (pending)</li>
     </ul>
 
     <h2>Technical Tasks Table</h2>
@@ -519,7 +549,7 @@
             </tr>
             <tr>
                 <td>Standardize API Error Responses - Consistent error format across all endpoints</td>
-                <td class="pending">Not Started</td>
+                <td class="pending">Pending</td>
                 <td>High</td>
                 <td>3 days</td>
                 <td>API validation complete</td>
@@ -528,7 +558,7 @@
             </tr>
             <tr>
                 <td>Add Error Boundaries - Wrap page components with ErrorBoundary</td>
-                <td class="pending">Not Started</td>
+                <td class="pending">Pending</td>
                 <td>High</td>
                 <td>2 days</td>
                 <td>None</td>
@@ -537,11 +567,38 @@
             </tr>
             <tr>
                 <td>Add Database Indexes - Performance optimization indexes</td>
-                <td class="pending">Not Started</td>
+                <td class="pending">Pending</td>
                 <td>Medium</td>
                 <td>1 day</td>
                 <td>Database schema stable</td>
                 <td>No - Performance optimization</td>
+                <td><textarea placeholder=""></textarea></td>
+            </tr>
+            <tr>
+                <td>Write Unit Tests - Unit tests for core services (Action 15)</td>
+                <td class="in-progress">In Progress</td>
+                <td>Low</td>
+                <td>2 weeks</td>
+                <td>Services stable</td>
+                <td>No - Testing enhancement</td>
+                <td><textarea placeholder=""></textarea></td>
+            </tr>
+            <tr>
+                <td>Deployment Setup - Production deployment configuration and CI/CD pipeline</td>
+                <td class="pending">Pending</td>
+                <td>High</td>
+                <td>1 week</td>
+                <td>All features complete</td>
+                <td>Yes - Production deployment required</td>
+                <td><textarea placeholder=""></textarea></td>
+            </tr>
+            <tr>
+                <td>Pilot User Testing & QA - User acceptance testing with pilot group and feedback-driven enhancements</td>
+                <td class="pending">Pending</td>
+                <td>High</td>
+                <td>2 weeks</td>
+                <td>MVP features complete</td>
+                <td>Yes - Quality assurance required for launch</td>
                 <td><textarea placeholder=""></textarea></td>
             </tr>
         </tbody>
@@ -557,18 +614,69 @@
             }
         }
 
-        // Debug logging for row styles
-        document.addEventListener('DOMContentLoaded', function() {
-            const rows = document.querySelectorAll('tbody tr');
-            console.log('Row style analysis after row-specific fixes:');
-            rows.forEach((row, index) => {
-                const bgColor = getComputedStyle(row).backgroundColor;
-                const fontWeight = getComputedStyle(row).fontWeight;
-                const classes = row.className;
-                const isBlue = bgColor === 'rgb(204, 229, 255)'; // #cce5ff (new category color)
-                const isBold = fontWeight === '700' || fontWeight === 'bold';
-                console.log(`Row ${index + 1}: classes="${classes}", background="${bgColor}", fontWeight="${fontWeight}", isBlue=${isBlue}, isBold=${isBold}`);
+        // Apply alternating background colors to category sections
+        function applyCategoryBackgrounds() {
+            const tbody = document.querySelector('#mainTable tbody');
+            if (!tbody) return;
+
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            let categoryIndex = 0;
+
+            for (let i = 0; i < rows.length; i++) {
+                const row = rows[i];
+                const categoryCell = row.querySelector('td.category-cell');
+
+                if (categoryCell) {
+                    // This is a category header row
+                    categoryIndex++;
+                    const isOdd = categoryIndex % 2 === 1;
+                    const backgroundColor = isOdd ? '#e6f3ff' : '#ffffff'; // light blue for odd, white for even
+
+                    // Apply to category row
+                    row.style.backgroundColor = backgroundColor;
+
+                    // Apply to all subsequent rows until next category
+                    const rowspan = parseInt(categoryCell.getAttribute('rowspan') || '1');
+                    for (let j = 1; j < rowspan; j++) {
+                        if (i + j < rows.length) {
+                            rows[i + j].style.backgroundColor = backgroundColor;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Apply dynamic status cell styling
+        function applyStatusStyling() {
+            const statusCells = document.querySelectorAll('td[class*="complete"], td[class*="in-progress"], td[class*="pending"]');
+
+            statusCells.forEach(cell => {
+                const text = cell.textContent.trim().toLowerCase();
+
+                if (text === 'complete') {
+                    cell.style.backgroundColor = '#d4edda'; // light green
+                    cell.style.color = '#155724'; // dark green
+                    cell.style.fontWeight = 'bold';
+                } else if (text === 'in progress') {
+                    cell.style.backgroundColor = '#fff3cd'; // light yellow
+                    cell.style.color = '#856404'; // dark yellow/brown
+                    cell.style.fontWeight = 'bold';
+                } else if (text === 'pending') {
+                    cell.style.backgroundColor = '#f8d7da'; // light red
+                    cell.style.color = '#721c24'; // dark red
+                    cell.style.fontWeight = 'bold';
+                } else if (text === 'not started') {
+                    cell.style.backgroundColor = '#f8d7da'; // light red
+                    cell.style.color = '#721c24'; // dark red
+                    cell.style.fontWeight = 'bold';
+                }
             });
+        }
+
+        // Apply backgrounds when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            applyCategoryBackgrounds();
+            applyStatusStyling();
         });
     </script>
 </body>
