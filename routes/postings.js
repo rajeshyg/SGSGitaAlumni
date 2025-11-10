@@ -60,6 +60,7 @@ router.get('/', asyncHandler(async (req, res) => {
   let query = `
     SELECT DISTINCT
       p.id,
+      p.author_id,
       p.title,
       p.content,
       p.posting_type,

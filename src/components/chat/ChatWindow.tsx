@@ -178,6 +178,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     };
   }, [handleNewMessage, handleMessageEdited, handleMessageDeleted, handleTypingStart, handleTypingStop, handleReadReceipt]);
 
+  // Read conversationId from URL query parameter
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const conversationIdFromUrl = searchParams.get('conversationId');
+    
+    if (conversationIdFromUrl) {
+      console.log(`🔗 Auto-selecting conversation from URL: ${conversationIdFromUrl}`);
+      setSelectedConversationId(conversationIdFromUrl);
+    }
+  }, [window.location.search]);
+
   // Load conversations on mount
   useEffect(() => {
     loadConversations();
@@ -221,6 +232,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         id: conv.id,
         type: conv.type || 'DIRECT',
         name: conv.name,
+        postingId: conv.postingId || conv.posting_id,
+        postingTitle: conv.postingTitle || conv.posting_title,
         lastMessage: conv.lastMessage,
         unreadCount: conv.unreadCount || 0,
         participants: Array.isArray(conv.participants) ? conv.participants.map((p: any) => ({
@@ -505,9 +518,17 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const getConversationDisplayName = (conversation: Conversation | undefined): string => {
     if (!conversation) return 'Messages';
     
-    // For POST_LINKED conversations, show the posting title
+    // For POST_LINKED group conversations, show the posting title
     if (conversation.type === 'POST_LINKED' && conversation.postingTitle) {
-      return `📌 ${conversation.postingTitle}`;
+      // Check if it's a group chat by looking at participant count
+      const participantCount = (conversation.participants?.length || 0) + 1; // +1 for current user
+      if (participantCount > 2) {
+        return `🔗 ${conversation.postingTitle}`;
+      }
+      // For 1-on-1 POST_LINKED, show "Chat with [Name]"
+      if (conversation.participants?.length > 0) {
+        return `Chat with ${conversation.participants[0].displayName}`;
+      }
     }
 
     if (conversation.name) {

@@ -61,7 +61,7 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   const getConversationName = (conversation: Conversation): string => {
     // For POST_LINKED conversations, show the posting title
     if (conversation.type === 'POST_LINKED' && conversation.postingTitle) {
-      return `📌 ${conversation.postingTitle}`;
+      return `🔗 ${conversation.postingTitle}`;
     }
 
     if (conversation.name) {

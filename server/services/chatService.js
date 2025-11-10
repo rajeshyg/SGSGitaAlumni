@@ -100,6 +100,10 @@ async function createConversation(userId, data) {
 
     const conversation = conversations[0];
 
+    if (!conversation) {
+      throw new Error(`Failed to fetch created conversation with ID ${conversationId}`);
+    }
+
     // Get participants
     const [participants] = await connection.execute(
       `SELECT
@@ -117,6 +121,10 @@ async function createConversation(userId, data) {
        WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
       [conversationId]
     );
+
+    if (!participants || !Array.isArray(participants)) {
+      throw new Error(`Failed to fetch participants for conversation ${conversationId}. Participants: ${JSON.stringify(participants)}`);
+    }
 
     // Send initial message if provided
     if (initialMessage) {
@@ -884,13 +892,32 @@ async function addParticipant(conversationId, userId, targetUserId, role = 'MEMB
 
     // Check if target user is already a participant
     const [existing] = await connection.execute(
-      `SELECT id FROM CONVERSATION_PARTICIPANTS
-       WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
+      `SELECT 
+        cp.id as participant_id,
+        cp.role,
+        cp.joined_at,
+        u.id as user_id,
+        u.first_name,
+        u.last_name,
+        u.email
+       FROM CONVERSATION_PARTICIPANTS cp
+       JOIN app_users u ON cp.user_id = u.id
+       WHERE cp.conversation_id = ? AND cp.user_id = ? AND cp.left_at IS NULL`,
       [conversationId, targetUserId]
     );
 
     if (existing.length > 0) {
-      throw new Error('User is already a participant');
+      // User is already a participant, return the existing participant
+      const participant = existing[0];
+      return {
+        participantId: participant.participant_id,
+        userId: participant.user_id,
+        firstName: participant.first_name,
+        lastName: participant.last_name,
+        email: participant.email,
+        role: participant.role,
+        joinedAt: participant.joined_at
+      };
     }
 
     const participantId = uuidv4();
@@ -1129,6 +1156,89 @@ async function getGroupConversationByPostingId(postingId) {
   }
 }
 
+/**
+ * Get direct conversation between two users for a specific posting
+ * Used to avoid creating duplicate 1-on-1 conversations
+ * 
+ * @param {string} postingId - Posting ID
+ * @param {string} userId1 - First user ID
+ * @param {string} userId2 - Second user ID
+ * @returns {Promise<Object|null>} Conversation object or null if not found
+ */
+async function getDirectConversationByPostingAndUsers(postingId, userId1, userId2) {
+  const connection = await getPool().getConnection();
+
+  try {
+    // Find existing POST_LINKED conversation between these two users for this posting
+    // Ensure it's a 1-on-1 conversation (is_group = FALSE) with exactly 2 participants
+    const [conversations] = await connection.execute(
+      `SELECT DISTINCT c.*
+       FROM CONVERSATIONS c
+       WHERE c.posting_id = ? AND c.type = 'POST_LINKED' AND c.is_group = FALSE AND c.is_archived = FALSE
+         AND c.id IN (
+           SELECT cp1.conversation_id
+           FROM CONVERSATION_PARTICIPANTS cp1
+           WHERE cp1.user_id = ? AND cp1.left_at IS NULL
+         )
+         AND c.id IN (
+           SELECT cp2.conversation_id
+           FROM CONVERSATION_PARTICIPANTS cp2
+           WHERE cp2.user_id = ? AND cp2.left_at IS NULL
+         )
+       ORDER BY c.created_at DESC
+       LIMIT 1`,
+      [postingId, userId1, userId2]
+    );
+
+    if (conversations.length === 0) {
+      return null;
+    }
+
+    const conversation = conversations[0];
+
+    // Get participants
+    const [participants] = await connection.execute(
+      `SELECT
+        cp.id as participant_id,
+        cp.role,
+        cp.joined_at,
+        cp.last_read_at,
+        cp.is_muted,
+        u.id as user_id,
+        u.first_name,
+        u.last_name,
+        u.email
+       FROM CONVERSATION_PARTICIPANTS cp
+       JOIN app_users u ON cp.user_id = u.id
+       WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
+      [conversation.id]
+    );
+
+    return {
+      id: conversation.id,
+      type: conversation.type,
+      name: conversation.name,
+      postingId: conversation.posting_id,
+      participants: participants.map(p => ({
+        participantId: p.participant_id,
+        userId: p.user_id,
+        firstName: p.first_name,
+        lastName: p.last_name,
+        email: p.email,
+        role: p.role,
+        joinedAt: p.joined_at,
+        lastReadAt: p.last_read_at,
+        isMuted: Boolean(p.is_muted)
+      })),
+      createdAt: conversation.created_at,
+      lastMessageAt: conversation.last_message_at,
+      isArchived: Boolean(conversation.is_archived)
+    };
+  } finally {
+    connection.release();
+  }
+}
+
 export {
   createConversation,
   getConversations,
@@ -1143,5 +1253,6 @@ export {
   removeParticipant,
   markAsRead,
   archiveConversation,
-  getGroupConversationByPostingId
+  getGroupConversationByPostingId,
+  getDirectConversationByPostingAndUsers
 };

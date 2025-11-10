@@ -158,6 +158,34 @@ export const getGroupConversationByPostingId = asyncHandler(async (req, res) => 
 });
 
 /**
+ * GET /api/conversations/direct/:postingId/:otherUserId
+ * Get direct (1-on-1) conversation between current user and another user for a specific posting
+ * Used to avoid creating duplicate conversations
+ */
+export const getDirectConversationByPostingAndUser = asyncHandler(async (req, res) => {
+  const { postingId, otherUserId } = req.params;
+
+  console.log('[Chat API] Get direct conversation by posting and user:', { postingId, userId: req.user.id, otherUserId });
+
+  const conversation = await chatService.getDirectConversationByPostingAndUsers(postingId, req.user.id, otherUserId);
+
+  if (!conversation) {
+    return res.status(404).json({
+      success: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: 'No direct conversation found for this posting'
+      }
+    });
+  }
+
+  res.json({
+    success: true,
+    data: conversation
+  });
+});
+
+/**
  * POST /api/conversations/:id/add-participant
  * Add current user to an existing conversation
  */
@@ -688,6 +716,11 @@ export default function registerChatRoutes(router) {
   router.get('/api/conversations/group/:postingId',
     rateLimit('chat-read', { useUserId: true }),
     getGroupConversationByPostingId
+  );
+
+  router.get('/api/conversations/direct/:postingId/:otherUserId',
+    rateLimit('chat-read', { useUserId: true }),
+    getDirectConversationByPostingAndUser
   );
 
   router.get('/api/conversations/:id',

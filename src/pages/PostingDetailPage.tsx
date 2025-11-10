@@ -104,17 +104,32 @@ const PostingDetailPage = () => {
     setError(null);
 
     try {
-      // Create a POST_LINKED conversation
-      const response = await APIService.postGeneric('/api/conversations', {
-        type: 'POST_LINKED',
-        postingId: posting.id,
-        participantIds: [posting.author_id]
-      });
+      // Check if a direct conversation already exists for this posting with the author
+      let conversationId: string | null = null;
+      
+      try {
+        const existingResponse = await APIService.get(
+          `/api/conversations/direct/${posting.id}/${posting.author_id}`
+        );
+        conversationId = existingResponse.data?.id;
+      } catch (err: any) {
+        // No existing conversation (404), so create a new one
+        conversationId = null;
+      }
 
-      // Extract conversation ID from response
-      const conversationId = response.data?.id || response.id;
+      if (!conversationId) {
+        // Create a POST_LINKED conversation
+        const response = await APIService.postGeneric('/api/conversations', {
+          type: 'POST_LINKED',
+          postingId: posting.id,
+          participantIds: [posting.author_id]
+        });
 
-      // Navigate to chat with the new conversation selected
+        // Extract conversation ID from response
+        conversationId = response.data?.id || response.id;
+      }
+
+      // Navigate to chat with the conversation selected
       navigate(`/chat?conversationId=${conversationId}`);
     } catch (err: any) {
       console.error('Failed to create conversation:', err);
@@ -152,7 +167,8 @@ const PostingDetailPage = () => {
 
     try {
       // Check if group conversation exists for this post
-      const existingGroup = await APIService.get(`/api/conversations/group/${posting.id}`);
+      const response = await APIService.get(`/api/conversations/group/${posting.id}`);
+      const existingGroup = response.data;
 
       if (existingGroup && existingGroup.id) {
         // Add current user to existing group
@@ -245,8 +261,8 @@ const PostingDetailPage = () => {
         </Button>
 
         <div className="flex gap-2 flex-wrap">
-          {/* Express Interest Section (for non-owners on approved posts) */}
-          {!isOwner && posting.author_id !== user?.id && posting.status === 'approved' && (
+          {/* Express Interest Section (for non-owners on approved/active posts) */}
+          {!isOwner && posting.author_id !== user?.id && (posting.status === 'approved' || posting.status === 'active') && (
             <>
               {!hasExpressedInterest ? (
                 <Button
@@ -284,7 +300,7 @@ const PostingDetailPage = () => {
           )}
 
           {/* Legacy Message Author Button (kept for backward compatibility) */}
-          {!isOwner && posting.author_id !== user?.id && posting.status !== 'approved' && (
+          {!isOwner && posting.author_id !== user?.id && (posting.status !== 'approved' && posting.status !== 'active') && (
             <Button
               variant="outline"
               onClick={handleMessageAuthor}

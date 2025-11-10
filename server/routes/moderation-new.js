@@ -169,19 +169,12 @@ router.get('/queue',
     const conditions = [];
     const params = [];
 
-    // Status filter - using 'status' field instead of redundant 'moderation_status'
+    // Status filter - using 'moderation_status' field for moderation queue filtering
     if (status !== 'all') {
-      // Map moderation status to posting status
-      if (status === 'PENDING') {
-        conditions.push("p.status = 'pending_review'");
-      } else if (status === 'ESCALATED') {
-        conditions.push("p.status = 'escalated'");
-      } else {
-        conditions.push('p.status = ?');
-        params.push(status);
-      }
+      conditions.push('p.moderation_status COLLATE utf8mb4_unicode_ci = ?');
+      params.push(status);
     } else {
-      conditions.push("p.status IN ('pending_review', 'escalated')");
+      conditions.push("p.moderation_status COLLATE utf8mb4_unicode_ci IN ('PENDING', 'ESCALATED')");
     }
 
     // Domain filter (through junction table)
@@ -211,7 +204,7 @@ router.get('/queue',
         orderByClause = 'ORDER BY p.created_at DESC';
         break;
       case 'urgent':
-        orderByClause = 'ORDER BY (p.status = "escalated") DESC, p.created_at ASC';
+        orderByClause = 'ORDER BY (p.moderation_status = "ESCALATED") DESC, p.created_at ASC';
         break;
       case 'oldest':
       default:
@@ -241,7 +234,7 @@ router.get('/queue',
         p.title,
         p.content as description,
         p.posting_type,
-        p.status as moderation_status,
+        p.moderation_status,
         p.created_at,
         p.expires_at,
         p.version,
@@ -305,15 +298,15 @@ router.get('/queue',
       };
     });
 
-    // Get queue statistics - using 'status' field
+    // Get queue statistics - using 'moderation_status' field
     const [stats] = await pool.query(
       `SELECT
-        COUNT(CASE WHEN status = 'pending_review' THEN 1 END) as pending_count,
-        COUNT(CASE WHEN status = 'escalated' THEN 1 END) as escalated_count,
-        COUNT(CASE WHEN status = 'pending_review'
+        COUNT(CASE WHEN moderation_status = 'PENDING' THEN 1 END) as pending_count,
+        COUNT(CASE WHEN moderation_status = 'ESCALATED' THEN 1 END) as escalated_count,
+        COUNT(CASE WHEN moderation_status = 'PENDING'
               AND created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1 END) as urgent_count
       FROM POSTINGS
-      WHERE status IN ('pending_review', 'escalated')`
+      WHERE moderation_status IN ('PENDING', 'ESCALATED')`
     ).catch(err => {
       throw ServerError.database('fetch moderation queue statistics');
     });

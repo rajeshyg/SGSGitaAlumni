@@ -50,6 +50,7 @@ interface Posting {
   location?: string;
   location_type?: 'remote' | 'in-person' | 'hybrid';
   urgency_level?: 'low' | 'medium' | 'high' | 'critical';
+  author_id: string;
   author_first_name?: string;
   author_last_name?: string;
   contact_name: string;
@@ -426,6 +427,7 @@ const PostingsPage: React.FC = () => {
                 key={posting.id}
                 posting={posting}
                 showActions={true}
+                onClick={() => navigate(`/postings/${posting.id}`)}
                 onLike={handleLike}
                 onComment={handleComment}
                 onShare={handleShare}
