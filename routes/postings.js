@@ -1120,6 +1120,29 @@ router.get('/matched/:userId', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * GET /api/postings/:id/interest-status
+ * Check if current user has expressed interest in a posting
+ * Requires authentication
+ */
+router.get('/:id/interest-status', authenticateToken, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  // Check if user has liked this posting
+  const [existing] = await pool.query(`
+    SELECT id FROM POSTING_LIKES
+    WHERE posting_id = ? AND user_id = ?
+  `, [id, userId]).catch(err => {
+    throw ServerError.database('fetch posting like status');
+  });
+
+  res.json({
+    success: true,
+    hasExpressedInterest: existing.length > 0
+  });
+}));
+
+/**
  * POST /api/postings/:id/like
  * Toggle like on a posting
  * Requires authentication

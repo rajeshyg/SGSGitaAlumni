@@ -199,11 +199,16 @@ export interface UpdatePostingData extends Partial<CreatePostingData> {
 // Messaging Types
 export interface Conversation {
   id: string;
+  type?: 'DIRECT' | 'GROUP' | 'POST_LINKED';
+  name?: string;
   participants: User[];
   lastMessage?: Message;
   unreadCount: number;
   createdAt: string;
   updatedAt: string;
+  postingId?: string;
+  postingTitle?: string;
+  is_group?: boolean;
 }
 
 export interface Message {
@@ -1134,7 +1139,7 @@ export const APIService = {
   // ============================================================================
 
   // Generic GET method for API calls
-  get: async <T = any>(endpoint: string, config?: { params?: any }): Promise<T> => {
+  get: async <T = any>(endpoint: string, config?: { params?: any; suppressErrors?: number[] }): Promise<T> => {
     try {
       // Build query string from params if provided
       let url = endpoint;
@@ -1148,8 +1153,13 @@ export const APIService = {
       logger.info(`GET response from ${url}`, response);
 
       return response as T;
-    } catch (error) {
-      logger.error(`GET request failed for ${endpoint}:`, error);
+    } catch (error: any) {
+      // Check if this error status should be suppressed
+      const shouldSuppress = config?.suppressErrors?.includes(error.status || error.response?.status);
+      
+      if (!shouldSuppress) {
+        logger.error(`GET request failed for ${endpoint}:`, error);
+      }
       throw error;
     }
   },

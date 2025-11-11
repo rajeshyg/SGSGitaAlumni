@@ -518,25 +518,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const getConversationDisplayName = (conversation: Conversation | undefined): string => {
     if (!conversation) return 'Messages';
     
-    // For POST_LINKED conversations, always show the posting title (consistent with sidebar)
-    // This applies to both 1-on-1 and group conversations about a posting
-    if (conversation.type === 'POST_LINKED' && conversation.postingTitle) {
-      return `🔗 ${conversation.postingTitle}`;
+    // DIRECT conversations: always show participant name
+    if (conversation.type === 'DIRECT' && conversation.participants?.length > 0) {
+      return `Chat with ${conversation.participants[0].displayName}`;
     }
 
+    // GROUP conversations: show group name or post title (if linked to post)
+    if (conversation.type === 'GROUP') {
+      return conversation.name || conversation.postingTitle || 'Group Chat';
+    }
+
+    // Fallback for any other case
     if (conversation.name) {
       return conversation.name;
-    }
-
-    // For DIRECT conversations, show the other participant's name
-    if (conversation.type === 'DIRECT' && conversation.participants?.length > 0) {
-      return conversation.participants[0].displayName;
-    }
-
-    // For GROUP conversations, show participant names
-    if (conversation.type === 'GROUP' && conversation.participants?.length > 0) {
-      const names = conversation.participants.map(p => p.displayName).slice(0, 3);
-      return names.join(', ');
     }
 
     return 'Chat';
@@ -574,8 +568,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               {getConversationDisplayName(selectedConversation)}
             </CardTitle>
             
-            {/* Post Link for POST_LINKED conversations */}
-            {selectedConversation?.type === 'POST_LINKED' && selectedConversation.postingId && (
+            {/* Post Link - shown for all conversations linked to a post */}
+            {selectedConversation?.postingId && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                 <LinkIcon className="h-3.5 w-3.5 flex-shrink-0" />
                 <Button
@@ -584,7 +578,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                   onClick={() => navigate(`/postings/${selectedConversation.postingId}`)}
                   className="h-auto p-0 text-sm font-normal text-muted-foreground hover:text-primary underline-offset-4"
                 >
-                  View Original Post
+                  {selectedConversation.type === 'DIRECT' 
+                    ? `View Post: ${selectedConversation.postingTitle || 'Original Post'}`
+                    : 'View Post'
+                  }
                 </Button>
               </div>
             )}

@@ -1093,14 +1093,14 @@ async function getGroupConversationByPostingId(postingId) {
   const connection = await getPool().getConnection();
 
   try {
-    // Find existing group conversation for this posting
+    // Find existing GROUP conversation for this posting
     const [conversations] = await connection.execute(
       `SELECT
         c.*,
         p.title as posting_title
        FROM CONVERSATIONS c
        LEFT JOIN POSTINGS p ON c.posting_id = p.id
-       WHERE c.posting_id = ? AND c.type = 'POST_LINKED' AND c.is_archived = FALSE
+       WHERE c.posting_id = ? AND c.type = 'GROUP' AND c.is_archived = FALSE
        ORDER BY c.created_at DESC
        LIMIT 1`,
       [postingId]
@@ -1169,12 +1169,12 @@ async function getDirectConversationByPostingAndUsers(postingId, userId1, userId
   const connection = await getPool().getConnection();
 
   try {
-    // Find existing POST_LINKED conversation between these two users for this posting
-    // Ensure it's a 1-on-1 conversation (is_group = FALSE) with exactly 2 participants
+    // Find existing DIRECT conversation between these two users for this posting
+    // Ensure it's a 1-on-1 by checking participant count = 2
     const [conversations] = await connection.execute(
       `SELECT DISTINCT c.*
        FROM CONVERSATIONS c
-       WHERE c.posting_id = ? AND c.type = 'POST_LINKED' AND c.is_group = FALSE AND c.is_archived = FALSE
+       WHERE c.posting_id = ? AND c.type = 'DIRECT' AND c.is_archived = FALSE
          AND c.id IN (
            SELECT cp1.conversation_id
            FROM CONVERSATION_PARTICIPANTS cp1

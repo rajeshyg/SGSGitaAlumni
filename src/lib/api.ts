@@ -79,7 +79,13 @@ export const apiClient = {
       // Convert secure API response to legacy format for compatibility
       return response.data;
     } catch (error: any) {
-      console.error(`[apiClient] ❌ ${options.method || 'GET'} ${endpoint} failed:`, error);
+      // Don't log 404 errors as errors - they're often expected (e.g., checking if resource exists)
+      const status = error.status || error.response?.status;
+      if (status === 404) {
+        console.log(`[apiClient] 🔍 ${options.method || 'GET'} ${endpoint} - Resource not found (404)`);
+      } else {
+        console.error(`[apiClient] ❌ ${options.method || 'GET'} ${endpoint} failed:`, error);
+      }
 
       // Handle standardized error format from backend
       if (error.isStandardError || (error.code && error.status)) {
@@ -88,7 +94,10 @@ export const apiClient = {
         const message = error.message || 'An error occurred';
         const details = error.details || undefined;
 
-        console.error(`[apiClient] StandardError: ${code} (${status}) - ${message}`, details);
+        // Don't log 404s twice
+        if (status !== 404) {
+          console.error(`[apiClient] StandardError: ${code} (${status}) - ${message}`, details);
+        }
 
         // Handle specific error codes
         if (code.startsWith('AUTH_')) {

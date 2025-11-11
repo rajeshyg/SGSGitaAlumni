@@ -67,7 +67,7 @@ const PostingDetailPage = () => {
     if (id) {
       loadPosting();
     }
-  }, [id]);
+  }, [id, user]); // Re-check when user or id changes
 
   const loadPosting = async () => {
     if (!id) return;
@@ -78,6 +78,19 @@ const PostingDetailPage = () => {
     try {
       const response = await APIService.get<{posting: Posting}>(`/api/postings/${id}`);
       setPosting(response.posting);
+
+      // Check if user has already expressed interest in this posting
+      if (user) {
+        try {
+          const interestResponse = await APIService.get(`/api/postings/${id}/interest-status`);
+          if (interestResponse.hasExpressedInterest) {
+            setHasExpressedInterest(true);
+          }
+        } catch (err) {
+          // Silently fail - just means we couldn't check interest status
+          console.log('Could not check interest status:', err);
+        }
+      }
     } catch (err: any) {
       console.error('Failed to load posting:', err);
       setError(err.message || 'Failed to load posting');
@@ -118,11 +131,12 @@ const PostingDetailPage = () => {
       }
 
       if (!conversationId) {
-        // Create a POST_LINKED conversation
+        // Create a DIRECT conversation (1-on-1 with post author)
         const response = await APIService.postGeneric('/api/conversations', {
-          type: 'POST_LINKED',
+          type: 'DIRECT',
           postingId: posting.id,
-          participantIds: [posting.author_id]
+          participantIds: [posting.author_id],
+          initialMessage: `Hi, I'm interested in your post about "${posting.title}"`
         });
 
         // Extract conversation ID from response
@@ -166,28 +180,46 @@ const PostingDetailPage = () => {
     setError(null);
 
     try {
-      // Check if group conversation exists for this post
-      const response = await APIService.get(`/api/conversations/group/${posting.id}`);
-      const existingGroup = response.data;
+      let conversationId: string | null = null;
 
-      if (existingGroup && existingGroup.id) {
-        // Add current user to existing group
-        await APIService.postGeneric(`/api/conversations/${existingGroup.id}/add-participant`, {
-          userId: user.id
+      // Check if group conversation exists for this post
+      try {
+        const response = await APIService.get(`/api/conversations/group/${posting.id}`, {
+          suppressErrors: [404] // Don't log 404 errors - expected when no group exists yet
         });
-        navigate(`/chat?conversationId=${existingGroup.id}`);
-      } else {
-        // Create new group conversation
+        const existingGroup = response.data;
+
+        if (existingGroup && existingGroup.id) {
+          conversationId = existingGroup.id;
+          // Add current user to existing group
+          await APIService.postGeneric(`/api/conversations/${existingGroup.id}/add-participant`, {
+            userId: user.id
+          });
+        }
+      } catch (err: any) {
+        // If 404, group doesn't exist yet - we'll create it below
+        // Check both err.status and err.response?.status for different error formats
+        const status = err.status || err.response?.status;
+        if (status !== 404 && !err.message?.includes('not found')) {
+          throw err; // Re-throw if it's not a 404
+        }
+        // 404 or "not found" error - continue to create new group
+        console.log('No existing group found, will create new one');
+      }
+
+      // If no existing group found, create a new one
+      if (!conversationId) {
         const response = await APIService.postGeneric('/api/conversations', {
-          type: 'POST_LINKED',
+          type: 'GROUP',
           postingId: posting.id,
-          isGroup: true,
           name: posting.title,
           participantIds: [posting.author_id, user.id]
         });
-        const conversationId = response.data?.id || response.id;
-        navigate(`/chat?conversationId=${conversationId}`);
+        conversationId = response.data?.id || response.id;
       }
+
+      // Navigate to chat
+      navigate(`/chat?conversationId=${conversationId}`);
     } catch (err: any) {
       console.error('Failed to join group discussion:', err);
       setError(err.message || 'Failed to join group discussion. Please try again.');

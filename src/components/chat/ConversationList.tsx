@@ -15,10 +15,10 @@ import { NewConversationDialog } from './NewConversationDialog';
 
 export interface Conversation {
   id: string;  // UUID
-  type: 'DIRECT' | 'GROUP' | 'POST_LINKED';
+  type: 'DIRECT' | 'GROUP';
   name?: string;
-  postingId?: string;  // For POST_LINKED conversations
-  postingTitle?: string;  // For displaying post title
+  postingId?: string;  // For conversations linked to posts
+  postingTitle?: string;  // For displaying post title (fetched from POSTINGS)
   lastMessage?: {
     content: string;
     createdAt: string;
@@ -59,24 +59,24 @@ export const ConversationList: React.FC<ConversationListProps> = ({
   };
 
   const getConversationName = (conversation: Conversation): string => {
-    // For POST_LINKED conversations, show the posting title
-    if (conversation.type === 'POST_LINKED' && conversation.postingTitle) {
-      return `🔗 ${conversation.postingTitle}`;
-    }
-
-    if (conversation.name) {
-      return conversation.name;
-    }
-
     // For DIRECT conversations, show the other participant's name
     if (conversation.type === 'DIRECT' && conversation.participants?.length > 0) {
       return conversation.participants[0].displayName;
     }
 
-    // For GROUP conversations, show participant names
-    if (conversation.type === 'GROUP' && conversation.participants?.length > 0) {
-      const names = conversation.participants.map(p => p.displayName).slice(0, 3);
-      return names.join(', ');
+    // For GROUP conversations, show name or post title
+    if (conversation.type === 'GROUP') {
+      if (conversation.name) {
+        return conversation.name;
+      }
+      if (conversation.postingTitle) {
+        return conversation.postingTitle;
+      }
+      // Fallback: show participant names
+      if (conversation.participants?.length > 0) {
+        const names = conversation.participants.map(p => p.displayName).slice(0, 3);
+        return names.join(', ');
+      }
     }
 
     return 'Conversation';
