@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import ThemeProvider from './lib/theme/provider'
 import AuthProvider from './contexts/AuthContext'
 import { ProtectedRoute, PublicRoute, AdminRoute, ModeratorRoute } from './components/auth/ProtectedRoute'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { LogViewer } from './components/debug/LogViewer'
 
 // Lazy load main page components for better performance
@@ -117,188 +118,252 @@ const PageLoadingFallback = () => (
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark">
-      <AuthProvider>
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <LogViewer />
-          <Suspense fallback={<PageLoadingFallback />}>
-            <Routes>
-              {/* Public routes (redirect authenticated users) */}
-              <Route path="/login" element={
-                <PublicRoute>
-                  <LoginPage />
-                </PublicRoute>
-              } />
-              <Route path="/forgot-password" element={
-                <PublicRoute>
-                  <ForgotPasswordPage />
-                </PublicRoute>
-              } />
-              <Route path="/invitation/:token" element={
-                <PublicRoute>
-                  <InvitationAcceptancePage />
-                </PublicRoute>
-              } />
-              <Route path="/invitation/accept/:token" element={
-                <PublicRoute>
-                  <FamilyProfileSelectionPage />
-                </PublicRoute>
-              } />
-              {/* OTP Verification - NOT wrapped in PublicRoute because it handles post-auth navigation */}
-              <Route path="/verify-otp/:email?" element={
-                <OTPVerificationPage />
-              } />
-              <Route path="/family-invitation/:token" element={
-                <PublicRoute>
-                  <FamilyProfileSelectionPage />
-                </PublicRoute>
-              } />
+    <ErrorBoundary level="app">
+      <ThemeProvider defaultTheme="dark">
+        <AuthProvider>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <LogViewer />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Routes>
+                {/* Public routes (redirect authenticated users) */}
+                <Route path="/login" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <LoginPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/forgot-password" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <ForgotPasswordPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/invitation/:token" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <InvitationAcceptancePage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/invitation/accept/:token" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <FamilyProfileSelectionPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                {/* OTP Verification - NOT wrapped in PublicRoute because it handles post-auth navigation */}
+                <Route path="/verify-otp/:email?" element={
+                  <ErrorBoundary level="page">
+                    <OTPVerificationPage />
+                  </ErrorBoundary>
+                } />
+                <Route path="/family-invitation/:token" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <FamilyProfileSelectionPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Protected main routes */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/home" element={
-                <ProtectedRoute>
-                  <HomePage />
-                </ProtectedRoute>
-              } />
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              } />
+                {/* Protected main routes */}
+                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/home" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <HomePage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/dashboard" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Profile routes */}
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <ProfileEditPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/profile/edit" element={
-                <ProtectedRoute>
-                  <ProfileEditPage />
-                </ProtectedRoute>
-              } />
+                {/* Profile routes */}
+                <Route path="/profile" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ProfileEditPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/profile/edit" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ProfileEditPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Family routes */}
-              <Route path="/family/manage" element={
-                <ProtectedRoute>
-                  <FamilyManagePage />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings/family" element={
-                <ProtectedRoute>
-                  <FamilySettingsPage />
-                </ProtectedRoute>
-              } />
+                {/* Family routes */}
+                <Route path="/family/manage" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <FamilyManagePage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/settings/family" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <FamilySettingsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Admin routes */}
-              <Route path="/admin" element={
-                <AdminRoute>
-                  <AdminPage />
-                </AdminRoute>
-              } />
-              <Route path="/Admin" element={
-                <AdminRoute>
-                  <AdminPage />
-                </AdminRoute>
-              } />
+                {/* Admin routes */}
+                <Route path="/admin" element={
+                  <ErrorBoundary level="page">
+                    <AdminRoute>
+                      <AdminPage />
+                    </AdminRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/Admin" element={
+                  <ErrorBoundary level="page">
+                    <AdminRoute>
+                      <AdminPage />
+                    </AdminRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Data management routes - Admin/Moderator only */}
-              <Route path="/upload" element={
-                <ModeratorRoute>
-                  <UploadPage />
-                </ModeratorRoute>
-              } />
-              <Route path="/data-files" element={
-                <ModeratorRoute>
-                  <DataFilesPage />
-                </ModeratorRoute>
-              } />
-              <Route path="/export" element={
-                <ModeratorRoute>
-                  <ExportPage />
-                </ModeratorRoute>
-              } />
-              <Route path="/moderator/queue" element={
-                <ModeratorRoute>
-                  <ModerationQueuePage />
-                </ModeratorRoute>
-              } />
-              <Route path="/users" element={
-                <AdminRoute>
-                  <UsersPage />
-                </AdminRoute>
-              } />
+                {/* Data management routes - Admin/Moderator only */}
+                <Route path="/upload" element={
+                  <ErrorBoundary level="page">
+                    <ModeratorRoute>
+                      <UploadPage />
+                    </ModeratorRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/data-files" element={
+                  <ErrorBoundary level="page">
+                    <ModeratorRoute>
+                      <DataFilesPage />
+                    </ModeratorRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/export" element={
+                  <ErrorBoundary level="page">
+                    <ModeratorRoute>
+                      <ExportPage />
+                    </ModeratorRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/moderator/queue" element={
+                  <ErrorBoundary level="page">
+                    <ModeratorRoute>
+                      <ModerationQueuePage />
+                    </ModeratorRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/users" element={
+                  <ErrorBoundary level="page">
+                    <AdminRoute>
+                      <UsersPage />
+                    </AdminRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Member accessible routes */}
-              <Route path="/alumni-directory" element={
-                <ProtectedRoute>
-                  <AlumniDirectoryPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/preferences" element={
-                <ProtectedRoute>
-                  <PreferencesPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/postings" element={
-                <ProtectedRoute>
-                  <PostingsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/postings/my" element={
-                <ProtectedRoute>
-                  <MyPostingsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/postings/new" element={
-                <ProtectedRoute>
-                  <CreatePostingPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/postings/:id/edit" element={
-                <ProtectedRoute>
-                  <EditPostingPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/postings/:id" element={
-                <ProtectedRoute>
-                  <PostingDetailPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/reports" element={
-                <ProtectedRoute>
-                  <ReportsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                <ProtectedRoute>
-                  <SettingsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/responses" element={
-                <ProtectedRoute>
-                  <ResponsesPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/chat" element={
-                <ProtectedRoute>
-                  <ChatPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/profile-selection" element={
-                <ProtectedRoute>
-                  <ProfileSelectionPage />
-                </ProtectedRoute>
-              } />
+                {/* Member accessible routes */}
+                <Route path="/alumni-directory" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <AlumniDirectoryPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/preferences" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <PreferencesPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <PostingsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings/my" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <MyPostingsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings/new" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <CreatePostingPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings/:id/edit" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <EditPostingPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings/:id" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <PostingDetailPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/reports" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ReportsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/settings" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/responses" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ResponsesPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/chat" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ChatPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/profile-selection" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ProfileSelectionPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Catch all - redirect to login for unauthenticated, admin for authenticated */}
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-          </Suspense>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+                {/* Catch all - redirect to login for unauthenticated, admin for authenticated */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+            </Suspense>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   )
 }
 
