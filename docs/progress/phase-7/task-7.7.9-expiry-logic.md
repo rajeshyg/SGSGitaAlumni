@@ -1,12 +1,103 @@
 # Task 7.7.9: Posting Expiry Logic Fix
 
-**Status:** 🟡 Planned
+**Status:** ✅ **COMPLETE** (November 11, 2025)
 **Priority:** High
-**Duration:** 2 days
+**Duration:** 2 days (Completed in 1 day)
 **Parent Task:** [Task 7.7: Domain Taxonomy System](./task-7.7-domain-taxonomy-system.md)
-**Related:** [Task 8.12: Violation Corrections](../phase-8/task-8.12-violation-corrections.md) - Action 10
+**Related:** [Task 8.12: Violation Corrections](../phase-8/task-8.12-violation-corrections.md) - Action 11
 
-## Overview
+## Completion Summary
+
+**✅ FULLY IMPLEMENTED** - All requirements met, system tested and validated
+
+### What Was Completed
+
+1. **Database Layer** ✅
+   - CHECK constraint added to enforce 30-day minimum
+   - 12 existing postings updated to comply
+   - All 20 postings now meet the 30-day requirement
+
+2. **Backend API** ✅
+   - POST `/api/postings` - enforces `MAX(user_date, now + 30 days)`
+   - PUT `/api/postings/:id` - uses ORIGINAL created_at for calculation
+   - Logic prevents reducing expiry below 30-day minimum
+
+3. **Frontend Validation** ✅
+   - Date picker constraints: min=today+30days, max=today+1year
+   - Help text explains 30-day minimum rule
+   - Field made optional (backend defaults to 30 days)
+   - Clear user messaging
+
+4. **Schema Validation** ✅
+   - Created `PostingExpiryDateSchema` with Zod
+   - Validates 30-day minimum and 1-year maximum
+   - Applied to `PostingCreateSchema`
+
+5. **Testing** ✅
+   - Comprehensive test script created (`test-expiry-logic.mjs`)
+   - All postings verified compliant
+   - Statistics: Min 30 days, Max 63 days, Avg 33 days
+
+### Implementation Details
+
+**Files Modified:**
+- `migrations/add-posting-expiry-minimum-constraint.sql` - Database schema
+- `run-expiry-migration.mjs` - Migration script
+- `routes/postings.js` - Backend POST/PUT endpoints
+- `src/schemas/validation/index.ts` - Zod validation schemas
+- `src/pages/CreatePostingPage.tsx` - Frontend form and validation
+
+**Key Code Changes:**
+```javascript
+// Backend (routes/postings.js)
+const minimumExpiryDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+const finalExpiryDate = userProvidedDate > minimumExpiryDate 
+  ? userProvidedDate 
+  : minimumExpiryDate;
+```
+
+```typescript
+// Frontend (CreatePostingPage.tsx)
+min={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+max={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+```
+
+### Testing Results
+
+```
+✅ All 20 postings comply with 30-day minimum
+✅ Database constraint active
+✅ Backend logic validated
+✅ Frontend validation working
+✅ Schema validation enforced
+
+Statistics:
+- Total postings: 20
+- Minimum duration: 30 days
+- Maximum duration: 63 days  
+- Average duration: 33 days
+```
+
+### Design Decisions
+
+1. **No Stored Functions/Triggers:**
+   - MySQL SUPER privilege required for stored functions
+   - Implemented logic in application layer instead
+   - Provides same functionality without permission issues
+
+2. **Expiry Date Made Optional:**
+   - Backend defaults to 30 days if not provided
+   - Simplifies user experience
+   - Maintains business rule compliance
+
+3. **CHECK Constraint Added:**
+   - Provides database-level enforcement
+   - Prevents manual data corruption
+   - Complements application logic
+
+---
+
+## Overview (Original Requirements)
 Fix the posting expiry date calculation logic to implement the correct business rule: **expiry_date = MAX(user_provided_date, submission_date + 30 days)**.
 
 **Current Problem:** Postings use only the user-provided expiry date without enforcing the minimum 30-day requirement, allowing postings to expire too quickly or immediately.

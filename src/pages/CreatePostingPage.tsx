@@ -287,19 +287,19 @@ const CreatePostingPage: React.FC = () => {
         if (!formData.duration.trim()) {
           errors.push('Duration is required (e.g., "3 months", "1 week", or "Ongoing")');
         }
-        if (!formData.expiry_date) {
-          errors.push('Expiry date is required');
-        } else {
+        // Task 7.7.9: Expiry date is now optional (backend defaults to 30 days)
+        // If provided, validate it meets the 30-day minimum
+        if (formData.expiry_date) {
           const expiryDate = new Date(formData.expiry_date);
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          const maxDate = new Date(today);
-          maxDate.setDate(maxDate.getDate() + 90);
+          const minDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+          const maxDate = new Date(today.getTime() + 365 * 24 * 60 * 60 * 1000);
 
-          if (expiryDate < today) {
-            errors.push('Expiry date must be in the future');
+          if (expiryDate < minDate) {
+            errors.push('Expiry date must be at least 30 days from today');
           } else if (expiryDate > maxDate) {
-            errors.push('Expiry date cannot be more than 90 days from today');
+            errors.push('Expiry date cannot be more than 1 year from today');
           }
         }
         if (formData.max_connections < 1 || formData.max_connections > 50) {
@@ -361,7 +361,7 @@ const CreatePostingPage: React.FC = () => {
         status: 'draft',
         expires_at: formData.expiry_date
           ? new Date(formData.expiry_date + 'T00:00:00Z').toISOString()
-          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          : null  // Backend will default to 30 days
       };
 
       await APIService.postGeneric('/api/postings', draftData);
@@ -410,7 +410,7 @@ const CreatePostingPage: React.FC = () => {
         status: 'pending_review',
         expires_at: formData.expiry_date
           ? new Date(formData.expiry_date + 'T00:00:00Z').toISOString()
-          : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          : null  // Backend will enforce 30-day minimum
       };
 
       // Remove the 3-level fields as API doesn't expect them
@@ -818,15 +818,24 @@ const CreatePostingPage: React.FC = () => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="expiry_date">Expiry Date *</Label>
+            <Label htmlFor="expiry_date">
+              Expiry Date (Optional)
+              <span className="text-xs text-muted-foreground ml-2">
+                (Default: 30 days from submission)
+              </span>
+            </Label>
             <Input
               type="date"
               id="expiry_date"
               value={formData.expiry_date}
               onChange={(e) => updateFormData('expiry_date', e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-              max={new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+              min={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+              max={new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
             />
+            <p className="text-xs text-muted-foreground">
+              💡 <strong>Tip:</strong> Postings stay active for a minimum of 30 days. 
+              You can set a longer duration up to 1 year.
+            </p>
           </div>
         </div>
 

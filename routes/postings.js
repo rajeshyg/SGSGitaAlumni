@@ -573,8 +573,20 @@ router.post('/', authenticateToken, validateRequest({ body: PostingCreateSchema 
     expires_at
   } = req.body;
 
-  // Calculate expiry date (30 days from now if not provided)
-  const expiryDate = expires_at || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  // Task 7.7.9: Calculate expiry date with 30-day minimum enforcement
+  // Business Rule: expires_at = MAX(user_provided_date, created_at + 30 days)
+  const now = new Date();
+  const minimumExpiryDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  
+  let finalExpiryDate;
+  if (expires_at) {
+    const userProvidedDate = new Date(expires_at);
+    // Use the later of user's date or 30-day minimum
+    finalExpiryDate = userProvidedDate > minimumExpiryDate ? userProvidedDate : minimumExpiryDate;
+  } else {
+    // Default to 30-day minimum
+    finalExpiryDate = minimumExpiryDate;
+  }
 
   const postingId = uuidv4();
 
@@ -602,7 +614,7 @@ router.post('/', authenticateToken, validateRequest({ body: PostingCreateSchema 
     location_type,
     duration || null,
     max_connections,
-    expiryDate
+    finalExpiryDate
   ]).catch(err => {
     throw ServerError.database('create posting');
   });
@@ -668,11 +680,15 @@ router.put('/:id', authenticateToken, validateRequest({ body: PostingUpdateSchem
     duration,
     max_connections,
     domain_ids,
-    tag_ids
+    tag_ids,
+    expires_at
   } = req.body;
 
-  // Check ownership
-  const [existingPostings] = await pool.query('SELECT author_id FROM POSTINGS WHERE id = ?', [id]).catch(err => {
+  // Check ownership and get original posting data
+  const [existingPostings] = await pool.query(
+    'SELECT author_id, created_at, expires_at as current_expires_at FROM POSTINGS WHERE id = ?', 
+    [id]
+  ).catch(err => {
     throw ServerError.database('fetch posting');
   });
 
@@ -700,6 +716,20 @@ router.put('/:id', authenticateToken, validateRequest({ body: PostingUpdateSchem
   if (location_type !== undefined) { updates.push('location_type = ?'); params.push(location_type); }
   if (duration !== undefined) { updates.push('duration = ?'); params.push(duration); }
   if (max_connections !== undefined) { updates.push('max_connections = ?'); params.push(max_connections); }
+  
+  // Task 7.7.9: Handle expiry date updates with 30-day minimum enforcement
+  // Important: Use ORIGINAL created_at, not current date
+  if (expires_at !== undefined) {
+    const originalCreatedAt = new Date(existingPostings[0].created_at);
+    const minimumExpiryDate = new Date(originalCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const userProvidedDate = new Date(expires_at);
+    
+    // Enforce minimum: Cannot set expiry before 30 days from ORIGINAL submission
+    const finalExpiryDate = userProvidedDate > minimumExpiryDate ? userProvidedDate : minimumExpiryDate;
+    
+    updates.push('expires_at = ?');
+    params.push(finalExpiryDate);
+  }
 
   if (updates.length > 0) {
     params.push(id);

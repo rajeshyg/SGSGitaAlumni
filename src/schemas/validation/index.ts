@@ -130,13 +130,36 @@ export type FamilyMemberConsentInput = z.infer<typeof FamilyMemberConsentSchema>
 // POSTING SCHEMAS
 // ============================================
 
+// Task 7.7.9: Enhanced expiry date schema with 30-day minimum and 1-year maximum
+export const PostingExpiryDateSchema = z
+  .string()
+  .datetime('Invalid datetime format')
+  .or(z.date())
+  .refine((date) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    const now = new Date();
+    const minDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+    return d >= minDate;
+  }, {
+    message: 'Expiry date must be at least 30 days from now'
+  })
+  .refine((date) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    const now = new Date();
+    const maxDate = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 1 year from now
+    return d <= maxDate;
+  }, {
+    message: 'Expiry date cannot be more than 1 year in the future'
+  })
+  .optional();
+
 export const PostingCreateSchema = z.object({
   title: z.string().min(5, 'Title too short').max(200, 'Title too long'),
   description: z.string().min(20, 'Description too short').max(5000, 'Description too long'),
   domainId: UUIDSchema,
   categoryId: UUIDSchema,
   tags: z.array(z.string().max(50)).max(10, 'Maximum 10 tags allowed'),
-  expiryDate: DateSchema.optional(),
+  expiryDate: PostingExpiryDateSchema, // Use enhanced schema with 30-day minimum
   isUrgent: z.boolean().default(false),
   contactMethod: z.enum(['EMAIL', 'PHONE', 'CHAT', 'ALL']).default('EMAIL')
 });
