@@ -646,9 +646,10 @@ try {
   // Continue without Redis - middleware will handle gracefully
 }
 
-const server = app.listen(PORT, async () => {
+const server = app.listen(PORT, '0.0.0.0', async () => {
   try {
-    console.log(`🚀 Backend API server running on http://localhost:${PORT}`);
+    console.log(`🚀 Backend API server running on http://0.0.0.0:${PORT}`);
+    console.log(`🌐 Network accessible at: http://[YOUR_IP_ADDRESS]:${PORT}`);
     console.log(`📊 MySQL Database: ${process.env.DB_NAME}`);
     console.log(`🏠 Host: ${process.env.DB_HOST}`);
 
