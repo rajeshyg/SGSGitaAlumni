@@ -6,6 +6,7 @@ import { serverMonitoring } from '../src/lib/monitoring/server.js';
 import { initializeSecurity } from '../src/lib/security/index.js';
 import { AuthError, ValidationError, ResourceError, ServerError } from '../server/errors/ApiError.js';
 import { asyncHandler } from '../server/middleware/errorHandler.js';
+import { emailService } from '../utils/emailService.js';
 
 // JWT Configuration
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
@@ -506,6 +507,213 @@ export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
   connection.release();
 
   res.status(201).json({ success: true, user });
+});
+
+// ============================================================================
+// PASSWORD RESET ENDPOINTS
+// ============================================================================
+
+// Request password reset - sends reset link to email
+export const requestPasswordReset = asyncHandler(async (req, res) => {
+  console.log('🔐 Password reset request received');
+  const { email } = req.body;
+
+  if (!email) {
+    throw ValidationError.missingField('email');
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    // Check if user exists
+    const [users] = await connection.execute(
+      'SELECT id, email, first_name, last_name FROM app_users WHERE email = ?',
+      [email]
+    );
+
+    if (users.length === 0) {
+      // For security, we don't reveal if email exists or not
+      // Return success anyway
+      res.json({ success: true, message: 'If this email is registered, a password reset link will be sent' });
+      connection.release();
+      return;
+    }
+
+    const user = users[0];
+
+    // Generate reset token
+    const resetToken = await hmacTokenService.generateToken({
+      userId: user.id,
+      email: user.email,
+      type: 'password_reset'
+    }, 3600); // 1 hour expiry
+
+    // Store reset token in database
+    const resetId = generateUUID();
+    await connection.execute(`
+      INSERT INTO PASSWORD_RESETS (id, user_id, reset_token, secure_link_token, requested_at, expires_at, is_used, ip_address, user_agent)
+      VALUES (?, ?, ?, ?, NOW(), DATE_ADD(NOW(), INTERVAL 1 HOUR), 0, ?, ?)
+    `, [
+      resetId,
+      user.id,
+      resetToken,
+      resetToken, // secure_link_token is the same as reset_token in this case
+      req.ip || 'unknown',
+      req.headers['user-agent'] || 'unknown'
+    ]);
+
+    // Send email with reset link
+    try {
+      const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
+      await emailService.sendPasswordResetEmail(user.email, resetToken, user.first_name);
+      console.log('✅ Password reset email sent to:', email);
+    } catch (emailError) {
+      console.error('⚠️ Failed to send password reset email:', emailError.message);
+      // Don't fail the request if email fails - token was still created
+      // User can still use the password reset if they get the link from support
+    }
+
+    console.log('✅ Password reset token generated for:', email);
+
+    res.json({
+      success: true,
+      message: 'If this email is registered, a password reset link will be sent'
+    });
+  } catch (error) {
+    console.error('Password reset request failed:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
+});
+
+// Validate password reset token
+export const validatePasswordResetToken = asyncHandler(async (req, res) => {
+  console.log('🔐 Validating password reset token');
+  const { token } = req.body;
+
+  if (!token) {
+    throw ValidationError.missingField('token');
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    // Check if token exists and hasn't expired
+    const [resets] = await connection.execute(`
+      SELECT id, user_id, is_used, expires_at
+      FROM PASSWORD_RESETS
+      WHERE reset_token = ? AND is_used = 0 AND expires_at > NOW()
+      ORDER BY requested_at DESC
+      LIMIT 1
+    `, [token]);
+
+    if (resets.length === 0) {
+      res.json({ valid: false });
+      connection.release();
+      return;
+    }
+
+    // Verify the token signature
+    const isValid = await hmacTokenService.verifyToken(token, 'password_reset');
+    
+    res.json({ valid: isValid });
+  } catch (error) {
+    console.error('Token validation failed:', error);
+    res.json({ valid: false });
+  } finally {
+    connection.release();
+  }
+});
+
+// Reset password using token
+export const resetPassword = asyncHandler(async (req, res) => {
+  console.log('🔐 Password reset attempt');
+  const { token, password } = req.body;
+
+  if (!token) {
+    throw ValidationError.missingField('token');
+  }
+  if (!password) {
+    throw ValidationError.missingField('password');
+  }
+
+  // Validate password strength
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])[a-zA-Z\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{8,128}$/;
+  if (!passwordRegex.test(password)) {
+    throw ValidationError.weakPassword('Password must be 8-128 characters and contain uppercase, lowercase, number, and special character');
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    // Verify token and get user
+    const [resets] = await connection.execute(`
+      SELECT user_id, is_used, expires_at
+      FROM PASSWORD_RESETS
+      WHERE reset_token = ?
+      ORDER BY requested_at DESC
+      LIMIT 1
+    `, [token]);
+
+    if (resets.length === 0) {
+      throw AuthError.tokenInvalid('Password reset link not found');
+    }
+
+    const resetRecord = resets[0];
+
+    // Check if already used
+    if (resetRecord.is_used) {
+      throw AuthError.tokenInvalid('This password reset link has already been used');
+    }
+
+    // Check if expired
+    if (new Date(resetRecord.expires_at) < new Date()) {
+      throw AuthError.tokenExpired('Password reset link has expired');
+    }
+
+    // Verify token signature
+    const isValid = await hmacTokenService.verifyToken(token, 'password_reset');
+    if (!isValid) {
+      throw AuthError.tokenInvalid('Invalid reset token');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update user password
+    await connection.execute(
+      'UPDATE app_users SET password_hash = ?, updated_at = NOW() WHERE id = ?',
+      [hashedPassword, resetRecord.user_id]
+    );
+
+    // Mark reset token as used
+    await connection.execute(
+      'UPDATE PASSWORD_RESETS SET is_used = 1, used_at = NOW() WHERE reset_token = ?',
+      [token]
+    );
+
+    // Audit log
+    await connection.execute(`
+      INSERT INTO AUDIT_LOGS (id, user_id, action, resource_type, resource_id, ip_address, user_agent, created_at)
+      VALUES (?, ?, 'password_reset', 'user', ?, ?, ?, NOW())
+    `, [
+      generateUUID(),
+      resetRecord.user_id,
+      resetRecord.user_id,
+      req.ip || 'unknown',
+      req.headers['user-agent'] || 'unknown'
+    ]);
+
+    console.log('✅ Password reset successful for user:', resetRecord.user_id);
+
+    res.json({
+      success: true,
+      message: 'Password has been successfully reset'
+    });
+  } catch (error) {
+    console.error('Password reset failed:', error);
+    throw error;
+  } finally {
+    connection.release();
+  }
 });
 
 // Helper function (will be moved to utils)

@@ -97,14 +97,8 @@ const UsersPage = lazy(() => Promise.resolve({
 
 const ProfileSelectionPage = lazy(() => import('./pages/ProfileSelectionPage'))
 
-const ForgotPasswordPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Forgot Password</h1>
-      <p className="text-muted-foreground">Password reset functionality coming soon...</p>
-    </div>
-  )
-}))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
 
 // Loading component for Suspense fallback
 const PageLoadingFallback = () => (
@@ -137,6 +131,13 @@ function App() {
                   <ErrorBoundary level="page">
                     <PublicRoute>
                       <ForgotPasswordPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/reset-password/:token" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <ResetPasswordPage />
                     </PublicRoute>
                   </ErrorBoundary>
                 } />

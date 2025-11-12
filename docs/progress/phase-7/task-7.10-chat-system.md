@@ -226,8 +226,17 @@ export class ChatWebSocket {
 - [x] Read/unread indicators (✅ Badge showing unread count per conversation)
 
 ## Remaining Work (Updated & concise)
-All prioritized items have been completed! Optional enhancements for future consideration:
+All prioritized items have been completed! 
 
+### Recent Bug Fixes (November 11, 2025)
+✅ **Critical API Errors Resolved** - Fixed three major issues preventing chat functionality:
+1. **Duplicate Key Error** - Conversation creation now checks for existing conversations and reuses them instead of violating unique constraint
+2. **Group Join Authorization** - Users can now self-join GROUP conversations without needing admin permission
+3. **DIRECT Conversation Lookup** - Proper handling of 404 responses when checking for existing conversations
+
+See: [CHAT_API_FIXES_NOV11.md](../../CHAT_API_FIXES_NOV11.md) for detailed fix documentation.
+
+### Optional Enhancements (Future)
 - **E2E Test Updates** - Update test assertions to match new UI changes (lazy loading, search, etc.)
 - **End-to-end Encryption** - Implement message encryption (Post-MVP feature)
 - **Media Sharing** - Add support for images/files in messages

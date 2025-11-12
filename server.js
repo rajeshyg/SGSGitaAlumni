@@ -49,6 +49,9 @@ import {
   refresh,
   registerFromInvitation,
   registerFromFamilyInvitation,
+  requestPasswordReset,
+  validatePasswordResetToken,
+  resetPassword,
   setAuthPool
 } from './routes/auth.js';
 
@@ -231,7 +234,6 @@ app.use(express.json());
 // Monitoring middleware (must be early in the stack)
 app.use(monitoringMiddleware);
 
-// ============================================================================
 // AUTHENTICATION ROUTES
 // ============================================================================
 
@@ -248,6 +250,11 @@ app.post('/api/auth/register-from-invitation', registrationRateLimit, validateRe
   next();
 }, registerFromInvitation);
 app.post('/api/auth/register-from-family-invitation', registrationRateLimit, validateRequest({ body: RegisterSchema }), registerFromFamilyInvitation);
+
+// Password reset routes
+app.post('/api/auth/request-password-reset', apiRateLimit, validateRequest({ body: { email: 'email' } }), requestPasswordReset);
+app.post('/api/auth/validate-password-reset-token', validatePasswordResetToken);
+app.post('/api/auth/reset-password', apiRateLimit, validateRequest({ body: { token: 'string', password: 'string' } }), resetPassword);
 
 // ============================================================================
 // INVITATION SYSTEM ROUTES

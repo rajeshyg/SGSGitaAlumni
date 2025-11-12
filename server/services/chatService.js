@@ -43,6 +43,42 @@ async function createConversation(userId, data) {
   const connection = await getPool().getConnection();
 
   try {
+    // Check if a conversation with the same posting_id and type already exists (and is active)
+    if (postingId) {
+      const [existing] = await connection.execute(
+        `SELECT c.* FROM CONVERSATIONS c
+         WHERE c.posting_id = ? AND c.type = ? AND c.is_archived = FALSE`,
+        [postingId, type]
+      );
+
+      if (existing.length > 0) {
+        // For DIRECT conversations, check if the same participants are involved
+        if (type === 'DIRECT') {
+          const existingConvId = existing[0].id;
+          const [participants] = await connection.execute(
+            `SELECT user_id FROM CONVERSATION_PARTICIPANTS
+             WHERE conversation_id = ? AND left_at IS NULL
+             ORDER BY user_id`,
+            [existingConvId]
+          );
+          
+          const existingParticipantIds = participants.map(p => p.user_id).sort();
+          const newParticipantIds = [...allParticipantIds].sort();
+          
+          // If same participants, return existing conversation
+          if (JSON.stringify(existingParticipantIds) === JSON.stringify(newParticipantIds)) {
+            connection.release();
+            // Fetch and return existing conversation
+            return await getConversationById(existingConvId, userId);
+          }
+        } else if (type === 'GROUP') {
+          // For GROUP conversations, prevent duplicates - return existing
+          connection.release();
+          return await getConversationById(existing[0].id, userId);
+        }
+      }
+    }
+
     // Validate all participants exist before starting transaction
     if (allParticipantIds.length > 0) {
       const placeholders = allParticipantIds.map(() => '?').join(',');
@@ -879,17 +915,6 @@ async function addParticipant(conversationId, userId, targetUserId, role = 'MEMB
   const connection = await getPool().getConnection();
 
   try {
-    // Check if user is an admin of the conversation
-    const [participation] = await connection.execute(
-      `SELECT role FROM CONVERSATION_PARTICIPANTS
-       WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
-      [conversationId, userId]
-    );
-
-    if (participation.length === 0 || participation[0].role !== 'ADMIN') {
-      throw new Error('Only admins can add participants');
-    }
-
     // Check if target user is already a participant
     const [existing] = await connection.execute(
       `SELECT 
@@ -918,6 +943,36 @@ async function addParticipant(conversationId, userId, targetUserId, role = 'MEMB
         role: participant.role,
         joinedAt: participant.joined_at
       };
+    }
+
+    // Get conversation details to check type
+    const [conversations] = await connection.execute(
+      `SELECT type FROM CONVERSATIONS WHERE id = ?`,
+      [conversationId]
+    );
+
+    if (conversations.length === 0) {
+      throw new Error('Conversation not found');
+    }
+
+    const conversationType = conversations[0].type;
+
+    // For GROUP conversations, allow self-join (user adding themselves)
+    // For other types, check if user is an admin
+    if (userId !== targetUserId) {
+      // Someone trying to add another user - must be admin
+      const [participation] = await connection.execute(
+        `SELECT role FROM CONVERSATION_PARTICIPANTS
+         WHERE conversation_id = ? AND user_id = ? AND left_at IS NULL`,
+        [conversationId, userId]
+      );
+
+      if (participation.length === 0 || participation[0].role !== 'ADMIN') {
+        throw new Error('Only admins can add other participants');
+      }
+    } else if (conversationType !== 'GROUP') {
+      // Self-join is only allowed for GROUP conversations
+      throw new Error('Cannot join this type of conversation');
     }
 
     const participantId = uuidv4();

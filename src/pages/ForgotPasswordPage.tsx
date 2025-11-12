@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
+import { APIService } from '../services/APIService';
 
 // ============================================================================
 // FORGOT PASSWORD PAGE COMPONENT
@@ -44,15 +45,13 @@ export function ForgotPasswordPage() {
     setError('');
     
     try {
-      // Simulate API call for password reset
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // In a real app, this would call the password reset API
-      // await APIService.requestPasswordReset(email);
+      // Call the password reset API
+      await APIService.requestPasswordReset(email);
       
       setIsSubmitted(true);
     } catch (resetError) {
-      setError('Failed to send reset email. Please try again.');
+      const errorMessage = resetError instanceof Error ? resetError.message : 'Failed to send reset email. Please try again.';
+      setError(errorMessage);
       // eslint-disable-next-line no-console
       console.error('Password reset failed:', resetError);
     } finally {

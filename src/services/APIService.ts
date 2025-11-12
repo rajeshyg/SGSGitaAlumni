@@ -553,6 +553,59 @@ export const APIService = {
     }
   },
 
+  // Request password reset - sends reset link to email
+  requestPasswordReset: async (email: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      logger.info('Requesting password reset for email:', email);
+
+      const response = await apiClient.post('/api/auth/request-password-reset', { email });
+
+      logger.info('Password reset email sent successfully');
+      return response as { success: boolean; message: string };
+    } catch (error) {
+      logger.error('Password reset request failed:', error);
+      throw new Error('Failed to request password reset. Please try again.');
+    }
+  },
+
+  // Validate password reset token
+  validatePasswordResetToken: async (token: string): Promise<{ valid: boolean }> => {
+    try {
+      logger.info('Validating password reset token');
+
+      const response = await apiClient.post('/api/auth/validate-password-reset-token', { token });
+
+      logger.info('Password reset token validation completed');
+      return response as { valid: boolean };
+    } catch (error) {
+      logger.error('Token validation failed:', error);
+      throw new Error('Invalid or expired reset token.');
+    }
+  },
+
+  // Reset password using token
+  resetPassword: async (token: string, password: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      logger.info('Attempting password reset');
+
+      const response = await apiClient.post('/api/auth/reset-password', { token, password });
+
+      logger.info('Password reset successful');
+      return response as { success: boolean; message: string };
+    } catch (error) {
+      logger.error('Password reset failed:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('expired')) {
+          throw new Error('This password reset link has expired. Please request a new one.');
+        }
+        if (error.message.includes('already used')) {
+          throw new Error('This password reset link has already been used. Please request a new one.');
+        }
+      }
+      throw new Error('Failed to reset password. Please try again.');
+    }
+  },
+
   // ============================================================================
   // ALUMNI MEMBERS METHODS (Source Data Management)
   // ============================================================================
