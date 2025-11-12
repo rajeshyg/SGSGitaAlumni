@@ -505,8 +505,14 @@ export const APIService = {
     try {
       logger.info('Refreshing authentication token');
 
-      // Get refresh token from localStorage
-      const refreshToken = localStorage.getItem('refreshToken');
+      // Get refresh token from localStorage (fallback to sessionStorage for mobile compatibility)
+      let refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        refreshToken = sessionStorage.getItem('refreshToken');
+        if (refreshToken) {
+          console.log('[APIService.refreshToken] 🔄 Found refresh token in sessionStorage');
+        }
+      }
       console.log('[APIService.refreshToken] 🔍 Retrieved from localStorage:', refreshToken ? 'Token exists' : 'NO TOKEN FOUND');
       console.log('[APIService.refreshToken] 🔍 Token length:', refreshToken?.length || 0);
       console.log('[APIService.refreshToken] 🔍 Token preview:', refreshToken?.substring(0, 20) + '...');

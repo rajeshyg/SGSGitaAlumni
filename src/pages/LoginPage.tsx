@@ -5,6 +5,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { OTPService } from '../services/OTPService';
+import { StorageUtils } from '../contexts/AuthContext';
+import { APIConfigDisplay } from '../components/APIConfigDisplay';
 
 // ============================================================================
 // LOGIN PAGE COMPONENT
@@ -28,31 +30,36 @@ export function LoginPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
+    console.log('[LoginPage] 🔍 Redirect check - isAuthenticated:', isAuthenticated, 'user:', user, 'isLoading:', isLoading);
+    console.log('[LoginPage] 🔍 Current location:', location.pathname);
+
     if (isAuthenticated && user) {
-      console.log('[LoginPage] 🔍 User authenticated, checking family account status...');
+      console.log('[LoginPage] ✅ User authenticated, checking family account status...');
       console.log('[LoginPage] User object:', user);
       console.log('[LoginPage] is_family_account:', user.is_family_account);
       console.log('[LoginPage] Type:', typeof user.is_family_account);
-      
+
       const userRole = user.role?.toLowerCase();
       const isFamilyAccount = user.is_family_account === 1 || user.is_family_account === true;
-      
+
       console.log('[LoginPage] isFamilyAccount check:', isFamilyAccount);
-      
+
       // For family accounts, redirect to profile selection page
       if (isFamilyAccount) {
         console.log('🔄 LoginPage: Family account detected, redirecting to profile selection');
         navigate('/profile-selection', { replace: true });
         return;
       }
-      
+
       // For non-family accounts, use normal redirect logic
       const defaultRedirect = userRole === 'admin' ? '/admin' : '/dashboard';
       const from = location.state?.from?.pathname || defaultRedirect;
       console.log('🔄 LoginPage: Non-family account, redirecting to:', from);
       navigate(from, { replace: true });
+    } else if (!isLoading) {
+      console.log('[LoginPage] ❌ User not authenticated or still loading');
     }
-  }, [isAuthenticated, user, navigate, location]);
+  }, [isAuthenticated, user, navigate, location, isLoading]);
 
   // Clear errors when form data changes
   useEffect(() => {
@@ -102,28 +109,69 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log('Login form submitted with:', formData);
+    console.log('🔐 [LoginPage] =================== LOGIN SUBMITTED ===================');
+    console.log('🔐 [LoginPage] Email:', formData.email);
+    console.log('🔐 [LoginPage] Timestamp:', new Date().toISOString());
+    console.log('🔐 [LoginPage] User Agent:', navigator.userAgent);
+    console.log('🔐 [LoginPage] Is Mobile:', /iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
 
     if (!validateForm()) {
-      console.log('Form validation failed');
+      console.log('🔐 [LoginPage] ❌ Form validation failed');
       return;
     }
 
-    console.log('Form validation passed, attempting login');
+    console.log('🔐 [LoginPage] ✅ Form validation passed, attempting login');
     setIsSubmitting(true);
 
     try {
-      console.log('Calling login function...');
-      await login({
+      console.log('🔐 [LoginPage] Calling login function...');
+      const response = await login({
         email: formData.email,
         password: formData.password
       });
 
-      console.log('Login function completed successfully');
+      console.log('🔐 [LoginPage] ✅ Login function completed');
+      console.log('🔐 [LoginPage] Response received:', { 
+        hasToken: !!response.token, 
+        hasRefreshToken: !!response.refreshToken,
+        tokenLength: response.token?.length,
+        refreshTokenLength: response.refreshToken?.length,
+        user: response.user 
+      });
+
+      // CRITICAL: Verify tokens were stored immediately after login
+      console.log('🔐 [LoginPage] 🔍 VERIFYING TOKEN STORAGE...');
+      const storedAuthToken = StorageUtils.getItem('authToken');
+      const storedRefreshToken = StorageUtils.getItem('refreshToken');
+
+      console.log('🔐 [LoginPage] Stored authToken:', storedAuthToken ? `Present (${storedAuthToken.length} chars)` : 'MISSING');
+      console.log('🔐 [LoginPage] Stored refreshToken:', storedRefreshToken ? `Present (${storedRefreshToken.length} chars)` : 'MISSING');
+
+      if (!storedAuthToken) {
+        console.error('🔐 [LoginPage] ❌ CRITICAL: Auth token not found in storage after login!');
+        console.error('🔐 [LoginPage] localStorage available:', StorageUtils.isLocalStorageAvailable());
+        console.error('🔐 [LoginPage] localStorage keys:', Object.keys(localStorage));
+        console.error('🔐 [LoginPage] sessionStorage keys:', Object.keys(sessionStorage));
+        
+        // Attempt to manually store the token as a fallback
+        if (response.token) {
+          console.log('🔐 [LoginPage] 🔄 Attempting manual token storage...');
+          StorageUtils.setItem('authToken', response.token);
+          StorageUtils.setItem('refreshToken', response.refreshToken);
+          
+          // Verify again
+          const recheck = StorageUtils.getItem('authToken');
+          console.log('🔐 [LoginPage] Manual storage result:', recheck ? 'SUCCESS' : 'FAILED');
+        }
+      } else {
+        console.log('🔐 [LoginPage] ✅ Token storage verified successfully');
+      }
+
+      console.log('🔐 [LoginPage] ===========================================');
       // Navigation will be handled by the useEffect above
     } catch (loginError) {
       // Error is handled by the auth context
-      console.error('Login failed:', loginError);
+      console.error('🔐 [LoginPage] ❌ Login failed:', loginError);
     } finally {
       setIsSubmitting(false);
     }
@@ -361,6 +409,9 @@ export function LoginPage() {
           <p>© 2024 SGSGita Alumni Network. All rights reserved.</p>
         </div>
       </div>
+      
+      {/* Temporary API Config Display for debugging */}
+      <APIConfigDisplay />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import AuthProvider from './contexts/AuthContext'
 import { ProtectedRoute, PublicRoute, AdminRoute, ModeratorRoute } from './components/auth/ProtectedRoute'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LogViewer } from './components/debug/LogViewer'
+import { MobileDebugOverlay } from './components/MobileDebugOverlay'
 
 // Lazy load main page components for better performance
 const AdminPage = lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })))
@@ -117,6 +118,7 @@ function App() {
         <AuthProvider>
           <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <LogViewer />
+            <MobileDebugOverlay />
             <Suspense fallback={<PageLoadingFallback />}>
               <Routes>
                 {/* Public routes (redirect authenticated users) */}

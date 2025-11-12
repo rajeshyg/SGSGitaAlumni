@@ -38,10 +38,16 @@ export const secureAPIClient = (() => {
 
   try {
     // Try to get from Vite environment variables
-    const baseURL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) 
-      || 'http://localhost:3001';
+    // If empty or not set, use empty string for relative URLs (will be proxied by Vite)
+    const baseURL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || '';
     
-    return new SecureAPIClient(baseURL);
+    console.log('[Security] 🔧 SecureAPIClient initializing with baseURL:', baseURL || '(empty - using relative URLs)');
+    console.log('[Security] 🔍 import.meta.env.VITE_API_BASE_URL:', import.meta.env?.VITE_API_BASE_URL);
+    console.log('[Security] 🔍 Mode:', import.meta.env?.MODE);
+    
+    const client = new SecureAPIClient(baseURL);
+    console.log('[Security] ✅ SecureAPIClient created successfully');
+    return client;
   } catch (e) {
     console.error('[Security] Failed to initialize SecureAPIClient:', e);
     return null;

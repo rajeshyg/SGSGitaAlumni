@@ -25,6 +25,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0', // Listen on all interfaces for network access
     fs: {
       // Allow importing files from the prototype workspace
       allow: [
@@ -33,15 +34,16 @@ export default defineConfig({
       ],
     },
     // Proxy API requests to the backend server
+    // Use environment variable or fallback to localhost
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
         cache: false
       },
       '/socket.io': {
-        target: 'http://localhost:3001',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:3001',
         changeOrigin: true,
         ws: true,  // Enable WebSocket proxying
         // Retry configuration to handle backend startup delay

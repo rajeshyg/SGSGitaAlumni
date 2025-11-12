@@ -92,17 +92,34 @@ export const authenticateToken = async (req, res, next) => {
 
 // User login
 export const login = asyncHandler(async (req, res) => {
-  console.log('🔐 Login attempt received for email:', req.body?.email);
+  const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  const isMobile = /mobile|android|iphone|ipad|ipod/i.test(userAgent);
+  
+  console.log('🔐 =================== LOGIN ATTEMPT ===================');
+  console.log('🔐 Email:', req.body?.email);
+  console.log('🔐 Client IP:', clientIP);
+  console.log('🔐 User Agent:', userAgent);
+  console.log('🔐 Is Mobile:', isMobile);
+  console.log('🔐 Timestamp:', new Date().toISOString());
+  console.log('🔐 Request Headers:', JSON.stringify({
+    'content-type': req.headers['content-type'],
+    'origin': req.headers['origin'],
+    'referer': req.headers['referer']
+  }, null, 2));
+  
   const { email, password, otpVerified } = req.body;
 
   // Check if this is OTP-based passwordless login or traditional password login
   if (!email) {
+    console.log('🔐 ❌ Missing email field');
     throw ValidationError.missingField('email');
   }
 
   // For OTP-verified login, password is optional
   // For traditional login, password is required
   if (!otpVerified && !password) {
+    console.log('🔐 ❌ Missing password field');
     throw ValidationError.missingField('password');
   }
 
@@ -232,6 +249,17 @@ export const login = asyncHandler(async (req, res) => {
   const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
   const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
+  console.log('🔐 ✅ LOGIN SUCCESSFUL ===================');
+  console.log('🔐 User ID:', user.id);
+  console.log('🔐 Email:', user.email);
+  console.log('🔐 Role:', user.role);
+  console.log('🔐 Token Length:', token.length);
+  console.log('🔐 RefreshToken Length:', refreshToken.length);
+  console.log('🔐 Token Expiry:', JWT_EXPIRES_IN);
+  console.log('🔐 Is Mobile Client:', isMobile);
+  console.log('🔐 Timestamp:', new Date().toISOString());
+  console.log('🔐 ===========================================');
+
   // Return user data (without password hash)
   const userResponse = {
     id: user.id,
@@ -260,6 +288,78 @@ export const logout = asyncHandler(async (req, res) => {
   // In a more sophisticated implementation, you might want to blacklist the token
   // For now, we'll just return success since the client will remove the token
   res.json({ success: true, message: 'Logged out successfully' });
+});
+
+// Verify current authentication state (for mobile debugging)
+export const verifyAuth = asyncHandler(async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  console.log('🔍 =================== AUTH VERIFICATION ===================');
+  console.log('🔍 Timestamp:', new Date().toISOString());
+  console.log('🔍 Token present:', !!token);
+  console.log('🔍 Token length:', token?.length || 0);
+  console.log('🔍 User Agent:', req.headers['user-agent']);
+  console.log('🔍 Client IP:', req.ip || req.connection.remoteAddress);
+  
+  if (!token) {
+    console.log('🔍 ❌ No token provided');
+    return res.json({
+      authenticated: false,
+      reason: 'no_token',
+      message: 'No authentication token provided'
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('🔍 ✅ Token decoded:', { userId: decoded.userId, email: decoded.email, role: decoded.role });
+    
+    // Verify user still exists
+    const connection = await pool.getConnection();
+    const [rows] = await connection.execute(
+      'SELECT id, email, role, is_active, first_name, last_name FROM app_users WHERE id = ?',
+      [decoded.userId]
+    );
+    connection.release();
+    
+    if (rows.length === 0 || !rows[0].is_active) {
+      console.log('🔍 ❌ User not found or inactive');
+      return res.json({
+        authenticated: false,
+        reason: 'user_not_found_or_inactive',
+        message: 'User account not found or inactive'
+      });
+    }
+    
+    const user = rows[0];
+    console.log('🔍 ✅ User verified:', { id: user.id, email: user.email, role: user.role });
+    console.log('🔍 ===========================================');
+    
+    return res.json({
+      authenticated: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        isActive: user.is_active
+      },
+      tokenValid: true,
+      message: 'Authentication valid'
+    });
+  } catch (error) {
+    console.log('🔍 ❌ Token verification failed:', error.message);
+    console.log('🔍 ===========================================');
+    
+    return res.json({
+      authenticated: false,
+      reason: error.name === 'TokenExpiredError' ? 'token_expired' : 'token_invalid',
+      message: error.message,
+      tokenValid: false
+    });
+  }
 });
 
 // Refresh token

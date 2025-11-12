@@ -52,7 +52,8 @@ import {
   requestPasswordReset,
   validatePasswordResetToken,
   resetPassword,
-  setAuthPool
+  setAuthPool,
+  verifyAuth
 } from './routes/auth.js';
 
 import {
@@ -239,6 +240,7 @@ app.use(monitoringMiddleware);
 
 app.post('/api/auth/login', loginRateLimit, validateRequest({ body: LoginSchema }), login);
 app.post('/api/auth/logout', authenticateToken, logout);
+app.get('/api/auth/verify', verifyAuth); // Mobile debugging endpoint - no auth required
 app.post('/api/auth/refresh', refresh);
 app.post('/api/auth/register-from-invitation', registrationRateLimit, validateRequest({ body: RegisterSchema }), (req, res, next) => {
   // Reduce verbose logging in production
@@ -648,8 +650,26 @@ try {
 
 const server = app.listen(PORT, '0.0.0.0', async () => {
   try {
+    // Get actual network IP
+    const os = await import('os');
+    const networkInterfaces = os.networkInterfaces();
+    let networkIP = 'localhost';
+    
+    // Find the first non-internal IPv4 address
+    for (const interfaceName in networkInterfaces) {
+      const addresses = networkInterfaces[interfaceName];
+      for (const addr of addresses) {
+        if (addr.family === 'IPv4' && !addr.internal) {
+          networkIP = addr.address;
+          break;
+        }
+      }
+      if (networkIP !== 'localhost') break;
+    }
+    
     console.log(`🚀 Backend API server running on http://0.0.0.0:${PORT}`);
-    console.log(`🌐 Network accessible at: http://[YOUR_IP_ADDRESS]:${PORT}`);
+    console.log(`🌐 Network accessible at: http://${networkIP}:${PORT}`);
+    console.log(`📱 Mobile access: http://${networkIP}:${PORT}`);
     console.log(`📊 MySQL Database: ${process.env.DB_NAME}`);
     console.log(`🏠 Host: ${process.env.DB_HOST}`);
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { APIService, type User, type LoginCredentials, type RegisterData, type AuthResponse } from '../services/APIService';
 import { AuthErrorHandler, type AuthError } from '../lib/auth/errorHandling';
 import { apiClient } from '../lib/api';
@@ -26,6 +26,84 @@ const getUserDisplayName = (user: User): string => {
   const lastName = user.lastName || '';
   const fullName = `${firstName} ${lastName}`.trim();
   return fullName || 'User'; // Fallback to 'User' if both names are empty
+};
+
+// ============================================================================
+// STORAGE UTILITIES FOR MOBILE COMPATIBILITY
+// ============================================================================
+
+export const StorageUtils = {
+  // Check if localStorage is available and working
+  isLocalStorageAvailable(): boolean {
+    try {
+      const testKey = '__storage_test__';
+      localStorage.setItem(testKey, 'test');
+      localStorage.removeItem(testKey);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // Safe localStorage operations with fallback to sessionStorage
+  setItem(key: string, value: string): void {
+    try {
+      if (this.isLocalStorageAvailable()) {
+        localStorage.setItem(key, value);
+        console.log(`[StorageUtils] ✅ Stored ${key} in localStorage`);
+      } else {
+        sessionStorage.setItem(key, value);
+        console.log(`[StorageUtils] ⚠️ localStorage unavailable, stored ${key} in sessionStorage`);
+      }
+    } catch (error) {
+      console.error(`[StorageUtils] ❌ Failed to store ${key}:`, error);
+      // Try sessionStorage as last resort
+      try {
+        sessionStorage.setItem(key, value);
+        console.log(`[StorageUtils] 🔄 Fallback: stored ${key} in sessionStorage`);
+      } catch (fallbackError) {
+        console.error(`[StorageUtils] ❌ Critical: Failed to store ${key} in any storage:`, fallbackError);
+      }
+    }
+  },
+
+  getItem(key: string): string | null {
+    try {
+      // Try localStorage first
+      if (this.isLocalStorageAvailable()) {
+        const value = localStorage.getItem(key);
+        if (value !== null) {
+          console.log(`[StorageUtils] ✅ Retrieved ${key} from localStorage`);
+          return value;
+        }
+      }
+
+      // Fallback to sessionStorage
+      const sessionValue = sessionStorage.getItem(key);
+      if (sessionValue !== null) {
+        console.log(`[StorageUtils] 🔄 Retrieved ${key} from sessionStorage`);
+        return sessionValue;
+      }
+
+      console.log(`[StorageUtils] ❌ ${key} not found in any storage`);
+      return null;
+    } catch (error) {
+      console.error(`[StorageUtils] ❌ Failed to retrieve ${key}:`, error);
+      return null;
+    }
+  },
+
+  removeItem(key: string): void {
+    try {
+      if (this.isLocalStorageAvailable()) {
+        localStorage.removeItem(key);
+      }
+      sessionStorage.removeItem(key);
+      console.log(`[StorageUtils] 🗑️ Removed ${key} from all storage`);
+    } catch (error) {
+      console.error(`[StorageUtils] ❌ Failed to remove ${key}:`, error);
+    }
+  }
 };
 
 export interface AuthContextType extends AuthState {
@@ -91,15 +169,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('  - is_family_account === true:', response.user.is_family_account === true);
       }
 
-      // Store tokens securely
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
+      // Store tokens securely using StorageUtils for mobile compatibility
+      StorageUtils.setItem('authToken', response.token);
+      StorageUtils.setItem('refreshToken', response.refreshToken);
 
-      console.log('[AuthContext.login] 🔐 Tokens stored in localStorage');
+      console.log('[AuthContext.login] 🔐 Tokens stored using StorageUtils');
       console.log('[AuthContext.login] 🔍 authToken length:', response.token?.length || 0);
       console.log('[AuthContext.login] 🔍 refreshToken length:', response.refreshToken?.length || 0);
       console.log('[AuthContext.login] 🔍 refreshToken exists:', !!response.refreshToken);
-      console.log('[AuthContext.login] 🔍 Verification - reading back from localStorage:', localStorage.getItem('refreshToken') ? 'FOUND' : 'NOT FOUND');
 
       // Initialize API client with auth tokens
       apiClient.initializeAuth(response.token, response.refreshToken);
@@ -154,9 +231,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const response: AuthResponse = await APIService.register(userData);
 
-      // Store tokens securely
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
+      // Store tokens securely using StorageUtils
+      StorageUtils.setItem('authToken', response.token);
+      StorageUtils.setItem('refreshToken', response.refreshToken);
 
       // Initialize API client with auth tokens
       apiClient.initializeAuth(response.token, response.refreshToken);
@@ -193,9 +270,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } finally {
       // Clear tokens, profile, and state regardless of API call success
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('currentProfile');
+      StorageUtils.removeItem('authToken');
+      StorageUtils.removeItem('refreshToken');
+      StorageUtils.removeItem('currentProfile');
 
       // Clear API client auth tokens
       apiClient.clearAuth();
@@ -216,8 +293,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshToken = async (): Promise<void> => {
     try {
       const response = await APIService.refreshToken();
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
+      StorageUtils.setItem('authToken', response.token);
+      StorageUtils.setItem('refreshToken', response.refreshToken);
       
       // Initialize API client with new tokens
       apiClient.initializeAuth(response.token, response.refreshToken);
@@ -237,7 +314,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         primary_family_member_id: user.primary_family_member_id
       });
       
-      // Update profile in localStorage
+      // Update profile in storage
       const profile = {
         id: typeof user.id === 'string' ? parseInt(user.id) || 1 : user.id,
         name: getUserDisplayName(user),
@@ -248,7 +325,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                              user.role === 'moderator' ? 'Moderator' : 'Member'
         }
       };
-      localStorage.setItem('currentProfile', JSON.stringify(profile));
+      StorageUtils.setItem('currentProfile', JSON.stringify(profile));
       
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
@@ -310,10 +387,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
    useEffect(() => {
        const checkAuth = async () => {
-         const token = localStorage.getItem('authToken');
-         const storedRefreshToken = localStorage.getItem('refreshToken');
+         console.log('[AuthContext] 🔍 Starting authentication check on app load');
+         const token = StorageUtils.getItem('authToken');
+         const storedRefreshToken = StorageUtils.getItem('refreshToken');
+
+         console.log('[AuthContext] 🔍 Storage check - authToken exists:', !!token, 'length:', token?.length || 0);
+         console.log('[AuthContext] 🔍 Storage check - refreshToken exists:', !!storedRefreshToken, 'length:', storedRefreshToken?.length || 0);
+         console.log('[AuthContext] 🔍 Available storage keys: localStorage:', Object.keys(localStorage), 'sessionStorage:', Object.keys(sessionStorage));
 
          if (token) {
+           console.log('[AuthContext] ✅ Found auth token, initializing API client...');
            // Initialize API client with stored tokens
            apiClient.initializeAuth(token, storedRefreshToken || undefined);
 
@@ -323,7 +406,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
            });
 
            try {
+             console.log('[AuthContext] 🔄 Fetching current user data...');
              const user = await APIService.getCurrentUser();
+             console.log('[AuthContext] ✅ User data fetched successfully:', user.email, user.role);
 
            // Store user profile in localStorage for admin components
            const profile = {
@@ -336,7 +421,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                                   user.role === 'moderator' ? 'Moderator' : 'Member'
              }
            };
-           localStorage.setItem('currentProfile', JSON.stringify(profile));
+           StorageUtils.setItem('currentProfile', JSON.stringify(profile));
 
            if (import.meta.env.DEV) {
              // eslint-disable-next-line no-console
@@ -344,6 +429,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
              console.log('[AuthContext] is_family_account:', user.is_family_account);
            }
 
+           console.log('[AuthContext] ✅ Setting authenticated state with user:', user.email);
            setAuthState({
              user,
              isAuthenticated: true,
@@ -351,9 +437,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
              error: null,
              authError: null
            });
-         } catch {
+         } catch (error) {
+           console.error('[AuthContext] ❌ Failed to restore auth from token:', error);
            // Token might be expired, try to refresh
            try {
+             console.log('[AuthContext] 🔄 Attempting token refresh...');
              await refreshToken();
              const user = await APIService.getCurrentUser();
 
@@ -368,13 +456,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
                                     user.role === 'moderator' ? 'Moderator' : 'Member'
                }
              };
-             localStorage.setItem('currentProfile', JSON.stringify(profile));
+             StorageUtils.setItem('currentProfile', JSON.stringify(profile));
 
              if (import.meta.env.DEV) {
                // eslint-disable-next-line no-console
                console.log('[AuthContext] Refreshed auth, stored profile:', profile);
              }
 
+             console.log('[AuthContext] ✅ Auth restored via refresh, setting state');
              setAuthState({
                user,
                isAuthenticated: true,
@@ -382,12 +471,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
                error: null,
                authError: null
              });
-           } catch {
+           } catch (refreshError) {
+             console.error('[AuthContext] ❌ Token refresh failed, clearing auth:', refreshError);
              // Refresh failed, clear auth state
              await logout();
            }
          }
        } else {
+         console.log('[AuthContext] ❌ No auth token found, user not authenticated');
          setAuthState(prev => ({ ...prev, isLoading: false }));
        }
      };
