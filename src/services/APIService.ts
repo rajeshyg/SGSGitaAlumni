@@ -902,7 +902,9 @@ export const APIService = {
       const response = await apiClient.get('/api/conversations');
 
       logger.info('Conversations retrieved');
-      return response as Conversation[];
+      // Extract data array from wrapped response { success: true, data: [...] }
+      const data = (response as any)?.data || response || [];
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       logger.error('Failed to fetch conversations:', error);
       throw new Error('Failed to fetch conversations. Please try again.');
@@ -917,7 +919,9 @@ export const APIService = {
       const response = await apiClient.get(`/api/conversations/${conversationId}/messages`);
 
       logger.info('Messages retrieved for conversation:', conversationId);
-      return response as Message[];
+      // Extract data array from wrapped response { success: true, data: [...] }
+      const data = (response as any)?.data || response || [];
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       logger.error('Failed to fetch messages:', error);
       throw new Error('Failed to fetch messages. Please try again.');

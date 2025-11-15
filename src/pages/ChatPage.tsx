@@ -10,7 +10,8 @@ import type { Conversation } from '../services/APIService';
 export default function ChatPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const conversationId = searchParams.get('c') || '';
+  // Support both old (?conversationId=) and new (?c=) URL parameter formats
+  const conversationId = searchParams.get('c') || searchParams.get('conversationId') || '';
 
   const { user } = useAuth();
   const { conversations } = useConversations();
@@ -23,8 +24,9 @@ export default function ChatPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Find current conversation
-  const currentConversation = conversations.find((c: Conversation) => c.id === conversationId);
+  // Find current conversation - ensure conversations is always an array
+  const conversationsList = Array.isArray(conversations) ? conversations : [];
+  const currentConversation = conversationsList.find((c: Conversation) => c.id === conversationId);
 
   const conversationName = currentConversation?.participants
     ?.map((p) => `${p.firstName || ''} ${p.lastName || ''}`.trim())
