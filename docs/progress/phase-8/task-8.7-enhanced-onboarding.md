@@ -3,10 +3,12 @@
 **Status:** 🟡 Planned
 **Priority:** High
 **Duration:** 1 week
-**Dependencies:** Task 8.2 (Invitation System), Task 8.1 (Age Verification)
+**Dependencies:** Task 8.2 (Invitation System), Task 8.1 (Age Verification), Task 8.11 (Family Member System)
 
 ## Overview
 Implement comprehensive onboarding experience with family access management, guided registration workflows, consent collection, and profile setup based on meeting requirements and user notes.
+
+**Note:** This task focuses on the onboarding **flow and user experience**. The underlying family member system (shared email, profiles, preferences) is implemented in [Task 8.11: Family Member System](./task-8.11-family-member-system.md).
 
 ## Requirements Analysis
 
@@ -16,6 +18,7 @@ Implement comprehensive onboarding experience with family access management, gui
 - **OTP Authentication:** Email OTP for secure access without daily login
 - **Family Profile Selection:** Parents choose profile when multiple children graduated
 - **Shared Login:** 14+ kids use parent's account with their own profile (like Netflix)
+  - **Implementation:** See [Task 8.11: Family Member System](./task-8.11-family-member-system.md)
 
 ### User Experience Requirements
 - **Guided Workflow:** Step-by-step onboarding process

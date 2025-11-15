@@ -395,6 +395,153 @@ Questions? Contact: ${process.env.EMAIL_SUPPORT || 'support@sgsgitaalumni.org'}
     return { html, text };
   }
 
+  getPasswordResetEmailTemplate(resetToken, firstName = 'User') {
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
+    const expiryHours = 1;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Reset Your Password</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              line-height: 1.6;
+              color: #333;
+              background-color: #f5f5f5;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              max-width: 600px;
+              margin: 40px auto;
+              background-color: #ffffff;
+              border-radius: 8px;
+              overflow: hidden;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: #ffffff;
+              padding: 40px 20px;
+              text-align: center;
+            }
+            .header h1 {
+              margin: 0;
+              font-size: 28px;
+              font-weight: 600;
+            }
+            .content {
+              padding: 40px 30px;
+            }
+            .button {
+              display: inline-block;
+              padding: 15px 40px;
+              background-color: #667eea;
+              color: #ffffff !important;
+              text-decoration: none;
+              border-radius: 5px;
+              margin: 25px 0;
+              font-weight: 600;
+              font-size: 16px;
+            }
+            .warning {
+              background-color: #fff3cd;
+              border: 1px solid #ffc107;
+              color: #856404;
+              padding: 15px;
+              border-radius: 4px;
+              margin: 20px 0;
+              font-size: 14px;
+            }
+            .footer {
+              background-color: #f8f9fa;
+              padding: 20px;
+              text-align: center;
+              font-size: 12px;
+              color: #6c757d;
+              border-top: 1px solid #e9ecef;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🔐 Reset Your Password</h1>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">SGS Gita Alumni Network</p>
+            </div>
+            
+            <div class="content">
+              <p>Hi ${firstName},</p>
+              <p>We received a request to reset your password. If you didn't make this request, you can ignore this email.</p>
+              
+              <p>To reset your password, click the button below:</p>
+              
+              <div style="text-align: center;">
+                <a href="${resetUrl}" class="button">Reset Password</a>
+              </div>
+              
+              <p style="font-size: 14px; color: #6c757d;">
+                Or copy and paste this link into your browser:<br>
+                <a href="${resetUrl}" style="color: #667eea; word-break: break-all; font-size: 12px;">${resetUrl}</a>
+              </p>
+              
+              <div class="warning">
+                ⏰ <strong>Important:</strong> This link expires in <strong>${expiryHours} hour</strong>. Please reset your password soon!
+              </div>
+              
+              <p style="font-size: 14px; color: #6c757d; margin-top: 30px;">
+                <strong>Security Tip:</strong> Your new password must contain:
+              </p>
+              <ul style="font-size: 14px; color: #6c757d;">
+                <li>At least 8 characters</li>
+                <li>An uppercase letter (A-Z)</li>
+                <li>A lowercase letter (a-z)</li>
+                <li>A number (0-9)</li>
+                <li>A special character (!@#\$%^&*)</li>
+              </ul>
+            </div>
+            
+            <div class="footer">
+              <p>© 2025 SGS Gita Alumni Network. All rights reserved.</p>
+              <p style="margin: 5px 0;">
+                Questions? <a href="mailto:${process.env.EMAIL_SUPPORT || 'support@sgsgitaalumni.org'}" style="color: #667eea; text-decoration: none;">Contact Support</a>
+              </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const text = `
+Reset Your Password - SGS Gita Alumni Network
+
+Hi ${firstName},
+
+We received a request to reset your password. If you didn't make this request, you can ignore this email.
+
+To reset your password, please visit:
+${resetUrl}
+
+This link expires in ${expiryHours} hour.
+
+Your new password must contain:
+- At least 8 characters
+- An uppercase letter (A-Z)
+- A lowercase letter (a-z)
+- A number (0-9)
+- A special character (!@#\$%^&*)
+
+© 2025 SGS Gita Alumni Network
+Questions? Contact: ${process.env.EMAIL_SUPPORT || 'support@sgsgitaalumni.org'}
+    `.trim();
+
+    return { html, text };
+  }
+
   // ============================================================================
   // SEND EMAIL METHODS
   // ============================================================================
@@ -459,6 +606,40 @@ Questions? Contact: ${process.env.EMAIL_SUPPORT || 'support@sgsgitaalumni.org'}
       }
     } catch (error) {
       console.error('[EmailService] Send invitation email error:', error);
+      throw error;
+    }
+  }
+
+  async sendPasswordResetEmail(toEmail, resetToken, firstName = 'User') {
+    try {
+      const { html, text } = this.getPasswordResetEmailTemplate(resetToken, firstName);
+      const subject = 'Reset Your Password - SGS Gita Alumni Network';
+
+      // Re-check dev mode at runtime to ensure env vars are loaded
+      const isDev = process.env.NODE_ENV === 'development';
+      const shouldSkip = process.env.DEV_SKIP_EMAIL === 'true' || this.skipEmail || this.devMode;
+
+      if (shouldSkip || isDev) {
+        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
+        console.log('\n' + '='.repeat(60));
+        console.log('📧 [EmailService] PASSWORD RESET EMAIL (Development Mode)');
+        console.log('='.repeat(60));
+        console.log(`To: ${toEmail}`);
+        console.log(`Subject: ${subject}`);
+        console.log(`Reset Link: ${resetLink}`);
+        console.log(`Token: ${resetToken}`);
+        console.log(`Name: ${firstName}`);
+        console.log('='.repeat(60) + '\n');
+        return { success: true, mode: 'development' };
+      }
+
+      if (this.provider === 'aws-ses') {
+        return await this.sendViaSES(toEmail, subject, html, text);
+      } else {
+        return await this.sendViaSMTP(toEmail, subject, html, text);
+      }
+    } catch (error) {
+      console.error('[EmailService] Send password reset email error:', error);
       throw error;
     }
   }

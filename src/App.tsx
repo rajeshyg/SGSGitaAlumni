@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import ThemeProvider from './lib/theme/provider'
 import AuthProvider from './contexts/AuthContext'
 import { ProtectedRoute, PublicRoute, AdminRoute, ModeratorRoute } from './components/auth/ProtectedRoute'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { LogViewer } from './components/debug/LogViewer'
+import { MobileDebugOverlay } from './components/MobileDebugOverlay'
 
 // Lazy load main page components for better performance
 const AdminPage = lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })))
@@ -13,7 +16,10 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const InvitationAcceptancePage = lazy(() => import('./pages/InvitationAcceptancePage'))
 const OTPVerificationPage = lazy(() => import('./pages/OTPVerificationPage'))
 const FamilyProfileSelectionPage = lazy(() => import('./pages/FamilyProfileSelectionPage'))
+const FamilySettingsPage = lazy(() => import('./pages/FamilySettingsPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage'))
+const FamilyManagePage = lazy(() => import('./pages/FamilyManagePage'))
 
 // Lazy load placeholder components with loading states
 const UploadPage = lazy(() => Promise.resolve({
@@ -28,7 +34,11 @@ const UploadPage = lazy(() => Promise.resolve({
 const AlumniDirectoryPage = lazy(() => import('./pages/AlumniDirectoryPage'))
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'))
 const PostingsPage = lazy(() => import('./pages/PostingsPage'))
+const MyPostingsPage = lazy(() => import('./pages/MyPostingsPage'))
+const PostingDetailPage = lazy(() => import('./pages/PostingDetailPage'))
 const CreatePostingPage = lazy(() => import('./pages/CreatePostingPage'))
+const EditPostingPage = lazy(() => import('./pages/EditPostingPage'))
+const ModerationQueuePage = lazy(() => import('./pages/moderator/ModerationQueuePage').then(module => ({ default: module.ModerationQueuePage })))
 
 const ReportsPage = lazy(() => Promise.resolve({
   default: () => (
@@ -75,14 +85,7 @@ const ResponsesPage = lazy(() => Promise.resolve({
   )
 }))
 
-const ChatPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Messages</h1>
-      <p className="text-muted-foreground">Chat functionality coming soon...</p>
-    </div>
-  )
-}))
+const ChatPage = lazy(() => import('./pages/ChatPage'))
 
 const UsersPage = lazy(() => Promise.resolve({
   default: () => (
@@ -93,23 +96,10 @@ const UsersPage = lazy(() => Promise.resolve({
   )
 }))
 
-const ProfileSelectionPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Profile Selection</h1>
-      <p className="text-muted-foreground">Profile selection coming soon...</p>
-    </div>
-  )
-}))
+const ProfileSelectionPage = lazy(() => import('./pages/ProfileSelectionPage'))
 
-const ForgotPasswordPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Forgot Password</h1>
-      <p className="text-muted-foreground">Password reset functionality coming soon...</p>
-    </div>
-  )
-}))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
 
 // Loading component for Suspense fallback
 const PageLoadingFallback = () => (
@@ -123,144 +113,260 @@ const PageLoadingFallback = () => (
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="dark">
-      <AuthProvider>
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Suspense fallback={<PageLoadingFallback />}>
-            <Routes>
-              {/* Public routes (redirect authenticated users) */}
-              <Route path="/login" element={
-                <PublicRoute>
-                  <LoginPage />
-                </PublicRoute>
-              } />
-              <Route path="/forgot-password" element={
-                <PublicRoute>
-                  <ForgotPasswordPage />
-                </PublicRoute>
-              } />
-              <Route path="/invitation/:token" element={
-                <PublicRoute>
-                  <InvitationAcceptancePage />
-                </PublicRoute>
-              } />
-              <Route path="/invitation/accept/:token" element={
-                <PublicRoute>
-                  <FamilyProfileSelectionPage />
-                </PublicRoute>
-              } />
-              <Route path="/verify-otp/:email?" element={
-                <PublicRoute>
-                  <OTPVerificationPage />
-                </PublicRoute>
-              } />
-              <Route path="/family-invitation/:token" element={
-                <PublicRoute>
-                  <FamilyProfileSelectionPage />
-                </PublicRoute>
-              } />
+    <ErrorBoundary level="app">
+      <ThemeProvider defaultTheme="dark">
+        <AuthProvider>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <LogViewer />
+            <MobileDebugOverlay />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <Routes>
+                {/* Public routes (redirect authenticated users) */}
+                <Route path="/login" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <LoginPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/forgot-password" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <ForgotPasswordPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/reset-password/:token" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <ResetPasswordPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/invitation/:token" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <InvitationAcceptancePage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/invitation/accept/:token" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <FamilyProfileSelectionPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
+                {/* OTP Verification - NOT wrapped in PublicRoute because it handles post-auth navigation */}
+                <Route path="/verify-otp/:email?" element={
+                  <ErrorBoundary level="page">
+                    <OTPVerificationPage />
+                  </ErrorBoundary>
+                } />
+                <Route path="/family-invitation/:token" element={
+                  <ErrorBoundary level="page">
+                    <PublicRoute>
+                      <FamilyProfileSelectionPage />
+                    </PublicRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Protected main routes */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
-              <Route path="/home" element={
-                <ProtectedRoute>
-                  <HomePage />
-                </ProtectedRoute>
-              } />
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              } />
+                {/* Protected main routes */}
+                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/home" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <HomePage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/dashboard" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Admin routes */}
-              <Route path="/admin" element={
-                <AdminRoute>
-                  <AdminPage />
-                </AdminRoute>
-              } />
-              <Route path="/Admin" element={
-                <AdminRoute>
-                  <AdminPage />
-                </AdminRoute>
-              } />
+                {/* Profile routes */}
+                <Route path="/profile" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ProfileEditPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/profile/edit" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ProfileEditPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Data management routes - Admin/Moderator only */}
-              <Route path="/upload" element={
-                <ModeratorRoute>
-                  <UploadPage />
-                </ModeratorRoute>
-              } />
-              <Route path="/data-files" element={
-                <ModeratorRoute>
-                  <DataFilesPage />
-                </ModeratorRoute>
-              } />
-              <Route path="/export" element={
-                <ModeratorRoute>
-                  <ExportPage />
-                </ModeratorRoute>
-              } />
-              <Route path="/users" element={
-                <AdminRoute>
-                  <UsersPage />
-                </AdminRoute>
-              } />
+                {/* Family routes */}
+                <Route path="/family/manage" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <FamilyManagePage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/settings/family" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <FamilySettingsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Member accessible routes */}
-              <Route path="/alumni-directory" element={
-                <ProtectedRoute>
-                  <AlumniDirectoryPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/preferences" element={
-                <ProtectedRoute>
-                  <PreferencesPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/postings" element={
-                <ProtectedRoute>
-                  <PostingsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/postings/new" element={
-                <ProtectedRoute>
-                  <CreatePostingPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/reports" element={
-                <ProtectedRoute>
-                  <ReportsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/settings" element={
-                <ProtectedRoute>
-                  <SettingsPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/responses" element={
-                <ProtectedRoute>
-                  <ResponsesPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/chat" element={
-                <ProtectedRoute>
-                  <ChatPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/profile-selection" element={
-                <ProtectedRoute>
-                  <ProfileSelectionPage />
-                </ProtectedRoute>
-              } />
+                {/* Admin routes */}
+                <Route path="/admin" element={
+                  <ErrorBoundary level="page">
+                    <AdminRoute>
+                      <AdminPage />
+                    </AdminRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/Admin" element={
+                  <ErrorBoundary level="page">
+                    <AdminRoute>
+                      <AdminPage />
+                    </AdminRoute>
+                  </ErrorBoundary>
+                } />
 
-              {/* Catch all - redirect to login for unauthenticated, admin for authenticated */}
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-          </Suspense>
-        </Router>
-      </AuthProvider>
-    </ThemeProvider>
+                {/* Data management routes - Admin/Moderator only */}
+                <Route path="/upload" element={
+                  <ErrorBoundary level="page">
+                    <ModeratorRoute>
+                      <UploadPage />
+                    </ModeratorRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/data-files" element={
+                  <ErrorBoundary level="page">
+                    <ModeratorRoute>
+                      <DataFilesPage />
+                    </ModeratorRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/export" element={
+                  <ErrorBoundary level="page">
+                    <ModeratorRoute>
+                      <ExportPage />
+                    </ModeratorRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/moderator/queue" element={
+                  <ErrorBoundary level="page">
+                    <ModeratorRoute>
+                      <ModerationQueuePage />
+                    </ModeratorRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/users" element={
+                  <ErrorBoundary level="page">
+                    <AdminRoute>
+                      <UsersPage />
+                    </AdminRoute>
+                  </ErrorBoundary>
+                } />
+
+                {/* Member accessible routes */}
+                <Route path="/alumni-directory" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <AlumniDirectoryPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/preferences" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <PreferencesPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <PostingsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings/my" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <MyPostingsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings/new" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <CreatePostingPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings/:id/edit" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <EditPostingPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/postings/:id" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <PostingDetailPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/reports" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ReportsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/settings" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/responses" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ResponsesPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/chat" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ChatPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/profile-selection" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <ProfileSelectionPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+
+                {/* Catch all - redirect to login for unauthenticated, admin for authenticated */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+            </Suspense>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   )
 }
 

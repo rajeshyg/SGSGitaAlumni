@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm start)",
+      "Bash(node:*)",
+      "WebFetch(domain:code.claude.com)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(npm run dev:*)",
+      "Bash(set BASE_URL=http://localhost:5173)",
+      "Bash(npx playwright test:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(nul)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(dir:*)",
+      "Bash(set BASE_URL=http://localhost:5181)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(start /B node server.js)",
+      "Bash(task kill:*)",
+      "Bash(set BASE_URL=http://localhost:3001:*)",
+      "Bash(pkill:*)",
+      "Bash(cmd /c \"taskkill /IM node.exe /F 2>nul\")",
+      "Bash(npx tsc:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(cmd /c \"taskkill /PID 5896 /F 2>nul\")",
+      "Bash(cmd /c \"taskkill /PID 43472 /F 2>nul\")",
+      "Bash(cmd /c \"taskkill /IM node.exe /F\")",
+      "Bash(cmd /c \"taskkill /PID 43472 /F\")",
+      "Bash(powershell -Command \"Stop-Process -Id 43472 -Force\")",
+      "Bash(cmd /c \"taskkill /F /PID 29208\")",
+      "Bash(powershell -Command \"Stop-Process -Id 29208 -Force\")",
+      "Bash(powershell -Command \"Stop-Process -Id 68276 -Force; Stop-Process -Id 8656 -Force\")",
+      "Bash(powershell -Command \"Stop-Process -Id 58096 -Force\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

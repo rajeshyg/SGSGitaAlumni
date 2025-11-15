@@ -26,6 +26,7 @@ export function InvitationSection() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [familyInvitations, setFamilyInvitations] = useState<Invitation[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [allActiveOtps, setAllActiveOtps] = useState<Array<{email: string; code: string; tokenType: string; expiresAt: string}>>([]);
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -56,9 +57,10 @@ export function InvitationSection() {
   // Fetch active OTP for an email
   const fetchActiveOtp = useCallback(async (email: string) => {
     try {
-      const response = await fetch(`/api/otp/active/${encodeURIComponent(email)}`, {
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const response = await fetch(`${baseURL}/api/otp/active/${encodeURIComponent(email)}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         }
       });
 
@@ -82,11 +84,45 @@ export function InvitationSection() {
             return newCodes;
           });
         }
+      } else if (response.status === 404) {
+        // 404 means no active OTP exists - this is expected, not an error
+        setGeneratedOtpCodes(prev => {
+          const newCodes = { ...prev };
+          delete newCodes[email];
+          return newCodes;
+        });
+      } else {
+        // Other error statuses (401, 403, 500, etc.)
+        console.warn(`[InvitationSection] Failed to fetch active OTP for ${email}: ${response.status}`);
       }
     } catch (err) {
-      console.error('Failed to fetch active OTP:', err);
+      // Network error or other exception - silently fail
+      console.error('[InvitationSection] Error fetching active OTP:', err);
     }
   }, [isOtpExpired]);
+
+  // Fetch all active OTPs for admin testing panel
+  const fetchAllActiveOtps = useCallback(async () => {
+    try {
+      const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const response = await fetch(`${baseURL}/api/otp/admin/all-active`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAllActiveOtps(data.otps || []);
+      } else {
+        console.warn('[InvitationSection] Failed to fetch all active OTPs:', response.status);
+        setAllActiveOtps([]);
+      }
+    } catch (err) {
+      console.error('[InvitationSection] Error fetching all active OTPs:', err);
+      setAllActiveOtps([]);
+    }
+  }, []);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -95,7 +131,8 @@ export function InvitationSection() {
       const promises = [
         APIService.getInvitations({ page: 1, pageSize: 200 }),
         APIService.getFamilyInvitations ? APIService.getFamilyInvitations({ page: 1, pageSize: 200 }) : Promise.resolve([]),
-        APIService.searchAppUsers('')
+        APIService.searchAppUsers(''),
+        fetchAllActiveOtps() // Load all active OTPs for testing panel
       ];
 
       // Only load members if a search has been performed
@@ -119,12 +156,11 @@ export function InvitationSection() {
         // Keep members as empty array
       }
     } catch (err) {
-      console.error('Failed to load admin data', err);
-      setError('Failed to load admin data. See console for details.');
+      setError('Failed to load admin data.');
     } finally {
       setLoading(false);
     }
-  }, [hasSearchedMembers, memberSearch]);
+  }, [hasSearchedMembers, memberSearch, fetchAllActiveOtps]);
 
   // Define columns for the alumni members table
   const memberColumns: ColumnDef<AlumniMember>[] = [
@@ -219,21 +255,21 @@ export function InvitationSection() {
         const existingInvitation = invitations.find(inv => inv.email === memberEmail);
 
         if (!existingInvitation) {
-          return <Badge variant="outline" className="text-gray-500">Not Invited</Badge>;
+          return <Badge variant="outline" className="text-muted-foreground">Not Invited</Badge>;
         }
 
         const statusColors: Record<string, string> = {
-          pending: 'bg-yellow-100 text-yellow-800',
-          sent: 'bg-blue-100 text-blue-800',
-          accepted: 'bg-green-100 text-green-800',
-          expired: 'bg-red-100 text-red-800',
-          revoked: 'bg-gray-100 text-gray-800',
+          pending: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+          sent: 'bg-primary/10 text-primary',
+          accepted: 'bg-green-500/10 text-green-700 dark:text-green-400',
+          expired: 'bg-destructive/10 text-destructive',
+          revoked: 'bg-muted text-muted-foreground',
         };
 
         return (
           <Badge
             variant="outline"
-            className={statusColors[existingInvitation.status] || 'bg-gray-100 text-gray-800'}
+            className={statusColors[existingInvitation.status] || 'bg-muted text-muted-foreground'}
           >
             {existingInvitation.status}
           </Badge>
@@ -301,7 +337,7 @@ export function InvitationSection() {
                     size="sm"
                     onClick={() => sendInvitationToMember(row.original.id)}
                     disabled={loading}
-                    className="h-8 px-2 bg-blue-600 hover:bg-blue-700"
+                    className="h-8 px-2 bg-primary hover:bg-primary/90"
                   >
                     Invite
                   </Button>
@@ -315,7 +351,6 @@ export function InvitationSection() {
   ];
 
   useEffect(() => {
-    console.log('[InvitationSection] Initial mount - calling loadAll()');
     // initial load on mount only
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,7 +394,6 @@ export function InvitationSection() {
       const data = await APIService.searchAlumniMembers(q);
       setMembers(data || []);
     } catch (err) {
-      console.error('search members failed', err);
       setError('Search failed');
     } finally {
       setLoading(false);
@@ -390,7 +424,6 @@ export function InvitationSection() {
       setEditingMemberId(null);
       setMemberForm({});
     } catch (err) {
-      console.error('update member failed', err);
       setError('Update failed');
     } finally {
       setLoading(false);
@@ -406,8 +439,6 @@ export function InvitationSection() {
       setSuccess('Invitation queued');
       await loadAll();
     } catch (err: any) {
-      console.error('send invitation failed', err);
-
       // Handle specific error cases
       if (err.message && err.message.includes('409')) {
         setError('This alumni member already has a pending invitation');
@@ -435,7 +466,6 @@ export function InvitationSection() {
       setInvitations(invitationsData || []);
       setFamilyInvitations(familyInvData || []);
     } catch (err) {
-      console.error('reload invitations failed', err);
       setError('Failed to load invitations');
     } finally {
       setLoading(false);
@@ -450,7 +480,6 @@ export function InvitationSection() {
       setSuccess('Invitation resent');
       await reloadInvitations();
     } catch (err) {
-      console.error('resend failed', err);
       setError('Resend failed');
     } finally {
       setLoading(false);
@@ -466,7 +495,6 @@ export function InvitationSection() {
       setSuccess('Invitation revoked');
       await reloadInvitations();
     } catch (err) {
-      console.error('revoke failed', err);
       setError('Revoke failed');
     } finally {
       setLoading(false);
@@ -482,7 +510,6 @@ export function InvitationSection() {
       const data = await APIService.searchAppUsers(q);
       setUsers(data || []);
     } catch (err) {
-      console.error('search users failed', err);
       setError('Search users failed');
     } finally {
       setLoading(false);
@@ -512,7 +539,6 @@ export function InvitationSection() {
       setEditingUserId(null);
       setUserForm({});
     } catch (err) {
-      console.error('save user failed', err);
       setError('Failed to save user');
     } finally {
       setLoading(false);
@@ -552,7 +578,6 @@ export function InvitationSection() {
         throw new Error(errorData.error || 'Failed to generate OTP');
       }
     } catch (err) {
-      console.error('Generate test OTP failed', err);
       setError(err instanceof Error ? err.message : 'Failed to generate test OTP');
     }
   };
@@ -562,7 +587,6 @@ export function InvitationSection() {
       await navigator.clipboard.writeText(text);
       setSuccess(`${label} copied to clipboard`);
     } catch (err) {
-      console.error('Copy to clipboard failed', err);
       setError('Failed to copy to clipboard');
     }
   };
@@ -660,14 +684,14 @@ export function InvitationSection() {
 
               {/* Clean Testing Panel */}
               {showInvitationUrls && (
-                <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Eye className="h-4 w-4 text-blue-600" />
-                        <CardTitle className="text-sm text-blue-900">Testing Panel</CardTitle>
+                        <Eye className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-sm text-foreground">Testing Panel</CardTitle>
                       </div>
-                      <CardDescription className="text-xs text-blue-700">
+                      <CardDescription className="text-xs text-muted-foreground">
                         Passwordless authentication testing tools
                       </CardDescription>
                     </div>
@@ -676,16 +700,19 @@ export function InvitationSection() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {/* Invitation URLs */}
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                        <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
                           <Link className="h-3 w-3" />
                           Invitation URLs
                         </h4>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {invitations.slice(0, 10).map((inv: any) => (
-                            <div key={inv.id} className="flex items-center gap-2 p-2 bg-white rounded border text-xs">
+                          {invitations
+                            .filter((inv: any) => inv.status === 'pending' && new Date(inv.expiresAt) > new Date())
+                            .slice(0, 10)
+                            .map((inv: any) => (
+                            <div key={inv.id} className="flex items-center gap-2 p-2 bg-background rounded border text-xs">
                               <div className="flex-1 min-w-0">
-                                <div className="font-medium text-gray-900 truncate">{inv.email}</div>
-                                <code className="text-gray-600 font-mono text-xs break-all">
+                                <div className="font-medium text-foreground truncate">{inv.email}</div>
+                                <code className="text-muted-foreground font-mono text-xs break-all">
                                   {generateInvitationUrl(inv.invitationToken)}
                                 </code>
                               </div>
@@ -700,68 +727,71 @@ export function InvitationSection() {
                               </Button>
                             </div>
                           ))}
+                          {invitations.filter((inv: any) => inv.status === 'pending' && new Date(inv.expiresAt) > new Date()).length === 0 && (
+                            <div className="text-xs text-muted-foreground p-2">No active pending invitations</div>
+                          )}
                         </div>
                       </div>
 
                       {/* OTP Generator */}
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-blue-900 flex items-center gap-2">
+                        <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
                           <Key className="h-3 w-3" />
-                          OTP Generator
+                          Active OTPs ({allActiveOtps.length})
                         </h4>
                         <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {invitations.slice(0, 10).map((inv: any) => (
-                            <div key={inv.id} className="flex items-center gap-2 p-2 bg-white rounded border text-xs">
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-gray-900 truncate">{inv.email}</div>
-                                <div className="flex items-center gap-2">
-                                  {generatedOtpCodes[inv.email] ? (
-                                    <>
+                          {allActiveOtps.length === 0 ? (
+                            <div className="text-xs text-muted-foreground p-2">No active OTPs</div>
+                          ) : (
+                            allActiveOtps.map((otp, idx) => {
+                              const isExpired = new Date(otp.expiresAt) < new Date();
+                              return (
+                                <div key={`${otp.email}-${idx}`} className="flex items-center gap-2 p-2 bg-background rounded border text-xs">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-foreground truncate">{otp.email}</div>
+                                    <div className="flex items-center gap-2">
                                       <code className={`px-2 py-1 rounded text-xs font-mono ${
-                                        generatedOtpCodes[inv.email].isExpired
-                                          ? 'bg-red-100 text-red-800'
-                                          : 'bg-green-100 text-green-800'
+                                        isExpired
+                                          ? 'bg-destructive/10 text-destructive'
+                                          : 'bg-green-500/10 text-green-700 dark:text-green-400'
                                       }`}>
-                                        {generatedOtpCodes[inv.email].code}
+                                        {otp.code}
                                       </code>
-                                      <span className="text-xs text-gray-500">
-                                        {generatedOtpCodes[inv.email].isExpired ? (
+                                      <Badge variant="outline" className="text-xs">
+                                        {otp.tokenType}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        {isExpired ? (
                                           'Expired'
                                         ) : (
                                           <>
-                                            Expires: {new Date(generatedOtpCodes[inv.email].expiresAt).toLocaleTimeString()}
+                                            Expires: {new Date(otp.expiresAt).toLocaleTimeString()}
                                           </>
                                         )}
                                       </span>
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        onClick={() => copyToClipboard(generatedOtpCodes[inv.email].code, 'OTP')}
+                                        onClick={() => copyToClipboard(otp.code, 'OTP')}
                                         className="h-6 px-2 text-xs shrink-0"
                                       >
                                         <Copy className="h-3 w-3" />
                                       </Button>
-                                    </>
-                                  ) : (
-                                    <code className="px-2 py-1 rounded text-xs font-mono bg-gray-100 text-gray-500">
-                                      No active OTP
-                                    </code>
-                                  )}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => fetchAllActiveOtps()}
+                                    className="h-6 px-2 text-xs shrink-0"
+                                    title="Refresh OTPs"
+                                  >
+                                    <RefreshCw className="h-3 w-3" />
+                                  </Button>
                                 </div>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => generateTestOtp(inv.email)}
-                                disabled={loading || (generatedOtpCodes[inv.email] && !generatedOtpCodes[inv.email].isExpired)}
-                                className="h-6 px-2 text-xs shrink-0"
-                                title={generatedOtpCodes[inv.email] && !generatedOtpCodes[inv.email].isExpired ? 'OTP still valid' : 'Generate new OTP'}
-                              >
-                                <Key className="h-3 w-3 mr-1" />
-                                {generatedOtpCodes[inv.email] && !generatedOtpCodes[inv.email].isExpired ? 'Valid' : 'Generate'}
-                              </Button>
-                            </div>
-                          ))}
+                              );
+                            })
+                          )}
                         </div>
                       </div>
                     </div>
@@ -776,59 +806,83 @@ export function InvitationSection() {
                     <Mail className="h-4 w-4" />
                     Individual Invitations
                   </h4>
-                  {invitations.length === 0 ? (
-                    <div className="text-sm text-muted-foreground p-4 border border-dashed rounded">
-                      No individual invitations yet. Send some from the Alumni Members tab.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {invitations.map((inv: any) => (
-                        <Card key={inv.id} className="p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium text-sm truncate">{inv.email}</span>
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${
-                                    inv.status === 'pending' ? 'border-yellow-300 text-yellow-700' :
-                                    inv.status === 'accepted' ? 'border-green-300 text-green-700' :
-                                    'border-gray-300 text-gray-600'
-                                  }`}
-                                >
-                                  {inv.status}
-                                </Badge>
+                  {(() => {
+                    // Filter to show only unique emails, prioritize pending over accepted/revoked
+                    const uniqueInvitations = invitations.reduce((acc: any[], inv: any) => {
+                      const existingIndex = acc.findIndex((i: any) => i.email === inv.email);
+                      if (existingIndex === -1) {
+                        acc.push(inv);
+                      } else {
+                        // Replace with pending if current is pending and existing is not
+                        if (inv.status === 'pending' && acc[existingIndex].status !== 'pending') {
+                          acc[existingIndex] = inv;
+                        }
+                      }
+                      return acc;
+                    }, []);
+                    
+                    return uniqueInvitations.length === 0 ? (
+                      <div className="text-sm text-muted-foreground p-4 border border-dashed rounded">
+                        No individual invitations yet. Send some from the Alumni Members tab.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {uniqueInvitations.map((inv: any) => (
+                          <Card key={inv.id} className="p-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium text-sm truncate">{inv.email}</span>
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-xs ${
+                                      inv.status === 'pending' ? 'border-yellow-300 text-yellow-700' :
+                                      inv.status === 'accepted' ? 'border-green-300 text-green-700' :
+                                      'border-gray-300 text-gray-600'
+                                    }`}
+                                  >
+                                    {inv.status}
+                                  </Badge>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Sent: {inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : 'Never'}
+                                  {inv.lastResentAt && (
+                                    <> • Resent: {new Date(inv.lastResentAt).toLocaleDateString()}</>
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                Sent: {inv.sentAt ? new Date(inv.sentAt).toLocaleDateString() : 'Never'}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 ml-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => resendInvitation(inv.id)}
-                                disabled={loading}
-                                className="h-7 px-2 text-xs"
-                              >
-                                Resend
-                              </Button>
-                              {inv.status !== 'accepted' && inv.status !== 'revoked' && (
+                              <div className="flex items-center gap-1 ml-2">
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  onClick={() => revokeInvitation(inv.id)}
-                                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
+                                  onClick={() => resendInvitation(inv.id)}
+                                  disabled={loading || inv.status === 'accepted' || inv.status === 'revoked'}
+                                  className="h-7 px-2 text-xs"
+                                  title={
+                                    inv.status === 'accepted' ? 'Cannot resend accepted invitation' :
+                                    inv.status === 'revoked' ? 'Cannot resend revoked invitation' :
+                                    'Resend invitation with new token'
+                                  }
                                 >
-                                  Revoke
+                                  Resend
                                 </Button>
-                              )}
+                                {inv.status !== 'accepted' && inv.status !== 'revoked' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => revokeInvitation(inv.id)}
+                                    className="h-7 px-2 text-xs text-destructive hover:text-destructive/80"
+                                  >
+                                    Revoke
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
+                          </Card>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-3">
@@ -868,8 +922,9 @@ export function InvitationSection() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => resendInvitation(inv.id)}
-                                disabled={loading}
+                                disabled={loading || inv.status === 'completed'}
                                 className="h-7 px-2 text-xs"
+                                title={inv.status === 'completed' ? 'Cannot resend completed family invitation' : 'Resend family invitation'}
                               >
                                 Resend
                               </Button>
@@ -878,7 +933,7 @@ export function InvitationSection() {
                                   size="sm"
                                   variant="ghost"
                                   onClick={() => revokeInvitation(inv.id)}
-                                  className="h-7 px-2 text-xs text-red-600 hover:text-red-700"
+                                  className="h-7 px-2 text-xs text-destructive hover:text-destructive/80"
                                 >
                                   Revoke
                                 </Button>

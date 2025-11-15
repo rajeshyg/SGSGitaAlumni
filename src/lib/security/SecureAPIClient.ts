@@ -77,6 +77,9 @@ export class SecureAPIClient {
    * Make a secure POST request
    */
   async post<T = any>(endpoint: string, data?: any, options: Omit<RequestOptions, 'method' | 'body'> = {}): Promise<APIResponse<T>> {
+    console.log(`[SecureAPIClient.post] Endpoint: ${endpoint}`);
+    console.log(`[SecureAPIClient.post] Received data:`, data);
+    console.log(`[SecureAPIClient.post] Data type:`, typeof data);
     return this.request<T>(endpoint, { ...options, method: 'POST', body: data });
   }
 
@@ -161,6 +164,8 @@ export class SecureAPIClient {
    * Build request configuration with security headers
    */
   private async buildRequestConfig(options: RequestOptions, requestId: string): Promise<RequestInit> {
+    console.log(`[SecureAPIClient.buildRequestConfig] options.body:`, options.body);
+    
     const headers = new Headers({
       ...this.getSecurityHeaders(),
       'X-Request-ID': requestId,
@@ -176,6 +181,7 @@ export class SecureAPIClient {
     // Prepare body
     let body: string | FormData | undefined;
     if (options.body) {
+      console.log(`[SecureAPIClient.buildRequestConfig] Processing body...`);
       if (options.body instanceof FormData) {
         body = options.body;
         // Don't set Content-Type for FormData, let browser set it with boundary
@@ -186,9 +192,13 @@ export class SecureAPIClient {
           ? await this.encryptSensitiveData(options.body)
           : options.body;
 
+        console.log(`[SecureAPIClient.buildRequestConfig] dataToSend:`, dataToSend);
         body = JSON.stringify(dataToSend);
+        console.log(`[SecureAPIClient.buildRequestConfig] Final body string:`, body);
         headers.set('Content-Type', 'application/json');
       }
+    } else {
+      console.log(`[SecureAPIClient.buildRequestConfig] No body to process`);
     }
 
     return {
@@ -243,11 +253,6 @@ export class SecureAPIClient {
       headers[key] = value;
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
-    }
-
     let data: T;
     const contentType = response.headers.get('content-type');
 
@@ -259,6 +264,29 @@ export class SecureAPIClient {
       }
     } else {
       data = (await response.text()) as unknown as T;
+    }
+
+    // Handle error responses (both standardized new format and legacy formats)
+    if (!response.ok) {
+      // Check for new standardized error format
+      if (typeof data === 'object' && data !== null && 'success' in data && !data.success && 'error' in data) {
+        const errorObj = (data as any).error;
+        const errorMessage = errorObj?.message || `HTTP ${response.status}`;
+        const errorCode = errorObj?.code || 'UNKNOWN_ERROR';
+        const errorDetails = errorObj?.details || undefined;
+
+        const error = new Error(errorMessage);
+        (error as any).code = errorCode;
+        (error as any).status = response.status;
+        (error as any).details = errorDetails;
+        (error as any).isStandardError = true;
+
+        throw error;
+      }
+
+      // Fall back to generic error if response text exists
+      const errorText = typeof data === 'string' ? data : `HTTP ${response.status}`;
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     return {

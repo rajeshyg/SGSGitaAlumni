@@ -137,19 +137,14 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
 
       console.log('[InvitationAcceptancePage] Generating OTP for email:', email);
 
-      // Generate OTP using OTPService
-      const otpToken = await otpService.generateOTP({
+      // Generate OTP using OTPService (this also sends the OTP via email)
+      await otpService.generateOTP({
         email,
         type: 'registration',
         userId: response.user.id?.toString()
       });
 
-      console.log('[InvitationAcceptancePage] OTP generated successfully');
-
-      // Send OTP via email
-      await otpService.sendOTP(email, otpToken.otpCode, 'registration');
-
-      console.log('[InvitationAcceptancePage] OTP sent to email');
+      console.log('[InvitationAcceptancePage] OTP generated and sent successfully');
 
       // Redirect to OTP verification page
       navigate(`/verify-otp/${encodeURIComponent(email)}`, {
@@ -196,9 +191,9 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
 
     const profile = validation.alumniProfile;
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
-        <h3 className="font-medium text-blue-900 mb-2">Your Alumni Information</h3>
-        <div className="space-y-1 text-sm text-blue-800">
+      <div className="bg-[--info-bg] border border-[--info-border] rounded-md p-4 mb-4">
+        <h3 className="font-medium text-[--info-foreground] mb-2">Your Alumni Information</h3>
+        <div className="space-y-1 text-sm text-[--info-foreground]/90">
           <p><strong>Name:</strong> {profile.firstName} {profile.lastName}</p>
           <p><strong>Graduation:</strong> {profile.graduationYear} - {profile.program}</p>
           <p><strong>Student ID:</strong> {profile.studentId}</p>
@@ -229,7 +224,7 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
         case 'expired':
           return (
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[--muted-foreground]">
                 This invitation has expired. Please contact the administrator to request a new invitation.
               </p>
               <Button onClick={() => navigate('/')} variant="outline">
@@ -240,7 +235,7 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
         case 'used':
           return (
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[--muted-foreground]">
                 This invitation has already been used. If you believe this is an error, please contact support.
               </p>
               <Button onClick={() => navigate('/login')} variant="outline">
@@ -251,7 +246,7 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
         default:
           return (
             <div className="space-y-2">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[--muted-foreground]">
                 The invitation link appears to be invalid. Please check the link or contact the administrator.
               </p>
               <Button onClick={() => navigate('/')} variant="outline">
@@ -265,7 +260,7 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
     return (
       <Card className="w-full max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-red-600">{getErrorTitle()}</CardTitle>
+          <CardTitle className="text-destructive">{getErrorTitle()}</CardTitle>
           <CardDescription>
             {validation.errorMessage}
           </CardDescription>
@@ -310,7 +305,7 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-[--muted-foreground]">
                 By joining the alumni network, you agree to our Terms of Service and Privacy Policy.
               </p>
               <Button
@@ -333,14 +328,14 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[--muted] flex items-center justify-center p-4">
         {renderLoading()}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[--muted] flex items-center justify-center p-4">
       {error && !validation?.errorType && (
         <Alert className="mb-4 max-w-2xl mx-auto">
           <AlertDescription>{error}</AlertDescription>

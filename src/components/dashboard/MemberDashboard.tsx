@@ -3,7 +3,7 @@
 // ============================================================================
 // Main dashboard component with personalized content and widgets
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Skeleton } from '../ui/skeleton';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,6 +20,7 @@ import { ActivityTimeline } from './ActivityTimeline';
 import { DomainFocusCard } from './DomainFocusCard';
 import { RecentConversations } from './RecentConversations';
 import { PersonalizedPosts } from './PersonalizedPosts';
+import FamilyProfileSelector from '../family/FamilyProfileSelector';
 import type { User } from '../../services/APIService';
 
 interface MemberDashboardProps {
@@ -30,6 +31,7 @@ interface MemberDashboardProps {
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: propUser }) => {
   const { data, loading, error, refetch } = useDashboardData(userId);
   const { user: authUser, logout } = useAuth();
+  const [showProfileSwitcher, setShowProfileSwitcher] = useState(false);
   const handleRetry = () => { void refetch(); };
 
   // Use prop user or auth user
@@ -75,12 +77,34 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
     }
   };
 
+  const handleSwitchProfile = () => {
+    console.log('[MemberDashboard] Opening profile switcher...');
+    setShowProfileSwitcher(true);
+  };
+
+  const handleProfileSelected = () => {
+    console.log('[MemberDashboard] Profile selected, reloading dashboard...');
+    setShowProfileSwitcher(false);
+    void refetch(); // Reload dashboard data
+  };
+
+  // Show profile switcher modal if active
+  if (showProfileSwitcher) {
+    return (
+      <FamilyProfileSelector 
+        onProfileSelected={handleProfileSelected}
+        showAddButton={false}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background w-full overflow-x-hidden">
       <DashboardHeader
         currentProfile={currentProfile}
         stats={headerStats}
-        onSwitchProfile={() => {}}
+        isFamilyAccount={!!currentUser.is_family_account}
+        onSwitchProfile={handleSwitchProfile}
         onLogout={handleLogout}
       />
 
@@ -199,7 +223,7 @@ const DashboardError: React.FC<DashboardErrorProps> = ({ error, onRetry }) => (
   <div className="min-h-screen bg-background flex items-center justify-center p-4">
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-red-600">Dashboard Error</CardTitle>
+        <CardTitle className="text-destructive">Dashboard Error</CardTitle>
         <CardDescription>
           We encountered an issue loading your dashboard
         </CardDescription>

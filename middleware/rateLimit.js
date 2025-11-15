@@ -136,6 +136,20 @@ export const apiRateLimit = rateLimit('default', {
   skipForAdmins: true
 });
 
+export const emailRateLimit = rateLimit('email', {
+  useUserId: true,
+  skipForAdmins: true
+});
+
+export const searchRateLimit = rateLimit('search', {
+  skipForAdmins: true
+});
+
+export const registrationRateLimit = rateLimit('registration', {
+  skipSuccessfulRequests: false, // Always count registration attempts
+  skipForAdmins: false // Don't skip for admins to track patterns
+});
+
 /**
  * Middleware to get rate limit status for monitoring
  */

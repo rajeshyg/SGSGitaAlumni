@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { APIService, type User, type LoginCredentials, type RegisterData, type AuthResponse } from '../services/APIService';
 import { AuthErrorHandler, type AuthError } from '../lib/auth/errorHandling';
 import { apiClient } from '../lib/api';
+import { chatClient } from '../lib/socket/chatClient';
 
 // ============================================================================
 // AUTHENTICATION CONTEXT TYPES
@@ -25,6 +26,84 @@ const getUserDisplayName = (user: User): string => {
   const lastName = user.lastName || '';
   const fullName = `${firstName} ${lastName}`.trim();
   return fullName || 'User'; // Fallback to 'User' if both names are empty
+};
+
+// ============================================================================
+// STORAGE UTILITIES FOR MOBILE COMPATIBILITY
+// ============================================================================
+
+export const StorageUtils = {
+  // Check if localStorage is available and working
+  isLocalStorageAvailable(): boolean {
+    try {
+      const testKey = '__storage_test__';
+      localStorage.setItem(testKey, 'test');
+      localStorage.removeItem(testKey);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  // Safe localStorage operations with fallback to sessionStorage
+  setItem(key: string, value: string): void {
+    try {
+      if (this.isLocalStorageAvailable()) {
+        localStorage.setItem(key, value);
+        console.log(`[StorageUtils] ✅ Stored ${key} in localStorage`);
+      } else {
+        sessionStorage.setItem(key, value);
+        console.log(`[StorageUtils] ⚠️ localStorage unavailable, stored ${key} in sessionStorage`);
+      }
+    } catch (error) {
+      console.error(`[StorageUtils] ❌ Failed to store ${key}:`, error);
+      // Try sessionStorage as last resort
+      try {
+        sessionStorage.setItem(key, value);
+        console.log(`[StorageUtils] 🔄 Fallback: stored ${key} in sessionStorage`);
+      } catch (fallbackError) {
+        console.error(`[StorageUtils] ❌ Critical: Failed to store ${key} in any storage:`, fallbackError);
+      }
+    }
+  },
+
+  getItem(key: string): string | null {
+    try {
+      // Try localStorage first
+      if (this.isLocalStorageAvailable()) {
+        const value = localStorage.getItem(key);
+        if (value !== null) {
+          console.log(`[StorageUtils] ✅ Retrieved ${key} from localStorage`);
+          return value;
+        }
+      }
+
+      // Fallback to sessionStorage
+      const sessionValue = sessionStorage.getItem(key);
+      if (sessionValue !== null) {
+        console.log(`[StorageUtils] 🔄 Retrieved ${key} from sessionStorage`);
+        return sessionValue;
+      }
+
+      console.log(`[StorageUtils] ❌ ${key} not found in any storage`);
+      return null;
+    } catch (error) {
+      console.error(`[StorageUtils] ❌ Failed to retrieve ${key}:`, error);
+      return null;
+    }
+  },
+
+  removeItem(key: string): void {
+    try {
+      if (this.isLocalStorageAvailable()) {
+        localStorage.removeItem(key);
+      }
+      sessionStorage.removeItem(key);
+      console.log(`[StorageUtils] 🗑️ Removed ${key} from all storage`);
+    } catch (error) {
+      console.error(`[StorageUtils] ❌ Failed to remove ${key}:`, error);
+    }
+  }
 };
 
 export interface AuthContextType extends AuthState {
@@ -53,7 +132,6 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  console.log('[AuthProvider] Initializing AuthProvider');
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     isAuthenticated: false,
@@ -82,14 +160,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // eslint-disable-next-line no-console
         console.log('[AuthContext] Login response user:', response.user, 'role:', response.user.role);
         console.log('[AuthContext] User role type:', typeof response.user.role, 'Value:', JSON.stringify(response.user.role));
+        console.log('[AuthContext] 🔍 FAMILY ACCOUNT DEBUG:');
+        console.log('  - is_family_account:', response.user.is_family_account);
+        console.log('  - family_account_type:', response.user.family_account_type);
+        console.log('  - primary_family_member_id:', response.user.primary_family_member_id);
+        console.log('  - Type of is_family_account:', typeof response.user.is_family_account);
+        console.log('  - is_family_account === 1:', response.user.is_family_account === 1);
+        console.log('  - is_family_account === true:', response.user.is_family_account === true);
       }
 
-      // Store tokens securely
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
+      // Store tokens securely using StorageUtils for mobile compatibility
+      StorageUtils.setItem('authToken', response.token);
+      StorageUtils.setItem('refreshToken', response.refreshToken);
+
+      console.log('[AuthContext.login] 🔐 Tokens stored using StorageUtils');
+      console.log('[AuthContext.login] 🔍 authToken length:', response.token?.length || 0);
+      console.log('[AuthContext.login] 🔍 refreshToken length:', response.refreshToken?.length || 0);
+      console.log('[AuthContext.login] 🔍 refreshToken exists:', !!response.refreshToken);
 
       // Initialize API client with auth tokens
       apiClient.initializeAuth(response.token, response.refreshToken);
+
+      // Initialize chat socket connection
+      chatClient.connect(response.token).catch(error => {
+        console.error('[AuthContext] Failed to connect chat socket:', error);
+      });
 
       // Store user profile in localStorage for admin components
       const profile = {
@@ -136,9 +231,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       const response: AuthResponse = await APIService.register(userData);
 
-      // Store tokens securely
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
+      // Store tokens securely using StorageUtils
+      StorageUtils.setItem('authToken', response.token);
+      StorageUtils.setItem('refreshToken', response.refreshToken);
 
       // Initialize API client with auth tokens
       apiClient.initializeAuth(response.token, response.refreshToken);
@@ -175,12 +270,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     } finally {
       // Clear tokens, profile, and state regardless of API call success
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('currentProfile');
+      StorageUtils.removeItem('authToken');
+      StorageUtils.removeItem('refreshToken');
+      StorageUtils.removeItem('currentProfile');
 
       // Clear API client auth tokens
       apiClient.clearAuth();
+
+      // Disconnect chat socket
+      chatClient.disconnect();
 
       setAuthState({
         user: null,
@@ -195,8 +293,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshToken = async (): Promise<void> => {
     try {
       const response = await APIService.refreshToken();
-      localStorage.setItem('authToken', response.token);
-      localStorage.setItem('refreshToken', response.refreshToken);
+      StorageUtils.setItem('authToken', response.token);
+      StorageUtils.setItem('refreshToken', response.refreshToken);
+      
+      // Initialize API client with new tokens
+      apiClient.initializeAuth(response.token, response.refreshToken);
+
+      // Reconnect chat socket with new token
+      chatClient.disconnect();
+      chatClient.connect(response.token).catch(error => {
+        console.error('[AuthContext] Failed to reconnect chat socket after token refresh:', error);
+      });
+
+      // Use user data from refresh response if available, otherwise fetch
+      const user = response.user || await APIService.getCurrentUser();
+      
+      console.log('[AuthContext.refreshToken] 🔍 Updated user data:', {
+        name: `${user.firstName} ${user.lastName}`,
+        is_family_account: user.is_family_account,
+        primary_family_member_id: user.primary_family_member_id
+      });
+      
+      // Update profile in storage
+      const profile = {
+        id: typeof user.id === 'string' ? parseInt(user.id) || 1 : user.id,
+        name: getUserDisplayName(user),
+        role: user.role,
+        avatar: user.profileImageUrl || null,
+        preferences: {
+          professionalStatus: user.role === 'admin' ? 'Administrator' :
+                             user.role === 'moderator' ? 'Moderator' : 'Member'
+        }
+      };
+      StorageUtils.setItem('currentProfile', JSON.stringify(profile));
+      
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.log('[AuthContext] 🔄 Token refreshed, user data updated:', {
+          name: getUserDisplayName(user),
+          role: user.role,
+          relationship: user.relationship
+        });
+      }
+      
+      // Update auth state with fresh user data
+      setAuthState(prev => ({
+        ...prev,
+        user
+      }));
     } catch (error) {
       // If refresh fails, logout user
       await logout();
@@ -243,22 +387,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
    useEffect(() => {
        const checkAuth = async () => {
-         console.log('[AuthContext] Starting auth check on mount');
-         const token = localStorage.getItem('authToken');
-         const storedRefreshToken = localStorage.getItem('refreshToken');
+         console.log('[AuthContext] 🔍 Starting authentication check on app load');
+         const token = StorageUtils.getItem('authToken');
+         const storedRefreshToken = StorageUtils.getItem('refreshToken');
 
-         console.log('[AuthContext] Token exists:', !!token);
-         console.log('[AuthContext] Refresh token exists:', !!storedRefreshToken);
+         console.log('[AuthContext] 🔍 Storage check - authToken exists:', !!token, 'length:', token?.length || 0);
+         console.log('[AuthContext] 🔍 Storage check - refreshToken exists:', !!storedRefreshToken, 'length:', storedRefreshToken?.length || 0);
+         console.log('[AuthContext] 🔍 Available storage keys: localStorage:', Object.keys(localStorage), 'sessionStorage:', Object.keys(sessionStorage));
 
          if (token) {
-           console.log('[AuthContext] Found stored token, initializing API client');
+           console.log('[AuthContext] ✅ Found auth token, initializing API client...');
            // Initialize API client with stored tokens
            apiClient.initializeAuth(token, storedRefreshToken || undefined);
+
+           // Initialize chat socket connection on auth restore
+           chatClient.connect(token).catch(error => {
+             console.error('[AuthContext] Failed to connect chat socket on auth restore:', error);
+           });
+
            try {
-             console.log('[AuthContext] About to call APIService.getCurrentUser()');
+             console.log('[AuthContext] 🔄 Fetching current user data...');
              const user = await APIService.getCurrentUser();
-             console.log('[AuthContext] APIService.getCurrentUser() returned:', user);
-             console.log('[AuthContext] User role from API:', user?.role);
+             console.log('[AuthContext] ✅ User data fetched successfully:', user.email, user.role);
 
            // Store user profile in localStorage for admin components
            const profile = {
@@ -271,14 +421,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
                                   user.role === 'moderator' ? 'Moderator' : 'Member'
              }
            };
-           localStorage.setItem('currentProfile', JSON.stringify(profile));
+           StorageUtils.setItem('currentProfile', JSON.stringify(profile));
 
            if (import.meta.env.DEV) {
              // eslint-disable-next-line no-console
-             console.log('[AuthContext] Restored auth, stored profile:', profile);
+             console.log('[AuthContext] 🔄 Restored login from cached tokens, user:', user.email);
+             console.log('[AuthContext] is_family_account:', user.is_family_account);
            }
 
-           console.log('[AuthContext] Auth check successful, setting authenticated state');
+           console.log('[AuthContext] ✅ Setting authenticated state with user:', user.email);
            setAuthState({
              user,
              isAuthenticated: true,
@@ -286,9 +437,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
              error: null,
              authError: null
            });
-         } catch {
+         } catch (error) {
+           console.error('[AuthContext] ❌ Failed to restore auth from token:', error);
            // Token might be expired, try to refresh
            try {
+             console.log('[AuthContext] 🔄 Attempting token refresh...');
              await refreshToken();
              const user = await APIService.getCurrentUser();
 
@@ -303,13 +456,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
                                     user.role === 'moderator' ? 'Moderator' : 'Member'
                }
              };
-             localStorage.setItem('currentProfile', JSON.stringify(profile));
+             StorageUtils.setItem('currentProfile', JSON.stringify(profile));
 
              if (import.meta.env.DEV) {
                // eslint-disable-next-line no-console
                console.log('[AuthContext] Refreshed auth, stored profile:', profile);
              }
 
+             console.log('[AuthContext] ✅ Auth restored via refresh, setting state');
              setAuthState({
                user,
                isAuthenticated: true,
@@ -317,13 +471,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
                error: null,
                authError: null
              });
-           } catch {
+           } catch (refreshError) {
+             console.error('[AuthContext] ❌ Token refresh failed, clearing auth:', refreshError);
              // Refresh failed, clear auth state
              await logout();
            }
          }
        } else {
-         console.log('[AuthContext] No stored token found, setting unauthenticated state');
+         console.log('[AuthContext] ❌ No auth token found, user not authenticated');
          setAuthState(prev => ({ ...prev, isLoading: false }));
        }
      };

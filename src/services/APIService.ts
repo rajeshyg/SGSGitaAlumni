@@ -65,6 +65,7 @@ export interface TokenResponse {
   token: string;
   refreshToken: string;
   expiresIn: number;
+  user?: User; // Optional user data returned from refresh endpoint
 }
 
 // User & Profile Types
@@ -77,6 +78,16 @@ export interface User {
   isActive: boolean;
   createdAt: string;
   lastLoginAt?: string;
+  // Family account fields
+  is_family_account?: boolean | number;
+  family_account_type?: 'parent' | 'child' | null;
+  primary_family_member_id?: string | null;
+  // 🆕 Family member fields (populated when primary_family_member_id is set)
+  displayName?: string;
+  currentAge?: number;
+  relationship?: 'self' | 'child' | 'spouse' | 'sibling' | 'guardian';
+  accessLevel?: 'full' | 'supervised' | 'blocked';
+  profileImageUrl?: string;
 }
 
 export interface AlumniProfile extends Record<string, unknown> {
@@ -188,11 +199,16 @@ export interface UpdatePostingData extends Partial<CreatePostingData> {
 // Messaging Types
 export interface Conversation {
   id: string;
+  type?: 'DIRECT' | 'GROUP' | 'POST_LINKED';
+  name?: string;
   participants: User[];
   lastMessage?: Message;
   unreadCount: number;
   createdAt: string;
   updatedAt: string;
+  postingId?: string;
+  postingTitle?: string;
+  is_group?: boolean;
 }
 
 export interface Message {
@@ -457,7 +473,10 @@ export const APIService = {
       ]);
 
       logger.info('Login successful for user:', credentials.email);
-      return response as AuthResponse;
+
+      // Extract data from new response format if present
+      const data = response?.data || response;
+      return data as AuthResponse;
     } catch (error) {
       logger.error('Login failed:', error);
       if (error instanceof Error && error.message.includes('timeout')) {
@@ -486,11 +505,37 @@ export const APIService = {
     try {
       logger.info('Refreshing authentication token');
 
-      const response = await apiClient.post('/api/auth/refresh', {});
+      // Get refresh token from localStorage (fallback to sessionStorage for mobile compatibility)
+      let refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        refreshToken = sessionStorage.getItem('refreshToken');
+        if (refreshToken) {
+          console.log('[APIService.refreshToken] 🔄 Found refresh token in sessionStorage');
+        }
+      }
+      console.log('[APIService.refreshToken] 🔍 Retrieved from localStorage:', refreshToken ? 'Token exists' : 'NO TOKEN FOUND');
+      console.log('[APIService.refreshToken] 🔍 Token length:', refreshToken?.length || 0);
+      console.log('[APIService.refreshToken] 🔍 Token preview:', refreshToken?.substring(0, 20) + '...');
 
+      if (!refreshToken) {
+        console.error('[APIService.refreshToken] ❌ No refresh token in localStorage!');
+        console.log('[APIService.refreshToken] 🔍 All localStorage keys:', Object.keys(localStorage));
+        throw new Error('No refresh token available');
+      }
+
+      console.log('[APIService.refreshToken] 📤 Sending refresh request with token...');
+      console.log('[APIService.refreshToken] 📤 Request body:', { refreshToken });
+      const response = await apiClient.post('/api/auth/refresh', { refreshToken });
+      console.log('[APIService.refreshToken] 📥 Response received:', response);
+
+      // Extract data from new response format if present
+      const data = response?.data || response;
+
+      console.log('[APIService.refreshToken] ✅ Token refresh successful');
       logger.info('Token refresh successful');
-      return response as TokenResponse;
+      return data as TokenResponse;
     } catch (error) {
+      console.error('[APIService.refreshToken] ❌ Token refresh failed:', error);
       logger.error('Token refresh failed:', error);
       throw new Error('Session expired. Please log in again.');
     }
@@ -504,10 +549,66 @@ export const APIService = {
       const response = await apiClient.post('/api/auth/register', userData);
 
       logger.info('Registration successful for user:', userData.email);
-      return response as AuthResponse;
+
+      // Extract data from new response format if present
+      const data = response?.data || response;
+      return data as AuthResponse;
     } catch (error) {
       logger.error('Registration failed:', error);
       throw new Error('Registration failed. Please check your information and try again.');
+    }
+  },
+
+  // Request password reset - sends reset link to email
+  requestPasswordReset: async (email: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      logger.info('Requesting password reset for email:', email);
+
+      const response = await apiClient.post('/api/auth/request-password-reset', { email });
+
+      logger.info('Password reset email sent successfully');
+      return response as { success: boolean; message: string };
+    } catch (error) {
+      logger.error('Password reset request failed:', error);
+      throw new Error('Failed to request password reset. Please try again.');
+    }
+  },
+
+  // Validate password reset token
+  validatePasswordResetToken: async (token: string): Promise<{ valid: boolean }> => {
+    try {
+      logger.info('Validating password reset token');
+
+      const response = await apiClient.post('/api/auth/validate-password-reset-token', { token });
+
+      logger.info('Password reset token validation completed');
+      return response as { valid: boolean };
+    } catch (error) {
+      logger.error('Token validation failed:', error);
+      throw new Error('Invalid or expired reset token.');
+    }
+  },
+
+  // Reset password using token
+  resetPassword: async (token: string, password: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      logger.info('Attempting password reset');
+
+      const response = await apiClient.post('/api/auth/reset-password', { token, password });
+
+      logger.info('Password reset successful');
+      return response as { success: boolean; message: string };
+    } catch (error) {
+      logger.error('Password reset failed:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('expired')) {
+          throw new Error('This password reset link has expired. Please request a new one.');
+        }
+        if (error.message.includes('already used')) {
+          throw new Error('This password reset link has already been used. Please request a new one.');
+        }
+      }
+      throw new Error('Failed to reset password. Please try again.');
     }
   },
 
@@ -798,7 +899,7 @@ export const APIService = {
     try {
       logger.info('Fetching user conversations');
 
-      const response = await apiClient.get('/api/messages/conversations');
+      const response = await apiClient.get('/api/conversations');
 
       logger.info('Conversations retrieved');
       return response as Conversation[];
@@ -813,7 +914,7 @@ export const APIService = {
     try {
       logger.info('Fetching messages for conversation:', conversationId);
 
-      const response = await apiClient.get(`/api/messages/${conversationId}`);
+      const response = await apiClient.get(`/api/conversations/${conversationId}/messages`);
 
       logger.info('Messages retrieved for conversation:', conversationId);
       return response as Message[];
@@ -828,7 +929,10 @@ export const APIService = {
     try {
       logger.info('Sending message to conversation:', message.conversationId);
 
-      const response = await apiClient.post('/api/messages/send', message);
+      const response = await apiClient.post(`/api/conversations/${message.conversationId}/messages`, {
+        content: message.content,
+        messageType: message.messageType || 'TEXT'
+      });
 
       logger.info('Message sent successfully');
       return response as Message;
@@ -1094,7 +1198,7 @@ export const APIService = {
   // ============================================================================
 
   // Generic GET method for API calls
-  get: async <T = any>(endpoint: string, config?: { params?: any }): Promise<T> => {
+  get: async <T = any>(endpoint: string, config?: { params?: any; suppressErrors?: number[] }): Promise<T> => {
     try {
       // Build query string from params if provided
       let url = endpoint;
@@ -1108,8 +1212,13 @@ export const APIService = {
       logger.info(`GET response from ${url}`, response);
 
       return response as T;
-    } catch (error) {
-      logger.error(`GET request failed for ${endpoint}:`, error);
+    } catch (error: any) {
+      // Check if this error status should be suppressed
+      const shouldSuppress = config?.suppressErrors?.includes(error.status || error.response?.status);
+      
+      if (!shouldSuppress) {
+        logger.error(`GET request failed for ${endpoint}:`, error);
+      }
       throw error;
     }
   },

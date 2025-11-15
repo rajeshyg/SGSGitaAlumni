@@ -37,7 +37,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const state = location.state as LocationState;
-  const { login } = useAuth(); // Get login function from AuthContext
+  const { login, isAuthenticated, user } = useAuth(); // Get auth state
   
   // Services
   const otpService = new OTPService();
@@ -64,6 +64,17 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   // ============================================================================
   // EFFECTS
   // ============================================================================
+
+  // Redirect if already authenticated (e.g., user refreshes page after login)
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('[OTPVerificationPage] User already authenticated, checking family account...');
+      const isFamilyAccount = user.is_family_account === 1 || user.is_family_account === true;
+      const redirectTo = isFamilyAccount ? '/profile-selection' : '/dashboard';
+      console.log('[OTPVerificationPage] Redirecting to:', redirectTo);
+      navigate(redirectTo, { replace: true });
+    }
+  }, [isAuthenticated, user, navigate]);
 
   useEffect(() => {
     if (!email) {
@@ -96,20 +107,12 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
 
   const loadRemainingAttempts = async () => {
     try {
-      console.log('[OTPVerificationPage] Checking remaining attempts for:', email);
       const attempts = await otpService.getRemainingOTPAttempts(email);
-      console.log('[OTPVerificationPage] Remaining attempts received:', attempts);
-      console.log('[OTPVerificationPage] Type of attempts:', typeof attempts);
       setRemainingAttempts(attempts);
-      
+
       // Don't show error on page load - only show it after failed validation attempts
       // The validation response will set the error if attempts are exhausted
-      if (attempts === 0) {
-        console.warn('[OTPVerificationPage] No attempts remaining (0 received from API)');
-        // Don't set error here - let the validation attempt show the error
-      }
     } catch (err) {
-      console.error('[OTPVerificationPage] Error loading remaining attempts:', err);
       // Default to 3 attempts if we can't load
       setRemainingAttempts(3);
     }
@@ -229,20 +232,15 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
           try {
             // If we have user credentials from state, use them for automatic login
             if (state?.user) {
-              console.log('[OTPVerificationPage] Authenticating new user after registration...');
-              
               // Create session for the newly registered user using OTP-verified login
               const loginResult = await login({
                 email: email,
                 password: '', // OTP verification serves as authentication
                 otpVerified: true
               });
-
-              console.log('[OTPVerificationPage] Authentication successful:', loginResult);
             }
 
             // Redirect to dashboard
-            console.log('[OTPVerificationPage] Redirecting to dashboard...');
             navigate('/dashboard', {
               replace: true,
               state: {
@@ -252,7 +250,6 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
             });
 
           } catch (authError) {
-            console.error('[OTPVerificationPage] Authentication error:', authError);
             // If auto-login fails, redirect to login page
             navigate('/login', {
               replace: true,
@@ -265,7 +262,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
         } else if (otpType === 'login') {
           // For login flow: authenticate the user
           try {
-            console.log('[OTPVerificationPage] Authenticating user after OTP login...');
+            console.log('[OTPVerificationPage] 🔐 Starting login authentication...');
             
             // OTP verification serves as authentication for passwordless login
             // Use the login function from useAuth hook to update auth context
@@ -275,26 +272,32 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
               otpVerified: true
             });
 
-            console.log('[OTPVerificationPage] Login successful:', loginResult);
+            console.log('[OTPVerificationPage] ✅ Login successful, checking family account status...');
+            console.log('[OTPVerificationPage] Login result user:', loginResult.user);
+            console.log('[OTPVerificationPage] is_family_account:', loginResult.user.is_family_account);
+            console.log('[OTPVerificationPage] Type:', typeof loginResult.user.is_family_account);
 
-            // Redirect to appropriate dashboard based on user role
-            const redirectTo = state?.redirectTo || '/dashboard';
-            console.log('[OTPVerificationPage] Redirecting to:', redirectTo);
-            navigate(redirectTo, { 
+            // Check if this is a family account and redirect accordingly
+            const isFamilyAccount = loginResult.user.is_family_account === 1 || loginResult.user.is_family_account === true;
+            console.log('[OTPVerificationPage] isFamilyAccount check result:', isFamilyAccount);
+            
+            const redirectTo = isFamilyAccount ? '/profile-selection' : (state?.redirectTo || '/dashboard');
+            console.log('[OTPVerificationPage] 🎯 Redirecting to:', redirectTo);
+
+            navigate(redirectTo, {
               replace: true,
-              state: { 
+              state: {
                 message: 'Login successful!',
                 fromOTPLogin: true
               }
             });
 
           } catch (authError) {
-            console.error('[OTPVerificationPage] Login error:', authError);
+            console.error('[OTPVerificationPage] ❌ Authentication failed:', authError);
             setError('Authentication failed. Please try again or contact support.');
           }
         } else {
           // For other OTP types (password_reset, etc.), just redirect
-          console.log('[OTPVerificationPage] OTP verified, redirecting to:', state?.redirectTo || '/dashboard');
           const redirectTo = state?.redirectTo || '/dashboard';
           navigate(redirectTo, {
             replace: true,
@@ -382,7 +385,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
 
   if (!email) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[--muted] flex items-center justify-center p-4">
         <Card className="w-full max-w-md mx-auto">
           <CardHeader>
             <CardTitle>Error</CardTitle>
@@ -407,7 +410,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[--muted] flex items-center justify-center p-4">
       <Card className="w-full max-w-md mx-auto">
         <CardHeader>
           <CardTitle>Verify OTP</CardTitle>
@@ -427,13 +430,13 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
           
           {success && (
             <Alert className="mb-4">
-              <AlertDescription className="text-green-600">{success}</AlertDescription>
+              <AlertDescription className="text-[--success]">{success}</AlertDescription>
             </Alert>
           )}
 
           {/* Verification Method Selector */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-[--muted-foreground] mb-2">
               Verification Method
             </label>
             <div className="flex space-x-2">

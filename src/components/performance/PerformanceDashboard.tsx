@@ -187,25 +187,25 @@ export function PerformanceDashboard({ system, timeRange }: PerformanceDashboard
           {/* Performance Metrics Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-primary">
                 {performanceAnalysis?.predictions.forecasts.responseTime.current || 0}ms
               </div>
               <div className="text-sm text-muted-foreground">Avg Response Time</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-success">
                 {performanceAnalysis?.predictions.forecasts.throughput.current || 0}
               </div>
               <div className="text-sm text-muted-foreground">Requests/sec</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
+              <div className="text-2xl font-bold text-warning">
                 {performanceAnalysis?.anomalies.anomalies.filter((a: any) => a.severity === 'high').length || 0}
               </div>
               <div className="text-sm text-muted-foreground">Performance Anomalies</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-accent">
                 {Math.round((1 - (performanceAnalysis?.anomalies.falsePositiveRate || 0)) * 100)}%
               </div>
               <div className="text-sm text-muted-foreground">Detection Accuracy</div>
@@ -274,19 +274,19 @@ export function PerformanceDashboard({ system, timeRange }: PerformanceDashboard
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">
+                    <div className="text-2xl font-bold text-destructive">
                       {performanceAnalysis?.anomalies.anomalies.filter((a: any) => a.severity === 'critical').length || 0}
                     </div>
                     <div className="text-sm text-muted-foreground">Critical</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">
+                    <div className="text-2xl font-bold text-warning">
                       {performanceAnalysis?.anomalies.anomalies.filter((a: any) => a.severity === 'high').length || 0}
                     </div>
                     <div className="text-sm text-muted-foreground">High</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-yellow-600">
+                    <div className="text-2xl font-bold text-warning/70">
                       {performanceAnalysis?.anomalies.anomalies.filter((a: any) => a.severity === 'medium').length || 0}
                     </div>
                     <div className="text-sm text-muted-foreground">Medium</div>
@@ -455,14 +455,14 @@ export function PerformanceDashboard({ system, timeRange }: PerformanceDashboard
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <h4 className="font-semibold">User Satisfaction</h4>
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-2xl font-bold text-success">
                       {Math.round((performanceAnalysis?.uxCorrelation?.experienceImpact?.overallUserSatisfaction || 0) * 100)}%
                     </div>
                     <p className="text-sm text-muted-foreground">Based on performance correlation</p>
                   </div>
                   <div>
                     <h4 className="font-semibold">Performance Influence</h4>
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-2xl font-bold text-primary">
                       {Math.round((performanceAnalysis?.uxCorrelation?.experienceImpact?.performanceInfluence || 0) * 100)}%
                     </div>
                     <p className="text-sm text-muted-foreground">Impact on user experience</p>
@@ -475,7 +475,7 @@ export function PerformanceDashboard({ system, timeRange }: PerformanceDashboard
                     <ul className="text-sm space-y-1 mt-2">
                       {performanceAnalysis.uxCorrelation.experienceImpact.keyDrivers.map((driver: string, index: number) => (
                         <li key={index} className="flex items-center">
-                          <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                          <span className="w-2 h-2 bg-success rounded-full mr-2"></span>
                           {driver}
                         </li>
                       ))}

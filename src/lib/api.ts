@@ -48,12 +48,17 @@ export const apiClient = {
       const method = (options.method as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH') || 'GET';
       const data = options.body ? JSON.parse(options.body as string) : undefined;
 
+      console.log(`[apiClient] 📡 ${method} ${endpoint}`);
+      console.log(`[apiClient] Raw body:`, options.body);
+      console.log(`[apiClient] Parsed data:`, data);
+
       let response;
       switch (method) {
         case 'GET':
           response = await secureAPIClient.get(endpoint);
           break;
         case 'POST':
+          console.log(`[apiClient] Calling secureAPIClient.post with data:`, data);
           response = await secureAPIClient.post(endpoint, data);
           break;
         case 'PUT':
@@ -69,10 +74,44 @@ export const apiClient = {
           throw new Error(`Unsupported method: ${method}`);
       }
 
+      console.log(`[apiClient] ✅ ${method} ${endpoint} succeeded`, response.data);
+
       // Convert secure API response to legacy format for compatibility
       return response.data;
     } catch (error: any) {
-      // Convert secure API errors to legacy error format
+      // Don't log 404 errors as errors - they're often expected (e.g., checking if resource exists)
+      const status = error.status || error.response?.status;
+      if (status === 404) {
+        console.log(`[apiClient] 🔍 ${options.method || 'GET'} ${endpoint} - Resource not found (404)`);
+      } else {
+        console.error(`[apiClient] ❌ ${options.method || 'GET'} ${endpoint} failed:`, error);
+      }
+
+      // Handle standardized error format from backend
+      if (error.isStandardError || (error.code && error.status)) {
+        const code = error.code || 'UNKNOWN_ERROR';
+        const status = error.status || 500;
+        const message = error.message || 'An error occurred';
+        const details = error.details || undefined;
+
+        // Don't log 404s twice
+        if (status !== 404) {
+          console.error(`[apiClient] StandardError: ${code} (${status}) - ${message}`, details);
+        }
+
+        // Handle specific error codes
+        if (code.startsWith('AUTH_')) {
+          throw new AuthenticationError(message);
+        }
+
+        if (status === 401 || status === 403) {
+          throw new AuthenticationError(message);
+        }
+
+        throw new APIError(message, code, status, details);
+      }
+
+      // Handle legacy HTTP error messages
       if (error.message?.includes('HTTP')) {
         const statusMatch = error.message.match(/HTTP (\d+)/);
         const status = statusMatch ? parseInt(statusMatch[1]) : 500;

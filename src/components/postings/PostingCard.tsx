@@ -18,6 +18,7 @@ export interface Domain {
   name: string;
   icon?: string;
   color_code?: string;
+  domain_level?: string;
 }
 
 export interface Tag {
@@ -36,6 +37,7 @@ export interface PostingCardData {
   location?: string;
   location_type?: 'remote' | 'in-person' | 'hybrid';
   urgency_level?: 'low' | 'medium' | 'high' | 'critical';
+  author_id: string;
   author_first_name?: string;
   author_last_name?: string;
   contact_name: string;
@@ -114,6 +116,9 @@ export const PostingCard: React.FC<PostingCardProps> = ({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  // Handle expressing interest in a post
+
+
   return (
     <Card 
       className={`hover:shadow-lg transition-shadow ${onClick ? 'cursor-pointer' : ''} ${className}`}
@@ -151,14 +156,42 @@ export const PostingCard: React.FC<PostingCardProps> = ({
           {posting.content}
         </p>
 
-        {/* Domains */}
+        {/* Domains - 3-Level Hierarchy */}
         {posting.domains && posting.domains.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {posting.domains.map((domain) => (
-              <Badge key={domain.id} variant="secondary" className="text-xs">
-                {domain.name}
-              </Badge>
-            ))}
+          <div className="space-y-1">
+            {/* Primary Domain */}
+            {posting.domains.filter(d => d.domain_level === 'primary').length > 0 && (
+              <div className="flex flex-wrap gap-1 items-center">
+                <span className="text-xs font-semibold text-muted-foreground">Primary:</span>
+                {posting.domains.filter(d => d.domain_level === 'primary').map(domain => (
+                  <Badge key={domain.id} variant="default" className="text-xs">
+                    {domain.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {/* Secondary Domains */}
+            {posting.domains.filter(d => d.domain_level === 'secondary').length > 0 && (
+              <div className="flex flex-wrap gap-1 items-center">
+                <span className="text-xs font-semibold text-muted-foreground">Secondary:</span>
+                {posting.domains.filter(d => d.domain_level === 'secondary').map(domain => (
+                  <Badge key={domain.id} variant="outline" className="text-xs">
+                    {domain.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {/* Areas of Interest */}
+            {posting.domains.filter(d => d.domain_level === 'area_of_interest').length > 0 && (
+              <div className="flex flex-wrap gap-1 items-center">
+                <span className="text-xs font-semibold text-muted-foreground">Areas:</span>
+                {posting.domains.filter(d => d.domain_level === 'area_of_interest').map(domain => (
+                  <Badge key={domain.id} variant="secondary" className="text-xs">
+                    {domain.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -211,50 +244,53 @@ export const PostingCard: React.FC<PostingCardProps> = ({
 
         {/* Action Buttons */}
         {showActions && (
-          <div className="flex items-center gap-2 border-t pt-3">
-            {onLike && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onLike(posting.id);
-                }}
-                className="flex-1 min-h-[44px]"
-              >
-                <Heart className="h-4 w-4 mr-2" />
-                Like {posting.interest_count ? `(${posting.interest_count})` : ''}
-              </Button>
-            )}
-            {onComment && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowCommentInput(!showCommentInput);
-                }}
-                className="flex-1 min-h-[44px]"
-              >
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Comment
-              </Button>
-            )}
-            {onShare && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onShare(posting.id);
-                }}
-                className="flex-1 min-h-[44px]"
-              >
-                <Share2 className="h-4 w-4 mr-2" />
-                Share
-              </Button>
-            )}
-          </div>
+          <>
+            {/* Standard Action Buttons (Like, Comment, Share) */}
+            <div className="flex items-center gap-2 border-t pt-3">
+              {onLike && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onLike(posting.id);
+                  }}
+                  className="flex-1 min-h-[44px]"
+                >
+                  <Heart className="h-4 w-4 mr-2" />
+                  Like {posting.interest_count ? `(${posting.interest_count})` : ''}
+                </Button>
+              )}
+              {onComment && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCommentInput(!showCommentInput);
+                  }}
+                  className="flex-1 min-h-[44px]"
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Comment
+                </Button>
+              )}
+              {onShare && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare(posting.id);
+                  }}
+                  className="flex-1 min-h-[44px]"
+                >
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share
+                </Button>
+              )}
+            </div>
+          </>
         )}
 
         {/* Modern Inline Comment Input */}

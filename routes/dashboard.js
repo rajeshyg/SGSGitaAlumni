@@ -335,8 +335,8 @@ export const getMemberDashboard = async (req, res) => {
 				SELECT
 					u.id,
 					u.email,
-					u.first_name,
-					u.last_name,
+					COALESCE(fm.first_name, u.first_name) as first_name,
+					COALESCE(fm.last_name, u.last_name) as last_name,
 					u.current_position,
 					u.company,
 					u.location,
@@ -347,15 +347,17 @@ export const getMemberDashboard = async (req, res) => {
 					u.created_at,
 					u.is_active,
 					u.status,
-					u.alumni_member_id,
-					am.batch AS graduation_year,
-					am.center_name AS department
-				FROM app_users u
-				LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
-				WHERE u.id = ?
-			`, [requestedUserId]);
-
-			if (!userRows || userRows.length === 0) {
+				u.alumni_member_id,
+				u.is_family_account,
+				u.family_account_type,
+				u.primary_family_member_id,
+				am.batch AS graduation_year,
+				am.center_name AS department
+			FROM app_users u
+			LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
+			LEFT JOIN FAMILY_MEMBERS fm ON u.primary_family_member_id = fm.id
+			WHERE u.id = ?
+		`, [requestedUserId]);			if (!userRows || userRows.length === 0) {
 				return res.status(404).json({ success: false, error: 'User not found' });
 			}
 

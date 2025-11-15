@@ -107,13 +107,13 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
   const renderMetricCard = (title: string, value: number | string, description: string, color: string = 'blue') => (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-bold" style={{ color: `var(--color-${color}-600)` }}>
           {typeof value === 'number' ? value.toLocaleString() : value}
         </div>
-        <p className="text-xs text-gray-500 mt-1">{description}</p>
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </CardContent>
     </Card>
   );
@@ -124,15 +124,15 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
     return (
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
+          <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between mb-2">
             <span className="text-2xl font-bold">{current}</span>
-            <span className="text-sm text-gray-500">of {total}</span>
+            <span className="text-sm text-muted-foreground">of {total}</span>
           </div>
           <Progress value={percentage} className="mb-2" />
-          <p className="text-xs text-gray-500">{description}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
         </CardContent>
       </Card>
     );
@@ -140,22 +140,22 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
 
   const renderFunnelStep = (status: string, count: number, avgTime?: number) => {
     const statusColors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      accepted: 'bg-green-100 text-green-800',
-      expired: 'bg-red-100 text-red-800',
-      revoked: 'bg-gray-100 text-gray-800'
+      pending: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+      accepted: 'bg-green-500/10 text-green-700 dark:text-green-400',
+      expired: 'bg-destructive/10 text-destructive',
+      revoked: 'bg-muted text-muted-foreground'
     };
 
     return (
       <div className="flex items-center justify-between p-3 border rounded-lg">
         <div className="flex items-center space-x-3">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}`}>
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status as keyof typeof statusColors] || 'bg-muted text-muted-foreground'}`}>
             {status}
           </span>
           <span className="font-medium">{count} invitations</span>
         </div>
         {avgTime && (
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-muted-foreground">
             Avg: {avgTime.toFixed(1)} hours
           </span>
         )}
@@ -177,11 +177,11 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
           {[...Array(4)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
-                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-muted rounded w-3/4"></div>
               </CardHeader>
               <CardContent>
-                <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-full"></div>
+                <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
               </CardContent>
             </Card>
           ))}
@@ -297,7 +297,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
                 <span className="text-3xl font-bold">
                   {analytics.profileCompletion.success_rate}%
                 </span>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-muted-foreground">
                   {analytics.profileCompletion.accepted} of {analytics.profileCompletion.total} completed
                 </span>
               </div>
@@ -359,7 +359,7 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = () => {
                     <div key={trend.date} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center space-x-4">
                         <span className="font-medium">{new Date(trend.date).toLocaleDateString()}</span>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-muted-foreground">
                           {trend.accepted}/{trend.totalSent} accepted
                         </span>
                       </div>

@@ -209,7 +209,7 @@ export function AlumniMemberManagement({ onMemberUpdated }: AlumniMemberManageme
       cell: ({ row }) => (
         <span className="font-mono text-sm">
           {row.original.otpCode ? (
-            <span className="text-green-600 font-bold">{row.original.otpCode}</span>
+            <span className="text-success font-bold">{row.original.otpCode}</span>
           ) : (
             <span className="text-muted-foreground">No active OTP</span>
           )}
@@ -258,7 +258,7 @@ export function AlumniMemberManagement({ onMemberUpdated }: AlumniMemberManageme
                 size="sm"
                 onClick={() => handleSendInvitation(row.original)}
                 disabled={loading}
-                className="h-8 px-2 bg-blue-600 hover:bg-blue-700"
+                className="h-8 px-2 bg-primary hover:bg-primary/90"
               >
                 <Send className="h-3 w-3 mr-1" />
                 Invite

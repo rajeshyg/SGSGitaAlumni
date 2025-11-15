@@ -56,6 +56,7 @@ yarn-error.log*
 # OS  
 .DS_Store  
 Thumbs.db 
+nul
 # Test Results & Reports
 test-results/
 playwright-report/

@@ -92,7 +92,7 @@ export const AccountTab: React.FC<AccountTabProps> = ({ userId }) => {
             </div>
             <div className="flex items-center gap-2">
               {settings.email_verified ? (
-                <Badge variant="default" className="bg-green-500">
+                <Badge variant="default" className="bg-[--success]">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Verified
                 </Badge>
@@ -178,7 +178,7 @@ export const AccountTab: React.FC<AccountTabProps> = ({ userId }) => {
             </div>
             <div>
               {settings.two_factor_enabled ? (
-                <Badge variant="default" className="bg-green-500">
+                <Badge variant="default" className="bg-[--success]">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Active
                 </Badge>
@@ -238,15 +238,15 @@ export const AccountTab: React.FC<AccountTabProps> = ({ userId }) => {
       </Card>
 
       {/* Info Card */}
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+      <Card className="bg-[--info-bg] border-[--info-border]">
         <CardContent className="pt-6">
           <div className="flex gap-3">
-            <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <Shield className="h-5 w-5 text-[--info] flex-shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+              <p className="text-sm font-medium text-[--info-foreground]">
                 Account Security
               </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="text-sm text-[--info-foreground]/80">
                 Keep your account secure by using a strong password and enabling two-factor authentication.
                 Additional account management features will be available soon.
               </p>

@@ -200,8 +200,8 @@ export function AppUserManagement({ onUserUpdated }: AppUserManagementProps) {
         <div className="flex items-center gap-2">
           {row.original.alumniMemberId ? (
             <>
-              <UserCheck className="h-4 w-4 text-green-500" />
-              <span className="text-sm text-green-700">Linked</span>
+              <UserCheck className="h-4 w-4 text-emerald-600" />
+              <span className="text-sm text-emerald-700 dark:text-emerald-400">Linked</span>
             </>
           ) : (
             <>

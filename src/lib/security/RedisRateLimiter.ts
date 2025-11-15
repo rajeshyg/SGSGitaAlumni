@@ -32,6 +32,14 @@ export interface RateLimitConfig {
     otp: RateLimitPolicy;
     invitations: RateLimitPolicy;
     login: RateLimitPolicy;
+    email: RateLimitPolicy;
+    search: RateLimitPolicy;
+    registration: RateLimitPolicy;
+    'chat-create': RateLimitPolicy;
+    'chat-read': RateLimitPolicy;
+    'chat-write': RateLimitPolicy;
+    'chat-message': RateLimitPolicy;
+    'chat-reaction': RateLimitPolicy;
     default: RateLimitPolicy;
   };
 }
@@ -238,8 +246,6 @@ export class RedisRateLimiter {
   async clearLimit(key: string): Promise<void> {
     if (!this.connected) return;
 
-    const now = Date.now();
-    const pattern = `ratelimit:${key}:*`;
     const blockKey = `ratelimit:block:${key}`;
 
     try {
@@ -249,6 +255,7 @@ export class RedisRateLimiter {
 
       // For window keys, we'd need to scan and delete
       // For now, just let them expire naturally
+      // Pattern would be: `ratelimit:${key}:*`
     } catch (error) {
       console.error('Failed to clear rate limit:', error);
     }
@@ -303,6 +310,84 @@ const defaultConfig: RateLimitConfig = {
         enabled: true,
         baseDelayMs: 2000,
         maxDelayMs: 20000
+      }
+    },
+    email: {
+      windowMs: 60 * 60 * 1000, // 1 hour
+      maxRequests: 20, // 20 emails per hour
+      blockDurationMs: 24 * 60 * 60 * 1000, // 24 hours block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 2000,
+        maxDelayMs: 15000
+      }
+    },
+    search: {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 30, // 30 searches per minute
+      blockDurationMs: 5 * 60 * 1000, // 5 minutes block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 500,
+        maxDelayMs: 5000
+      }
+    },
+    registration: {
+      windowMs: 60 * 60 * 1000, // 1 hour
+      maxRequests: 3, // 3 registrations per hour per IP
+      blockDurationMs: 24 * 60 * 60 * 1000, // 24 hours block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 5000,
+        maxDelayMs: 30000
+      }
+    },
+    'chat-create': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 20, // 20 conversation creations per minute
+      blockDurationMs: 5 * 60 * 1000, // 5 minutes block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 1000,
+        maxDelayMs: 5000
+      }
+    },
+    'chat-read': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 200, // 200 read operations per minute
+      progressiveDelay: {
+        enabled: false,
+        baseDelayMs: 0,
+        maxDelayMs: 0
+      }
+    },
+    'chat-write': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 60, // 60 write operations per minute
+      blockDurationMs: 2 * 60 * 1000, // 2 minutes block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 500,
+        maxDelayMs: 3000
+      }
+    },
+    'chat-message': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 60, // 60 messages per minute
+      blockDurationMs: 5 * 60 * 1000, // 5 minutes block
+      progressiveDelay: {
+        enabled: true,
+        baseDelayMs: 1000,
+        maxDelayMs: 5000
+      }
+    },
+    'chat-reaction': {
+      windowMs: 60 * 1000, // 1 minute
+      maxRequests: 120, // 120 reactions per minute
+      progressiveDelay: {
+        enabled: false,
+        baseDelayMs: 0,
+        maxDelayMs: 0
       }
     },
     default: {

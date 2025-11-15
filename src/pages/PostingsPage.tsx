@@ -50,6 +50,7 @@ interface Posting {
   location?: string;
   location_type?: 'remote' | 'in-person' | 'hybrid';
   urgency_level?: 'low' | 'medium' | 'high' | 'critical';
+  author_id: string;
   author_first_name?: string;
   author_last_name?: string;
   contact_name: string;
@@ -78,6 +79,7 @@ const PostingsPage: React.FC = () => {
   const [showMatchedOnly, setShowMatchedOnly] = useState(false);
   const [matchedCount, setMatchedCount] = useState<number>(0);
   const [categories, setCategories] = useState<{id: string; name: string}[]>([]);
+  const [domains, setDomains] = useState<{id: string; name: string}[]>([]);
 
   // Load postings on mount and when matched filter changes
   useEffect(() => {
@@ -87,6 +89,7 @@ const PostingsPage: React.FC = () => {
   // Load categories on mount
   useEffect(() => {
     loadCategories();
+    loadDomains();
   }, []);
 
   // Apply filters whenever search/filter changes
@@ -100,7 +103,7 @@ const PostingsPage: React.FC = () => {
     try {
       let endpoint = '/api/postings';
       const params: any = {
-        status: 'active',
+        // Don't specify status - let backend default to showing active and approved
         limit: 50
       };
 
@@ -114,15 +117,12 @@ const PostingsPage: React.FC = () => {
         params
       });
 
-      console.log('Postings API response:', response);
-
       // API returns {postings: [...], pagination: {...}, matchedDomains?: number}
       setPostings(response.postings || []);
       if (response.matchedDomains !== undefined) {
         setMatchedCount(response.matchedDomains);
       }
     } catch (err) {
-      console.error('Failed to load postings:', err);
       setPostings([]);
     } finally {
       setLoading(false);
@@ -134,8 +134,16 @@ const PostingsPage: React.FC = () => {
       const response = await APIService.get<{categories: {id: string; name: string}[]}>('/api/postings/categories');
       setCategories(response.categories || []);
     } catch (err) {
-      console.error('Failed to load categories:', err);
       setCategories([]);
+    }
+  };
+
+  const loadDomains = async () => {
+    try {
+      const response = await APIService.get<{domains: {id: string; name: string}[]}>('/api/domains');
+      setDomains(response.domains || []);
+    } catch (err) {
+      setDomains([]);
     }
   };
 
@@ -189,7 +197,7 @@ const PostingsPage: React.FC = () => {
         );
       }
     } catch (err) {
-      console.error('Failed to toggle like:', err);
+      // Error handling - silently fail for like action
     }
   };
 
@@ -226,7 +234,7 @@ const PostingsPage: React.FC = () => {
         ));
       }
     } catch (err) {
-      console.error('Failed to add comment:', err);
+      // Error handling - silently fail for comment action
     }
   };
 
@@ -237,7 +245,6 @@ const PostingsPage: React.FC = () => {
       await navigator.clipboard.writeText(url);
       alert('Link copied to clipboard!');
     } catch (err) {
-      console.error('Failed to copy link:', err);
       alert('Failed to copy link. Please try again.');
     }
   };
@@ -280,6 +287,17 @@ const PostingsPage: React.FC = () => {
                 )}
               </Button>
             )}
+              {user && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/postings/my')}
+                  className="min-h-[44px] text-xs sm:text-sm"
+                  size="sm"
+                >
+                  <span className="hidden sm:inline">My Postings</span>
+                  <span className="sm:hidden">Mine</span>
+                </Button>
+              )}
               <Button onClick={() => navigate('/postings/new')} className="min-h-[44px] text-xs sm:text-sm" size="sm">
                 <Plus className="h-4 w-4 sm:mr-2" />
                 <span className="hidden sm:inline">Create</span>
@@ -350,12 +368,9 @@ const PostingsPage: React.FC = () => {
                     aria-label="Filter by domain"
                   >
                     <option value="all">All Domains</option>
-                    <option value="Technology">Technology</option>
-                    <option value="Healthcare">Healthcare</option>
-                    <option value="Business">Business</option>
-                    <option value="Education">Education</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="Arts & Design">Arts & Design</option>
+                    {domains.map(domain => (
+                      <option key={domain.id} value={domain.name}>{domain.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -412,6 +427,7 @@ const PostingsPage: React.FC = () => {
                 key={posting.id}
                 posting={posting}
                 showActions={true}
+                onClick={() => navigate(`/postings/${posting.id}`)}
                 onLike={handleLike}
                 onComment={handleComment}
                 onShare={handleShare}

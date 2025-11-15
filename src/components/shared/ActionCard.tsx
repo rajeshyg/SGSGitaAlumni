@@ -143,7 +143,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({
               {action.progress}% complete
             </span>
             {action.progress === 100 && (
-              <span className="text-green-600 dark:text-green-400 font-medium">
+              <span className="text-[--success] font-medium">
                 ✓ Complete
               </span>
             )}
