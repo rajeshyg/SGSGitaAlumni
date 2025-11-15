@@ -3,7 +3,7 @@
 // ============================================================================
 // Input field for composing and sending messages
 
-import React, { useState, useRef, KeyboardEvent } from 'react';
+import React, { useState, useRef, KeyboardEvent, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Send, Paperclip, Smile, X } from 'lucide-react';
@@ -17,6 +17,7 @@ interface MessageInputProps {
   placeholder?: string;
   replyToMessage?: Message;
   onCancelReply?: () => void;
+  isSending?: boolean;  // Loading state for send button
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
@@ -26,12 +27,37 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   disabled = false,
   placeholder = 'Type a message...',
   replyToMessage,
-  onCancelReply
+  onCancelReply,
+  isSending = false
 }) => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // Reset height to auto to get accurate scrollHeight
+    textarea.style.height = 'auto';
+    // Set height to scrollHeight, but cap at 120px
+    const newHeight = Math.min(textarea.scrollHeight, 120);
+    textarea.style.height = `${newHeight}px`;
+  }, [message]);
+
+  // Handle input focus (keep visible when keyboard appears)
+  const handleInputFocus = () => {
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }
+    }, 300); // Account for keyboard animation
+  };
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newMessage = e.target.value;
@@ -95,7 +121,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <div className="border-t p-4 bg-background">
+    <div className="border-t bg-background px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       {/* Reply preview */}
       {replyToMessage && (
         <div className="mb-2 p-2 bg-muted rounded-lg flex items-start justify-between">
@@ -139,9 +165,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             value={message}
             onChange={handleMessageChange}
             onKeyDown={handleKeyDown}
+            onFocus={handleInputFocus}
             placeholder={placeholder}
-            disabled={disabled}
-            className="min-h-[44px] max-h-32 resize-none pr-10"
+            disabled={disabled || isSending}
+            className="min-h-[44px] max-h-[120px] resize-none pr-10 text-base scrolling-touch touch-none"
             rows={1}
             data-testid="message-input"
           />
@@ -164,11 +191,15 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           type="button"
           size="icon"
           onClick={handleSendMessage}
-          disabled={disabled || !message.trim()}
+          disabled={disabled || !message.trim() || isSending}
           className="shrink-0"
           data-testid="send-message"
         >
-          <Send className="h-5 w-5" />
+          {isSending ? (
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent"></div>
+          ) : (
+            <Send className="h-5 w-5" />
+          )}
         </Button>
       </div>
 

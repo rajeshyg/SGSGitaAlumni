@@ -42,6 +42,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
   const [messageToForward, setMessageToForward] = useState<Message | undefined>(undefined);
+  const [isSending, setIsSending] = useState(false);
 
   // Handle new messages from socket
   const handleNewMessage = useCallback((data: any) => {
@@ -335,6 +336,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleSendMessage = async (content: string) => {
     if (!selectedConversationId || !user) return;
 
+    setIsSending(true);
     try {
       // Optimistically add message to UI
       const optimisticMessage: Message = {
@@ -391,7 +393,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     } catch (error) {
       console.error('Failed to send message:', error);
       // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')));
+      setMessages(prev => prev.filter(msg => !msg.id.toString().startsWith('temp-')));
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -605,7 +609,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <Separator />
 
       {/* Content */}
-      <CardContent className="flex-1 p-0 flex overflow-hidden">
+  <CardContent className="flex-1 p-0 flex overflow-hidden min-h-0">
         {/* Conversation list (left sidebar) */}
         <div
           className={`w-full lg:w-80 border-r ${
@@ -624,38 +628,41 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
         {/* Messages area (right side) */}
         <div
-          className={`flex-1 flex flex-col ${
+          className={`flex-1 flex flex-col min-h-0 ${
             !selectedConversationId ? 'hidden lg:flex' : 'flex'
           }`}
           data-testid="message-area"
         >
           {selectedConversationId && user ? (
             <>
-              <MessageList
-                messages={messages}
-                currentUserId={typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10)}
-                onEditMessage={handleEditMessage}
-                onDeleteMessage={handleDeleteMessage}
-                onReplyMessage={handleReplyMessage}
-                onForwardMessage={handleForwardMessage}
-                onReactToMessage={handleReactToMessage}
-                loading={messagesLoading}
-                onLoadOlderMessages={handleLoadOlderMessages}
-                loadingOlderMessages={loadingOlderMessages}
-                hasMoreMessages={hasMoreMessages}
-              />
-              {/* Show typing indicators */}
-              {typingUsers.size > 0 && (
-                <div className="px-4 py-2 text-sm text-muted-foreground italic">
-                  {Array.from(typingUsers.values()).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
-                </div>
-              )}
+              <div className="flex-1 min-h-0 flex flex-col">
+                <MessageList
+                  messages={messages}
+                  currentUserId={typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10)}
+                  onEditMessage={handleEditMessage}
+                  onDeleteMessage={handleDeleteMessage}
+                  onReplyMessage={handleReplyMessage}
+                  onForwardMessage={handleForwardMessage}
+                  onReactToMessage={handleReactToMessage}
+                  loading={messagesLoading}
+                  onLoadOlderMessages={handleLoadOlderMessages}
+                  loadingOlderMessages={loadingOlderMessages}
+                  hasMoreMessages={hasMoreMessages}
+                />
+                {/* Show typing indicators */}
+                {typingUsers.size > 0 && (
+                  <div className="px-4 py-2 text-sm text-muted-foreground italic border-t bg-background">
+                    {Array.from(typingUsers.values()).join(', ')} {typingUsers.size === 1 ? 'is' : 'are'} typing...
+                  </div>
+                )}
+              </div>
               <MessageInput
                 onSendMessage={handleSendMessage}
                 onTyping={handleTyping}
                 onStopTyping={handleStopTyping}
                 replyToMessage={replyToMessage}
                 onCancelReply={handleCancelReply}
+                isSending={isSending}
               />
             </>
           ) : (

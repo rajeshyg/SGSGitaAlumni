@@ -4,7 +4,6 @@
 // Displays messages in a conversation with reactions and read receipts
 
 import React, { useEffect, useRef } from 'react';
-import { ScrollArea } from '../ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Button } from '../ui/button';
 import {
@@ -91,10 +90,14 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    // Use scrollIntoView for smoother scrolling
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
+    // Small delay ensures DOM is fully updated before scrolling (important for mobile)
+    const timer = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [messages]);
 
   const getInitials = (name: string | undefined): string => {
@@ -145,16 +148,11 @@ export const MessageList: React.FC<MessageListProps> = ({
 
   if (loading) {
     return (
-      <div className="flex flex-col space-y-4 p-4">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex items-start space-x-3 animate-pulse">
-            <div className="w-10 h-10 rounded-full bg-muted" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-muted rounded w-1/4" />
-              <div className="h-12 bg-muted rounded w-3/4" />
-            </div>
-          </div>
-        ))}
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">Loading messages...</p>
+        </div>
       </div>
     );
   }
@@ -171,7 +169,10 @@ export const MessageList: React.FC<MessageListProps> = ({
   const groupedMessages = groupMessagesByDate(messages);
 
   return (
-    <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+    <div
+      ref={scrollRef}
+      className="flex-1 overflow-y-auto p-4 touch-pan-y overscroll-contain scrolling-touch"
+    >
       <div className="flex flex-col space-y-4">
         {/* Load earlier messages button */}
         {hasMoreMessages && onLoadOlderMessages && (
@@ -386,6 +387,6 @@ export const MessageList: React.FC<MessageListProps> = ({
         {/* Invisible element at bottom for auto-scroll target */}
         <div ref={messagesEndRef} />
       </div>
-    </ScrollArea>
+    </div>
   );
 };
