@@ -25,7 +25,8 @@ export default defineConfig({
     },
   },
   server: {
-    host: '0.0.0.0', // Listen on all interfaces for network access
+    host: true, // Listen on all interfaces including localhost (required for dev tunnels)
+    strictPort: false,
     fs: {
       // Allow importing files from the prototype workspace
       allow: [
