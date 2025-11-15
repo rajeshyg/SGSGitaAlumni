@@ -60,3 +60,4 @@ nul
 # Test Results & Reports
 test-results/
 playwright-report/
+reports/
