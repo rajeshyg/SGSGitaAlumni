@@ -116,11 +116,22 @@ router.post('/:id/switch', authenticateToken, asyncHandler(async (req, res) => {
 /**
  * POST /api/family-members/:id/consent/grant
  * Grant parent consent for a minor
+ * Body params (optional): digitalSignature, termsAccepted, termsVersion
  */
 router.post('/:id/consent/grant', authenticateToken, asyncHandler(async (req, res) => {
+  const consentData = {
+    ipAddress: req.ip || req.connection.remoteAddress,
+    userAgent: req.headers['user-agent'],
+    digitalSignature: req.body.digitalSignature || null,
+    termsAccepted: req.body.termsAccepted !== undefined ? req.body.termsAccepted : true,
+    termsVersion: req.body.termsVersion || '1.0',
+    verificationMethod: req.body.verificationMethod || 'email_otp'
+  };
+
   const member = await FamilyMemberService.grantParentConsent(
     req.params.id,
-    req.user.id
+    req.user.id,
+    consentData
   );
 
   res.json({ success: true, data: member, message: 'Consent granted successfully' });
@@ -129,11 +140,17 @@ router.post('/:id/consent/grant', authenticateToken, asyncHandler(async (req, re
 /**
  * POST /api/family-members/:id/consent/revoke
  * Revoke parent consent for a minor
+ * Body params (optional): reason - reason for revoking consent
  */
 router.post('/:id/consent/revoke', authenticateToken, asyncHandler(async (req, res) => {
+  const revocationData = {
+    reason: req.body.reason || 'Consent revoked by parent'
+  };
+
   const member = await FamilyMemberService.revokeParentConsent(
     req.params.id,
-    req.user.id
+    req.user.id,
+    revocationData
   );
 
   res.json({ success: true, data: member, message: 'Consent revoked successfully' });
@@ -146,6 +163,47 @@ router.post('/:id/consent/revoke', authenticateToken, asyncHandler(async (req, r
 router.get('/:id/consent/check', authenticateToken, asyncHandler(async (req, res) => {
   const result = await FamilyMemberService.checkConsentRenewal(req.params.id);
   res.json({ success: true, data: result });
+}));
+
+/**
+ * GET /api/family-members/:id/consent-history
+ * Get consent history for a family member (COPPA audit trail)
+ */
+router.get('/:id/consent-history', authenticateToken, asyncHandler(async (req, res) => {
+  const member = await FamilyMemberService.getFamilyMember(
+    req.params.id,
+    req.user.id
+  );
+
+  if (!member) {
+    throw ResourceError.notFound('Family member');
+  }
+
+  // Get all consent records for this family member
+  const db = (await import('../config/database.js')).default;
+  const [consentHistory] = await db.execute(
+    `SELECT
+      id,
+      consent_given,
+      consent_timestamp,
+      consent_ip_address,
+      consent_user_agent,
+      digital_signature,
+      terms_accepted,
+      terms_version,
+      verification_method,
+      expires_at,
+      revoked_at,
+      revoked_reason,
+      is_active,
+      created_at
+    FROM PARENT_CONSENT_RECORDS
+    WHERE family_member_id = ?
+    ORDER BY created_at DESC`,
+    [req.params.id]
+  );
+
+  res.json({ success: true, data: consentHistory });
 }));
 
 /**
