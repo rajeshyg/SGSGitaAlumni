@@ -398,11 +398,14 @@ export const login = asyncHandler(async (req, res) => {
 
   connection.release();
 
-  // Generate tokens
+  // Generate tokens with family member context
   const tokenPayload = {
     userId: user.id,
     email: user.email,
-    role: user.role
+    role: user.role,
+    // Include family member context for family accounts
+    activeFamilyMemberId: user.primary_family_member_id || null,
+    isFamilyAccount: user.is_family_account || false
   };
 
   const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
@@ -552,11 +555,14 @@ export const refresh = asyncHandler(async (req, res, next) => {
 
       const user = rows[0];
 
-      // Generate new tokens
+      // Generate new tokens with family member context
       const tokenPayload = {
         userId: user.id,
         email: user.email,
-        role: user.role
+        role: user.role,
+        // Maintain family member context in refreshed token
+        activeFamilyMemberId: user.primary_family_member_id || null,
+        isFamilyAccount: user.is_family_account || false
       };
 
       const newToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });

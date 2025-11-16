@@ -59,7 +59,38 @@ export const authenticateToken = async (req, res, next) => {
           return res.status(401).json({ error: 'User not found or inactive' });
         }
 
-        req.user = rows[0];
+        // Attach user with family member context from JWT
+        req.user = {
+          ...rows[0],
+          activeFamilyMemberId: decoded.activeFamilyMemberId || null,
+          isFamilyAccount: decoded.isFamilyAccount || false
+        };
+
+        // If family member context exists in JWT, load family member details
+        if (req.user.activeFamilyMemberId) {
+          try {
+            const [familyMembers] = await connection.execute(
+              `SELECT id, parent_user_id, first_name, last_name, display_name,
+                      current_age, can_access_platform, requires_parent_consent,
+                      parent_consent_given, access_level
+               FROM FAMILY_MEMBERS
+               WHERE id = ? AND parent_user_id = ?`,
+              [req.user.activeFamilyMemberId, req.user.id]
+            );
+
+            if (familyMembers.length > 0) {
+              req.familyMember = familyMembers[0];
+              logger.debug('Family member context loaded', {
+                familyMemberId: req.familyMember.id,
+                accessLevel: req.familyMember.access_level
+              });
+            }
+          } catch (fmError) {
+            // Don't fail auth if family member lookup fails - just log it
+            logger.error('Failed to load family member context', fmError);
+          }
+        }
+
         logger.debug('Authentication successful');
         next();
       } catch (dbError) {

@@ -93,6 +93,7 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
 /**
  * POST /api/family-members/:id/switch
  * Switch to a different family member profile
+ * Generates new JWT with updated activeFamilyMemberId
  */
 router.post('/:id/switch', authenticateToken, asyncHandler(async (req, res) => {
   console.log('[family-members] Switch profile request:', {
@@ -110,7 +111,29 @@ router.post('/:id/switch', authenticateToken, asyncHandler(async (req, res) => {
   );
 
   console.log('[family-members] Profile switched successfully:', member);
-  res.json({ success: true, data: member, message: 'Profile switched successfully' });
+
+  // Generate new JWT with updated family member context
+  const jwt = (await import('jsonwebtoken')).default;
+  const JWT_SECRET = process.env.JWT_SECRET || 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION';
+  const JWT_EXPIRES_IN = process.env.NODE_ENV === 'development' ? '24h' : (process.env.JWT_EXPIRES_IN || '1h');
+
+  const tokenPayload = {
+    userId: req.user.id,
+    email: req.user.email,
+    role: req.user.role,
+    activeFamilyMemberId: req.params.id,
+    isFamilyAccount: true
+  };
+
+  const newToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+
+  res.json({
+    success: true,
+    data: member,
+    token: newToken, // New JWT with updated family member context
+    message: 'Profile switched successfully',
+    expiresIn: 3600
+  });
 }));
 
 /**
