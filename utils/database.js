@@ -17,7 +17,7 @@ function getDBConfig() {
 function getPoolConfig() {
   return {
     ...getDBConfig(),
-    connectionLimit: 10,
+    connectionLimit: 20, // Increased from 10 to handle concurrent requests better
     queueLimit: 0,
     // Enable JSON parsing for MySQL JSON types
     typeCast: function (field, next) {
@@ -63,14 +63,15 @@ export async function testDatabaseConnection() {
 export function getPoolStatus() {
   const pool = getPool();
   const poolName = 'MainPool';
+  const poolConfig = getPoolConfig();
 
   return {
     poolName,
-    connectionLimit: pool.config.connectionLimit,
-    queueLimit: pool.config.queueLimit,
-    availableConnections: pool._availableConnections ? pool._availableConnections.length : 'unknown',
-    usingConnections: pool._usingConnections ? pool._usingConnections.length : 'unknown',
-    waitingClients: pool._waitingClients ? pool._waitingClients.length : 'unknown',
+    connectionLimit: poolConfig.connectionLimit,
+    queueLimit: poolConfig.queueLimit,
+    availableConnections: pool._freeConnections ? pool._freeConnections.length : 'unknown',
+    usingConnections: pool._allConnections ? pool._allConnections.length - (pool._freeConnections?.length || 0) : 'unknown',
+    waitingClients: pool._connectionQueue ? pool._connectionQueue.length : 'unknown',
     totalConnections: pool._allConnections ? pool._allConnections.length : 'unknown'
   };
 }

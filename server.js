@@ -7,6 +7,7 @@ dotenv.config();
 import {
   LoginSchema,
   RegisterSchema,
+  RegisterFromInvitationSchema,
   OTPGenerateSchema,
   OTPVerifySchema,
   InvitationCreateSchema,
@@ -33,7 +34,7 @@ import express from 'express';
 import cors from 'cors';
 
 // Import database utilities (AFTER dotenv is loaded)
-import { getPool, testDatabaseConnection } from './utils/database.js';
+import { getPool, testDatabaseConnection, startPoolMonitoring } from './utils/database.js';
 
 // Import middleware
 import { authenticateToken, setAuthMiddlewarePool } from './middleware/auth.js';
@@ -242,7 +243,7 @@ app.post('/api/auth/login', loginRateLimit, validateRequest({ body: LoginSchema 
 app.post('/api/auth/logout', authenticateToken, logout);
 app.get('/api/auth/verify', verifyAuth); // Mobile debugging endpoint - no auth required
 app.post('/api/auth/refresh', refresh);
-app.post('/api/auth/register-from-invitation', registrationRateLimit, validateRequest({ body: RegisterSchema }), (req, res, next) => {
+app.post('/api/auth/register-from-invitation', registrationRateLimit, validateRequest({ body: RegisterFromInvitationSchema }), (req, res, next) => {
   // Reduce verbose logging in production
   if (process.env.NODE_ENV !== 'production') {
     console.log('🔵 ROUTE MATCHED: /api/auth/register-from-invitation');
@@ -251,7 +252,7 @@ app.post('/api/auth/register-from-invitation', registrationRateLimit, validateRe
   }
   next();
 }, registerFromInvitation);
-app.post('/api/auth/register-from-family-invitation', registrationRateLimit, validateRequest({ body: RegisterSchema }), registerFromFamilyInvitation);
+app.post('/api/auth/register-from-family-invitation', registrationRateLimit, validateRequest({ body: RegisterFromInvitationSchema }), registerFromFamilyInvitation);
 
 // Password reset routes
 app.post('/api/auth/request-password-reset', apiRateLimit, validateRequest({ body: { email: 'email' } }), requestPasswordReset);
@@ -678,10 +679,37 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
     setChatIO(chatIO);
     console.log('💬 Chat Socket.IO server initialized');
 
-    // TEMPORARILY DISABLE DATABASE TEST DURING STARTUP
-    // TODO: Fix database connection hanging issue
-    // await testDatabaseConnection();
-    console.log('✅ Server startup completed successfully (database test skipped)');
+    // Test database connection with timeout protection
+    console.log('🔍 Testing database connection...');
+    const dbTestTimeout = setTimeout(() => {
+      console.warn('⚠️  Database test is taking longer than expected (>5s)');
+    }, 5000);
+
+    try {
+      const dbConnected = await Promise.race([
+        testDatabaseConnection(),
+        new Promise((resolve) => setTimeout(() => resolve(false), 10000))
+      ]);
+
+      clearTimeout(dbTestTimeout);
+
+      if (dbConnected) {
+        console.log('✅ Database connection test passed');
+      } else {
+        console.warn('⚠️  Database connection test timed out after 10s');
+        console.warn('   Server will continue, but database may be slow or unreachable');
+      }
+    } catch (dbError) {
+      clearTimeout(dbTestTimeout);
+      console.error('⚠️  Database connection test failed:', dbError.message);
+      console.warn('   Server will continue, but database operations may fail');
+    }
+
+    // Start pool monitoring (logs every 60 seconds)
+    console.log('🔍 Starting connection pool monitoring...');
+    startPoolMonitoring(60000); // Log pool status every minute
+
+    console.log('✅ Server startup completed successfully');
   } catch (error) {
     console.error('❌ Server startup error:', error);
   }

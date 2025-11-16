@@ -3,7 +3,7 @@
 // ============================================================================
 // Simple page for certified alumni to accept invitations and join the network
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -59,12 +59,22 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Ref to prevent duplicate API calls (especially in React StrictMode during development)
+  const hasValidated = useRef(false);
+
   // ============================================================================
   // EFFECTS
   // ============================================================================
 
   useEffect(() => {
+    // Prevent duplicate validation calls (React StrictMode in dev causes double-invocation)
+    if (hasValidated.current) {
+      console.log('[InvitationAcceptancePage] Skipping duplicate validation (already validated)');
+      return;
+    }
+
     if (token) {
+      hasValidated.current = true;
       validateInvitation();
     } else {
       setError('No invitation token provided');
