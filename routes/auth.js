@@ -239,6 +239,163 @@ export const login = asyncHandler(async (req, res) => {
     logger.debug('Skipping password verification (OTP-verified login)');
   }
 
+  // COPPA COMPLIANCE: Verify parental consent for family accounts
+  if (user.primary_family_member_id) {
+    logger.debug('Login: Checking family member consent and age requirements');
+
+    // Get family member details
+    const [familyMembers] = await connection.execute(
+      `SELECT id, first_name, last_name, current_age, can_access_platform,
+              requires_parent_consent, parent_consent_given, access_level,
+              birth_date
+       FROM FAMILY_MEMBERS
+       WHERE id = ? AND parent_user_id = ?`,
+      [user.primary_family_member_id, user.id]
+    );
+
+    if (familyMembers.length === 0) {
+      connection.release();
+      logger.security('Login failed - family member not found', {
+        userId: user.id,
+        familyMemberId: user.primary_family_member_id
+      });
+      throw AuthError.invalidCredentials();
+    }
+
+    const familyMember = familyMembers[0];
+
+    // Check age and consent requirements
+    if (!familyMember.can_access_platform) {
+      connection.release();
+
+      // Determine specific reason for blocking
+      let reason = 'access_denied';
+      let message = 'Platform access has been restricted for this account.';
+
+      if (familyMember.current_age < 14) {
+        reason = 'underage';
+        message = 'Platform access is restricted to users 14 years and older (COPPA compliance). Please contact your parent or guardian.';
+      } else if (familyMember.requires_parent_consent && !familyMember.parent_consent_given) {
+        reason = 'no_parental_consent';
+        message = 'Parental consent is required for platform access. Please ask your parent or guardian to grant consent through the Family Settings.';
+      }
+
+      logger.security('Login blocked - COPPA compliance check failed', {
+        userId: user.id,
+        familyMemberId: familyMember.id,
+        age: familyMember.current_age,
+        reason,
+        canAccess: familyMember.can_access_platform,
+        requiresConsent: familyMember.requires_parent_consent,
+        consentGiven: familyMember.parent_consent_given
+      });
+
+      // Log to age verification audit trail (async, don't wait)
+      db.execute(
+        `INSERT INTO AGE_VERIFICATION_AUDIT (
+          id, family_member_id, age_at_check, birth_date,
+          action_taken, check_context, ip_address, user_agent, endpoint, notes
+        ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          familyMember.id,
+          familyMember.current_age,
+          familyMember.birth_date,
+          reason === 'underage' ? 'blocked_underage' : 'blocked_no_consent',
+          'login_attempt',
+          clientIP,
+          userAgent,
+          '/api/auth/login',
+          `Login attempt blocked: ${reason}`
+        ]
+      ).catch(err => logger.error('Failed to log age verification audit', err));
+
+      serverMonitoring.logFailedLogin(clientIP, email, {
+        reason: `coppa_${reason}`,
+        userId: user.id,
+        familyMemberId: familyMember.id,
+        age: familyMember.current_age
+      });
+
+      throw AuthError.forbidden(message);
+    }
+
+    // Check for expired consent (annual renewal requirement)
+    if (familyMember.requires_parent_consent && familyMember.parent_consent_given) {
+      const [consentRecords] = await connection.execute(
+        `SELECT id, expires_at
+         FROM PARENT_CONSENT_RECORDS
+         WHERE family_member_id = ?
+           AND consent_given = TRUE
+           AND is_active = TRUE
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [familyMember.id]
+      );
+
+      if (consentRecords.length > 0 && new Date(consentRecords[0].expires_at) < new Date()) {
+        connection.release();
+
+        logger.security('Login blocked - parental consent expired', {
+          userId: user.id,
+          familyMemberId: familyMember.id,
+          consentId: consentRecords[0].id,
+          expiredAt: consentRecords[0].expires_at
+        });
+
+        // Log to audit trail
+        db.execute(
+          `INSERT INTO AGE_VERIFICATION_AUDIT (
+            id, family_member_id, age_at_check, birth_date,
+            action_taken, check_context, ip_address, user_agent, endpoint, notes
+          ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            familyMember.id,
+            familyMember.current_age,
+            familyMember.birth_date,
+            'consent_expired',
+            'login_attempt',
+            clientIP,
+            userAgent,
+            '/api/auth/login',
+            `Consent expired on ${consentRecords[0].expires_at}`
+          ]
+        ).catch(err => logger.error('Failed to log age verification audit', err));
+
+        serverMonitoring.logFailedLogin(clientIP, email, {
+          reason: 'consent_expired',
+          userId: user.id,
+          familyMemberId: familyMember.id,
+          consentId: consentRecords[0].id
+        });
+
+        throw AuthError.forbidden(
+          'Parental consent has expired and requires annual renewal. Please ask your parent or guardian to renew consent through the Family Settings.'
+        );
+      }
+    }
+
+    // Success - log access granted
+    logger.debug('Login: Family member consent and age verification passed');
+
+    // Log successful access (async, don't wait)
+    db.execute(
+      `INSERT INTO AGE_VERIFICATION_AUDIT (
+        id, family_member_id, age_at_check, birth_date,
+        action_taken, check_context, ip_address, user_agent, endpoint
+      ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        familyMember.id,
+        familyMember.current_age,
+        familyMember.birth_date,
+        familyMember.access_level === 'full' ? 'allowed_full' : 'allowed_supervised',
+        'login_attempt',
+        clientIP,
+        userAgent,
+        '/api/auth/login'
+      ]
+    ).catch(err => logger.error('Failed to log age verification audit', err));
+  }
+
   connection.release();
 
   // Generate tokens
