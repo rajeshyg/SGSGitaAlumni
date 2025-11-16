@@ -13,6 +13,20 @@
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 
+// JWT Configuration
+// SECURITY FIX: Fail fast if JWT_SECRET not set in production
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development'
+  ? 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION'
+  : null);
+
+if (!JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.');
+}
+
 // Store active socket connections
 const activeUsers = new Map(); // userId -> Set of socketIds
 const userSockets = new Map(); // socketId -> userId
@@ -42,12 +56,28 @@ export function initializeChatSocket(httpServer) {
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, JWT_SECRET);
       socket.userId = decoded.userId;
       socket.email = decoded.email;
+      console.log('[Chat Socket] ✅ Token verified successfully:', {
+        userId: decoded.userId,
+        email: decoded.email,
+        exp: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : 'no expiry',
+        iat: decoded.iat ? new Date(decoded.iat * 1000).toISOString() : 'no issued time'
+      });
       next();
     } catch (error) {
-      next(new Error('Authentication error: Invalid token'));
+      console.error('[Chat Socket] ❌ JWT verification failed:', {
+        errorName: error.name,
+        errorMessage: error.message,
+        tokenPreview: token ? `${token.substring(0, 20)}...${token.substring(token.length - 20)}` : 'no token',
+        tokenLength: token?.length,
+        JWT_SECRET_defined: !!JWT_SECRET,
+        JWT_SECRET_source: process.env.JWT_SECRET ? 'process.env.JWT_SECRET' : 'development fallback',
+        JWT_SECRET_preview: JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'undefined',
+        timestamp: new Date().toISOString()
+      });
+      next(new Error(`Authentication error: ${error.name} - ${error.message}`));
     }
   });
 

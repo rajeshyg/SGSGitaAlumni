@@ -34,7 +34,8 @@
       "Bash(powershell -Command \"Stop-Process -Id 29208 -Force\")",
       "Bash(powershell -Command \"Stop-Process -Id 68276 -Force; Stop-Process -Id 8656 -Force\")",
       "Bash(powershell -Command \"Stop-Process -Id 58096 -Force\")",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")"
     ],
     "deny": [],
     "ask": []
