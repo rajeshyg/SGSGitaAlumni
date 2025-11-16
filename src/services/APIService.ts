@@ -514,33 +514,20 @@ export const APIService = {
       let refreshToken = localStorage.getItem('refreshToken');
       if (!refreshToken) {
         refreshToken = sessionStorage.getItem('refreshToken');
-        if (refreshToken) {
-          console.log('[APIService.refreshToken] 🔄 Found refresh token in sessionStorage');
-        }
       }
-      console.log('[APIService.refreshToken] 🔍 Retrieved from localStorage:', refreshToken ? 'Token exists' : 'NO TOKEN FOUND');
-      console.log('[APIService.refreshToken] 🔍 Token length:', refreshToken?.length || 0);
-      console.log('[APIService.refreshToken] 🔍 Token preview:', refreshToken?.substring(0, 20) + '...');
 
       if (!refreshToken) {
-        console.error('[APIService.refreshToken] ❌ No refresh token in localStorage!');
-        console.log('[APIService.refreshToken] 🔍 All localStorage keys:', Object.keys(localStorage));
         throw new Error('No refresh token available');
       }
 
-      console.log('[APIService.refreshToken] 📤 Sending refresh request with token...');
-      console.log('[APIService.refreshToken] 📤 Request body:', { refreshToken });
       const response = await apiClient.post('/api/auth/refresh', { refreshToken });
-      console.log('[APIService.refreshToken] 📥 Response received:', response);
 
       // Extract data from new response format if present
       const data = response?.data || response;
 
-      console.log('[APIService.refreshToken] ✅ Token refresh successful');
       logger.info('Token refresh successful');
       return data as TokenResponse;
     } catch (error) {
-      console.error('[APIService.refreshToken] ❌ Token refresh failed:', error);
       logger.error('Token refresh failed:', error);
       throw new Error('Session expired. Please log in again.');
     }

@@ -43,25 +43,23 @@ export const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
-    console.log('[AUTH_MIDDLEWARE] Received request to:', req.path);
-    console.log('[AUTH_MIDDLEWARE] Auth header present:', !!authHeader);
-    console.log('[AUTH_MIDDLEWARE] Token present:', !!token);
+    logger.debug('Auth middleware request', { path: req.path, hasToken: !!token });
 
     if (!token) {
-      console.log('[AUTH_MIDDLEWARE] No token provided');
+      logger.debug('Auth failed: no token provided');
       throw AuthError.tokenInvalid();
     }
 
     jwt.verify(token, JWT_SECRET, async (err, decoded) => {
       if (err) {
-        console.log('[AUTH_MIDDLEWARE] JWT verification failed:', err.message);
+        logger.debug('JWT verification failed', { error: err.message });
         if (err.name === 'TokenExpiredError') {
           return next(AuthError.tokenExpired());
         }
         return next(AuthError.tokenInvalid());
       }
 
-      console.log('[AUTH_MIDDLEWARE] JWT decoded successfully:', { userId: decoded.userId, email: decoded.email, role: decoded.role });
+      logger.debug('JWT verified successfully');
 
       try {
         // Verify user still exists and is active with timeout
@@ -78,23 +76,21 @@ export const authenticateToken = async (req, res, next) => {
         );
         connection.release();
 
-        console.log('[AUTH_MIDDLEWARE] Database query result:', { found: rows.length > 0, user: rows.length > 0 ? { id: rows[0].id, email: rows[0].email, role: rows[0].role, is_active: rows[0].is_active } : null });
-
         if (rows.length === 0) {
-          console.log('[AUTH_MIDDLEWARE] User not found or inactive');
+          logger.debug('Auth failed: user not found or inactive');
           return next(AuthError.sessionExpired());
         }
 
         req.user = rows[0];
-        console.log('[AUTH_MIDDLEWARE] Authentication successful, proceeding to route');
+        logger.debug('Authentication successful');
         next();
       } catch (dbError) {
-        console.error('[AUTH_MIDDLEWARE] Database error:', dbError);
+        logger.error('Auth middleware database error', dbError);
         return next(ServerError.database('user verification'));
       }
     });
   } catch (error) {
-    console.error('[AUTH_MIDDLEWARE] Auth middleware error:', error);
+    logger.error('Auth middleware error', error);
     next(error);
   }
 };
@@ -143,9 +139,9 @@ export const login = asyncHandler(async (req, res) => {
         setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
       )
     ]);
-    console.log('🔐 Login: DB connection obtained successfully');
+    logger.debug('Login: DB connection obtained');
   } catch (connError) {
-    console.error('🔐 Login: Failed to get DB connection:', connError.message);
+    logger.error('Login: DB connection failed', connError);
     serverMonitoring.logFailedLogin(
       req.ip || req.connection.remoteAddress || 'unknown',
       email,
@@ -155,7 +151,7 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   // Find user by email - order by role priority (admin first, then moderator, then member)
-  console.log('🔐 Login: Looking up user by email:', email);
+  logger.debug('Login: Looking up user in database');
   const [rows] = await connection.execute(
     `SELECT id, email, password_hash, role, is_active, created_at,
             is_family_account, family_account_type, primary_family_member_id,
@@ -166,7 +162,7 @@ export const login = asyncHandler(async (req, res) => {
     [email]
   );
 
-  console.log('🔐 Login: User lookup result:', { found: rows.length > 0, user: rows.length > 0 ? { id: rows[0].id, email: rows[0].email, role: rows[0].role, is_active: rows[0].is_active } : null });
+  logger.debug('Login: User lookup completed', { found: rows.length > 0 });
 
   if (rows.length === 0) {
     connection.release();
@@ -180,7 +176,7 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   const user = rows[0];
-  console.log('🔐 Login: Found user:', { id: user.id, email: user.email, role: user.role, is_active: user.is_active });
+  logger.debug('Login: User record retrieved');
 
   // Check if user is active
   if (!user.is_active) {
@@ -196,7 +192,7 @@ export const login = asyncHandler(async (req, res) => {
 
   // FIX 1: Add server-side OTP verification check to prevent authentication bypass
   if (otpVerified) {
-    console.log('🔐 Verifying OTP was actually validated...');
+    logger.debug('Login: Verifying OTP was validated');
 
     // Check that OTP was validated within last 5 minutes
     const [otpCheck] = await connection.execute(
@@ -209,10 +205,9 @@ export const login = asyncHandler(async (req, res) => {
       [email]
     );
 
-    console.log('🔐 OTP check result:', { found: otpCheck.length > 0, used_at: otpCheck.length > 0 ? otpCheck[0].used_at : null });
-
     if (otpCheck.length === 0) {
       connection.release();
+      logger.security('Failed login attempt - OTP not verified', { clientIP });
       serverMonitoring.logFailedLogin(
         req.ip || req.connection.remoteAddress || 'unknown',
         email,
@@ -221,10 +216,7 @@ export const login = asyncHandler(async (req, res) => {
       throw AuthError.invalidCredentials();
     }
 
-    console.log('🔐 OTP verification confirmed:', {
-      otpId: otpCheck[0].id,
-      usedAt: otpCheck[0].used_at
-    });
+    logger.debug('Login: OTP verification confirmed');
   }
 
   // Verify password (skip for OTP-verified logins)
@@ -296,16 +288,11 @@ export const logout = asyncHandler(async (req, res) => {
 export const verifyAuth = asyncHandler(async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  
-  console.log('🔍 =================== AUTH VERIFICATION ===================');
-  console.log('🔍 Timestamp:', new Date().toISOString());
-  console.log('🔍 Token present:', !!token);
-  console.log('🔍 Token length:', token?.length || 0);
-  console.log('🔍 User Agent:', req.headers['user-agent']);
-  console.log('🔍 Client IP:', req.ip || req.connection.remoteAddress);
-  
+
+  logger.debug('Auth verification request', { hasToken: !!token });
+
   if (!token) {
-    console.log('🔍 ❌ No token provided');
+    logger.debug('Auth verification failed - no token');
     return res.json({
       authenticated: false,
       reason: 'no_token',
@@ -315,8 +302,8 @@ export const verifyAuth = asyncHandler(async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('🔍 ✅ Token decoded:', { userId: decoded.userId, email: decoded.email, role: decoded.role });
-    
+    logger.debug('Auth verification - token decoded');
+
     // Verify user still exists
     const connection = await pool.getConnection();
     const [rows] = await connection.execute(
@@ -324,20 +311,19 @@ export const verifyAuth = asyncHandler(async (req, res) => {
       [decoded.userId]
     );
     connection.release();
-    
+
     if (rows.length === 0 || !rows[0].is_active) {
-      console.log('🔍 ❌ User not found or inactive');
+      logger.debug('Auth verification failed - user not found or inactive');
       return res.json({
         authenticated: false,
         reason: 'user_not_found_or_inactive',
         message: 'User account not found or inactive'
       });
     }
-    
+
     const user = rows[0];
-    console.log('🔍 ✅ User verified:', { id: user.id, email: user.email, role: user.role });
-    console.log('🔍 ===========================================');
-    
+    logger.debug('Auth verification successful');
+
     return res.json({
       authenticated: true,
       user: {
@@ -352,9 +338,8 @@ export const verifyAuth = asyncHandler(async (req, res) => {
       message: 'Authentication valid'
     });
   } catch (error) {
-    console.log('🔍 ❌ Token verification failed:', error.message);
-    console.log('🔍 ===========================================');
-    
+    logger.debug('Auth verification failed - token invalid', { error: error.message });
+
     return res.json({
       authenticated: false,
       reason: error.name === 'TokenExpiredError' ? 'token_expired' : 'token_invalid',
@@ -441,7 +426,7 @@ export const refresh = asyncHandler(async (req, res, next) => {
       });
 
     } catch (dbError) {
-      console.error('Database error in token refresh:', dbError);
+      logger.error('Database error in token refresh', dbError);
       return next(ServerError.database('token refresh'));
     }
   });
@@ -449,20 +434,16 @@ export const refresh = asyncHandler(async (req, res, next) => {
 
 // Register from invitation (streamlined version using services)
 export const registerFromInvitation = asyncHandler(async (req, res) => {
-  console.log('🚀 [REGISTER_FROM_INVITATION] =================== FUNCTION CALLED ===================');
-  console.log('[REGISTER_FROM_INVITATION] Request method:', req.method);
-  console.log('[REGISTER_FROM_INVITATION] Request path:', req.path);
-  console.log('[REGISTER_FROM_INVITATION] Request body:', req.body);
-  console.log('[REGISTER_FROM_INVITATION] Starting registration process');
+  logger.debug('Registration from invitation started', { method: req.method, path: req.path });
 
   const { invitationToken, additionalData = {} } = req.body;
 
   if (!invitationToken) {
-    console.log('[REGISTER_FROM_INVITATION] Missing invitation token');
+    logger.debug('Registration failed - missing invitation token');
     throw ValidationError.missingField('invitationToken');
   }
 
-  console.log('[REGISTER_FROM_INVITATION] Received token:', invitationToken.substring(0, 8) + '...');
+  logger.debug('Registration: validating invitation token');
 
   // SECURITY FIX: Removed test token backdoor - all tokens must be validated properly
 
@@ -471,31 +452,30 @@ export const registerFromInvitation = asyncHandler(async (req, res) => {
   const { StreamlinedRegistrationService } = await import('../src/services/StreamlinedRegistrationService.js');
 
   // Initialize services (EmailService is optional and not available on server side)
-  console.log('[REGISTER_FROM_INVITATION] Initializing services without EmailService');
+  logger.debug('Registration: initializing services');
   const alumniService = new AlumniDataIntegrationService(pool);
   const registrationService = new StreamlinedRegistrationService(pool, alumniService);
 
   // First validate the invitation to determine registration path
-  console.log('[REGISTER_FROM_INVITATION] Validating invitation first');
   const validation = await registrationService.validateInvitationWithAlumniData(invitationToken);
 
   if (!validation.isValid) {
-    console.log('[REGISTER_FROM_INVITATION] Invalid invitation');
+    logger.debug('Registration failed - invalid invitation');
     throw ValidationError.invalidData({ reason: 'Invalid or expired invitation' });
   }
 
   let user;
   if (validation.canOneClickJoin) {
     // One-click registration with complete alumni data
-    console.log('[REGISTER_FROM_INVITATION] Using one-click registration');
+    logger.debug('Registration: using one-click registration');
     user = await registrationService.completeStreamlinedRegistration(invitationToken, additionalData);
   } else {
     // Registration requiring additional user data
-    console.log('[REGISTER_FROM_INVITATION] Using incomplete data registration');
+    logger.debug('Registration: using incomplete data registration');
     user = await registrationService.handleIncompleteAlumniData(invitationToken, additionalData);
   }
 
-  console.log('[REGISTER_FROM_INVITATION] Registration completed successfully for user:', user.email);
+  logger.audit('registration_completed', user.id, { hasAlumniData: validation.canOneClickJoin });
 
   res.status(201).json({
     success: true,
@@ -582,13 +562,13 @@ export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
   ]);
 
   // Create default preferences for the new user
-  console.log(`📋 Creating default preferences for new user ${userId}...`);
+  logger.debug('Creating default preferences for new user');
   const { createDefaultPreferences } = await import('./preferences.js');
   try {
     await createDefaultPreferences(userId);
-    console.log(`✅ Default preferences created for user ${userId}`);
+    logger.debug('Default preferences created successfully');
   } catch (prefError) {
-    console.error(`⚠️ Failed to create default preferences for user ${userId}:`, prefError);
+    logger.warn('Failed to create default preferences', prefError);
     // Don't fail registration if preference creation fails
   }
 
@@ -603,7 +583,7 @@ export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
 
 // Request password reset - sends reset link to email
 export const requestPasswordReset = asyncHandler(async (req, res) => {
-  console.log('🔐 Password reset request received');
+  logger.debug('Password reset request received');
   const { email } = req.body;
 
   if (!email) {
@@ -653,21 +633,21 @@ export const requestPasswordReset = asyncHandler(async (req, res) => {
     try {
       const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
       await emailService.sendPasswordResetEmail(user.email, resetToken, user.first_name);
-      console.log('✅ Password reset email sent to:', email);
+      logger.debug('Password reset email sent successfully');
     } catch (emailError) {
-      console.error('⚠️ Failed to send password reset email:', emailError.message);
+      logger.warn('Failed to send password reset email', emailError);
       // Don't fail the request if email fails - token was still created
       // User can still use the password reset if they get the link from support
     }
 
-    console.log('✅ Password reset token generated for:', email);
+    logger.audit('password_reset_requested', user.id, { clientIP: req.ip });
 
     res.json({
       success: true,
       message: 'If this email is registered, a password reset link will be sent'
     });
   } catch (error) {
-    console.error('Password reset request failed:', error);
+    logger.error('Password reset request failed', error);
     throw error;
   } finally {
     connection.release();
@@ -676,7 +656,7 @@ export const requestPasswordReset = asyncHandler(async (req, res) => {
 
 // Validate password reset token
 export const validatePasswordResetToken = asyncHandler(async (req, res) => {
-  console.log('🔐 Validating password reset token');
+  logger.debug('Validating password reset token');
   const { token } = req.body;
 
   if (!token) {
@@ -705,7 +685,7 @@ export const validatePasswordResetToken = asyncHandler(async (req, res) => {
     
     res.json({ valid: isValid });
   } catch (error) {
-    console.error('Token validation failed:', error);
+    logger.error('Token validation failed', error);
     res.json({ valid: false });
   } finally {
     connection.release();
@@ -714,7 +694,7 @@ export const validatePasswordResetToken = asyncHandler(async (req, res) => {
 
 // Reset password using token
 export const resetPassword = asyncHandler(async (req, res) => {
-  console.log('🔐 Password reset attempt');
+  logger.debug('Password reset attempt');
   const { token, password } = req.body;
 
   if (!token) {
@@ -790,14 +770,14 @@ export const resetPassword = asyncHandler(async (req, res) => {
       req.headers['user-agent'] || 'unknown'
     ]);
 
-    console.log('✅ Password reset successful for user:', resetRecord.user_id);
+    logger.audit('password_reset_completed', resetRecord.user_id, { clientIP: req.ip });
 
     res.json({
       success: true,
       message: 'Password has been successfully reset'
     });
   } catch (error) {
-    console.error('Password reset failed:', error);
+    logger.error('Password reset failed', error);
     throw error;
   } finally {
     connection.release();

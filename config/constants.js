@@ -116,8 +116,18 @@ export function validateRequiredConfig(isProduction = false) {
       errors.push('REDIS_URL environment variable is required in production');
     }
 
-    if (process.env.DATABASE_URL === undefined) {
-      errors.push('DATABASE_URL environment variable is required in production');
+    // Check for database configuration (discrete variables)
+    if (!process.env.DB_HOST) {
+      errors.push('DB_HOST environment variable is required in production');
+    }
+    if (!process.env.DB_USER) {
+      errors.push('DB_USER environment variable is required in production');
+    }
+    if (!process.env.DB_PASSWORD) {
+      errors.push('DB_PASSWORD environment variable is required in production');
+    }
+    if (!process.env.DB_NAME) {
+      errors.push('DB_NAME environment variable is required in production');
     }
   }
 
