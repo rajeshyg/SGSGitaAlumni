@@ -479,10 +479,15 @@ export const APIService = {
       return data as AuthResponse;
     } catch (error) {
       logger.error('Login failed:', error);
+
+      // Handle timeout specifically
       if (error instanceof Error && error.message.includes('timeout')) {
         throw new Error('Login is taking longer than expected. Please check your connection and try again.');
       }
-      throw new Error('Login failed. Please check your credentials.');
+
+      // CRITICAL FIX: Re-throw the original error to preserve backend error message
+      // This allows specific error messages like "Invalid email or password" to reach the user
+      throw error;
     }
   },
 

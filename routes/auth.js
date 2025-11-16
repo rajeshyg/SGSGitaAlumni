@@ -7,9 +7,22 @@ import { initializeSecurity } from '../src/lib/security/index.js';
 import { AuthError, ValidationError, ResourceError, ServerError } from '../server/errors/ApiError.js';
 import { asyncHandler } from '../server/middleware/errorHandler.js';
 import { emailService } from '../utils/emailService.js';
+import { logger } from '../utils/logger.js';
 
 // JWT Configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+// SECURITY FIX: Fail fast if JWT_SECRET not set in production
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development'
+  ? 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION'
+  : null);
+
+if (!JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.');
+}
+
 const JWT_EXPIRES_IN = process.env.NODE_ENV === 'development' ? '24h' : (process.env.JWT_EXPIRES_IN || '1h');
 const REFRESH_TOKEN_EXPIRES_IN = process.env.NODE_ENV === 'development' ? '30d' : (process.env.REFRESH_TOKEN_EXPIRES_IN || '7d');
 
@@ -96,34 +109,30 @@ export const login = asyncHandler(async (req, res) => {
   const userAgent = req.headers['user-agent'] || 'unknown';
   const isMobile = /mobile|android|iphone|ipad|ipod/i.test(userAgent);
   
-  console.log('🔐 =================== LOGIN ATTEMPT ===================');
-  console.log('🔐 Email:', req.body?.email);
-  console.log('🔐 Client IP:', clientIP);
-  console.log('🔐 User Agent:', userAgent);
-  console.log('🔐 Is Mobile:', isMobile);
-  console.log('🔐 Timestamp:', new Date().toISOString());
-  console.log('🔐 Request Headers:', JSON.stringify({
-    'content-type': req.headers['content-type'],
-    'origin': req.headers['origin'],
-    'referer': req.headers['referer']
-  }, null, 2));
+  // SECURITY FIX: Use logger instead of console.log for sensitive operations
+  logger.security('Login attempt', {
+    email: req.body?.email ? '[REDACTED]' : 'missing',
+    clientIP,
+    isMobile,
+    origin: req.headers['origin']
+  });
   
   const { email, password, otpVerified } = req.body;
 
   // Check if this is OTP-based passwordless login or traditional password login
   if (!email) {
-    console.log('🔐 ❌ Missing email field');
+    logger.debug('Login validation failed: missing email');
     throw ValidationError.missingField('email');
   }
 
   // For OTP-verified login, password is optional
   // For traditional login, password is required
   if (!otpVerified && !password) {
-    console.log('🔐 ❌ Missing password field');
+    logger.debug('Login validation failed: missing password');
     throw ValidationError.missingField('password');
   }
 
-  console.log('🔐 Login: Attempting to get DB connection...');
+  logger.debug('Login: Attempting database connection');
   // Use database authentication with timeout
   let connection;
   try {
@@ -220,12 +229,12 @@ export const login = asyncHandler(async (req, res) => {
 
   // Verify password (skip for OTP-verified logins)
   if (!otpVerified) {
-    console.log('🔐 Verifying password...');
+    // SECURITY FIX: Never log password validation results
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    console.log(`🔐 Password valid: ${isValidPassword}`);
     if (!isValidPassword) {
       connection.release();
       // Log failed login attempt
+      logger.security('Failed login attempt - invalid password', { userId: user.id, clientIP });
       serverMonitoring.logFailedLogin(
         req.ip || req.connection.remoteAddress || 'unknown',
         email,
@@ -233,8 +242,9 @@ export const login = asyncHandler(async (req, res) => {
       );
       throw AuthError.invalidCredentials();
     }
+    logger.debug('Password verification completed');
   } else {
-    console.log('🔐 Skipping password verification (OTP-verified login)');
+    logger.debug('Skipping password verification (OTP-verified login)');
   }
 
   connection.release();
@@ -249,16 +259,8 @@ export const login = asyncHandler(async (req, res) => {
   const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
   const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
-  console.log('🔐 ✅ LOGIN SUCCESSFUL ===================');
-  console.log('🔐 User ID:', user.id);
-  console.log('🔐 Email:', user.email);
-  console.log('🔐 Role:', user.role);
-  console.log('🔐 Token Length:', token.length);
-  console.log('🔐 RefreshToken Length:', refreshToken.length);
-  console.log('🔐 Token Expiry:', JWT_EXPIRES_IN);
-  console.log('🔐 Is Mobile Client:', isMobile);
-  console.log('🔐 Timestamp:', new Date().toISOString());
-  console.log('🔐 ===========================================');
+  // SECURITY FIX: Log success without exposing sensitive data
+  logger.audit('login_success', user.id, { role: user.role, isMobile, clientIP });
 
   // Return user data (without password hash)
   const userResponse = {
@@ -462,21 +464,7 @@ export const registerFromInvitation = asyncHandler(async (req, res) => {
 
   console.log('[REGISTER_FROM_INVITATION] Received token:', invitationToken.substring(0, 8) + '...');
 
-  // TEMPORARY: Handle test token for testing BEFORE validation
-  if (invitationToken === 'test-token-123') {
-    console.log('[REGISTER_FROM_INVITATION] Using test token, returning mock user');
-    return res.status(201).json({
-      success: true,
-      user: {
-        id: 'test-user-id',
-        email: 'test@example.com',
-        firstName: 'Test',
-        lastName: 'User',
-        alumniMemberId: 1
-      },
-      message: 'Registration completed successfully (test mode)'
-    });
-  }
+  // SECURITY FIX: Removed test token backdoor - all tokens must be validated properly
 
   // Import services dynamically to avoid circular dependencies
   const { AlumniDataIntegrationService } = await import('../src/services/AlumniDataIntegrationService.js');

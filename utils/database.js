@@ -1,4 +1,5 @@
 import mysql from 'mysql2/promise';
+import { logger } from './logger.js';
 
 // MySQL Database Configuration (created dynamically)
 function getDBConfig() {
@@ -98,4 +99,109 @@ export function startPoolMonitoring(intervalMs = 60000) { // Default: every minu
 
   // Set up periodic logging
   return setInterval(logPoolStatus, intervalMs);
+}
+
+// ============================================================================
+// DATABASE UTILITY FUNCTIONS - Added during code quality refactor
+// ============================================================================
+
+/**
+ * Execute a database operation with automatic connection management and timeout
+ * @param {Function} operation - Async function that receives connection and performs DB operations
+ * @param {number} timeoutMs - Timeout in milliseconds (default: 10000)
+ * @returns {Promise<any>} - Result from the operation
+ * @throws {Error} - If connection fails or operation times out
+ */
+export async function withDatabaseConnection(operation, timeoutMs = 10000) {
+  let connection = null;
+  const dbPool = getPool();
+
+  try {
+    // Acquire connection with timeout
+    connection = await Promise.race([
+      dbPool.getConnection(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database connection timeout')), timeoutMs)
+      )
+    ]);
+
+    logger.debug('Database connection acquired');
+
+    // Execute the operation
+    const result = await operation(connection);
+
+    // Release connection
+    connection.release();
+    logger.debug('Database connection released');
+
+    return result;
+
+  } catch (error) {
+    // Ensure connection is released even on error
+    if (connection) {
+      connection.release();
+      logger.debug('Database connection released (after error)');
+    }
+
+    // Re-throw the error for caller to handle
+    throw error;
+  }
+}
+
+/**
+ * Execute a transactional database operation with automatic rollback on error
+ * @param {Function} operation - Async function that receives connection and performs DB operations
+ * @param {number} timeoutMs - Timeout in milliseconds (default: 10000)
+ * @returns {Promise<any>} - Result from the operation
+ * @throws {Error} - If connection fails, operation times out, or transaction fails
+ */
+export async function withTransaction(operation, timeoutMs = 10000) {
+  let connection = null;
+  const dbPool = getPool();
+
+  try {
+    // Acquire connection with timeout
+    connection = await Promise.race([
+      dbPool.getConnection(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database connection timeout')), timeoutMs)
+      )
+    ]);
+
+    logger.debug('Transaction connection acquired');
+
+    // Start transaction
+    await connection.beginTransaction();
+    logger.debug('Transaction started');
+
+    // Execute the operation
+    const result = await operation(connection);
+
+    // Commit transaction
+    await connection.commit();
+    logger.debug('Transaction committed');
+
+    // Release connection
+    connection.release();
+    logger.debug('Transaction connection released');
+
+    return result;
+
+  } catch (error) {
+    // Rollback transaction on error
+    if (connection) {
+      try {
+        await connection.rollback();
+        logger.warn('Transaction rolled back due to error');
+      } catch (rollbackError) {
+        logger.error('Failed to rollback transaction', rollbackError);
+      }
+
+      connection.release();
+      logger.debug('Transaction connection released (after error)');
+    }
+
+    // Re-throw the original error
+    throw error;
+  }
 }

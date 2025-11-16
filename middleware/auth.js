@@ -1,8 +1,20 @@
 import mysql from 'mysql2/promise';
 import jwt from 'jsonwebtoken';
+import { logger } from '../utils/logger.js';
 
 // JWT Configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+// SECURITY FIX: Fail fast if JWT_SECRET not set in production
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development'
+  ? 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION'
+  : null);
+
+if (!JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.');
+}
 
 // Get database pool - will be passed from main server
 let pool = null;
@@ -17,22 +29,21 @@ export const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
-    console.log('[AUTH_MIDDLEWARE] Received request to:', req.path);
-    console.log('[AUTH_MIDDLEWARE] Auth header present:', !!authHeader);
-    console.log('[AUTH_MIDDLEWARE] Token present:', !!token);
+    // SECURITY FIX: Use logger instead of console.log
+    logger.debug('Auth middleware request', { path: req.path, hasToken: !!token });
 
     if (!token) {
-      console.log('[AUTH_MIDDLEWARE] No token provided');
+      logger.debug('Auth failed: no token provided');
       return res.status(401).json({ error: 'Access token required' });
     }
 
     jwt.verify(token, JWT_SECRET, async (err, decoded) => {
       if (err) {
-        console.log('[AUTH_MIDDLEWARE] JWT verification failed:', err.message);
+        logger.debug('JWT verification failed', { error: err.message });
         return res.status(403).json({ error: 'Invalid or expired token' });
       }
 
-      console.log('[AUTH_MIDDLEWARE] JWT decoded successfully:', { userId: decoded.userId, email: decoded.email, role: decoded.role });
+      logger.debug('JWT verified successfully');
 
       try {
         // Verify user still exists and is active
@@ -43,23 +54,21 @@ export const authenticateToken = async (req, res, next) => {
         );
         connection.release();
 
-        console.log('[AUTH_MIDDLEWARE] Database query result:', { found: rows.length > 0, user: rows.length > 0 ? { id: rows[0].id, email: rows[0].email, role: rows[0].role, is_active: rows[0].is_active } : null });
-
         if (rows.length === 0) {
-          console.log('[AUTH_MIDDLEWARE] User not found or inactive');
+          logger.debug('Auth failed: user not found or inactive');
           return res.status(401).json({ error: 'User not found or inactive' });
         }
 
         req.user = rows[0];
-        console.log('[AUTH_MIDDLEWARE] Authentication successful, proceeding to route');
+        logger.debug('Authentication successful');
         next();
       } catch (dbError) {
-        console.error('[AUTH_MIDDLEWARE] Database error:', dbError);
+        logger.error('Auth middleware database error', dbError);
         return res.status(500).json({ error: 'Authentication database error' });
       }
     });
   } catch (error) {
-    console.error('[AUTH_MIDDLEWARE] Auth middleware error:', error);
+    logger.error('Auth middleware error', error);
     return res.status(500).json({ error: 'Authentication error' });
   }
 };
