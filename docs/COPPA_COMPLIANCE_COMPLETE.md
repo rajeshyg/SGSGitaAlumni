@@ -198,6 +198,40 @@ LIMIT 5;
 
 ## Testing
 
+### Deployment Verification (2025-11-16)
+
+**Status:** ✅ Successfully Deployed and Tested
+
+**Database Migration:**
+- ✅ Tables created: PARENT_CONSENT_RECORDS, AGE_VERIFICATION_AUDIT
+- ✅ Data migrated: 4 consent records transferred
+- ✅ Foreign key constraints validated
+
+**Bug Fixes Applied During Deployment:**
+
+1. **JWT Authentication Fix** (`middleware/auth.js`)
+   - **Issue:** ES6 import hoisting caused JWT_SECRET to be undefined during token verification
+   - **Symptoms:** "Invalid signature" errors, tokens generated with different secret than verification
+   - **Solution:** Implemented lazy initialization pattern with `getJwtSecret()` function
+   - **Reference:** Same pattern documented in `docs/lessons-learned/socketio-real-time-infrastructure.md`
+
+2. **OTP Login Fix** (`routes/auth.js:393`)
+   - **Issue:** ReferenceError "db is not defined" during family account OTP login
+   - **Symptoms:** OTP validation succeeded but login failed at audit logging step
+   - **Solution:** Changed `db.execute()` to `connection.execute()` for AGE_VERIFICATION_AUDIT insert
+   - **Context:** Family member consent verification passed, but audit trail logging failed
+
+**Tested Features:**
+- ✅ Profile Selection UI (unchanged, works as before)
+- ✅ Family Settings Page - COPPA compliance notice displayed
+- ✅ Parent profile - "No consent needed" status shown
+- ✅ Child profile (age 8) - "Consent given" status with "Revoke Consent" button
+- ✅ Revoke consent flow - Successfully revokes and shows "Grant Consent" button
+- ✅ Grant consent flow - Successfully restores consent
+- ✅ Session management - Family member context preserved in JWT
+
+**Known Issues:** None blocking - UI/UX enhancements can be addressed in Phase 2-4
+
 ### Quick Test Checklist
 
 #### 1. Database Migration ✅
@@ -313,6 +347,22 @@ Try accessing without `can_access_platform = true` - should get 403.
 ---
 
 ## Troubleshooting
+
+### Deployment Lessons Learned (2025-11-16)
+
+**ES6 Import Hoisting Issues:**
+- Always use lazy initialization for environment-dependent configuration
+- Check existing documentation for similar patterns before implementing new solutions
+- JWT_SECRET must be loaded via function call, not module-level import
+
+**Variable Naming Consistency:**
+- Use consistent variable names (connection vs db) throughout codebase
+- Search for similar patterns in existing code to avoid mismatches
+
+**Debugging Tips:**
+- PowerShell console logs are more detailed than browser console for server-side issues
+- Check exact line numbers in error stack traces
+- Verify database connection variables before executing queries
 
 ### Migration Issues
 
