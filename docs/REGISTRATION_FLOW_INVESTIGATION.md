@@ -354,4 +354,4 @@ Ready for fresh test after fix is implemented.
 
 ---
 
-**Recommendation:** Developer should investigate the invitation acceptance code path that the 3 working families used, compare it with the current code, and identify what changed or what's missing that prevents proper FAMILY_MEMBERS creation during registration.
+**Recommendation:** You should investigate the invitation acceptance code path that the 3 working families used, compare it with the current code, and identify what changed or what's missing that prevents proper FAMILY_MEMBERS creation during registration.

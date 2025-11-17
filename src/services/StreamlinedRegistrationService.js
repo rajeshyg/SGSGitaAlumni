@@ -5,6 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { AlumniDataIntegrationService } from './AlumniDataIntegrationService.js';
+import FamilyMemberService from '../../services/FamilyMemberService.js';
 
 export class StreamlinedRegistrationService {
   constructor(pool, alumniService, emailService) {
@@ -266,14 +267,52 @@ export class StreamlinedRegistrationService {
         WHERE id = ?
       `, [userId, invitation.id]);
 
+      // Create initial FAMILY_MEMBERS record for the registering user
+      console.log('StreamlinedRegistrationService: Creating family member for user (incomplete data path):', userId);
+
+      const familyMember = await FamilyMemberService.createFamilyMember(userId, {
+        firstName: mergedData.firstName,
+        lastName: mergedData.lastName,
+        displayName: `${mergedData.firstName} ${mergedData.lastName}`,
+        birthDate: mergedData.birthDate || null,
+        relationship: 'self',
+        profileImageUrl: null
+      });
+
+      console.log('StreamlinedRegistrationService: Family member created with ID:', familyMember.id);
+
+      // Update app_users with primary_family_member_id
+      await connection.execute(
+        `UPDATE app_users
+         SET primary_family_member_id = ?,
+             family_account_type = 'alumni'
+         WHERE id = ?`,
+        [familyMember.id, userId]
+      );
+
+      // Update alumni_members with invitation_accepted_at timestamp
+      if (alumniProfile?.id) {
+        await connection.execute(
+          `UPDATE alumni_members
+           SET invitation_accepted_at = NOW()
+           WHERE id = ?`,
+          [alumniProfile.id]
+        );
+      }
+
       await connection.commit();
+
+      // Check if profile needs completion (missing critical data)
+      const needsProfileCompletion = !mergedData.birthDate;
 
       const user = {
         id: userId,
         email: invitation.email,
         firstName: mergedData.firstName,
         lastName: mergedData.lastName,
-        alumniMemberId: alumniProfile?.id
+        alumniMemberId: alumniProfile?.id,
+        primaryFamilyMemberId: familyMember.id,
+        needsProfileCompletion
       };
 
       // Optionally send welcome email (skip if EmailService not available)
@@ -346,14 +385,56 @@ export class StreamlinedRegistrationService {
         WHERE id = ?
       `, [userId, invitation.id]);
 
+      // Create initial FAMILY_MEMBERS record for the registering user
+      console.log('StreamlinedRegistrationService: Creating family member for user:', userId);
+
+      const familyMember = await FamilyMemberService.createFamilyMember(userId, {
+        firstName: alumniProfile.firstName,
+        lastName: alumniProfile.lastName,
+        displayName: `${alumniProfile.firstName} ${alumniProfile.lastName}`,
+        birthDate: alumniProfile.birthDate || null,
+        relationship: 'self',
+        profileImageUrl: null
+      });
+
+      console.log('StreamlinedRegistrationService: Family member created with ID:', familyMember.id);
+
+      // Update app_users with primary_family_member_id
+      // Note: is_family_account and family_account_type are already set by FamilyMemberService
+      await connection.execute(
+        `UPDATE app_users
+         SET primary_family_member_id = ?,
+             family_account_type = 'alumni'
+         WHERE id = ?`,
+        [familyMember.id, userId]
+      );
+
+      console.log('StreamlinedRegistrationService: Updated app_users with primary_family_member_id');
+
+      // Update alumni_members with invitation_accepted_at timestamp
+      if (alumniProfile?.id) {
+        await connection.execute(
+          `UPDATE alumni_members
+           SET invitation_accepted_at = NOW()
+           WHERE id = ?`,
+          [alumniProfile.id]
+        );
+        console.log('StreamlinedRegistrationService: Updated alumni_members.invitation_accepted_at');
+      }
+
       await connection.commit();
+
+      // Check if profile needs completion (missing critical data)
+      const needsProfileCompletion = !alumniProfile.birthDate;
 
       const user = {
         id: userId,
         email: invitation.email,
         firstName: alumniProfile.firstName,
         lastName: alumniProfile.lastName,
-        alumniMemberId: alumniProfile.id
+        alumniMemberId: alumniProfile.id,
+        primaryFamilyMemberId: familyMember.id,
+        needsProfileCompletion
       };
 
       // Optionally send welcome email (skip if EmailService not available)

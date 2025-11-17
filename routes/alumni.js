@@ -469,6 +469,16 @@ export const sendInvitationToAlumni = async (req, res) => {
       invitation.updatedAt
     ]);
 
+    // Update alumni_members with invitation_sent_at timestamp
+    await connection.execute(
+      `UPDATE alumni_members
+       SET invitation_sent_at = NOW()
+       WHERE id = ?`,
+      [id]
+    );
+
+    console.log('API: Updated alumni_members.invitation_sent_at for member:', id);
+
     await connection.commit();
     connection.release();
 
