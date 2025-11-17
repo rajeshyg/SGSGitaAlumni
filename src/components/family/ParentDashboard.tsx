@@ -3,14 +3,15 @@ import { Users, Activity, Settings, Plus, RefreshCw, AlertCircle } from 'lucide-
 import { FamilyMemberCard } from './FamilyMemberCard';
 import AddFamilyMemberModal from './AddFamilyMemberModal';
 import { ConsentDialog } from './ConsentDialog';
-import { 
-  getFamilyMembers, 
-  getAccessLogs, 
+import {
+  getFamilyMembers,
+  getAccessLogs,
   deleteFamilyMember,
   grantConsent,
   revokeConsent,
-  type FamilyMember, 
-  type AccessLog
+  type FamilyMember,
+  type AccessLog,
+  type ConsentData
 } from '../../services/familyMemberService';
 
 type TabType = 'members' | 'activity' | 'settings';
@@ -106,9 +107,13 @@ export const ParentDashboard: React.FC = () => {
   };
 
   // Handle consent confirmation
-  const handleConsentConfirm = async (memberId: string, reason?: string) => {
+  const handleConsentConfirm = async (
+    memberId: string,
+    consentData?: ConsentData,
+    reason?: string
+  ) => {
     if (consentAction === 'grant') {
-      await grantConsent(memberId);
+      await grantConsent(memberId, consentData);
     } else {
       await revokeConsent(memberId, reason);
     }

@@ -48,6 +48,12 @@ export interface UpdateFamilyMemberRequest extends Record<string, unknown> {
   bio?: string;
 }
 
+export interface ConsentData {
+  digitalSignature: string | null;
+  termsAccepted: boolean;
+  termsVersion: string;
+}
+
 export interface AccessLog {
   id: string;
   family_member_id: string;
@@ -136,8 +142,8 @@ export async function switchProfile(id: string): Promise<FamilyMember> {
 /**
  * Grant parent consent for a minor (14-17)
  */
-export async function grantConsent(id: string): Promise<FamilyMember> {
-  const response = await apiClient.post(`/api/family-members/${id}/consent/grant`, {});
+export async function grantConsent(id: string, consentData?: ConsentData): Promise<FamilyMember> {
+  const response = await apiClient.post(`/api/family-members/${id}/consent/grant`, consentData || {});
   // Backend returns { success: true, data: member }
   if (response && typeof response === 'object' && 'data' in response) {
     return response.data as FamilyMember;

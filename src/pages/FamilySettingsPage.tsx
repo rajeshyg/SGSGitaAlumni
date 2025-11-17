@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getFamilyMembers, grantConsent, revokeConsent, type FamilyMember } from '../services/familyMemberService';
+import { getFamilyMembers, grantConsent, revokeConsent, type FamilyMember, type ConsentData } from '../services/familyMemberService';
 import { ConsentDialog } from '../components/family/ConsentDialog';
 import { ArrowLeft, Shield, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 
@@ -57,14 +57,18 @@ const FamilySettingsPage: React.FC = () => {
     });
   };
 
-  const handleConfirmConsent = async (memberId: string, reason?: string) => {
+  const handleConfirmConsent = async (
+    memberId: string,
+    consentData?: ConsentData,
+    reason?: string
+  ) => {
     try {
       if (consentDialog.action === 'grant') {
-        await grantConsent(memberId);
+        await grantConsent(memberId, consentData);
       } else {
         await revokeConsent(memberId, reason);
       }
-      
+
       // Reload family members to show updated consent status
       await loadFamilyMembers();
       setConsentDialog({ isOpen: false, member: null, action: 'grant' });

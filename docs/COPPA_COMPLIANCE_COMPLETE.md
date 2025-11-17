@@ -234,191 +234,45 @@ LIMIT 5;
 
 ### Quick Test Checklist
 
-#### 1. Database Migration ✅
-```bash
-# Run migration (choose one method above)
-# Then verify:
-SHOW TABLES LIKE 'PARENT_CONSENT%';
-```
+**Database:**
+1. Run migration → Verify: `SHOW TABLES LIKE 'PARENT_CONSENT%';`
+2. Start server → `npm start`
 
-#### 2. Start Server ✅
-```bash
-npm start
-```
+**Core Flows:**
+3. Login with family account → JWT should include `activeFamilyMemberId`
+4. Age blocking → Users < 14 should be blocked (check AGE_VERIFICATION_AUDIT)
+5. Consent blocking → 14-17 without consent should be blocked
+6. Grant consent → `POST /api/family-members/{id}/consent/grant`
+7. Revoke consent → `POST /api/family-members/{id}/consent/revoke`
+8. Consent history → `GET /api/family-members/{id}/consent-history`
+9. Profile switching → Generates new JWT with updated family context
 
-#### 3. Test Login with Family Account ✅
-```bash
-POST http://localhost:3001/api/auth/login
-{
-  "email": "parent@example.com",
-  "password": "password"
-}
-
-# Check JWT has activeFamilyMemberId
-# Decode at https://jwt.io
-```
-
-#### 4. Test Age Blocking ✅
-
-**Setup:** Family member < 14 with `can_access_platform = false`
-
-**Expected:** Login blocked with:
-```json
-{
-  "error": "Platform access is restricted to users 14 years and older (COPPA compliance)..."
-}
-```
-
-**Verify audit log:**
-```sql
-SELECT * FROM AGE_VERIFICATION_AUDIT
-WHERE action_taken = 'blocked_underage'
-ORDER BY check_timestamp DESC LIMIT 5;
-```
-
-#### 5. Test Consent Blocking ✅
-
-**Setup:** Family member 14-17, `parent_consent_given = false`
-
-**Expected:** Login blocked with:
-```json
-{
-  "error": "Parental consent is required for platform access..."
-}
-```
-
-#### 6. Test Grant Consent ✅
-```bash
-POST /api/family-members/{id}/consent/grant
-Authorization: Bearer {token}
-{
-  "digitalSignature": "data:image/png;base64,...",
-  "termsAccepted": true
-}
-
-# Verify in database:
-SELECT * FROM PARENT_CONSENT_RECORDS
-WHERE family_member_id = '{id}';
-```
-
-#### 7. Test Consent Expiration ✅
-
-**Manually expire consent:**
-```sql
-UPDATE PARENT_CONSENT_RECORDS
-SET expires_at = DATE_SUB(NOW(), INTERVAL 1 DAY)
-WHERE family_member_id = '{id}';
-```
-
-**Try login - should be blocked with:**
-```json
-{
-  "error": "Parental consent has expired and requires annual renewal..."
-}
-```
-
-#### 8. Test Consent History ✅
-```bash
-GET /api/family-members/{id}/consent-history
-
-# Should return array of all consent records
-```
-
-#### 9. Test Profile Switching ✅
-```bash
-POST /api/family-members/{id}/switch
-
-# Should return new JWT with updated activeFamilyMemberId
-```
-
-#### 10. Test Middleware Protection ✅
-
-Add to any route:
-```javascript
-router.post('/api/postings',
-  authenticateToken,
-  requirePlatformAccess(),  // ← Test this
-  createPosting
-);
-```
-
-Try accessing without `can_access_platform = true` - should get 403.
+**Middleware:**
+10. Add `requirePlatformAccess()` to protected routes → Should block unauthorized access
 
 ---
 
 ## Troubleshooting
 
-### Deployment Lessons Learned (2025-11-16)
+> **Detailed deployment logs and lessons learned:** See `docs/archive/COPPA_DEPLOYMENT_LOG_2025-11-16.md`
 
-**ES6 Import Hoisting Issues:**
-- Always use lazy initialization for environment-dependent configuration
-- Check existing documentation for similar patterns before implementing new solutions
-- JWT_SECRET must be loaded via function call, not module-level import
+### Common Issues
 
-**Variable Naming Consistency:**
-- Use consistent variable names (connection vs db) throughout codebase
-- Search for similar patterns in existing code to avoid mismatches
+**Migration Errors:**
+- Connection refused → Check .env credentials
+- Table already exists → Migration already successful
+- Foreign key constraint → Ensure FAMILY_MEMBERS table exists
 
-**Debugging Tips:**
-- PowerShell console logs are more detailed than browser console for server-side issues
-- Check exact line numbers in error stack traces
-- Verify database connection variables before executing queries
+**Runtime Issues:**
+- JWT missing family context → Verify token structure at jwt.io
+- Consent not blocking → Check can_access_platform and PARENT_CONSENT_RECORDS
+- Empty audit log → Verify tables exist, check server logs
 
-### Migration Issues
-
-**Error: Connection Refused**
-```
-Solution: Check .env file has correct database credentials
-```
-
-**Error: Table Already Exists**
-```
-Solution: Tables already created! Migration previously successful.
-Verify: SHOW TABLES LIKE 'PARENT_CONSENT%';
-```
-
-**Error: Foreign Key Constraint**
-```
-Solution: Ensure FAMILY_MEMBERS table exists
-Check: SHOW TABLES LIKE 'FAMILY_MEMBERS';
-```
-
-### Runtime Issues
-
-**JWT doesn't have family context**
-```
-Solution:
-1. Check login returns new token structure
-2. Decode JWT at https://jwt.io
-3. Verify activeFamilyMemberId field exists
-```
-
-**Consent not blocking login**
-```
-Solution:
-1. Check FAMILY_MEMBERS.can_access_platform = false
-2. Verify PARENT_CONSENT_RECORDS has no active record
-3. Check expires_at is not in the future
-4. Look for errors in server logs
-```
-
-**Audit log empty**
-```
-Solution:
-1. Verify tables exist (run migration)
-2. Check async .execute() isn't throwing errors
-3. Review server logs for errors
-```
-
-### Rollback (If Needed)
-
+**Rollback:**
 ```sql
--- CAUTION: Deletes tables and all data!
 DROP TABLE IF EXISTS AGE_VERIFICATION_AUDIT;
 DROP TABLE IF EXISTS PARENT_CONSENT_RECORDS;
 ```
-
-Then re-run migration.
 
 ---
 

@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { X, AlertCircle, CheckCircle, XCircle, Info } from 'lucide-react';
 import type { FamilyMember } from '../../services/familyMemberService';
+import { SignatureCapture } from './SignatureCapture';
+import { ConsentTermsCheckbox } from './ConsentTermsCheckbox';
+
+interface ConsentData {
+  digitalSignature: string | null;
+  termsAccepted: boolean;
+  termsVersion: string;
+}
 
 interface ConsentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   member: FamilyMember;
   action: 'grant' | 'revoke';
-  onConfirm: (memberId: string, reason?: string) => Promise<void>;
+  onConfirm: (memberId: string, consentData?: ConsentData, reason?: string) => Promise<void>;
 }
 
 export const ConsentDialog: React.FC<ConsentDialogProps> = ({
@@ -21,12 +29,28 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Digital signature and terms state (for grant action)
+  const [digitalSignature, setDigitalSignature] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation
+
+    // Validation for grant action
+    if (action === 'grant') {
+      if (!digitalSignature) {
+        setError('Please provide your digital signature');
+        return;
+      }
+      if (!termsAccepted) {
+        setError('Please accept the terms and conditions');
+        return;
+      }
+    }
+
+    // Validation for revoke action
     if (action === 'revoke' && !reason.trim()) {
       setError('Please provide a reason for revoking consent');
       return;
@@ -36,9 +60,23 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
     setError(null);
 
     try {
-      await onConfirm(member.id, reason.trim());
+      if (action === 'grant') {
+        // Pass consent data for grant action
+        const consentData: ConsentData = {
+          digitalSignature,
+          termsAccepted,
+          termsVersion: '1.0'
+        };
+        await onConfirm(member.id, consentData);
+      } else {
+        // Pass reason for revoke action
+        await onConfirm(member.id, undefined, reason.trim());
+      }
+
       onClose();
       setReason('');
+      setDigitalSignature(null);
+      setTermsAccepted(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -50,6 +88,8 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
     if (!isSubmitting) {
       setReason('');
       setError(null);
+      setDigitalSignature(null);
+      setTermsAccepted(false);
       onClose();
     }
   };
@@ -174,6 +214,20 @@ export const ConsentDialog: React.FC<ConsentDialogProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Signature and Terms for Grant Action */}
+            {action === 'grant' && (
+              <>
+                <ConsentTermsCheckbox
+                  onTermsAcceptanceChange={setTermsAccepted}
+                  required={true}
+                />
+                <SignatureCapture
+                  onSignatureChange={setDigitalSignature}
+                  required={true}
+                />
+              </>
+            )}
 
             {/* Reason Input for Revoke */}
             {action === 'revoke' && (
