@@ -78,6 +78,11 @@ export const RegisterSchema = z.object({
   path: ["confirmPassword"]
 });
 
+export const RegisterFromInvitationSchema = z.object({
+  invitationToken: z.string().min(1, 'Invitation token required'),
+  additionalData: z.record(z.any()).optional()
+});
+
 export const OTPGenerateSchema = z.object({
   email: EmailSchema,
   type: z.enum(['TOTP', 'SMS', 'EMAIL', 'email', 'login', 'registration', 'password_reset']).optional()
