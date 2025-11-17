@@ -10,17 +10,29 @@ import { emailService } from '../utils/emailService.js';
 import { logger } from '../utils/logger.js';
 
 // JWT Configuration
-// SECURITY FIX: Fail fast if JWT_SECRET not set in production
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
-}
+// SECURITY FIX: Lazy initialization to ensure env vars are loaded
+// This getter function initializes JWT_SECRET on first use (runtime) instead of
+// at module load time, ensuring environment variables are available
+let JWT_SECRET = null;
 
-const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development'
-  ? 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION'
-  : null);
+function getJwtSecret() {
+  // Initialize on first access (lazy initialization pattern)
+  if (JWT_SECRET === null) {
+    // Fail fast if JWT_SECRET not set in production
+    if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
+    }
 
-if (!JWT_SECRET) {
-  throw new Error('FATAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.');
+    JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development'
+      ? 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION'
+      : null);
+
+    if (!JWT_SECRET) {
+      throw new Error('FATAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.');
+    }
+  }
+
+  return JWT_SECRET;
 }
 
 const JWT_EXPIRES_IN = process.env.NODE_ENV === 'development' ? '24h' : (process.env.JWT_EXPIRES_IN || '1h');
@@ -50,7 +62,7 @@ export const authenticateToken = async (req, res, next) => {
       throw AuthError.tokenInvalid();
     }
 
-    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
+    jwt.verify(token, getJwtSecret(), async (err, decoded) => {
       if (err) {
         logger.debug('JWT verification failed', { error: err.message });
         if (err.name === 'TokenExpiredError') {
@@ -408,8 +420,22 @@ export const login = asyncHandler(async (req, res) => {
     isFamilyAccount: user.is_family_account || false
   };
 
-  const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-  const refreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+  const token = jwt.sign(tokenPayload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
+  const refreshToken = jwt.sign({ userId: user.id }, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+
+  // DEBUG: Log token generation details
+  const jwtSecret = getJwtSecret();
+  console.log('[Auth] 🔑 JWT token generated:', {
+    userId: user.id,
+    email: user.email,
+    expiresIn: JWT_EXPIRES_IN,
+    tokenPreview: `${token.substring(0, 20)}...${token.substring(token.length - 20)}`,
+    tokenLength: token.length,
+    JWT_SECRET_defined: !!jwtSecret,
+    JWT_SECRET_source: process.env.JWT_SECRET ? 'process.env.JWT_SECRET' : 'development fallback',
+    JWT_SECRET_preview: jwtSecret ? `${jwtSecret.substring(0, 10)}...` : 'undefined',
+    timestamp: new Date().toISOString()
+  });
 
   // SECURITY FIX: Log success without exposing sensitive data
   logger.audit('login_success', user.id, { role: user.role, isMobile, clientIP });
@@ -461,7 +487,7 @@ export const verifyAuth = asyncHandler(async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     logger.debug('Auth verification - token decoded');
 
     // Verify user still exists
@@ -517,7 +543,7 @@ export const refresh = asyncHandler(async (req, res, next) => {
     throw ValidationError.missingField('refreshToken');
   }
 
-  jwt.verify(refreshToken, JWT_SECRET, async (err, decoded) => {
+  jwt.verify(refreshToken, getJwtSecret(), async (err, decoded) => {
     if (err) {
       if (err.name === 'TokenExpiredError') {
         return next(AuthError.tokenExpired());
@@ -565,8 +591,8 @@ export const refresh = asyncHandler(async (req, res, next) => {
         isFamilyAccount: user.is_family_account || false
       };
 
-      const newToken = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-      const newRefreshToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+      const newToken = jwt.sign(tokenPayload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
+      const newRefreshToken = jwt.sign({ userId: user.id }, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
       // Build user object with family member data if applicable
       const userResponse = {
