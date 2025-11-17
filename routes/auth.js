@@ -390,7 +390,7 @@ export const login = asyncHandler(async (req, res) => {
     logger.debug('Login: Family member consent and age verification passed');
 
     // Log successful access (async, don't wait)
-    db.execute(
+    connection.execute(
       `INSERT INTO AGE_VERIFICATION_AUDIT (
         id, family_member_id, age_at_check, birth_date,
         action_taken, check_context, ip_address, user_agent, endpoint
