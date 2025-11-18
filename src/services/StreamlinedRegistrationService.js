@@ -308,10 +308,10 @@ export class StreamlinedRegistrationService {
       const [familyResult] = await connection.execute(
         `INSERT INTO FAMILY_MEMBERS (
           id, parent_user_id, alumni_member_id, first_name, last_name, display_name,
-          email, phone, birth_date, age_at_registration, current_age,
+          birth_date, age_at_registration, current_age,
           can_access_platform, requires_parent_consent, access_level,
           relationship, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'self', ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'self', ?)`,
         [
           familyMemberId,
           userId,
@@ -319,8 +319,6 @@ export class StreamlinedRegistrationService {
           userData.firstName,
           userData.lastName,
           displayName,
-          userData.email,
-          userData.phone,
           userData.birthDate,
           age,
           age,
