@@ -186,7 +186,28 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
 
     } catch (err) {
       console.error('[InvitationAcceptancePage] Join alumni network error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to join alumni network');
+      console.error('[InvitationAcceptancePage] Error type:', typeof err);
+      console.error('[InvitationAcceptancePage] Error keys:', err ? Object.keys(err) : 'null');
+      console.error('[InvitationAcceptancePage] Error message:', err instanceof Error ? err.message : String(err));
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to join alumni network';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'object' && err !== null) {
+        if ('message' in err) {
+          errorMessage = String(err.message);
+        } else if ('error' in err) {
+          errorMessage = String((err as any).error);
+        } else {
+          errorMessage = JSON.stringify(err);
+        }
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsJoining(false);
     }
