@@ -5,7 +5,6 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { AlumniDataIntegrationService } from './AlumniDataIntegrationService.js';
-import FamilyMemberService from '../../services/FamilyMemberService.js';
 
 export class StreamlinedRegistrationService {
   constructor(pool, alumniService, emailService) {
@@ -232,12 +231,62 @@ export class StreamlinedRegistrationService {
       const invitation = validation.invitation;
       const alumniProfile = validation.alumniProfile;
 
+      // Check if user already exists with this email
+      const [existingUsers] = await connection.execute(
+        `SELECT id, email, primary_family_member_id, created_at
+         FROM app_users WHERE email = ?
+         ORDER BY created_at DESC`,
+        [invitation.email]
+      );
+
+      if (existingUsers.length > 0) {
+        const existingUser = existingUsers[0];
+        console.log('StreamlinedRegistrationService: User already exists:', {
+          userId: existingUser.id,
+          email: existingUser.email,
+          hasFamilyMember: !!existingUser.primary_family_member_id,
+          createdAt: existingUser.created_at
+        });
+
+        // If user exists but has no family member, delete and recreate
+        if (!existingUser.primary_family_member_id || existingUser.primary_family_member_id === 0) {
+          console.log('StreamlinedRegistrationService: Deleting incomplete user account:', existingUser.id);
+          await connection.execute(
+            `DELETE FROM app_users WHERE id = ?`,
+            [existingUser.id]
+          );
+        } else {
+          throw new Error('An account with this email already exists. Please log in instead.');
+        }
+      }
+
       // Merge data if alumni profile exists
       let mergedData = userData;
       if (alumniProfile) {
         const mergeResult = await this.alumniService.mergeAlumniDataWithUserInput(alumniProfile, userData);
         mergedData = mergeResult.mergedProfile;
       }
+
+      // Extract name from email as ultimate fallback
+      const emailName = invitation.email.split('@')[0];
+      const emailFirstName = emailName.split('.')[0] || emailName;
+      const emailLastName = emailName.split('.')[1] || null;
+
+      // Ensure required fields have values (use invitation data as fallback, then email as last resort)
+      const finalData = {
+        firstName: mergedData.firstName || alumniProfile?.firstName || invitation.invitee_first_name || emailFirstName || 'User',
+        lastName: mergedData.lastName || alumniProfile?.lastName || invitation.invitee_last_name || emailLastName || '',
+        birthDate: mergedData.birthDate || alumniProfile?.birthDate || null,
+        phone: mergedData.phone || alumniProfile?.phone || null,
+        email: invitation.email
+      };
+
+      console.log('StreamlinedRegistrationService: Final user data:', {
+        ...finalData,
+        hasFirstName: !!finalData.firstName,
+        hasLastName: !!finalData.lastName,
+        hasBirthDate: !!finalData.birthDate
+      });
 
       // Create user account
       const userId = uuidv4();
@@ -251,11 +300,11 @@ export class StreamlinedRegistrationService {
 
       await connection.execute(insertUserQuery, [
         userId,
-        invitation.email,
+        finalData.email,
         alumniProfile?.id || null,
-        mergedData.firstName || null,
-        mergedData.lastName || null,
-        mergedData.phone || null
+        finalData.firstName,
+        finalData.lastName,
+        finalData.phone
       ]);
 
       // Update invitation status
@@ -267,28 +316,240 @@ export class StreamlinedRegistrationService {
         WHERE id = ?
       `, [userId, invitation.id]);
 
+      // Find ALL alumni members with the same email (siblings, parent-child, etc.)
+      console.log('StreamlinedRegistrationService: Checking for additional family members with email:', finalData.email);
+      const [allAlumniMembers] = await connection.execute(
+        `SELECT id, first_name, last_name, email, phone, batch, status
+         FROM alumni_members
+         WHERE email = ? AND status = 'accepted'
+         ORDER BY first_name ASC`,
+        [finalData.email]
+      );
+
+      console.log(`StreamlinedRegistrationService: Found ${allAlumniMembers.length} alumni member(s) with this email`);
+
       // Create initial FAMILY_MEMBERS record for the registering user
       console.log('StreamlinedRegistrationService: Creating family member for user (incomplete data path):', userId);
 
-      const familyMember = await FamilyMemberService.createFamilyMember(userId, {
-        firstName: mergedData.firstName,
-        lastName: mergedData.lastName,
-        displayName: `${mergedData.firstName} ${mergedData.lastName}`,
-        birthDate: mergedData.birthDate || null,
-        relationship: 'self',
-        profileImageUrl: null
+      // Create FAMILY_MEMBERS records for ALL alumni members with this email
+      let primaryFamilyMemberId = null;
+      let familyMemberCreationCount = 0;
+      
+      if (allAlumniMembers.length > 0) {
+        console.log(`StreamlinedRegistrationService: Creating ${allAlumniMembers.length} family member record(s)`);
+        
+        for (let i = 0; i < allAlumniMembers.length; i++) {
+          const alumniMember = allAlumniMembers[i];
+          const familyMemberId = uuidv4();
+          
+          // First member is 'self' (the registering person), others are 'child' (siblings/dependents)
+          const relationship = i === 0 ? 'self' : 'child';
+          
+          console.log(`StreamlinedRegistrationService: Creating family member ${i + 1}/${allAlumniMembers.length}:`, {
+            familyMemberId,
+            alumniMemberId: alumniMember.id,
+            name: `${alumniMember.first_name} ${alumniMember.last_name}`,
+            relationship
+          });
+
+          // Calculate age if birthDate provided (for COPPA compliance)
+          let age = null;
+          let canAccess = true;  // Default to true for alumni members
+          let requiresConsent = false;
+          let accessLevel = 'full';
+
+          // Use finalData.birthDate for the first member (registering user), null for others
+          const birthDate = (i === 0 && finalData.birthDate) ? finalData.birthDate : null;
+
+          if (birthDate) {
+            const today = new Date();
+            const birth = new Date(birthDate);
+            age = today.getFullYear() - birth.getFullYear();
+            const monthDiff = today.getMonth() - birth.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+              age--;
+            }
+
+            // COPPA compliance: under 14 = blocked, 14-17 = needs consent, 18+ = full
+            if (age >= 18) {
+              canAccess = true;
+              accessLevel = 'full';
+            } else if (age >= 14) {
+              canAccess = false;
+              requiresConsent = true;
+              accessLevel = 'supervised';
+            } else {
+              canAccess = false;
+              requiresConsent = true;
+              accessLevel = 'blocked';
+            }
+          }
+
+          const displayName = `${alumniMember.first_name} ${alumniMember.last_name}`;
+          
+          const [familyMemberResult] = await connection.execute(
+            `INSERT INTO FAMILY_MEMBERS (
+              id,
+              parent_user_id,
+              alumni_member_id,
+              first_name,
+              last_name,
+              display_name,
+              email,
+              phone,
+              birth_date,
+              age_at_registration,
+              current_age,
+              can_access_platform,
+              requires_parent_consent,
+              access_level,
+              relationship,
+              batch,
+              profile_image_url,
+              status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              familyMemberId,
+              userId,
+              alumniMember.id,
+              alumniMember.first_name,
+              alumniMember.last_name,
+              displayName,
+              alumniMember.email,
+              alumniMember.phone || finalData.phone,
+              birthDate,
+              age,
+              age,
+              canAccess,
+              requiresConsent,
+              accessLevel,
+              relationship,
+              alumniMember.batch || null,
+              null,
+              requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
+            ]
+          );
+
+          if (familyMemberResult.affectedRows === 1) {
+            familyMemberCreationCount++;
+            console.log(`StreamlinedRegistrationService: Family member ${i + 1} created successfully with ID:`, familyMemberId);
+            
+            // Store the first family member ID as primary
+            if (i === 0) {
+              primaryFamilyMemberId = familyMemberId;
+            }
+          } else {
+            console.warn(`StreamlinedRegistrationService: Failed to create family member ${i + 1} - no rows inserted`);
+          }
+        }
+      } else {
+        // Fallback: No alumni members found, create a basic family member from finalData
+        console.log('StreamlinedRegistrationService: No alumni members found, creating basic family member from invitation data');
+        
+        const familyMemberId = uuidv4();
+        
+        let age = null;
+        let canAccess = false;
+        let requiresConsent = false;
+        let accessLevel = 'blocked';
+
+        if (finalData.birthDate) {
+          const today = new Date();
+          const birth = new Date(finalData.birthDate);
+          age = today.getFullYear() - birth.getFullYear();
+          const monthDiff = today.getMonth() - birth.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            age--;
+          }
+
+          if (age >= 18) {
+            canAccess = true;
+            accessLevel = 'full';
+          } else if (age >= 14) {
+            canAccess = false;
+            requiresConsent = true;
+            accessLevel = 'supervised';
+          }
+        } else {
+          canAccess = true;
+          accessLevel = 'full';
+        }
+
+        const displayName = finalData.firstName && finalData.lastName 
+          ? `${finalData.firstName} ${finalData.lastName}` 
+          : finalData.email.split('@')[0];
+        
+        const [familyMemberResult] = await connection.execute(
+          `INSERT INTO FAMILY_MEMBERS (
+            id,
+            parent_user_id,
+            first_name,
+            last_name,
+            display_name,
+            birth_date,
+            age_at_registration,
+            current_age,
+            can_access_platform,
+            requires_parent_consent,
+            access_level,
+            relationship,
+            profile_image_url,
+            status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            familyMemberId,
+            userId,
+            finalData.firstName,
+            finalData.lastName,
+            displayName,
+            finalData.birthDate,
+            age,
+            age,
+            canAccess,
+            requiresConsent,
+            accessLevel,
+            'self',
+            null,
+            requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
+          ]
+        );
+
+        if (familyMemberResult.affectedRows === 1) {
+          primaryFamilyMemberId = familyMemberId;
+          familyMemberCreationCount = 1;
+          console.log('StreamlinedRegistrationService: Fallback family member created with ID:', familyMemberId);
+        } else {
+          throw new Error('Failed to create fallback family member record - no rows inserted');
+        }
+      }
+
+      // Verify at least one family member was created
+      if (!primaryFamilyMemberId || familyMemberCreationCount === 0) {
+        throw new Error('Failed to create any family member records');
+      }
+
+      console.log(`StreamlinedRegistrationService: Successfully created ${familyMemberCreationCount} family member(s), primary ID: ${primaryFamilyMemberId}`);
+
+      // Update app_users with primary_family_member_id and family account flags
+      console.log('StreamlinedRegistrationService: Updating user with primary family member ID:', {
+        userId,
+        primaryFamilyMemberId
       });
-
-      console.log('StreamlinedRegistrationService: Family member created with ID:', familyMember.id);
-
-      // Update app_users with primary_family_member_id
-      await connection.execute(
+      
+      const [updateResult] = await connection.execute(
         `UPDATE app_users
          SET primary_family_member_id = ?,
+             is_family_account = TRUE,
              family_account_type = 'alumni'
          WHERE id = ?`,
-        [familyMember.id, userId]
+        [primaryFamilyMemberId, userId]
       );
+
+      console.log('StreamlinedRegistrationService: User updated, affected rows:', updateResult.affectedRows);
+
+      if (updateResult.affectedRows === 0) {
+        throw new Error('Failed to update user with family member ID - no rows affected');
+      }
 
       // Update alumni_members with invitation_accepted_at timestamp
       if (alumniProfile?.id) {
@@ -303,17 +564,23 @@ export class StreamlinedRegistrationService {
       await connection.commit();
 
       // Check if profile needs completion (missing critical data)
-      const needsProfileCompletion = !mergedData.birthDate;
+      const needsProfileCompletion = !finalData.birthDate || !finalData.firstName || !finalData.lastName;
 
       const user = {
         id: userId,
         email: invitation.email,
-        firstName: mergedData.firstName,
-        lastName: mergedData.lastName,
+        firstName: finalData.firstName,
+        lastName: finalData.lastName,
         alumniMemberId: alumniProfile?.id,
-        primaryFamilyMemberId: familyMember.id,
+        primaryFamilyMemberId: primaryFamilyMemberId,
         needsProfileCompletion
       };
+
+      console.log('StreamlinedRegistrationService: User created successfully:', {
+        userId,
+        email: user.email,
+        needsProfileCompletion
+      });
 
       // Optionally send welcome email (skip if EmailService not available)
       try {
@@ -388,25 +655,81 @@ export class StreamlinedRegistrationService {
       // Create initial FAMILY_MEMBERS record for the registering user
       console.log('StreamlinedRegistrationService: Creating family member for user:', userId);
 
-      const familyMember = await FamilyMemberService.createFamilyMember(userId, {
-        firstName: alumniProfile.firstName,
-        lastName: alumniProfile.lastName,
-        displayName: `${alumniProfile.firstName} ${alumniProfile.lastName}`,
-        birthDate: alumniProfile.birthDate || null,
-        relationship: 'self',
-        profileImageUrl: null
-      });
+      // Calculate age if birthDate provided
+      let age = null;
+      let canAccess = false;
+      let requiresConsent = false;
+      let accessLevel = 'blocked';
 
-      console.log('StreamlinedRegistrationService: Family member created with ID:', familyMember.id);
+      if (alumniProfile.birthDate) {
+        const today = new Date();
+        const birth = new Date(alumniProfile.birthDate);
+        age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+          age--;
+        }
 
-      // Update app_users with primary_family_member_id
-      // Note: is_family_account and family_account_type are already set by FamilyMemberService
+        // COPPA compliance: under 14 = blocked, 14-17 = needs consent, 18+ = full
+        if (age >= 18) {
+          canAccess = true;
+          accessLevel = 'full';
+        } else if (age >= 14) {
+          canAccess = false;
+          requiresConsent = true;
+          accessLevel = 'supervised';
+        }
+      } else {
+        // No birthdate provided - assume adult for now, will need completion later
+        canAccess = true;
+        accessLevel = 'full';
+      }
+
+      const displayName = `${alumniProfile.firstName} ${alumniProfile.lastName}`;
+      const [familyMemberResult] = await connection.execute(
+        `INSERT INTO FAMILY_MEMBERS (
+          parent_user_id,
+          first_name,
+          last_name,
+          display_name,
+          birth_date,
+          age_at_registration,
+          current_age,
+          can_access_platform,
+          requires_parent_consent,
+          access_level,
+          relationship,
+          profile_image_url,
+          status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          alumniProfile.firstName,
+          alumniProfile.lastName,
+          displayName,
+          alumniProfile.birthDate,
+          age,
+          age,
+          canAccess,
+          requiresConsent,
+          accessLevel,
+          'self',
+          null,
+          requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
+        ]
+      );
+
+      const familyMemberId = familyMemberResult.insertId;
+      console.log('StreamlinedRegistrationService: Family member created with ID:', familyMemberId);
+
+      // Update app_users with primary_family_member_id and family account flags
       await connection.execute(
         `UPDATE app_users
          SET primary_family_member_id = ?,
+             is_family_account = TRUE,
              family_account_type = 'alumni'
          WHERE id = ?`,
-        [familyMember.id, userId]
+        [familyMemberId, userId]
       );
 
       console.log('StreamlinedRegistrationService: Updated app_users with primary_family_member_id');
@@ -433,7 +756,7 @@ export class StreamlinedRegistrationService {
         firstName: alumniProfile.firstName,
         lastName: alumniProfile.lastName,
         alumniMemberId: alumniProfile.id,
-        primaryFamilyMemberId: familyMember.id,
+        primaryFamilyMemberId: familyMemberId,
         needsProfileCompletion
       };
 
