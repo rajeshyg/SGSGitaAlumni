@@ -250,12 +250,33 @@ export class StreamlinedRegistrationService {
 
       // STEP 5.5: Verify user exists in transaction
       console.log('[Step 5/9] Verifying user record...');
+      console.log('[Step 5/9] Looking for user ID:', userId);
+      console.log('[Step 5/9] User ID type:', typeof userId);
+      console.log('[Step 5/9] User ID length:', userId.length);
+
+      // First, check if ANY users exist in this transaction
+      const [allUsers] = await connection.execute(
+        'SELECT COUNT(*) as count FROM app_users'
+      );
+      console.log('[Step 5/9] Total users in database:', allUsers[0].count);
+
+      // Check if our specific user exists
       const [verifyUser] = await connection.execute(
         'SELECT id, email, first_name, last_name FROM app_users WHERE id = ?',
         [userId]
       );
 
+      console.log('[Step 5/9] Verify query result:', verifyUser);
+      console.log('[Step 5/9] Number of rows returned:', verifyUser.length);
+
       if (verifyUser.length === 0) {
+        // Try to find user by email instead
+        const [userByEmail] = await connection.execute(
+          'SELECT id, email FROM app_users WHERE email = ?',
+          [userData.email]
+        );
+        console.log('[Step 5/9] User found by email:', userByEmail);
+
         throw new Error('User record not found immediately after INSERT - transaction isolation error');
       }
 
