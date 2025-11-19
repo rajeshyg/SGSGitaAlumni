@@ -226,61 +226,29 @@ export class StreamlinedRegistrationService {
 
       // STEP 5: Create app_users record
       console.log('\n[Step 5/9] Creating app_users record...');
-      const userId = uuidv4();
-
-      console.log('[Step 5/9] User ID:', userId);
       console.log('[Step 5/9] Executing INSERT...');
 
       const [userResult] = await connection.execute(
         `INSERT INTO app_users (
-          id, email, alumni_member_id, first_name, last_name, phone,
+          email, alumni_member_id, first_name, last_name, phone,
           status, email_verified, email_verified_at, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'active', 1, NOW(), NOW(), NOW())`,
-        [userId, userData.email, userData.alumniMemberId, userData.firstName, userData.lastName, userData.phone]
+        ) VALUES (?, ?, ?, ?, ?, 'active', 1, NOW(), NOW(), NOW())`,
+        [userData.email, userData.alumniMemberId, userData.firstName, userData.lastName, userData.phone]
       );
+
+      // Get the auto-generated ID
+      const userId = userResult.insertId;
 
       console.log('[Step 5/9] INSERT result:', {
         affectedRows: userResult.affectedRows,
-        warningCount: userResult.warningCount
+        insertId: userId
       });
 
       if (userResult.affectedRows !== 1) {
         throw new Error(`Failed to create user - expected 1 row, got ${userResult.affectedRows}`);
       }
 
-      // STEP 5.5: Verify user exists in transaction
-      console.log('[Step 5/9] Verifying user record...');
-      console.log('[Step 5/9] Looking for user ID:', userId);
-      console.log('[Step 5/9] User ID type:', typeof userId);
-      console.log('[Step 5/9] User ID length:', userId.length);
-
-      // First, check if ANY users exist in this transaction
-      const [allUsers] = await connection.execute(
-        'SELECT COUNT(*) as count FROM app_users'
-      );
-      console.log('[Step 5/9] Total users in database:', allUsers[0].count);
-
-      // Check if our specific user exists
-      const [verifyUser] = await connection.execute(
-        'SELECT id, email, first_name, last_name FROM app_users WHERE id = ?',
-        [userId]
-      );
-
-      console.log('[Step 5/9] Verify query result:', verifyUser);
-      console.log('[Step 5/9] Number of rows returned:', verifyUser.length);
-
-      if (verifyUser.length === 0) {
-        // Try to find user by email instead
-        const [userByEmail] = await connection.execute(
-          'SELECT id, email FROM app_users WHERE email = ?',
-          [userData.email]
-        );
-        console.log('[Step 5/9] User found by email:', userByEmail);
-
-        throw new Error('User record not found immediately after INSERT - transaction isolation error');
-      }
-
-      console.log('[Step 5/9] ✓ User created and verified:', verifyUser[0].email);
+      console.log('[Step 5/9] ✓ User created with ID:', userId);
 
       // STEP 6: Calculate COPPA compliance
       console.log('\n[Step 6/9] Calculating COPPA compliance...');
