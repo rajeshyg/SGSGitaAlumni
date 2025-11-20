@@ -598,6 +598,120 @@ export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
     // Don't fail registration if preference creation fails
   }
 
+  // CRITICAL FIX: Create family members from invitation data
+  // This was missing - causing only 1 record instead of multiple family members
+  if (invitationId) {
+    try {
+      logger.debug(`Fetching family invitation ${invitationId} to create family members`);
+
+      // Get the family invitation with children profiles
+      const [invitationRows] = await connection.execute(
+        'SELECT children_profiles FROM FAMILY_INVITATIONS WHERE id = ?',
+        [invitationId]
+      );
+
+      if (invitationRows.length > 0 && invitationRows[0].children_profiles) {
+        const childrenProfiles = JSON.parse(invitationRows[0].children_profiles || '[]');
+        logger.debug(`Found ${childrenProfiles.length} family members to create`);
+
+        // Mark this account as a family account
+        await connection.execute(
+          `UPDATE app_users
+           SET is_family_account = TRUE, family_account_type = 'parent'
+           WHERE id = ?`,
+          [userId]
+        );
+
+        // Create family members for each profile in the invitation
+        let primaryMemberId = null;
+        for (let i = 0; i < childrenProfiles.length; i++) {
+          const profile = childrenProfiles[i];
+          const memberId = generateUUID();
+
+          // Calculate age and access levels
+          let age = null;
+          let canAccess = true;
+          let requiresConsent = false;
+          let accessLevel = 'full';
+
+          if (profile.birthDate) {
+            const today = new Date();
+            const birth = new Date(profile.birthDate);
+            age = today.getFullYear() - birth.getFullYear();
+            const monthDiff = today.getMonth() - birth.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+              age--;
+            }
+
+            // COPPA compliance: under 14 = blocked, 14-17 = needs consent, 18+ = full
+            if (age < 14) {
+              canAccess = false;
+              accessLevel = 'blocked';
+            } else if (age < 18) {
+              requiresConsent = true;
+              accessLevel = 'supervised';
+              // Auto-grant consent if parent registered them
+              canAccess = true;
+            }
+          }
+
+          const isPrimary = i === 0; // First profile is primary
+
+          logger.debug(`Creating family member ${i + 1}/${childrenProfiles.length}: ${profile.firstName} ${profile.lastName}`);
+
+          await connection.execute(
+            `INSERT INTO FAMILY_MEMBERS (
+              id, parent_user_id, first_name, last_name, display_name,
+              birth_date, current_age, can_access_platform, requires_parent_consent,
+              parent_consent_given, parent_consent_date, access_level,
+              relationship, is_primary_contact, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+            [
+              memberId,
+              userId,
+              profile.firstName || firstName,
+              profile.lastName || lastName,
+              profile.displayName || `${profile.firstName || firstName} ${profile.lastName || lastName}`,
+              profile.birthDate || null,
+              age,
+              canAccess ? 1 : 0,
+              requiresConsent ? 1 : 0,
+              requiresConsent ? 1 : 0, // Auto-grant consent for parent-registered children
+              requiresConsent ? new Date() : null,
+              accessLevel,
+              profile.relationship || 'child',
+              isPrimary ? 1 : 0,
+              canAccess ? 'active' : (requiresConsent ? 'pending_consent' : 'blocked')
+            ]
+          );
+
+          if (isPrimary) {
+            primaryMemberId = memberId;
+          }
+
+          logger.debug(`Created family member: ${memberId}`);
+        }
+
+        // Set primary family member
+        if (primaryMemberId) {
+          await connection.execute(
+            'UPDATE app_users SET primary_family_member_id = ? WHERE id = ?',
+            [primaryMemberId, userId]
+          );
+          logger.debug(`Set primary family member: ${primaryMemberId}`);
+        }
+
+        logger.info(`Successfully created ${childrenProfiles.length} family members for user ${userId}`);
+      } else {
+        logger.warn(`No children profiles found in invitation ${invitationId}`);
+      }
+    } catch (familyError) {
+      logger.error('Failed to create family members:', familyError);
+      // Don't fail registration if family member creation fails
+      // The user account was created successfully
+    }
+  }
+
   connection.release();
 
   res.status(201).json({ success: true, user });
