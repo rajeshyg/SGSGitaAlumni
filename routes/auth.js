@@ -602,17 +602,46 @@ export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
   // This was missing - causing only 1 record instead of multiple family members
   if (invitationId) {
     try {
-      logger.debug(`Fetching family invitation ${invitationId} to create family members`);
+      logger.debug(`Fetching invitation ${invitationId} to create family members`);
 
-      // Get the family invitation with children profiles
-      const [invitationRows] = await connection.execute(
+      let childrenProfiles = [];
+
+      // First try FAMILY_INVITATIONS table
+      const [familyInvitationRows] = await connection.execute(
         'SELECT children_profiles FROM FAMILY_INVITATIONS WHERE id = ?',
         [invitationId]
       );
 
-      if (invitationRows.length > 0 && invitationRows[0].children_profiles) {
-        const childrenProfiles = JSON.parse(invitationRows[0].children_profiles || '[]');
-        logger.debug(`Found ${childrenProfiles.length} family members to create`);
+      if (familyInvitationRows.length > 0 && familyInvitationRows[0].children_profiles) {
+        childrenProfiles = JSON.parse(familyInvitationRows[0].children_profiles || '[]');
+        logger.debug(`Found ${childrenProfiles.length} family members in FAMILY_INVITATIONS`);
+      } else {
+        // Fallback: check USER_INVITATIONS.invitation_data for familyMembers
+        logger.debug('No data in FAMILY_INVITATIONS, checking USER_INVITATIONS...');
+        const [userInvitationRows] = await connection.execute(
+          'SELECT invitation_data FROM USER_INVITATIONS WHERE id = ?',
+          [invitationId]
+        );
+
+        if (userInvitationRows.length > 0 && userInvitationRows[0].invitation_data) {
+          try {
+            const invitationData = JSON.parse(userInvitationRows[0].invitation_data || '{}');
+            // Check for familyMembers array in invitation_data
+            if (invitationData.familyMembers && Array.isArray(invitationData.familyMembers)) {
+              childrenProfiles = invitationData.familyMembers;
+              logger.debug(`Found ${childrenProfiles.length} family members in USER_INVITATIONS.invitation_data`);
+            } else if (invitationData.children && Array.isArray(invitationData.children)) {
+              childrenProfiles = invitationData.children;
+              logger.debug(`Found ${childrenProfiles.length} family members in USER_INVITATIONS.invitation_data.children`);
+            }
+          } catch (parseError) {
+            logger.warn('Failed to parse USER_INVITATIONS.invitation_data:', parseError);
+          }
+        }
+      }
+
+      if (childrenProfiles.length > 0) {
+        logger.debug(`Creating ${childrenProfiles.length} family members for user ${userId}`);
 
         // Mark this account as a family account
         await connection.execute(
@@ -703,10 +732,11 @@ export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
 
         logger.info(`Successfully created ${childrenProfiles.length} family members for user ${userId}`);
       } else {
-        logger.warn(`No children profiles found in invitation ${invitationId}`);
+        logger.warn(`No family members found in invitation ${invitationId} (checked FAMILY_INVITATIONS and USER_INVITATIONS)`);
       }
     } catch (familyError) {
       logger.error('Failed to create family members:', familyError);
+      logger.error('Family error details:', familyError.message);
       // Don't fail registration if family member creation fails
       // The user account was created successfully
     }
