@@ -288,7 +288,7 @@ export class StreamlinedRegistrationService {
       console.log('\n[Step 7/9] Finding all alumni members for this email...');
 
       const [alumniMembers] = await connection.execute(
-        `SELECT id, first_name, last_name, email, phone, batch, birth_date
+        `SELECT id, first_name, last_name, email, phone, batch
          FROM alumni_members
          WHERE email = ?
          ORDER BY id ASC`,
@@ -344,7 +344,7 @@ export class StreamlinedRegistrationService {
             [
               familyMemberId, userId, alumni.id,
               alumni.first_name, alumni.last_name, displayName,
-              alumni.birth_date || null, age, age,
+              null, age, age,
               canAccess, requiresConsent, accessLevel,
               relationship,
               requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
