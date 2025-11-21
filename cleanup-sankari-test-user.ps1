@@ -13,10 +13,12 @@ Write-Host "This will remove all data for: sankarijv@gmail.com" -ForegroundColor
 Write-Host ""
 Write-Host "Records to be cleaned:" -ForegroundColor White
 Write-Host "  - User accounts (app_users)" -ForegroundColor Gray
-Write-Host "  - Family member records" -ForegroundColor Gray
+Write-Host "  - Family member records (as parent and child)" -ForegroundColor Gray
+Write-Host "  - Family invitations" -ForegroundColor Gray
 Write-Host "  - User preferences" -ForegroundColor Gray
 Write-Host "  - OTP tokens" -ForegroundColor Gray
 Write-Host "  - Invitations (reset to pending)" -ForegroundColor Gray
+Write-Host "  - Alumni invitation timestamps" -ForegroundColor Gray
 Write-Host ""
 
 $confirmation = Read-Host "Are you sure you want to proceed? (yes/no)"

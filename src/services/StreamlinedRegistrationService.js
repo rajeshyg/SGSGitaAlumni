@@ -284,60 +284,97 @@ export class StreamlinedRegistrationService {
         console.log('[Step 6/9] ✓ No birthdate, assuming adult (full access)');
       }
 
-      // STEP 7: Create FAMILY_MEMBERS record
-      console.log('\n[Step 7/9] Creating FAMILY_MEMBERS record...');
-      const familyMemberId = uuidv4();
-      const displayName = `${userData.firstName} ${userData.lastName}`.trim() || userData.email.split('@')[0];
+      // STEP 7: Find ALL alumni members with this email and create FAMILY_MEMBERS for each
+      console.log('\n[Step 7/9] Finding all alumni members for this email...');
 
-      console.log('[Step 7/9] Family member ID:', familyMemberId);
-      console.log('[Step 7/9] Display name:', displayName);
-      console.log('[Step 7/9] Parent user ID:', userId);
-      console.log('[Step 7/9] Executing INSERT...');
-
-      const [familyResult] = await connection.execute(
-        `INSERT INTO FAMILY_MEMBERS (
-          id, parent_user_id, alumni_member_id, first_name, last_name, display_name,
-          birth_date, age_at_registration, current_age,
-          can_access_platform, requires_parent_consent, access_level,
-          relationship, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'self', ?)`,
-        [
-          familyMemberId,
-          userId,
-          userData.alumniMemberId,
-          userData.firstName,
-          userData.lastName,
-          displayName,
-          userData.birthDate,
-          age,
-          age,
-          canAccess,
-          requiresConsent,
-          accessLevel,
-          requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
-        ]
+      const [alumniMembers] = await connection.execute(
+        `SELECT id, first_name, last_name, email, phone, batch, birth_date
+         FROM alumni_members
+         WHERE email = ?
+         ORDER BY id ASC`,
+        [userData.email]
       );
 
-      console.log('[Step 7/9] INSERT result:', {
-        affectedRows: familyResult.affectedRows,
-        warningCount: familyResult.warningCount
-      });
+      console.log('[Step 7/9] Found', alumniMembers.length, 'alumni members for email:', userData.email);
 
-      if (familyResult.affectedRows !== 1) {
-        throw new Error(`Failed to create family member - expected 1 row, got ${familyResult.affectedRows}`);
+      let primaryFamilyMemberId = null;
+      const createdFamilyMembers = [];
+
+      if (alumniMembers.length === 0) {
+        // No alumni members found - create one from email data
+        console.log('[Step 7/9] No alumni members found, creating from email data');
+        const familyMemberId = uuidv4();
+        const displayName = `${userData.firstName} ${userData.lastName}`.trim() || userData.email.split('@')[0];
+
+        await connection.execute(
+          `INSERT INTO FAMILY_MEMBERS (
+            id, parent_user_id, alumni_member_id, first_name, last_name, display_name,
+            birth_date, age_at_registration, current_age,
+            can_access_platform, requires_parent_consent, access_level,
+            relationship, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'self', ?)`,
+          [
+            familyMemberId, userId, null,
+            userData.firstName, userData.lastName, displayName,
+            userData.birthDate, age, age,
+            canAccess, requiresConsent, accessLevel,
+            requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
+          ]
+        );
+
+        primaryFamilyMemberId = familyMemberId;
+        createdFamilyMembers.push({ id: familyMemberId, name: displayName });
+      } else {
+        // Create a FAMILY_MEMBERS record for EACH alumni member
+        for (let i = 0; i < alumniMembers.length; i++) {
+          const alumni = alumniMembers[i];
+          const familyMemberId = uuidv4();
+          const displayName = `${alumni.first_name} ${alumni.last_name}`.trim();
+          const relationship = i === 0 ? 'self' : 'family';
+
+          console.log(`[Step 7/9] Creating family member ${i + 1}/${alumniMembers.length}: ${displayName} (Alumni ID: ${alumni.id})`);
+
+          await connection.execute(
+            `INSERT INTO FAMILY_MEMBERS (
+              id, parent_user_id, alumni_member_id, first_name, last_name, display_name,
+              birth_date, age_at_registration, current_age,
+              can_access_platform, requires_parent_consent, access_level,
+              relationship, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              familyMemberId, userId, alumni.id,
+              alumni.first_name, alumni.last_name, displayName,
+              alumni.birth_date || null, age, age,
+              canAccess, requiresConsent, accessLevel,
+              relationship,
+              requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
+            ]
+          );
+
+          createdFamilyMembers.push({ id: familyMemberId, name: displayName, alumniId: alumni.id });
+
+          // First one becomes the primary
+          if (i === 0) {
+            primaryFamilyMemberId = familyMemberId;
+          }
+        }
       }
 
-      console.log('[Step 7/9] ✓ Family member created:', familyMemberId);
+      console.log('[Step 7/9] ✓ Created', createdFamilyMembers.length, 'family member(s):');
+      createdFamilyMembers.forEach((fm, i) => {
+        console.log(`[Step 7/9]   ${i + 1}. ${fm.name} (${fm.id})`);
+      });
 
       // STEP 8: Update app_users with family member link
-      console.log('\n[Step 8/9] Linking family member to user...');
+      console.log('\n[Step 8/9] Linking primary family member to user...');
+      console.log('[Step 8/9] Primary family member ID:', primaryFamilyMemberId);
       const [updateResult] = await connection.execute(
         `UPDATE app_users
          SET primary_family_member_id = ?,
              is_family_account = TRUE,
              family_account_type = 'alumni'
          WHERE id = ?`,
-        [familyMemberId, userId]
+        [primaryFamilyMemberId, userId]
       );
 
       console.log('[Step 8/9] UPDATE result:', {

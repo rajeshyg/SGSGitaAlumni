@@ -60,16 +60,27 @@ async function cleanupUserData() {
       });
     }
 
-    // 2. Delete from FAMILY_MEMBERS
+    // 2. Delete from FAMILY_MEMBERS (as parent)
     const userIds = users.map(u => u.id);
     if (userIds.length > 0) {
       const placeholders = userIds.map(() => '?').join(',');
-      
+
       const [familyResult] = await connection.execute(
         `DELETE FROM FAMILY_MEMBERS WHERE parent_user_id IN (${placeholders})`,
         userIds
       );
-      console.log(`\n✅ Deleted ${familyResult.affectedRows} family member record(s)`);
+      console.log(`\n✅ Deleted ${familyResult.affectedRows} family member record(s) (as parent)`);
+    }
+
+    // 2b. Delete from FAMILY_MEMBERS (as child)
+    if (userIds.length > 0) {
+      const placeholders = userIds.map(() => '?').join(',');
+
+      const [childResult] = await connection.execute(
+        `DELETE FROM FAMILY_MEMBERS WHERE user_id IN (${placeholders})`,
+        userIds
+      );
+      console.log(`✅ Deleted ${childResult.affectedRows} family member record(s) (as child)`);
     }
 
     // 3. Delete from USER_PREFERENCES
@@ -94,7 +105,25 @@ async function cleanupUserData() {
       console.log(`✅ Deleted ${userResult.affectedRows} app_users record(s)`);
     }
 
-    // 5. Reset USER_INVITATIONS status (including revoked ones)
+    // 5. Find and clean FAMILY_INVITATIONS
+    const [familyInvites] = await connection.execute(
+      `SELECT id FROM FAMILY_INVITATIONS
+       WHERE parent_email = ?`,
+      [EMAIL]
+    );
+
+    if (familyInvites.length > 0) {
+      const familyInviteIds = familyInvites.map(f => f.id);
+      const fPlaceholders = familyInviteIds.map(() => '?').join(',');
+
+      const [fDelResult] = await connection.execute(
+        `DELETE FROM FAMILY_INVITATIONS WHERE id IN (${fPlaceholders})`,
+        familyInviteIds
+      );
+      console.log(`✅ Deleted ${fDelResult.affectedRows} FAMILY_INVITATIONS record(s)`);
+    }
+
+    // 6. Reset USER_INVITATIONS status (including revoked ones)
     const [inviteResult] = await connection.execute(
       `UPDATE USER_INVITATIONS
        SET status = 'pending',
@@ -108,14 +137,14 @@ async function cleanupUserData() {
     );
     console.log(`✅ Reset ${inviteResult.affectedRows} invitation(s) to pending status (including revoked)`);
 
-    // 6. Delete OTP tokens
+    // 7. Delete OTP tokens
     const [otpResult] = await connection.execute(
       `DELETE FROM OTP_TOKENS WHERE email = ?`,
       [EMAIL]
     );
     console.log(`✅ Deleted ${otpResult.affectedRows} OTP token(s)`);
 
-    // 7. Clear alumni_members.invitation_accepted_at
+    // 8. Clear alumni_members.invitation_accepted_at
     const [alumniResult] = await connection.execute(
       `UPDATE alumni_members
        SET invitation_accepted_at = NULL
