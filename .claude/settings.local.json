@@ -38,7 +38,9 @@
       "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
       "Bash(powershell -Command \".\\cleanup-sankari-test-user.ps1\" -ErrorAction Continue)",
       "Bash(tasklist:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

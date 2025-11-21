@@ -425,7 +425,7 @@ export class StreamlinedRegistrationService {
         firstName: userData.firstName,
         lastName: userData.lastName,
         alumniMemberId: userData.alumniMemberId,
-        primaryFamilyMemberId: familyMemberId,
+        primaryFamilyMemberId: primaryFamilyMemberId,
         needsProfileCompletion
       };
 
