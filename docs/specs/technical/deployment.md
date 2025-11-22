@@ -1,5 +1,15 @@
 # Deployment & Operations - Technical Specification
 
+```yaml
+---
+version: 1.0
+status: pending
+last_updated: 2025-11-22
+applies_to: infrastructure
+enforcement: required
+---
+```
+
 ## Goal
 Establish production deployment pipeline with monitoring, CI/CD automation, and operational procedures.
 

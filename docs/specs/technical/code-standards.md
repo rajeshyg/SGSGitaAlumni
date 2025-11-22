@@ -5,6 +5,8 @@
 version: 1.0
 status: implemented
 last_updated: 2025-11-22
+applies_to: all
+enforcement: required
 ---
 ```
 
