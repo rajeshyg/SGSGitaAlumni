@@ -40,15 +40,30 @@ function hasSection(content, sectionName) {
 
 function hasYamlHeader(content) {
   if (!content) return false;
-  return content.trim().startsWith('---') && content.indexOf('---', 3) > 3;
+  // Check for raw YAML frontmatter or markdown code block format
+  return (content.trim().startsWith('---') && content.indexOf('---', 3) > 3) ||
+         /```yaml\s*\n---[\s\S]*?---\s*\n```/.test(content);
 }
 
 function extractYamlFields(content) {
-  if (!hasYamlHeader(content)) return {};
-  const match = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return {};
+  if (!content) return {};
 
-  const yaml = match[1];
+  let yaml = '';
+
+  // Try markdown code block format first: ```yaml\n---\n...\n---\n```
+  let match = content.match(/```yaml\s*\n---\s*\n([\s\S]*?)\n---\s*\n```/);
+  if (match) {
+    yaml = match[1];
+  } else {
+    // Try raw YAML frontmatter: ---\n...\n---
+    match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (match) {
+      yaml = match[1];
+    }
+  }
+
+  if (!yaml) return {};
+
   const fields = {};
 
   if (/^version:/m.test(yaml)) fields.version = true;
