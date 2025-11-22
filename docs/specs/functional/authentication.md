@@ -1,7 +1,24 @@
 # Authentication & Security - Functional Specification
 
+```yaml
+---
+version: 1.0
+status: implemented
+last_updated: 2025-11-22
+---
+```
+
 ## Goal
 Provide secure, invitation-based authentication with family account support and age verification for the alumni community platform.
+
+## Code References
+- **Backend Routes**: `routes/auth.js`, `routes/otp.js`, `routes/invitations.js`
+- **Services**: `services/FamilyMemberService.js`, `src/services/StreamlinedRegistrationService.ts`
+- **Frontend**: `src/pages/Login.tsx`, `src/pages/Register.tsx`, `src/pages/ProfileSelection.tsx`
+- **Contexts**: `src/contexts/AuthContext.tsx`
+
+## E2E Tests
+- `tests/e2e/auth.spec.ts`
 
 ## Features
 

@@ -1,7 +1,26 @@
 # Postings System - Functional Specification
 
+```yaml
+---
+version: 1.0
+status: in-progress
+last_updated: 2025-11-22
+---
+```
+
 ## Goal
 Enable alumni to create, share, and engage with various types of community postings including jobs, mentorship opportunities, events, and resources.
+
+## Code References
+- **Backend Routes**: `routes/postings.js`, `routes/moderation.js`
+- **Services**: `server/services/postingService.js`
+- **Frontend**: `src/pages/Postings.tsx`, `src/pages/CreatePosting.tsx`
+- **Components**: `src/components/postings/`
+
+## E2E Tests
+- `tests/e2e/create-posting.spec.ts`
+- `tests/e2e/posts-workflow.spec.ts`
+- `tests/e2e/posts-chat-integration.spec.ts`
 
 ## Features
 

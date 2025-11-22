@@ -1,7 +1,23 @@
 # Dashboard - Functional Specification
 
+```yaml
+---
+version: 1.0
+status: implemented
+last_updated: 2025-11-22
+---
+```
+
 ## Goal
 Provide a personalized home experience with relevant content, quick actions, and role-based features.
+
+## Code References
+- **Backend Routes**: `routes/dashboard.js`, `routes/feed.js`
+- **Frontend**: `src/pages/Dashboard.tsx`, `src/pages/MemberDashboard.tsx`
+- **Components**: `src/components/dashboard/`
+
+## E2E Tests
+- `tests/e2e/dashboard.spec.ts`
 
 ## Features
 

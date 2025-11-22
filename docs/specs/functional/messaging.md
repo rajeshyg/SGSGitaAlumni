@@ -1,7 +1,25 @@
 # Messaging System - Functional Specification
 
+```yaml
+---
+version: 1.0
+status: implemented
+last_updated: 2025-11-22
+---
+```
+
 ## Goal
 Provide real-time messaging capabilities for 1-to-1 and group conversations, integrated with postings for contextual discussions.
+
+## Code References
+- **Backend Routes**: `routes/chat.js`
+- **Services**: `server/services/chatService.js`
+- **Socket.IO**: `socket/chatSocket.js`
+- **Frontend**: `src/pages/Chat.tsx`, `src/components/chat/`
+
+## E2E Tests
+- `tests/e2e/chat-workflow.spec.ts`
+- `tests/e2e/chat-posts-integration.spec.ts`
 
 ## Features
 
