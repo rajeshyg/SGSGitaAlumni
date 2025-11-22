@@ -1,5 +1,17 @@
 # User Management - Functional Specification
 
+```yaml
+---
+version: 1.0
+status: in-progress
+last_updated: 2025-11-22
+recommended_model: sonnet
+implementation_links:
+  - routes/users.js
+  - routes/preferences.js
+---
+```
+
 ## Goal
 Enable users to manage their profiles, preferences, and interests for effective community networking and content matching.
 

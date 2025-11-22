@@ -34,17 +34,27 @@ const rootFiles = fs.readdirSync(ROOT).filter(f => {
   return ['.js', '.mjs', '.ps1', '.cjs'].includes(ext);
 });
 
+// Canonical list of required root files
+// Source of truth: docs/specs/context/always-on.md "Root Files (Required)"
+const REQUIRED_ROOT_FILES = [
+  'server.js',           // Express entry point
+  'eslint.config.js',    // ESLint configuration
+  'vite.config.js',      // Vite build config
+  'tailwind.config.js',  // Tailwind CSS config
+  'postcss.config.js'    // PostCSS config
+];
+
 // Categorize each file
 rootFiles.forEach(file => {
   const name = file.toLowerCase();
 
-  // Config files to keep
-  if (['eslint.config.js', 'vite.config.js', 'tailwind.config.js', 'postcss.config.js'].includes(file)) {
-    categories.config.push(file);
-  }
-  // Server entry point
-  else if (file === 'server.js') {
-    categories.server.push(file);
+  // Required root files (from always-on.md)
+  if (REQUIRED_ROOT_FILES.includes(file)) {
+    if (file === 'server.js') {
+      categories.server.push(file);
+    } else {
+      categories.config.push(file);
+    }
   }
   // Check/diagnostic scripts
   else if (name.startsWith('check-') || name.startsWith('verify-') || name.startsWith('show-') || name.startsWith('diagnose-') || name.startsWith('investigate-')) {

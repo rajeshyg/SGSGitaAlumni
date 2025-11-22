@@ -5,6 +5,12 @@
 version: 1.0
 status: implemented
 last_updated: 2025-11-22
+recommended_model: sonnet
+implementation_links:
+  - routes/auth.js
+  - routes/otp.js
+  - routes/invitations.js
+  - services/FamilyMemberService.js
 ---
 ```
 

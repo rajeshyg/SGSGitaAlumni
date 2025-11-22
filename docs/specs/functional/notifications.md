@@ -1,5 +1,15 @@
 # Notifications - Functional Specification
 
+```yaml
+---
+version: 1.0
+status: pending
+last_updated: 2025-11-22
+recommended_model: sonnet
+implementation_links: []
+---
+```
+
 ## Goal
 Keep users informed of relevant activity through multiple notification channels.
 

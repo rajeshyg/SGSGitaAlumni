@@ -5,6 +5,11 @@
 version: 1.0
 status: in-progress
 last_updated: 2025-11-22
+recommended_model: sonnet
+implementation_links:
+  - routes/postings.js
+  - routes/moderation.js
+  - server/services/postingService.js
 ---
 ```
 

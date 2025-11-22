@@ -1,5 +1,17 @@
 # Alumni Directory - Functional Specification
 
+```yaml
+---
+version: 1.0
+status: implemented
+last_updated: 2025-11-22
+recommended_model: sonnet
+implementation_links:
+  - routes/directory.js
+  - routes/alumni.js
+---
+```
+
 ## Goal
 Provide a searchable, filterable directory of alumni members for community networking and professional connections.
 

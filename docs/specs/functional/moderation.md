@@ -1,5 +1,17 @@
 # Content Moderation - Functional Specification
 
+```yaml
+---
+version: 1.0
+status: implemented
+last_updated: 2025-11-22
+recommended_model: sonnet
+implementation_links:
+  - routes/moderation.js
+  - server/services/moderationService.js
+---
+```
+
 ## Goal
 Ensure community content quality through a review workflow with moderator tools and admin oversight.
 

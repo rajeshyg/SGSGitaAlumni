@@ -4,16 +4,39 @@
 Node.js 18+, Express, MySQL2, React 18, TypeScript, Socket.IO, JWT
 
 ## Reference Implementations (DO NOT DUPLICATE)
-- Auth Middleware: `middleware/auth.js` - verifyToken()
-- API Response: Use consistent `{ success, data, error }` format
-- DB Connection: Always use try/finally for connection.release()
-- Error Handling: `server/utils/errorHandler.js`
+
+### Auth
+- Token verification: `middleware/auth.js` - verifyToken()
+- OTP flow: `routes/otp.js` - requestOtp(), verifyOtp()
+- Family auth: `services/FamilyMemberService.js`
+
+### API
+- Response format: `{ success: boolean, data?: any, error?: string }`
+- Route pattern: `routes/auth.js` - consistent error handling
+- Validation: Check input before DB operations
+
+### Database
+- Connection pattern: Always use try/finally for connection.release()
+- Queries: Parameterized only - `[?, ?]` syntax
+- Pool: `server/config/database.js`
+
+### UI
+- Auth context: `src/contexts/AuthContext.tsx`
+- Protected routes: `src/App.tsx` - PrivateRoute pattern
+- API calls: `src/lib/api.ts`
 
 ## Critical Rules
 1. Parameterized SQL queries only (no string interpolation)
 2. All DB operations wrapped in try/finally for connection release
 3. Input validation on all API endpoints
 4. Never log: passwords, JWT secrets, OTP codes, tokens
+
+## Root Files (Required - Do Not Archive)
+- `server.js` - Express entry point
+- `eslint.config.js` - ESLint configuration
+- `vite.config.js` - Vite build config
+- `tailwind.config.js` - Tailwind CSS config
+- `postcss.config.js` - PostCSS config
 
 ## File Locations
 - Specs: `docs/specs/functional/` and `docs/specs/technical/`
