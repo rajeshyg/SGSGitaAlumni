@@ -18,9 +18,7 @@ Enable alumni to create, share, and engage with various types of community posti
 - **Components**: `src/components/postings/`
 
 ## E2E Tests
-- `tests/e2e/create-posting.spec.ts`
-- `tests/e2e/posts-workflow.spec.ts`
-- `tests/e2e/posts-chat-integration.spec.ts`
+- `tests/e2e/postings.spec.ts`
 
 ## Features
 

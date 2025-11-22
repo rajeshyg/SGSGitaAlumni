@@ -18,8 +18,7 @@ Provide real-time messaging capabilities for 1-to-1 and group conversations, int
 - **Frontend**: `src/pages/Chat.tsx`, `src/components/chat/`
 
 ## E2E Tests
-- `tests/e2e/chat-workflow.spec.ts`
-- `tests/e2e/chat-posts-integration.spec.ts`
+- `tests/e2e/chat.spec.ts`
 
 ## Features
 
