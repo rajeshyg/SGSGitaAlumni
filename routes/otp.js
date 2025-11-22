@@ -43,27 +43,27 @@ export const generateAndSendOTP = async (req, res) => {
     console.log('🔍 [DEBUG] Checking database connection...');
     // Check rate limit - max 3 OTPs per hour
     const connection = await pool.getConnection();
-    console.log('✅ [DEBUG] Database connection obtained');
+    try {
+      console.log('✅ [DEBUG] Database connection obtained');
 
-    const [rateLimitRows] = await connection.execute(`
-      SELECT COUNT(*) as attempts
-      FROM OTP_TOKENS
-      WHERE email = ?
-        AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
-    `, [email]);
-    console.log('🔍 [DEBUG] Rate limit query result:', rateLimitRows);
+      const [rateLimitRows] = await connection.execute(`
+        SELECT COUNT(*) as attempts
+        FROM OTP_TOKENS
+        WHERE email = ?
+          AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+      `, [email]);
+      console.log('🔍 [DEBUG] Rate limit query result:', rateLimitRows);
 
-    const attempts = rateLimitRows[0]?.attempts || 0;
-    console.log('🔍 [DEBUG] Current attempts:', attempts);
+      const attempts = rateLimitRows[0]?.attempts || 0;
+      console.log('🔍 [DEBUG] Current attempts:', attempts);
 
-    if (attempts >= 3) {
-      connection.release();
-      console.log('❌ [DEBUG] Rate limit exceeded');
-      return res.status(429).json({
-        error: 'Rate limit exceeded. Please try again later.',
-        remainingAttempts: 0
-      });
-    }
+      if (attempts >= 3) {
+        console.log('❌ [DEBUG] Rate limit exceeded');
+        return res.status(429).json({
+          error: 'Rate limit exceeded. Please try again later.',
+          remainingAttempts: 0
+        });
+      }
 
     // Generate random 6-digit OTP
     const otpCode = generateRandomOTP();
@@ -86,8 +86,7 @@ export const generateAndSendOTP = async (req, res) => {
     if (type === 'login') {
       console.log('🔍 [DEBUG] Validating email exists in app_users for login OTP...');
       
-      if (userRows.length === 0) {
-        connection.release();
+        if (userRows.length === 0) {
         console.log('❌ [DEBUG] Email not found in app_users for login OTP');
         return res.status(400).json({
           error: 'Email not found. Please check your email address or register first.'
@@ -134,35 +133,36 @@ export const generateAndSendOTP = async (req, res) => {
         email, otp_code, token_type, user_id,
         expires_at, created_at
       ) VALUES (?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), NOW())
-    `, [email, otpCode, tokenType, userId, expiryMinutes]);
-    console.log('✅ [DEBUG] OTP token inserted successfully, insertId:', insertResult.insertId, 'tokenType:', tokenType);
+      `, [email, otpCode, tokenType, userId, expiryMinutes]);
+      console.log('✅ [DEBUG] OTP token inserted successfully, insertId:', insertResult.insertId, 'tokenType:', tokenType);
 
-    connection.release();
-    console.log('🔍 [DEBUG] Database connection released');
+      // Send OTP via email
+      console.log('🔍 [DEBUG] Sending OTP email...');
+      try {
+        await emailService.sendOTPEmail(email, otpCode, expiryMinutes);
+        console.log('✅ [DEBUG] OTP email sent successfully');
+      } catch (emailError) {
+        console.error('❌ [DEBUG] Email send error (OTP still generated):', emailError);
+      }
 
-    // Send OTP via email
-    console.log('🔍 [DEBUG] Sending OTP email...');
-    try {
-      await emailService.sendOTPEmail(email, otpCode, expiryMinutes);
-      console.log('✅ [DEBUG] OTP email sent successfully');
-    } catch (emailError) {
-      console.error('❌ [DEBUG] Email send error (OTP still generated):', emailError);
+      // Calculate expiry time for response
+      const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
+
+      // Log success in development mode (without exposing OTP code)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`📧 OTP generated and sent to ${email} (expires: ${expiresAt.toLocaleString()})`);
+      }
+
+      console.log('✅ [DEBUG] generateAndSendOTP completed successfully');
+      res.json({
+        success: true,
+        message: 'OTP generated and sent successfully',
+        expiresAt: expiresAt.toISOString()
+      });
+    } finally {
+      connection.release();
+      console.log('🔍 [DEBUG] Database connection released');
     }
-
-    // Calculate expiry time for response
-    const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
-
-    // Log success in development mode (without exposing OTP code)
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`📧 OTP generated and sent to ${email} (expires: ${expiresAt.toLocaleString()})`);
-    }
-
-    console.log('✅ [DEBUG] generateAndSendOTP completed successfully');
-    res.json({
-      success: true,
-      message: 'OTP generated and sent successfully',
-      expiresAt: expiresAt.toISOString()
-    });
 
   } catch (error) {
     console.error('❌ [DEBUG] Generate and send OTP error:', error);
@@ -197,100 +197,97 @@ export const validateOTP = async (req, res) => {
     }
 
     const connection = await pool.getConnection();
-
-    // Find valid OTP token
-    console.log('🔍 [VALIDATE_OTP] Searching for OTP with:', { email, tokenType });
-    const [rows] = await connection.execute(`
-      SELECT id, otp_code, expires_at, attempt_count, is_used
-      FROM OTP_TOKENS
-      WHERE email = ?
-        AND token_type = ?
-        AND expires_at > NOW()
-        AND is_used = FALSE
-      ORDER BY created_at DESC
-      LIMIT 1
-    `, [email, tokenType]);
-
-    console.log('🔍 [VALIDATE_OTP] Query result:', { found: rows.length > 0, rowCount: rows.length });
-
-    if (rows.length === 0) {
-      // Check if there's ANY OTP for this email (debugging)
-      const [allOtps] = await connection.execute(`
-        SELECT id, email, token_type, expires_at, is_used, created_at
+    try {
+      // Find valid OTP token
+      console.log('🔍 [VALIDATE_OTP] Searching for OTP with:', { email, tokenType });
+      const [rows] = await connection.execute(`
+        SELECT id, otp_code, expires_at, attempt_count, is_used
         FROM OTP_TOKENS
         WHERE email = ?
+          AND token_type = ?
+          AND expires_at > NOW()
+          AND is_used = FALSE
         ORDER BY created_at DESC
-        LIMIT 5
-      `, [email]);
-      
-      console.log('🔍 [VALIDATE_OTP] All recent OTPs for this email:', allOtps);
-      
+        LIMIT 1
+      `, [email, tokenType]);
+
+      console.log('🔍 [VALIDATE_OTP] Query result:', { found: rows.length > 0, rowCount: rows.length });
+
+      if (rows.length === 0) {
+        // Check if there's ANY OTP for this email (debugging)
+        const [allOtps] = await connection.execute(`
+          SELECT id, email, token_type, expires_at, is_used, created_at
+          FROM OTP_TOKENS
+          WHERE email = ?
+          ORDER BY created_at DESC
+          LIMIT 5
+        `, [email]);
+
+        console.log('🔍 [VALIDATE_OTP] All recent OTPs for this email:', allOtps);
+
+        return res.json({
+          isValid: false,
+          token: null,
+          remainingAttempts: 3,  // User gets full attempts even if no token exists
+          errors: ['No valid OTP found'],
+          isExpired: false,
+          isRateLimited: false
+        });
+      }
+
+      const token = rows[0];
+      const maxAttempts = 3;
+      const currentAttempts = token.attempt_count || 0;
+
+      // Check if max attempts exceeded
+      if (currentAttempts >= maxAttempts) {
+        return res.json({
+          isValid: false,
+          token: { id: token.id },
+          remainingAttempts: 0,
+          errors: ['Maximum verification attempts exceeded'],
+          isExpired: false,
+          isRateLimited: true
+        });
+      }
+
+      // Check OTP code
+      const isValid = token.otp_code === otpCode;
+
+      if (isValid) {
+        // Mark as used
+        await connection.execute(
+          'UPDATE OTP_TOKENS SET is_used = TRUE, used_at = NOW() WHERE id = ?',
+          [token.id]
+        );
+
+        return res.json({
+          isValid: true,
+          token: { id: token.id },
+          remainingAttempts: maxAttempts - currentAttempts - 1,
+          errors: [],
+          isExpired: false,
+          isRateLimited: false
+        });
+      } else {
+        // Increment attempt count
+        const newAttempts = currentAttempts + 1;
+        await connection.execute(
+          'UPDATE OTP_TOKENS SET attempt_count = ?, last_attempt_at = NOW() WHERE id = ?',
+          [newAttempts, token.id]
+        );
+
+        return res.json({
+          isValid: false,
+          token: { id: token.id },
+          remainingAttempts: maxAttempts - newAttempts,
+          errors: ['Invalid OTP code'],
+          isExpired: false,
+          isRateLimited: false
+        });
+      }
+    } finally {
       connection.release();
-      return res.json({
-        isValid: false,
-        token: null,
-        remainingAttempts: 3,  // User gets full attempts even if no token exists
-        errors: ['No valid OTP found'],
-        isExpired: false,
-        isRateLimited: false
-      });
-    }
-
-    const token = rows[0];
-    const maxAttempts = 3;
-    const currentAttempts = token.attempt_count || 0;
-
-    // Check if max attempts exceeded
-    if (currentAttempts >= maxAttempts) {
-      connection.release();
-      return res.json({
-        isValid: false,
-        token: { id: token.id },
-        remainingAttempts: 0,
-        errors: ['Maximum verification attempts exceeded'],
-        isExpired: false,
-        isRateLimited: true
-      });
-    }
-
-    // Check OTP code
-    const isValid = token.otp_code === otpCode;
-
-    if (isValid) {
-      // Mark as used
-      await connection.execute(
-        'UPDATE OTP_TOKENS SET is_used = TRUE, used_at = NOW() WHERE id = ?',
-        [token.id]
-      );
-
-      connection.release();
-
-      return res.json({
-        isValid: true,
-        token: { id: token.id },
-        remainingAttempts: maxAttempts - currentAttempts - 1,
-        errors: [],
-        isExpired: false,
-        isRateLimited: false
-      });
-    } else {
-      // Increment attempt count
-      const newAttempts = currentAttempts + 1;
-      await connection.execute(
-        'UPDATE OTP_TOKENS SET attempt_count = ?, last_attempt_at = NOW() WHERE id = ?',
-        [newAttempts, token.id]
-      );
-
-      connection.release();
-
-      return res.json({
-        isValid: false,
-        token: { id: token.id },
-        remainingAttempts: maxAttempts - newAttempts,
-        errors: ['Invalid OTP code'],
-        isExpired: false,
-        isRateLimited: false
-      });
     }
 
   } catch (error) {
