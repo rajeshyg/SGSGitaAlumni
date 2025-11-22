@@ -23,14 +23,14 @@ When implementing this feature, follow these sequential steps:
 
 1. **Scout**: Identify files related to [domain area]
    - Search for existing patterns in [reference files]
-   - Document findings in `docs/specs/scouts/[feature]-discovery.md`
+   - Document findings in `docs/specs/workflows/[feature]/scout.md`
 
 2. **Review**: Read existing implementations
    - Check Reference Implementations in always-on.md
    - Review related specs in functional/ and technical/
 
 3. **Plan**: Design the implementation approach
-   - Create plan in `docs/specs/plans/[feature]-plan.md`
+   - Create plan in `docs/specs/workflows/[feature]/plan.md`
    - Identify dependencies and risks
 
 4. **Build**: Implement following established patterns

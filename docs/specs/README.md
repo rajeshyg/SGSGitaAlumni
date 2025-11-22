@@ -7,7 +7,7 @@ This directory contains the spec-driven development framework following the
 
 ```
 specs/
-├── CONSTITUTION.md          # Original full constitution (reference)
+├── CONSTITUTION.md          # Project principles (always load)
 ├── context/                  # Layered context for R&D Framework
 │   ├── always-on.md         # <50 lines - loads every session
 │   ├── layer-auth.md        # Authentication context
@@ -24,7 +24,7 @@ specs/
 │   ├── moderation.md
 │   ├── notifications.md
 │   └── rating.md
-├── technical/               # WHAT & WHY (technical requirements)
+├── technical/               # WHAT & WHY (technical standards)
 │   ├── api-standards.md
 │   ├── error-handling.md
 │   ├── database.md
@@ -34,12 +34,11 @@ specs/
 │   ├── code-standards.md
 │   ├── security.md
 │   └── structure-standards.md
-├── scouts/                  # Scout phase outputs
-│   └── (discovery reports)
-├── plans/                   # Plan phase outputs
-│   └── (implementation plans)
-├── tasks/                   # Build phase task breakdowns
-│   └── (task breakdowns)
+├── workflows/               # Feature implementation workflows
+│   └── [feature-name]/      # One folder per feature
+│       ├── scout.md         # Discovery phase output
+│       ├── plan.md          # Implementation plan
+│       └── tasks.md         # Task breakdown
 └── templates/               # Reusable templates
     ├── feature-spec.md
     ├── implementation-plan.md
@@ -49,21 +48,24 @@ specs/
 
 ## Scout-Plan-Build Workflow
 
-### Phase 1: Scout (Use Haiku - fast/cheap)
-1. Load `context/always-on.md` + relevant `layer-*.md`
-2. Search for existing implementations (avoid duplicates)
-3. Document findings in `scouts/[feature]-discovery.md`
+### For Each New Feature
 
-### Phase 2: Plan (Use Sonnet)
-1. Review scout findings
-2. Create implementation plan in `plans/[feature]-plan.md`
-3. Break into phases with validation checkpoints
+1. **Create workflow folder**: `workflows/[feature-name]/`
 
-### Phase 3: Build (Use Sonnet)
-1. Execute plan phase by phase
-2. Create tasks in `tasks/[feature]-tasks.md` if needed
-3. Validate each phase before proceeding
-4. Update spec status when complete
+2. **Scout Phase** (Use Haiku - fast/cheap)
+   - Load `context/always-on.md` + relevant `layer-*.md`
+   - Search for existing implementations
+   - Create `workflows/[feature-name]/scout.md`
+
+3. **Plan Phase** (Use Sonnet)
+   - Review scout findings
+   - Create `workflows/[feature-name]/plan.md`
+   - Break into phases with checkpoints
+
+4. **Build Phase** (Use Sonnet)
+   - Create `workflows/[feature-name]/tasks.md`
+   - Execute tasks sequentially
+   - Update spec status when complete
 
 ## Context Loading
 
@@ -85,17 +87,25 @@ specs/
 | Build | Sonnet | Coding, testing |
 | Architect | Opus | Complex decisions only |
 
+## File Location Rules
+
+### Allowed .md Locations
+- `/README.md`, `/CHANGELOG.md` - Root only
+- `/docs/specs/**/*.md` - ALL specifications
+- `/docs/archive/**/*.md` - Historical docs
+- `/.github/**/*.md` - GitHub templates
+
+### Forbidden .md Locations
+- `/src/**/*.md` - No docs in code
+- `/scripts/**/*.md` - Except README
+- `/server/**/*.md` - No docs in code
+- Root `/*.md` - Except README/CHANGELOG
+
 ## Status Legend
 - **planned** - Spec written, not started
 - **in-progress** - Partially implemented
 - **implemented** - Complete and working
 - **deprecated** - No longer used
-
-## Maintaining Specs
-- Update status as implementation progresses
-- Add implementation links to spec YAML metadata
-- Keep acceptance criteria current
-- Create scout report before each new feature
 
 ## Reference
 - Spec-Driven Guide: `/docs/spec_driven_coding_guide.md`

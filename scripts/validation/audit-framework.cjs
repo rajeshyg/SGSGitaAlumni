@@ -77,9 +77,7 @@ console.log('-'.repeat(40));
 
 const expectedFolders = [
   'docs/specs/context',
-  'docs/specs/scouts',
-  'docs/specs/plans',
-  'docs/specs/tasks',
+  'docs/specs/workflows',
   'docs/specs/functional',
   'docs/specs/technical',
   'docs/specs/templates'
@@ -628,41 +626,98 @@ if (specsWithDeps >= 7) {
 console.log('');
 
 // =============================================================================
-// 14. SCOUT/PLAN/TASK FOLDERS - READINESS
+// 14. WORKFLOWS FOLDER - READINESS
 // =============================================================================
-console.log('14. SCOUT/PLAN/TASK FOLDERS - READINESS');
+console.log('14. WORKFLOWS FOLDER - READINESS');
 console.log('-'.repeat(40));
 
-const workflowFolders = ['scouts', 'plans', 'tasks'];
-const folderStatus = {};
+const workflowsPath = path.join(SPECS_DIR, 'workflows');
+const workflowsExists = fs.existsSync(workflowsPath);
+let workflowCount = 0;
 
-workflowFolders.forEach(folder => {
-  const folderPath = path.join(SPECS_DIR, folder);
-  if (fs.existsSync(folderPath)) {
-    const files = fs.readdirSync(folderPath).filter(f => f.endsWith('.md'));
-    folderStatus[folder] = { exists: true, empty: files.length === 0, files: files.length };
-  } else {
-    folderStatus[folder] = { exists: false, empty: true, files: 0 };
-  }
-});
+if (workflowsExists) {
+  const items = fs.readdirSync(workflowsPath);
+  workflowCount = items.filter(item => {
+    const itemPath = path.join(workflowsPath, item);
+    return fs.statSync(itemPath).isDirectory();
+  }).length;
+}
 
-Object.entries(folderStatus).forEach(([name, status]) => {
-  const emoji = status.exists && status.empty ? '✅' : status.exists ? 'ℹ️' : '❌';
-  console.log(`  ${name}/: ${emoji} ${status.exists ? `exists, ${status.files} files` : 'missing'}`);
-});
+console.log(`  workflows/ folder: ${workflowsExists ? '✅ exists' : '❌ missing'}`);
+console.log(`  Feature workflows: ${workflowCount} (empty = ready for use)`);
 
-if (Object.values(folderStatus).every(s => s.exists && s.empty)) {
-  console.log('Status: ✅ ALIGNED (ready for use)');
-  results.aligned.push('Scout/Plan/Task Folders');
-} else if (Object.values(folderStatus).every(s => s.exists)) {
+if (workflowsExists) {
   console.log('Status: ✅ ALIGNED');
-  results.aligned.push('Scout/Plan/Task Folders');
+  results.aligned.push('Workflows Folder');
 } else {
   console.log('Status: ❌ MISSING');
   results.missing.push({
-    name: 'Scout/Plan/Task Folders',
-    issue: 'Folders not created',
+    name: 'Workflows Folder',
+    issue: 'workflows/ folder not created',
     impact: 'HIGH'
+  });
+}
+console.log('');
+
+// =============================================================================
+// 15. .MD FILE LOCATION ENFORCEMENT
+// =============================================================================
+console.log('15. .MD FILE LOCATION ENFORCEMENT');
+console.log('-'.repeat(40));
+
+const forbiddenMdLocations = [];
+
+// Check root for forbidden .md files
+const rootFiles = fs.readdirSync(ROOT);
+const forbiddenRoot = rootFiles.filter(f =>
+  f.endsWith('.md') &&
+  !['README.md', 'CHANGELOG.md'].includes(f)
+);
+if (forbiddenRoot.length > 0) {
+  forbiddenMdLocations.push(...forbiddenRoot.map(f => `/${f}`));
+}
+
+// Check src/ for .md files
+const srcMdFiles = [];
+function findMdInDir(dir, relativePath = '') {
+  if (!fs.existsSync(dir)) return;
+  const items = fs.readdirSync(dir);
+  items.forEach(item => {
+    const fullPath = path.join(dir, item);
+    const relPath = path.join(relativePath, item);
+    if (fs.statSync(fullPath).isDirectory() && item !== 'node_modules') {
+      findMdInDir(fullPath, relPath);
+    } else if (item.endsWith('.md')) {
+      srcMdFiles.push(relPath);
+    }
+  });
+}
+
+findMdInDir(path.join(ROOT, 'src'), 'src');
+findMdInDir(path.join(ROOT, 'server'), 'server');
+
+if (srcMdFiles.length > 0) {
+  forbiddenMdLocations.push(...srcMdFiles);
+}
+
+console.log(`  Forbidden .md files in root: ${forbiddenRoot.length}`);
+console.log(`  Forbidden .md files in src/server: ${srcMdFiles.length}`);
+console.log(`  Total violations: ${forbiddenMdLocations.length}`);
+
+if (forbiddenMdLocations.length === 0) {
+  console.log('Status: ✅ ALIGNED');
+  results.aligned.push('.md File Location Enforcement');
+} else {
+  console.log('Status: ⚠️ PARTIAL');
+  console.log('  Violations:');
+  forbiddenMdLocations.slice(0, 10).forEach(f => console.log(`    - ${f}`));
+  if (forbiddenMdLocations.length > 10) {
+    console.log(`    ... and ${forbiddenMdLocations.length - 10} more`);
+  }
+  results.partial.push({
+    name: '.md File Location Enforcement',
+    issue: `${forbiddenMdLocations.length} .md files in forbidden locations`,
+    impact: 'MEDIUM'
   });
 }
 console.log('');
@@ -675,7 +730,7 @@ console.log('FINAL SUMMARY REPORT');
 console.log('='.repeat(60));
 console.log('');
 
-const totalEntities = 14;
+const totalEntities = 15;
 const alignedCount = results.aligned.length;
 const partialCount = results.partial.length;
 const missingCount = results.missing.length;

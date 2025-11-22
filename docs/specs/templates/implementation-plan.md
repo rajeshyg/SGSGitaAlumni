@@ -15,7 +15,7 @@ This plan follows the Scout-Plan-Build pattern:
    - [ ] Identify all related files
    - [ ] Document existing patterns
    - [ ] Note dependencies
-   - Output: `docs/specs/scouts/[feature]-discovery.md`
+   - Output: `docs/specs/workflows/[feature]/scout.md`
 
 2. **Plan Phase** (This document)
    - [ ] Design architecture changes

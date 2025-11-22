@@ -3,7 +3,7 @@
 # Tasks: [Feature Name]
 
 ## Workflow Context
-These tasks follow from `docs/specs/plans/[feature]-plan.md`.
+These tasks follow from `docs/specs/workflows/[feature]/plan.md`.
 Each task should be completable in one AI session.
 
 ---
