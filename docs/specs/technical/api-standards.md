@@ -1,5 +1,15 @@
 # API Standards - Technical Specification
 
+```yaml
+---
+version: 1.0
+status: implemented
+last_updated: 2025-11-22
+applies_to: all-routes
+enforcement: required
+---
+```
+
 ## Goal
 Establish consistent, secure API patterns for all backend endpoints with proper error handling and rate limiting.
 

@@ -318,12 +318,18 @@ console.log('');
 console.log('5. FUNCTIONAL SPECS - CONTENT SECTIONS');
 console.log('-'.repeat(40));
 
-const requiredFunctionalSections = ['Workflow', 'Requirements', 'Dependencies', 'Report'];
+const requiredFunctionalSections = ['Workflow', 'Features', 'Dependencies', 'Report'];
 const functionalContentResults = {};
 
 functionalSpecs.forEach(filename => {
   const content = readFile(`docs/specs/functional/${filename}`);
-  const missing = requiredFunctionalSections.filter(s => !hasSection(content, s));
+  // Check for sections (Features or Requirements are equivalent)
+  const missing = requiredFunctionalSections.filter(s => {
+    if (s === 'Features') {
+      return !hasSection(content, 'Features') && !hasSection(content, 'Requirements');
+    }
+    return !hasSection(content, s);
+  });
   functionalContentResults[filename] = { missing };
 });
 

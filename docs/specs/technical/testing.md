@@ -1,5 +1,15 @@
 # Testing Strategy - Technical Specification
 
+```yaml
+---
+version: 1.0
+status: in-progress
+last_updated: 2025-11-22
+applies_to: all
+enforcement: required
+---
+```
+
 ## Goal
 Establish comprehensive testing coverage for all application layers to ensure reliability and enable confident refactoring.
 

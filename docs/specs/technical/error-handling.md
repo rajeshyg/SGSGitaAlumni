@@ -1,5 +1,15 @@
 # Error Handling - Technical Specification
 
+```yaml
+---
+version: 1.0
+status: pending
+last_updated: 2025-11-22
+applies_to: all
+enforcement: required
+---
+```
+
 ## Goal
 Implement comprehensive error handling for both frontend and backend to ensure application stability and good user experience.
 

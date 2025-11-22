@@ -76,3 +76,19 @@ Provide secure, invitation-based authentication with family account support and 
 - Social login (Google/Facebook)
 - Two-factor authentication (future enhancement)
 - Biometric authentication
+
+## Workflow
+1. **Scout**: Identify related files and patterns
+2. **Plan**: Design implementation approach
+3. **Build**: Implement with tests
+4. **Validate**: Run E2E tests and verify
+
+## Dependencies
+- Authentication context required for all protected features
+- Database connection pool from `server/config/database.js`
+
+## Report
+After implementation, document:
+- Files modified
+- Tests added/updated
+- Any deviations from spec

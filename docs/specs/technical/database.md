@@ -1,5 +1,15 @@
 # Database Optimization - Technical Specification
 
+```yaml
+---
+version: 1.0
+status: pending
+last_updated: 2025-11-22
+applies_to: database
+enforcement: recommended
+---
+```
+
 ## Goal
 Optimize database performance through proper indexing, query optimization, and connection management.
 

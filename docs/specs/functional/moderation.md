@@ -61,3 +61,19 @@ Ensure community content quality through a review workflow with moderator tools 
 - `POST /api/moderation/:id/approve` - Approve
 - `POST /api/moderation/:id/reject` - Reject with reason
 - `GET /api/admin/users` - User management
+
+## Workflow
+1. **Scout**: Identify related files and patterns
+2. **Plan**: Design implementation approach
+3. **Build**: Implement with tests
+4. **Validate**: Run E2E tests and verify
+
+## Dependencies
+- Authentication context required for all protected features
+- Database connection pool from `server/config/database.js`
+
+## Report
+After implementation, document:
+- Files modified
+- Tests added/updated
+- Any deviations from spec
