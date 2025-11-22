@@ -33,11 +33,11 @@ export const searchAlumniMembers = async (req, res) => {
       LEFT JOIN OTP_TOKENS ot ON ot.user_id = au.id AND ot.is_used = false AND ot.expires_at > NOW()
       WHERE am.first_name LIKE ? OR am.last_name LIKE ? OR am.email LIKE ? OR am.student_id LIKE ?
       ORDER BY am.last_name, am.first_name
-      LIMIT ${limitNum}
+      LIMIT ?
     `;
 
     const searchTerm = `%${q}%`;
-    const [rows] = await connection.execute(searchQuery, [searchTerm, searchTerm, searchTerm, searchTerm]);
+    const [rows] = await connection.execute(searchQuery, [searchTerm, searchTerm, searchTerm, searchTerm, limitNum]);
     connection.release();
 
     const members = rows.map(row => ({
@@ -165,8 +165,9 @@ export const getAlumniDirectory = async (req, res) => {
       FROM alumni_members am
       ${whereClause}
       ${orderByClause}
-      LIMIT ${perPageNum} OFFSET ${offset}
+      LIMIT ? OFFSET ?
     `;
+    queryParams.push(perPageNum, offset);
     const [dataRows] = await connection.execute(dataQuery, queryParams);
 
     // Get filter options (available years and departments)

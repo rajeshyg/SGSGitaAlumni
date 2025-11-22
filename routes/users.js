@@ -322,9 +322,10 @@ export const searchUsers = async (req, res) => {
       FROM app_users u
       ${whereClause}
       ORDER BY COALESCE(u.last_name, 'Unknown'), COALESCE(u.first_name, 'Unknown')
-      LIMIT ${parseInt(limit)}
+      LIMIT ?
     `;
 
+    queryParams.push(parseInt(limit));
     console.log('⚡ API: Final search query:', searchQuery);
     console.log('🎯 API: Query parameters:', queryParams);
 

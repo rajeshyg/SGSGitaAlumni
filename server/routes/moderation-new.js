@@ -269,8 +269,8 @@ router.get('/queue',
       ${domain ? 'INNER JOIN POSTING_DOMAINS pd_filter ON p.id = pd_filter.posting_id' : ''}
       ${whereClause}
       ${orderByClause}
-      LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
-      params
+      LIMIT ? OFFSET ?`,
+      [...params, parseInt(limit), parseInt(offset)]
     ).catch(err => {
       throw ServerError.database('fetch moderation queue postings');
     });

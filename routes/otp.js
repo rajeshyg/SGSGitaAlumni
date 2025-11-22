@@ -636,7 +636,10 @@ export const generateTestOTP = async (req, res) => {
 
     connection.release();
 
-    console.log(`[TEST OTP] Generated OTP ${otpCode} for ${email}`);
+    // Note: OTP code returned in response for test purposes only
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[TEST OTP] Generated test OTP for ${email}`);
+    }
 
     res.json({
       success: true,

@@ -52,9 +52,10 @@ export const getAllInvitations = asyncHandler(async (req, res) => {
     LEFT JOIN app_users u ON ui.user_id = u.id
     ${whereClause}
     ORDER BY ui.created_at DESC
-    LIMIT ${parseInt(pageSize)} OFFSET ${offset}
+    LIMIT ? OFFSET ?
   `;
 
+  queryParams.push(parseInt(pageSize), offset);
   const [rows] = await connection.execute(dataQuery, queryParams);
   logger.info('Rows fetched from DB', { count: rows.length });
   connection.release();
@@ -153,10 +154,11 @@ export const getFamilyInvitations = asyncHandler(async (req, res) => {
     SELECT * FROM FAMILY_INVITATIONS
     ${whereClause}
     ORDER BY created_at DESC
-    LIMIT ${parseInt(pageSize)} OFFSET ${offset}
+    LIMIT ? OFFSET ?
   `;
 
-  const [rows] = await connection.execute(dataQuery, queryParams);
+  const dataParams = [...queryParams, parseInt(pageSize), offset];
+  const [rows] = await connection.execute(dataQuery, dataParams);
   connection.release();
 
   // Transform data to match expected format

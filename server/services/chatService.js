@@ -279,7 +279,8 @@ async function getConversations(userId, filters = {}) {
       conversationSQL += ' AND c.is_archived = FALSE';
     }
 
-    conversationSQL += ` ORDER BY c.last_message_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`;
+    conversationSQL += ' ORDER BY c.last_message_at DESC LIMIT ? OFFSET ?';
+    conversationParams.push(parseInt(limit), parseInt(offset));
 
     const [conversations] = await connection.execute(conversationSQL, conversationParams);
 
@@ -633,8 +634,8 @@ async function getMessages(conversationId, userId, pagination = {}) {
        JOIN app_users u ON m.sender_id = u.id
        WHERE ${whereClause}
        ORDER BY m.created_at DESC
-       LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
-      queryParams
+       LIMIT ? OFFSET ?`,
+      [...queryParams, parseInt(limit), parseInt(offset)]
     );
 
     // Get reactions for each message

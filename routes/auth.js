@@ -423,17 +423,11 @@ export const login = asyncHandler(async (req, res) => {
   const token = jwt.sign(tokenPayload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
   const refreshToken = jwt.sign({ userId: user.id }, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
-  // DEBUG: Log token generation details
-  const jwtSecret = getJwtSecret();
+  // Log token generation (without sensitive data)
   console.log('[Auth] 🔑 JWT token generated:', {
     userId: user.id,
     email: user.email,
     expiresIn: JWT_EXPIRES_IN,
-    tokenPreview: `${token.substring(0, 20)}...${token.substring(token.length - 20)}`,
-    tokenLength: token.length,
-    JWT_SECRET_defined: !!jwtSecret,
-    JWT_SECRET_source: process.env.JWT_SECRET ? 'process.env.JWT_SECRET' : 'development fallback',
-    JWT_SECRET_preview: jwtSecret ? `${jwtSecret.substring(0, 10)}...` : 'undefined',
     timestamp: new Date().toISOString()
   });
 
