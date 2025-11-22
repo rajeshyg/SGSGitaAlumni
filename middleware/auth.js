@@ -2,18 +2,27 @@ import mysql from 'mysql2/promise';
 import jwt from 'jsonwebtoken';
 import { logger } from '../utils/logger.js';
 
-// JWT Configuration
-// SECURITY FIX: Fail fast if JWT_SECRET not set in production
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
-}
+// JWT Configuration with Lazy Initialization
+// SECURITY FIX: Use lazy initialization to avoid ES6 import hoisting issues
+// This ensures JWT_SECRET is read AFTER dotenv.config() completes
+let JWT_SECRET = null;
 
-const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development'
-  ? 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION'
-  : null);
+function getJwtSecret() {
+  if (JWT_SECRET === null) {
+    // Fail fast in production if not set
+    if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
+    }
 
-if (!JWT_SECRET) {
-  throw new Error('FATAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.');
+    JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development'
+      ? 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION'
+      : null);
+
+    if (!JWT_SECRET) {
+      throw new Error('FATAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.');
+    }
+  }
+  return JWT_SECRET;
 }
 
 // Get database pool - will be passed from main server
@@ -37,7 +46,7 @@ export const authenticateToken = async (req, res, next) => {
       return res.status(401).json({ error: 'Access token required' });
     }
 
-    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
+    jwt.verify(token, getJwtSecret(), async (err, decoded) => {
       if (err) {
         logger.debug('JWT verification failed', { error: err.message });
         return res.status(403).json({ error: 'Invalid or expired token' });
@@ -59,7 +68,38 @@ export const authenticateToken = async (req, res, next) => {
           return res.status(401).json({ error: 'User not found or inactive' });
         }
 
-        req.user = rows[0];
+        // Attach user with family member context from JWT
+        req.user = {
+          ...rows[0],
+          activeFamilyMemberId: decoded.activeFamilyMemberId || null,
+          isFamilyAccount: decoded.isFamilyAccount || false
+        };
+
+        // If family member context exists in JWT, load family member details
+        if (req.user.activeFamilyMemberId) {
+          try {
+            const [familyMembers] = await connection.execute(
+              `SELECT id, parent_user_id, first_name, last_name, display_name,
+                      current_age, can_access_platform, requires_parent_consent,
+                      parent_consent_given, access_level
+               FROM FAMILY_MEMBERS
+               WHERE id = ? AND parent_user_id = ?`,
+              [req.user.activeFamilyMemberId, req.user.id]
+            );
+
+            if (familyMembers.length > 0) {
+              req.familyMember = familyMembers[0];
+              logger.debug('Family member context loaded', {
+                familyMemberId: req.familyMember.id,
+                accessLevel: req.familyMember.access_level
+              });
+            }
+          } catch (fmError) {
+            // Don't fail auth if family member lookup fails - just log it
+            logger.error('Failed to load family member context', fmError);
+          }
+        }
+
         logger.debug('Authentication successful');
         next();
       } catch (dbError) {

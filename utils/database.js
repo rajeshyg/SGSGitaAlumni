@@ -19,6 +19,8 @@ function getPoolConfig() {
     ...getDBConfig(),
     connectionLimit: 20, // Increased from 10 to handle concurrent requests better
     queueLimit: 0,
+    supportBigNumbers: true, // Handle BIGINT values properly
+    bigNumberStrings: true, // Return BIGINT as strings to avoid precision loss
     // Enable JSON parsing for MySQL JSON types
     typeCast: function (field, next) {
       if (field.type === 'JSON') {

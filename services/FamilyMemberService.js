@@ -150,18 +150,73 @@ class FamilyMemberService {
   
   /**
    * Grant parent consent for a minor (14-17)
+   * Creates a consent record in PARENT_CONSENT_RECORDS table
    */
-  async grantParentConsent(familyMemberId, parentUserId) {
+  async grantParentConsent(familyMemberId, parentUserId, consentData = {}) {
     const member = await this.getFamilyMember(familyMemberId, parentUserId);
-    
+
     if (!member) {
       throw new Error('Family member not found');
     }
-    
+
     if (!member.requires_parent_consent) {
       throw new Error('This family member does not require parent consent');
     }
-    
+
+    // Get parent email
+    const [parentUsers] = await db.execute(
+      'SELECT email FROM app_users WHERE id = ?',
+      [parentUserId]
+    );
+
+    if (parentUsers.length === 0) {
+      throw new Error('Parent user not found');
+    }
+
+    const parentEmail = parentUsers[0].email;
+
+    // Generate consent token
+    const consentToken = this.generateConsentToken();
+
+    // Calculate expiration date (1 year from now)
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+    // Create consent record in PARENT_CONSENT_RECORDS
+    await db.execute(
+      `INSERT INTO PARENT_CONSENT_RECORDS (
+        id,
+        family_member_id,
+        parent_email,
+        parent_user_id,
+        consent_token,
+        consent_given,
+        consent_timestamp,
+        consent_ip_address,
+        consent_user_agent,
+        digital_signature,
+        terms_accepted,
+        terms_version,
+        verification_method,
+        expires_at,
+        is_active
+      ) VALUES (UUID(), ?, ?, ?, ?, TRUE, NOW(), ?, ?, ?, ?, ?, ?, ?, TRUE)`,
+      [
+        familyMemberId,
+        parentEmail,
+        parentUserId,
+        consentToken,
+        consentData.ipAddress || null,
+        consentData.userAgent || null,
+        consentData.digitalSignature || null,
+        consentData.termsAccepted || true,
+        consentData.termsVersion || '1.0',
+        consentData.verificationMethod || 'email_otp',
+        expiresAt
+      ]
+    );
+
+    // Update FAMILY_MEMBERS table
     await db.execute(
       `UPDATE FAMILY_MEMBERS
        SET parent_consent_given = TRUE,
@@ -172,20 +227,47 @@ class FamilyMemberService {
        WHERE id = ?`,
       [familyMemberId]
     );
-    
+
     return await this.getFamilyMember(familyMemberId);
+  }
+
+  /**
+   * Generate a unique consent token
+   */
+  generateConsentToken() {
+    const timestamp = Date.now().toString(36);
+    const randomStr = Math.random().toString(36).substring(2, 15);
+    return `consent_${timestamp}_${randomStr}`;
   }
   
   /**
    * Revoke parent consent
+   * Updates PARENT_CONSENT_RECORDS and FAMILY_MEMBERS
    */
-  async revokeParentConsent(familyMemberId, parentUserId) {
+  async revokeParentConsent(familyMemberId, parentUserId, revocationData = {}) {
     const member = await this.getFamilyMember(familyMemberId, parentUserId);
-    
+
     if (!member) {
       throw new Error('Family member not found');
     }
-    
+
+    // Mark all active consent records as inactive and set revocation info
+    await db.execute(
+      `UPDATE PARENT_CONSENT_RECORDS
+       SET is_active = FALSE,
+           revoked_at = NOW(),
+           revoked_reason = ?,
+           revoked_by = ?
+       WHERE family_member_id = ?
+         AND is_active = TRUE`,
+      [
+        revocationData.reason || 'Consent revoked by parent',
+        parentUserId,
+        familyMemberId
+      ]
+    );
+
+    // Update FAMILY_MEMBERS table
     await db.execute(
       `UPDATE FAMILY_MEMBERS
        SET parent_consent_given = FALSE,
@@ -194,7 +276,7 @@ class FamilyMemberService {
        WHERE id = ?`,
       [familyMemberId]
     );
-    
+
     return await this.getFamilyMember(familyMemberId);
   }
   
@@ -362,25 +444,74 @@ class FamilyMemberService {
   
   /**
    * Check if annual consent renewal is needed
+   * Queries PARENT_CONSENT_RECORDS for expiration status
    */
   async checkConsentRenewal(familyMemberId) {
     const member = await this.getFamilyMember(familyMemberId);
-    
+
     if (!member || !member.requires_parent_consent) {
       return { needsRenewal: false };
     }
-    
-    const lastCheck = member.last_consent_check_at || member.parent_consent_date;
-    if (!lastCheck) {
-      return { needsRenewal: true };
+
+    // Check if there's an active consent record
+    const [consentRecords] = await db.execute(
+      `SELECT id, consent_timestamp, expires_at, is_active
+       FROM PARENT_CONSENT_RECORDS
+       WHERE family_member_id = ?
+         AND consent_given = TRUE
+         AND is_active = TRUE
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [familyMemberId]
+    );
+
+    // No consent record found - needs consent
+    if (consentRecords.length === 0) {
+      return {
+        needsRenewal: true,
+        reason: 'no_consent_record',
+        message: 'No active consent record found'
+      };
     }
-    
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    
-    const needsRenewal = new Date(lastCheck) < oneYearAgo;
-    
-    return { needsRenewal, lastCheck };
+
+    const consentRecord = consentRecords[0];
+    const now = new Date();
+    const expiresAt = new Date(consentRecord.expires_at);
+
+    // Check if consent has expired
+    if (expiresAt < now) {
+      return {
+        needsRenewal: true,
+        reason: 'expired',
+        expiresAt: consentRecord.expires_at,
+        consentId: consentRecord.id,
+        message: `Consent expired on ${expiresAt.toLocaleDateString()}`
+      };
+    }
+
+    // Check if consent is expiring soon (within 30 days)
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+    if (expiresAt < thirtyDaysFromNow) {
+      return {
+        needsRenewal: false,
+        expiringSoon: true,
+        expiresAt: consentRecord.expires_at,
+        daysRemaining: Math.floor((expiresAt - now) / (1000 * 60 * 60 * 24)),
+        consentId: consentRecord.id,
+        message: `Consent expires on ${expiresAt.toLocaleDateString()}`
+      };
+    }
+
+    // Consent is valid
+    return {
+      needsRenewal: false,
+      expiresAt: consentRecord.expires_at,
+      consentTimestamp: consentRecord.consent_timestamp,
+      consentId: consentRecord.id,
+      message: 'Consent is active and valid'
+    };
   }
 }
 

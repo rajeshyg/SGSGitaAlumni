@@ -35,7 +35,12 @@
       "Bash(powershell -Command \"Stop-Process -Id 68276 -Force; Stop-Process -Id 8656 -Force\")",
       "Bash(powershell -Command \"Stop-Process -Id 58096 -Force\")",
       "Bash(git log:*)",
-      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")"
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\")",
+      "Bash(powershell -Command \".\\cleanup-sankari-test-user.ps1\" -ErrorAction Continue)",
+      "Bash(tasklist:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

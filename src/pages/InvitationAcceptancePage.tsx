@@ -156,13 +156,29 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
 
       console.log('[InvitationAcceptancePage] OTP generated and sent successfully');
 
+      // Determine redirect path based on profile completion needs
+      let redirectTo = '/dashboard';
+      let missingFields: string[] = [];
+
+      if (response.user.needsProfileCompletion) {
+        // User needs to complete profile (missing birthdate or other critical data)
+        redirectTo = '/profile-completion';
+        missingFields = ['birthDate']; // Primary missing field
+        console.log('[InvitationAcceptancePage] User needs profile completion, will redirect to:', redirectTo);
+      } else {
+        // User has complete data, redirect to family setup (hybrid approach)
+        redirectTo = '/family-setup';
+        console.log('[InvitationAcceptancePage] User profile complete, will redirect to family setup');
+      }
+
       // Redirect to OTP verification page
       navigate(`/verify-otp/${encodeURIComponent(email)}`, {
         state: {
           email,
           otpType: 'registration',
           verificationMethod: 'email',
-          redirectTo: '/dashboard',
+          redirectTo,
+          missingFields,
           message: 'Welcome to SGS Gita Alumni Network! Please verify your email to continue.',
           user: response.user
         }
@@ -170,7 +186,28 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
 
     } catch (err) {
       console.error('[InvitationAcceptancePage] Join alumni network error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to join alumni network');
+      console.error('[InvitationAcceptancePage] Error type:', typeof err);
+      console.error('[InvitationAcceptancePage] Error keys:', err ? Object.keys(err) : 'null');
+      console.error('[InvitationAcceptancePage] Error message:', err instanceof Error ? err.message : String(err));
+      
+      // Extract meaningful error message
+      let errorMessage = 'Failed to join alumni network';
+      
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === 'object' && err !== null) {
+        if ('message' in err) {
+          errorMessage = String(err.message);
+        } else if ('error' in err) {
+          errorMessage = String((err as any).error);
+        } else {
+          errorMessage = JSON.stringify(err);
+        }
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsJoining(false);
     }

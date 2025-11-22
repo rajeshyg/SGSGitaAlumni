@@ -14,6 +14,8 @@ const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const InvitationAcceptancePage = lazy(() => import('./pages/InvitationAcceptancePage'))
 const OTPVerificationPage = lazy(() => import('./pages/OTPVerificationPage'))
+const ProfileCompletionPage = lazy(() => import('./pages/ProfileCompletionPage'))
+const FamilySetupPage = lazy(() => import('./pages/FamilySetupPage'))
 const FamilyProfileSelectionPage = lazy(() => import('./pages/FamilyProfileSelectionPage'))
 const FamilySettingsPage = lazy(() => import('./pages/FamilySettingsPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -161,6 +163,18 @@ function App() {
                     <OTPVerificationPage />
                   </ErrorBoundary>
                 } />
+                {/* Profile Completion - NOT wrapped in PublicRoute because it's part of registration flow */}
+                <Route path="/profile-completion" element={
+                  <ErrorBoundary level="page">
+                    <ProfileCompletionPage />
+                  </ErrorBoundary>
+                } />
+                {/* Family Setup - NOT wrapped in PublicRoute because it's part of registration flow */}
+                <Route path="/family-setup" element={
+                  <ErrorBoundary level="page">
+                    <FamilySetupPage />
+                  </ErrorBoundary>
+                } />
                 <Route path="/family-invitation/:token" element={
                   <ErrorBoundary level="page">
                     <PublicRoute>
@@ -211,6 +225,13 @@ function App() {
                   </ErrorBoundary>
                 } />
                 <Route path="/settings/family" element={
+                  <ErrorBoundary level="page">
+                    <ProtectedRoute>
+                      <FamilySettingsPage />
+                    </ProtectedRoute>
+                  </ErrorBoundary>
+                } />
+                <Route path="/family-settings" element={
                   <ErrorBoundary level="page">
                     <ProtectedRoute>
                       <FamilySettingsPage />

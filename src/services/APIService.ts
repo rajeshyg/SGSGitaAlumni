@@ -1178,14 +1178,48 @@ export const APIService = {
   registerFromInvitation: async (data: { invitationToken: string; additionalData?: any }): Promise<any> => {
     try {
       logger.info('Registering from invitation');
+      console.log('[APIService.registerFromInvitation] 🔍 DEBUG INFO:');
+      console.log('  - Request data:', data);
+      console.log('  - Auth token present:', !!localStorage.getItem('authToken'));
+      console.log('  - Endpoint: /api/auth/register-from-invitation');
+      console.log('  - Method: POST');
 
       const response = await apiClient.post('/api/auth/register-from-invitation', data);
 
       logger.info('Registration from invitation completed successfully');
+      console.log('[APIService.registerFromInvitation] ✅ Response:', response);
       return response;
     } catch (error) {
+      console.error('[APIService.registerFromInvitation] ❌ FULL ERROR DETAILS:');
+      console.error('  - Error object:', error);
+      console.error('  - Error type:', error?.constructor?.name);
+      console.error('  - Error message:', (error as any)?.message);
+      console.error('  - HTTP status:', (error as any)?.status);
+      console.error('  - Error code:', (error as any)?.code);
+      console.error('  - Error details:', (error as any)?.details);
+      console.error('  - Full response:', (error as any)?.response);
       logger.error('Failed to register from invitation:', error);
-      throw new Error('Failed to complete registration. Please try again.');
+      
+      // Extract error message from error object
+      let errorMessage = 'Failed to complete registration. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Handle error objects with various structures
+        if ('message' in error && typeof error.message === 'string') {
+          errorMessage = error.message;
+        } else if ('error' in error) {
+          const nestedError = (error as any).error;
+          if (typeof nestedError === 'string') {
+            errorMessage = nestedError;
+          } else if (typeof nestedError === 'object' && nestedError?.message) {
+            errorMessage = nestedError.message;
+          }
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
   },
 

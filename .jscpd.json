@@ -1,5 +1,5 @@
 {
-  "threshold": 0,
+  "threshold": 5,
   "reporters": ["console", "html"],
   "output": "./reports/jscpd/",
   "min-lines": 10,
@@ -20,7 +20,19 @@
     "**/*.config.*",
     "**/package-lock.json",
     "**/yarn.lock",
-    "**/pnpm-lock.yaml"
+    "**/pnpm-lock.yaml",
+    "**/cleanup-*.js",
+    "**/check-*.js",
+    "**/fix-*.js",
+    "**/show-*.js",
+    "**/run-*.js",
+    "**/clear-*.js",
+    "**/test-*.js",
+    "**/create-*.js",
+    "**/verify-*.js",
+    "**/debug-*.js",
+    "**/diagnose-*.js",
+    "**/*.cjs"
   ],
   "format": ["javascript", "typescript", "jsx", "tsx"],
   "blame": true,

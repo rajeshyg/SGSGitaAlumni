@@ -1,7 +1,7 @@
 // ============================================================================
-// STREAMLINED REGISTRATION SERVICE (JavaScript stub)
+// STREAMLINED REGISTRATION SERVICE
 // ============================================================================
-// Basic registration service for server-side compatibility
+// Clean, simple registration service for invitation-based user onboarding
 
 import { v4 as uuidv4 } from 'uuid';
 import { AlumniDataIntegrationService } from './AlumniDataIntegrationService.js';
@@ -13,14 +13,18 @@ export class StreamlinedRegistrationService {
     this.emailService = emailService;
   }
 
+  // ==========================================================================
+  // INVITATION VALIDATION
+  // ==========================================================================
+
   async validateInvitationWithAlumniData(token) {
     let connection;
     try {
-      console.log('StreamlinedRegistrationService: Starting validation for token:', token);
-      
-      // TEMPORARY: For testing purposes, if test token, return valid response
+      console.log('[Registration] Validating invitation token:', token);
+
+      // TEMPORARY: For testing purposes
       if (token === 'test-token-123') {
-        console.log('StreamlinedRegistrationService: Using test token, returning mock valid response');
+        console.log('[Registration] Using test token, returning mock response');
         return {
           isValid: true,
           invitation: {
@@ -52,41 +56,22 @@ export class StreamlinedRegistrationService {
           canOneClickJoin: true
         };
       }
-      
-      // Add timeout protection for database operations
-      const connectionTimeout = 10000; // 10 seconds
-      connection = await Promise.race([
-        this.pool.getConnection(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), connectionTimeout)
-        )
-      ]);
 
-      console.log('StreamlinedRegistrationService: Executing database query with timeout protection...');
-      
-      const queryTimeout = 15000; // 15 seconds for query execution
-      const [allRows] = await Promise.race([
-        connection.execute(`
-          SELECT ui.id, ui.invitation_token, ui.email, ui.status, ui.completion_status,
-                 ui.is_used, ui.used_at, ui.expires_at, ui.alumni_member_id,
-                 ui.invited_by, ui.invitation_type, ui.invitation_data, ui.sent_at,
-                 ui.accepted_by, ui.ip_address, ui.resend_count, ui.last_resent_at,
-                 ui.created_at, ui.updated_at,
-                 am.id as alumni_id, am.first_name, am.last_name, am.email as alumni_email
-          FROM USER_INVITATIONS ui
-          LEFT JOIN alumni_members am ON ui.alumni_member_id = am.id
-          WHERE ui.invitation_token = ?
-          LIMIT 1
-        `, [token]),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Database query timeout after 15 seconds')), queryTimeout)
-        )
-      ]);
+      connection = await this.pool.getConnection();
 
-      console.log('StreamlinedRegistrationService: Query returned', allRows.length, 'rows');
+      // Get invitation from database
+      const [rows] = await connection.execute(`
+        SELECT ui.id, ui.invitation_token, ui.email, ui.status, ui.completion_status,
+               ui.is_used, ui.used_at, ui.expires_at, ui.alumni_member_id,
+               ui.invited_by, ui.invitation_type, ui.sent_at,
+               ui.created_at, ui.updated_at
+        FROM USER_INVITATIONS ui
+        WHERE ui.invitation_token = ?
+        LIMIT 1
+      `, [token]);
 
-      if (!Array.isArray(allRows) || allRows.length === 0) {
-        console.log('StreamlinedRegistrationService: No invitation found');
+      if (rows.length === 0) {
+        console.log('[Registration] Invitation not found');
         return {
           isValid: false,
           invitation: null,
@@ -98,13 +83,14 @@ export class StreamlinedRegistrationService {
         };
       }
 
-      const dbInvitation = allRows[0];
-      console.log('StreamlinedRegistrationService: Found invitation:', dbInvitation.email);
+      const invitation = rows[0];
+      console.log('[Registration] Found invitation for:', invitation.email);
 
+      // Check expiration
       const now = new Date();
-      const expiresAt = new Date(dbInvitation.expires_at);
+      const expiresAt = new Date(invitation.expires_at);
       if (expiresAt <= now) {
-        console.log('StreamlinedRegistrationService: Invitation expired');
+        console.log('[Registration] Invitation expired');
         return {
           isValid: false,
           invitation: null,
@@ -116,8 +102,9 @@ export class StreamlinedRegistrationService {
         };
       }
 
-      if (dbInvitation.status !== 'pending' || dbInvitation.is_used) {
-        console.log('StreamlinedRegistrationService: Invitation not pending or already used');
+      // Check if already used
+      if (invitation.status !== 'pending' || invitation.is_used) {
+        console.log('[Registration] Invitation already used');
         return {
           isValid: false,
           invitation: null,
@@ -129,71 +116,372 @@ export class StreamlinedRegistrationService {
         };
       }
 
-      const invitation = dbInvitation;
-      let alumniProfile;
-
+      // Try to get alumni profile
+      let alumniProfile = null;
       if (invitation.alumni_member_id) {
-        console.log('StreamlinedRegistrationService: Fetching alumni profile for member ID:', invitation.alumni_member_id);
+        console.log('[Registration] Fetching alumni profile for member ID:', invitation.alumni_member_id);
         try {
-          const profile = await this.alumniService.fetchAlumniDataForInvitation(invitation.email);
-          if (profile) {
-            alumniProfile = profile;
-            console.log('StreamlinedRegistrationService: Alumni profile found');
-          } else {
-            console.log('StreamlinedRegistrationService: No alumni profile found');
+          alumniProfile = await this.alumniService.fetchAlumniDataForInvitation(invitation.email);
+          if (alumniProfile) {
+            console.log('[Registration] Alumni profile found');
           }
-        } catch (alumniError) {
-          console.error('StreamlinedRegistrationService: Error fetching alumni profile:', alumniError);
-          // Continue without alumni profile
+        } catch (error) {
+          console.log('[Registration] No alumni profile found, will use invitation data');
         }
-      } else {
-        console.log('StreamlinedRegistrationService: No alumni member ID, skipping profile fetch');
       }
-
-      const requiresUserInput = !alumniProfile?.canAutoPopulate;
-      const suggestedFields = alumniProfile?.missingFields || [];
-      const canOneClickJoin = alumniProfile?.canAutoPopulate || false;
-
-      console.log('StreamlinedRegistrationService: Validation successful:', {
-        requiresUserInput,
-        canOneClickJoin,
-        hasAlumniProfile: !!alumniProfile
-      });
 
       return {
         isValid: true,
         invitation,
         alumniProfile,
-        requiresUserInput,
-        suggestedFields,
-        canOneClickJoin
+        requiresUserInput: !alumniProfile?.canAutoPopulate,
+        suggestedFields: alumniProfile?.missingFields || [],
+        canOneClickJoin: alumniProfile?.canAutoPopulate || false
       };
 
     } catch (error) {
-      console.error('Error validating invitation with alumni data:', error);
-      
-      // Check if it's a timeout error
-      if (error.message && error.message.includes('timeout')) {
-        console.error('Database timeout during invitation validation');
-        return {
-          isValid: false,
-          invitation: null,
-          requiresUserInput: false,
-          suggestedFields: [],
-          canOneClickJoin: false,
-          errorType: 'timeout',
-          errorMessage: 'Request timed out. Please try again or check your connection.'
-        };
-      }
-      
+      console.error('[Registration] Validation error:', error);
       throw new Error('Failed to validate invitation');
     } finally {
-      // CRITICAL FIX: Always release the connection
       if (connection) {
-        console.log('StreamlinedRegistrationService: Releasing database connection');
         connection.release();
       }
     }
+  }
+
+  // ==========================================================================
+  // MAIN REGISTRATION METHOD
+  // ==========================================================================
+
+  async registerFromInvitation(token, additionalData = {}) {
+    console.log('\n' + '='.repeat(80));
+    console.log('[Registration] Starting registration flow');
+    console.log('='.repeat(80));
+
+    let connection;
+    try {
+      // STEP 1: Validate invitation
+      console.log('\n[Step 1/9] Validating invitation...');
+      const validation = await this.validateInvitationWithAlumniData(token);
+
+      if (!validation.isValid) {
+        throw new Error(validation.errorMessage || 'Invalid invitation');
+      }
+
+      const invitation = validation.invitation;
+      const alumniProfile = validation.alumniProfile;
+      console.log('[Step 1/9] ✓ Invitation valid for:', invitation.email);
+
+      // STEP 2: Prepare user data with fallbacks
+      console.log('\n[Step 2/9] Preparing user data...');
+
+      const emailParts = invitation.email.split('@')[0].split('.');
+      const emailFirstName = emailParts[0] || 'User';
+      const emailLastName = emailParts[1] || '';
+
+      const userData = {
+        email: invitation.email,
+        firstName: additionalData.firstName || alumniProfile?.firstName || emailFirstName,
+        lastName: additionalData.lastName || alumniProfile?.lastName || emailLastName,
+        birthDate: additionalData.birthDate || alumniProfile?.birthDate || null,
+        phone: additionalData.phone || alumniProfile?.phone || null,
+        alumniMemberId: alumniProfile?.id || invitation.alumni_member_id || null
+      };
+
+      console.log('[Step 2/9] ✓ User data prepared:', {
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        hasBirthDate: !!userData.birthDate,
+        hasAlumniLink: !!userData.alumniMemberId
+      });
+
+      // STEP 3: Get database connection and start transaction
+      console.log('\n[Step 3/9] Starting database transaction...');
+      connection = await this.pool.getConnection();
+      await connection.beginTransaction();
+      console.log('[Step 3/9] ✓ Transaction started');
+
+      // STEP 4: Check for existing user and clean up if incomplete
+      console.log('\n[Step 4/9] Checking for existing user...');
+      const [existingUsers] = await connection.execute(
+        'SELECT id, email, primary_family_member_id FROM app_users WHERE email = ? ORDER BY created_at DESC LIMIT 1',
+        [userData.email]
+      );
+
+      if (existingUsers.length > 0) {
+        const existing = existingUsers[0];
+        console.log('[Step 4/9] Found existing user:', existing.id);
+
+        if (!existing.primary_family_member_id) {
+          console.log('[Step 4/9] Existing user incomplete, deleting...');
+          await connection.execute('DELETE FROM app_users WHERE id = ?', [existing.id]);
+          console.log('[Step 4/9] ✓ Deleted incomplete user');
+        } else {
+          throw new Error('An account with this email already exists. Please log in instead.');
+        }
+      } else {
+        console.log('[Step 4/9] ✓ No existing user found');
+      }
+
+      // STEP 5: Create app_users record
+      console.log('\n[Step 5/9] Creating app_users record...');
+      console.log('[Step 5/9] Executing INSERT...');
+
+      const [userResult] = await connection.execute(
+        `INSERT INTO app_users (
+          email, alumni_member_id, first_name, last_name, phone,
+          status, email_verified, email_verified_at, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, 'active', 1, NOW(), NOW(), NOW())`,
+        [userData.email, userData.alumniMemberId, userData.firstName, userData.lastName, userData.phone]
+      );
+
+      // Get the auto-generated ID
+      const userId = userResult.insertId;
+
+      console.log('[Step 5/9] INSERT result:', {
+        affectedRows: userResult.affectedRows,
+        insertId: userId
+      });
+
+      if (userResult.affectedRows !== 1) {
+        throw new Error(`Failed to create user - expected 1 row, got ${userResult.affectedRows}`);
+      }
+
+      console.log('[Step 5/9] ✓ User created with ID:', userId);
+
+      // STEP 6: Calculate COPPA compliance
+      console.log('\n[Step 6/9] Calculating COPPA compliance...');
+      let age = null;
+      let canAccess = true;
+      let requiresConsent = false;
+      let accessLevel = 'full';
+
+      if (userData.birthDate) {
+        const today = new Date();
+        const birth = new Date(userData.birthDate);
+        age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+          age--;
+        }
+
+        if (age >= 18) {
+          canAccess = true;
+          accessLevel = 'full';
+        } else if (age >= 14) {
+          canAccess = false;
+          requiresConsent = true;
+          accessLevel = 'supervised';
+        } else {
+          canAccess = false;
+          requiresConsent = true;
+          accessLevel = 'blocked';
+        }
+
+        console.log('[Step 6/9] ✓ Age calculated:', age, '→ Access level:', accessLevel);
+      } else {
+        console.log('[Step 6/9] ✓ No birthdate, assuming adult (full access)');
+      }
+
+      // STEP 7: Find ALL alumni members with this email and create FAMILY_MEMBERS for each
+      console.log('\n[Step 7/9] Finding all alumni members for this email...');
+
+      const [alumniMembers] = await connection.execute(
+        `SELECT id, first_name, last_name, email, phone, batch
+         FROM alumni_members
+         WHERE email = ?
+         ORDER BY id ASC`,
+        [userData.email]
+      );
+
+      console.log('[Step 7/9] Found', alumniMembers.length, 'alumni members for email:', userData.email);
+
+      let primaryFamilyMemberId = null;
+      const createdFamilyMembers = [];
+
+      if (alumniMembers.length === 0) {
+        // No alumni members found - create one from email data
+        console.log('[Step 7/9] No alumni members found, creating from email data');
+        const familyMemberId = uuidv4();
+        const displayName = `${userData.firstName} ${userData.lastName}`.trim() || userData.email.split('@')[0];
+
+        await connection.execute(
+          `INSERT INTO FAMILY_MEMBERS (
+            id, parent_user_id, alumni_member_id, first_name, last_name, display_name,
+            birth_date, age_at_registration, current_age,
+            can_access_platform, requires_parent_consent, access_level,
+            relationship, status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'self', ?)`,
+          [
+            familyMemberId, userId, null,
+            userData.firstName, userData.lastName, displayName,
+            userData.birthDate, age, age,
+            canAccess, requiresConsent, accessLevel,
+            requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
+          ]
+        );
+
+        primaryFamilyMemberId = familyMemberId;
+        createdFamilyMembers.push({ id: familyMemberId, name: displayName });
+      } else {
+        // Create a FAMILY_MEMBERS record for EACH alumni member
+        for (let i = 0; i < alumniMembers.length; i++) {
+          const alumni = alumniMembers[i];
+          const familyMemberId = uuidv4();
+          const displayName = `${alumni.first_name} ${alumni.last_name}`.trim();
+          const relationship = i === 0 ? 'self' : 'family';
+
+          console.log(`[Step 7/9] Creating family member ${i + 1}/${alumniMembers.length}: ${displayName} (Alumni ID: ${alumni.id})`);
+
+          await connection.execute(
+            `INSERT INTO FAMILY_MEMBERS (
+              id, parent_user_id, alumni_member_id, first_name, last_name, display_name,
+              birth_date, age_at_registration, current_age,
+              can_access_platform, requires_parent_consent, access_level,
+              relationship, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              familyMemberId, userId, alumni.id,
+              alumni.first_name, alumni.last_name, displayName,
+              null, age, age,
+              canAccess, requiresConsent, accessLevel,
+              relationship,
+              requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
+            ]
+          );
+
+          createdFamilyMembers.push({ id: familyMemberId, name: displayName, alumniId: alumni.id });
+
+          // First one becomes the primary
+          if (i === 0) {
+            primaryFamilyMemberId = familyMemberId;
+          }
+        }
+      }
+
+      console.log('[Step 7/9] ✓ Created', createdFamilyMembers.length, 'family member(s):');
+      createdFamilyMembers.forEach((fm, i) => {
+        console.log(`[Step 7/9]   ${i + 1}. ${fm.name} (${fm.id})`);
+      });
+
+      // STEP 8: Update app_users with family member link
+      console.log('\n[Step 8/9] Linking primary family member to user...');
+      console.log('[Step 8/9] Primary family member ID:', primaryFamilyMemberId);
+      const [updateResult] = await connection.execute(
+        `UPDATE app_users
+         SET primary_family_member_id = ?,
+             is_family_account = TRUE,
+             family_account_type = 'alumni'
+         WHERE id = ?`,
+        [primaryFamilyMemberId, userId]
+      );
+
+      console.log('[Step 8/9] UPDATE result:', {
+        affectedRows: updateResult.affectedRows
+      });
+
+      if (updateResult.affectedRows !== 1) {
+        throw new Error(`Failed to update user with family member - expected 1 row, got ${updateResult.affectedRows}`);
+      }
+
+      console.log('[Step 8/9] ✓ User updated with family member ID');
+
+      // STEP 9: Mark invitation as used
+      console.log('\n[Step 9/9] Marking invitation as used...');
+      await connection.execute(
+        `UPDATE USER_INVITATIONS
+         SET status = 'accepted',
+             completion_status = 'completed',
+             user_id = ?,
+             used_at = NOW(),
+             is_used = 1,
+             updated_at = NOW()
+         WHERE id = ?`,
+        [userId, invitation.id]
+      );
+
+      // Update alumni_members timestamp if linked
+      if (userData.alumniMemberId) {
+        await connection.execute(
+          'UPDATE alumni_members SET invitation_accepted_at = NOW() WHERE id = ?',
+          [userData.alumniMemberId]
+        );
+      }
+
+      console.log('[Step 9/9] ✓ Invitation marked as used');
+
+      // Commit transaction
+      console.log('\n[Transaction] Committing...');
+      await connection.commit();
+      console.log('[Transaction] ✓ Committed successfully');
+
+      // Determine if profile needs completion
+      const needsProfileCompletion = !userData.birthDate || !userData.firstName || !userData.lastName;
+
+      const result = {
+        id: userId,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        alumniMemberId: userData.alumniMemberId,
+        primaryFamilyMemberId: primaryFamilyMemberId,
+        needsProfileCompletion
+      };
+
+      console.log('\n' + '='.repeat(80));
+      console.log('[Registration] ✓ REGISTRATION SUCCESSFUL');
+      console.log('[Registration] User ID:', userId);
+      console.log('[Registration] Needs profile completion:', needsProfileCompletion);
+      console.log('='.repeat(80) + '\n');
+
+      // Send welcome email (optional)
+      try {
+        if (this.emailService) {
+          await this.emailService.sendWelcomeEmail(result);
+        }
+      } catch (emailError) {
+        console.log('[Registration] Welcome email skipped (service unavailable)');
+      }
+
+      return result;
+
+    } catch (error) {
+      // Rollback on error
+      if (connection) {
+        console.log('\n[Transaction] ❌ Error occurred, rolling back...');
+        await connection.rollback();
+        console.log('[Transaction] ✓ Rolled back');
+      }
+
+      console.error('\n' + '='.repeat(80));
+      console.error('[Registration] ❌ REGISTRATION FAILED');
+      console.error('[Registration] Error:', error.message);
+      console.error('[Registration] Stack:', error.stack);
+      console.error('='.repeat(80) + '\n');
+
+      throw error;
+
+    } finally {
+      if (connection) {
+        connection.release();
+        console.log('[Connection] Released\n');
+      }
+    }
+  }
+
+  // ==========================================================================
+  // LEGACY METHODS (for backwards compatibility)
+  // ==========================================================================
+
+  async completeStreamlinedRegistration(token, additionalData = {}) {
+    console.log('[Registration] completeStreamlinedRegistration called (redirecting to registerFromInvitation)');
+    return this.registerFromInvitation(token, additionalData);
+  }
+
+  async handleIncompleteAlumniData(token, userData) {
+    console.log('[Registration] handleIncompleteAlumniData called (redirecting to registerFromInvitation)');
+    return this.registerFromInvitation(token, userData);
   }
 
   async prepareRegistrationData(token) {
@@ -203,210 +491,13 @@ export class StreamlinedRegistrationService {
       throw new Error('Invalid invitation token');
     }
 
-    const requiredFields = validation.alumniProfile?.missingFields || ['firstName', 'lastName', 'phone'];
-    const optionalFields = ['address', 'bio', 'linkedin_url'];
-    const estimatedCompletionTime = validation.canOneClickJoin ? 30 : 120; // seconds
-
     return {
       invitation: validation.invitation,
       alumniProfile: validation.alumniProfile,
-      requiredFields,
-      optionalFields,
-      estimatedCompletionTime
+      requiredFields: validation.alumniProfile?.missingFields || ['firstName', 'lastName', 'phone'],
+      optionalFields: ['address', 'bio', 'linkedin_url'],
+      estimatedCompletionTime: validation.canOneClickJoin ? 30 : 120
     };
-  }
-
-  async handleIncompleteAlumniData(token, userData) {
-    const connection = await this.pool.getConnection();
-
-    try {
-      await connection.beginTransaction();
-
-      // Validate invitation
-      const validation = await this.validateInvitationWithAlumniData(token);
-      if (!validation.isValid) {
-        throw new Error('Invalid invitation token');
-      }
-
-      const invitation = validation.invitation;
-      const alumniProfile = validation.alumniProfile;
-
-      // Merge data if alumni profile exists
-      let mergedData = userData;
-      if (alumniProfile) {
-        const mergeResult = await this.alumniService.mergeAlumniDataWithUserInput(alumniProfile, userData);
-        mergedData = mergeResult.mergedProfile;
-      }
-
-      // Create user account
-      const userId = uuidv4();
-      const insertUserQuery = `
-        INSERT INTO app_users (
-          id, email, alumni_member_id, first_name, last_name,
-          phone, status, email_verified, email_verified_at,
-          created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'active', 1, NOW(), NOW(), NOW())
-      `;
-
-      await connection.execute(insertUserQuery, [
-        userId,
-        invitation.email,
-        alumniProfile?.id || null,
-        mergedData.firstName || null,
-        mergedData.lastName || null,
-        mergedData.phone || null
-      ]);
-
-      // Update invitation status
-      await connection.execute(`
-        UPDATE USER_INVITATIONS
-        SET status = 'accepted', completion_status = 'completed',
-            user_id = ?, used_at = NOW(), updated_at = NOW(),
-            is_used = 1
-        WHERE id = ?
-      `, [userId, invitation.id]);
-
-      await connection.commit();
-
-      const user = {
-        id: userId,
-        email: invitation.email,
-        firstName: mergedData.firstName,
-        lastName: mergedData.lastName,
-        alumniMemberId: alumniProfile?.id
-      };
-
-      // Optionally send welcome email (skip if EmailService not available)
-      try {
-        await this.sendWelcomeEmailWithProfileSummary(userId);
-      } catch (emailError) {
-        console.log('StreamlinedRegistrationService: Email service not available, skipping welcome email');
-      }
-
-      return user;
-
-    } catch (error) {
-      await connection.rollback();
-      console.error('Error handling incomplete alumni data registration:', error);
-      throw new Error('Failed to complete registration');
-    } finally {
-      connection.release();
-    }
-  }
-
-  async completeStreamlinedRegistration(token, additionalData = {}) {
-    // TEMPORARY: For testing purposes
-    if (token === 'test-token-123') {
-      console.log('StreamlinedRegistrationService: Using test token for registration');
-      return {
-        id: 'test-user-id',
-        email: 'test@example.com',
-        firstName: 'Test',
-        lastName: 'User',
-        alumniMemberId: 1
-      };
-    }
-    
-    const connection = await this.pool.getConnection();
-
-    try {
-      await connection.beginTransaction();
-
-      const validation = await this.validateInvitationWithAlumniData(token);
-      if (!validation.isValid || !validation.canOneClickJoin) {
-        throw new Error('Invalid invitation or additional data required');
-      }
-
-      const invitation = validation.invitation;
-      const alumniProfile = validation.alumniProfile;
-
-      const userId = uuidv4();
-      const insertUserQuery = `
-        INSERT INTO app_users (
-          id, email, alumni_member_id, first_name, last_name,
-          phone, status, email_verified, email_verified_at,
-          created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'active', 1, NOW(), NOW(), NOW())
-      `;
-
-      await connection.execute(insertUserQuery, [
-        userId,
-        invitation.email,
-        alumniProfile.id,
-        alumniProfile.firstName,
-        alumniProfile.lastName,
-        alumniProfile.phone || null
-      ]);
-
-      await connection.execute(`
-        UPDATE USER_INVITATIONS
-        SET status = 'accepted', completion_status = 'completed',
-            user_id = ?, used_at = NOW(), updated_at = NOW(),
-            is_used = 1
-        WHERE id = ?
-      `, [userId, invitation.id]);
-
-      await connection.commit();
-
-      const user = {
-        id: userId,
-        email: invitation.email,
-        firstName: alumniProfile.firstName,
-        lastName: alumniProfile.lastName,
-        alumniMemberId: alumniProfile.id
-      };
-
-      // Optionally send welcome email (skip if EmailService not available)
-      try {
-        await this.sendWelcomeEmailWithProfileSummary(userId);
-      } catch (emailError) {
-        console.log('StreamlinedRegistrationService: Email service not available, skipping welcome email');
-      }
-
-      return user;
-
-    } catch (error) {
-      await connection.rollback();
-      console.error('Error completing streamlined registration:', error);
-      throw new Error('Failed to complete registration');
-    } finally {
-      connection.release();
-    }
-  }
-
-  async sendWelcomeEmailWithProfileSummary(userId) {
-    if (!this.emailService) {
-      return;
-    }
-
-    try {
-      const connection = await this.pool.getConnection();
-      const [userRows] = await connection.execute(`
-        SELECT au.*, up.*, am.program, am.graduation_year
-        FROM app_users au
-        LEFT JOIN user_profiles up ON au.id = up.user_id
-        LEFT JOIN alumni_members am ON au.alumni_member_id = am.id
-        WHERE au.id = ?
-      `, [userId]);
-
-      connection.release();
-
-      if (!Array.isArray(userRows) || userRows.length === 0) {
-        return;
-      }
-
-      const user = userRows[0];
-
-      await this.emailService.sendWelcomeEmail({
-        id: userId,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name
-      });
-
-    } catch (error) {
-      console.error('Error sending welcome email:', error);
-    }
   }
 }
 
