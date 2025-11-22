@@ -73,9 +73,10 @@ export const authenticateToken = async (req, res, next) => {
 
       logger.debug('JWT verified successfully');
 
+      let connection;
       try {
         // Verify user still exists and is active with timeout
-        const connection = await Promise.race([
+        connection = await Promise.race([
           pool.getConnection(),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
@@ -86,7 +87,6 @@ export const authenticateToken = async (req, res, next) => {
           'SELECT id, email, role, is_active FROM app_users WHERE id = ? AND is_active = true',
           [decoded.userId]
         );
-        connection.release();
 
         if (rows.length === 0) {
           logger.debug('Auth failed: user not found or inactive');
@@ -99,6 +99,8 @@ export const authenticateToken = async (req, res, next) => {
       } catch (dbError) {
         logger.error('Auth middleware database error', dbError);
         return next(ServerError.database('user verification'));
+      } finally {
+        if (connection) connection.release();
       }
     });
   } catch (error) {
@@ -162,199 +164,141 @@ export const login = asyncHandler(async (req, res) => {
     throw ServerError.unavailable('Database');
   }
 
-  // Find user by email - order by role priority (admin first, then moderator, then member)
-  logger.debug('Login: Looking up user in database');
-  const [rows] = await connection.execute(
-    `SELECT id, email, password_hash, role, is_active, created_at,
-            is_family_account, family_account_type, primary_family_member_id,
-            first_name, last_name
-     FROM app_users
-     WHERE email = ?
-     ORDER BY CASE WHEN role = "admin" THEN 1 WHEN role = "moderator" THEN 2 ELSE 3 END, created_at ASC`,
-    [email]
-  );
-
-  logger.debug('Login: User lookup completed', { found: rows.length > 0 });
-
-  if (rows.length === 0) {
-    connection.release();
-    // Log failed login attempt
-    serverMonitoring.logFailedLogin(
-      req.ip || req.connection.remoteAddress || 'unknown',
-      email,
-      { reason: 'user_not_found' }
-    );
-    throw AuthError.invalidCredentials();
-  }
-
-  const user = rows[0];
-  logger.debug('Login: User record retrieved');
-
-  // Check if user is active
-  if (!user.is_active) {
-    connection.release();
-    // Log failed login attempt
-    serverMonitoring.logFailedLogin(
-      req.ip || req.connection.remoteAddress || 'unknown',
-      email,
-      { reason: 'account_disabled', userId: user.id }
-    );
-    throw AuthError.invalidCredentials();
-  }
-
-  // FIX 1: Add server-side OTP verification check to prevent authentication bypass
-  if (otpVerified) {
-    logger.debug('Login: Verifying OTP was validated');
-
-    // Check that OTP was validated within last 5 minutes
-    const [otpCheck] = await connection.execute(
-      `SELECT id, used_at FROM OTP_TOKENS
+  try {
+    // Find user by email - order by role priority (admin first, then moderator, then member)
+    logger.debug('Login: Looking up user in database');
+    const [rows] = await connection.execute(
+      `SELECT id, email, password_hash, role, is_active, created_at,
+              is_family_account, family_account_type, primary_family_member_id,
+              first_name, last_name
+       FROM app_users
        WHERE email = ?
-         AND is_used = TRUE
-         AND used_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
-       ORDER BY used_at DESC
-       LIMIT 1`,
+       ORDER BY CASE WHEN role = "admin" THEN 1 WHEN role = "moderator" THEN 2 ELSE 3 END, created_at ASC`,
       [email]
     );
 
-    if (otpCheck.length === 0) {
-      connection.release();
-      logger.security('Failed login attempt - OTP not verified', { clientIP });
-      serverMonitoring.logFailedLogin(
-        req.ip || req.connection.remoteAddress || 'unknown',
-        email,
-        { reason: 'otp_not_verified', claimed_otp_verified: true }
-      );
-      throw AuthError.invalidCredentials();
-    }
+    logger.debug('Login: User lookup completed', { found: rows.length > 0 });
 
-    logger.debug('Login: OTP verification confirmed');
-  }
-
-  // Verify password (skip for OTP-verified logins)
-  if (!otpVerified) {
-    // SECURITY FIX: Never log password validation results
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    if (!isValidPassword) {
-      connection.release();
+    if (rows.length === 0) {
       // Log failed login attempt
-      logger.security('Failed login attempt - invalid password', { userId: user.id, clientIP });
       serverMonitoring.logFailedLogin(
         req.ip || req.connection.remoteAddress || 'unknown',
         email,
-        { reason: 'invalid_password', userId: user.id }
+        { reason: 'user_not_found' }
       );
       throw AuthError.invalidCredentials();
     }
-    logger.debug('Password verification completed');
-  } else {
-    logger.debug('Skipping password verification (OTP-verified login)');
-  }
 
-  // COPPA COMPLIANCE: Verify parental consent for family accounts
-  if (user.primary_family_member_id) {
-    logger.debug('Login: Checking family member consent and age requirements');
+    const user = rows[0];
+    logger.debug('Login: User record retrieved');
 
-    // Get family member details
-    const [familyMembers] = await connection.execute(
-      `SELECT id, first_name, last_name, current_age, can_access_platform,
-              requires_parent_consent, parent_consent_given, access_level,
-              birth_date
-       FROM FAMILY_MEMBERS
-       WHERE id = ? AND parent_user_id = ?`,
-      [user.primary_family_member_id, user.id]
-    );
-
-    if (familyMembers.length === 0) {
-      connection.release();
-      logger.security('Login failed - family member not found', {
-        userId: user.id,
-        familyMemberId: user.primary_family_member_id
-      });
+    // Check if user is active
+    if (!user.is_active) {
+      // Log failed login attempt
+      serverMonitoring.logFailedLogin(
+        req.ip || req.connection.remoteAddress || 'unknown',
+        email,
+        { reason: 'account_disabled', userId: user.id }
+      );
       throw AuthError.invalidCredentials();
     }
 
-    const familyMember = familyMembers[0];
+    // FIX 1: Add server-side OTP verification check to prevent authentication bypass
+    if (otpVerified) {
+      logger.debug('Login: Verifying OTP was validated');
 
-    // Check age and consent requirements
-    if (!familyMember.can_access_platform) {
-      connection.release();
+      // Check that OTP was validated within last 5 minutes
+      const [otpCheck] = await connection.execute(
+        `SELECT id, used_at FROM OTP_TOKENS
+         WHERE email = ?
+           AND is_used = TRUE
+           AND used_at > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+         ORDER BY used_at DESC
+         LIMIT 1`,
+        [email]
+      );
 
-      // Determine specific reason for blocking
-      let reason = 'access_denied';
-      let message = 'Platform access has been restricted for this account.';
-
-      if (familyMember.current_age < 14) {
-        reason = 'underage';
-        message = 'Platform access is restricted to users 14 years and older (COPPA compliance). Please contact your parent or guardian.';
-      } else if (familyMember.requires_parent_consent && !familyMember.parent_consent_given) {
-        reason = 'no_parental_consent';
-        message = 'Parental consent is required for platform access. Please ask your parent or guardian to grant consent through the Family Settings.';
+      if (otpCheck.length === 0) {
+        logger.security('Failed login attempt - OTP not verified', { clientIP });
+        serverMonitoring.logFailedLogin(
+          req.ip || req.connection.remoteAddress || 'unknown',
+          email,
+          { reason: 'otp_not_verified', claimed_otp_verified: true }
+        );
+        throw AuthError.invalidCredentials();
       }
 
-      logger.security('Login blocked - COPPA compliance check failed', {
-        userId: user.id,
-        familyMemberId: familyMember.id,
-        age: familyMember.current_age,
-        reason,
-        canAccess: familyMember.can_access_platform,
-        requiresConsent: familyMember.requires_parent_consent,
-        consentGiven: familyMember.parent_consent_given
-      });
-
-      // Log to age verification audit trail (async, don't wait)
-      db.execute(
-        `INSERT INTO AGE_VERIFICATION_AUDIT (
-          id, family_member_id, age_at_check, birth_date,
-          action_taken, check_context, ip_address, user_agent, endpoint, notes
-        ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          familyMember.id,
-          familyMember.current_age,
-          familyMember.birth_date,
-          reason === 'underage' ? 'blocked_underage' : 'blocked_no_consent',
-          'login_attempt',
-          clientIP,
-          userAgent,
-          '/api/auth/login',
-          `Login attempt blocked: ${reason}`
-        ]
-      ).catch(err => logger.error('Failed to log age verification audit', err));
-
-      serverMonitoring.logFailedLogin(clientIP, email, {
-        reason: `coppa_${reason}`,
-        userId: user.id,
-        familyMemberId: familyMember.id,
-        age: familyMember.current_age
-      });
-
-      throw AuthError.forbidden(message);
+      logger.debug('Login: OTP verification confirmed');
     }
 
-    // Check for expired consent (annual renewal requirement)
-    if (familyMember.requires_parent_consent && familyMember.parent_consent_given) {
-      const [consentRecords] = await connection.execute(
-        `SELECT id, expires_at
-         FROM PARENT_CONSENT_RECORDS
-         WHERE family_member_id = ?
-           AND consent_given = TRUE
-           AND is_active = TRUE
-         ORDER BY created_at DESC
-         LIMIT 1`,
-        [familyMember.id]
+    // Verify password (skip for OTP-verified logins)
+    if (!otpVerified) {
+      // SECURITY FIX: Never log password validation results
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      if (!isValidPassword) {
+        // Log failed login attempt
+        logger.security('Failed login attempt - invalid password', { userId: user.id, clientIP });
+        serverMonitoring.logFailedLogin(
+          req.ip || req.connection.remoteAddress || 'unknown',
+          email,
+          { reason: 'invalid_password', userId: user.id }
+        );
+        throw AuthError.invalidCredentials();
+      }
+      logger.debug('Password verification completed');
+    } else {
+      logger.debug('Skipping password verification (OTP-verified login)');
+    }
+
+    // COPPA COMPLIANCE: Verify parental consent for family accounts
+    if (user.primary_family_member_id) {
+      logger.debug('Login: Checking family member consent and age requirements');
+
+      // Get family member details
+      const [familyMembers] = await connection.execute(
+        `SELECT id, first_name, last_name, current_age, can_access_platform,
+                requires_parent_consent, parent_consent_given, access_level,
+                birth_date
+         FROM FAMILY_MEMBERS
+         WHERE id = ? AND parent_user_id = ?`,
+        [user.primary_family_member_id, user.id]
       );
 
-      if (consentRecords.length > 0 && new Date(consentRecords[0].expires_at) < new Date()) {
-        connection.release();
+      if (familyMembers.length === 0) {
+        logger.security('Login failed - family member not found', {
+          userId: user.id,
+          familyMemberId: user.primary_family_member_id
+        });
+        throw AuthError.invalidCredentials();
+      }
 
-        logger.security('Login blocked - parental consent expired', {
+      const familyMember = familyMembers[0];
+
+      // Check age and consent requirements
+      if (!familyMember.can_access_platform) {
+        // Determine specific reason for blocking
+        let reason = 'access_denied';
+        let message = 'Platform access has been restricted for this account.';
+
+        if (familyMember.current_age < 14) {
+          reason = 'underage';
+          message = 'Platform access is restricted to users 14 years and older (COPPA compliance). Please contact your parent or guardian.';
+        } else if (familyMember.requires_parent_consent && !familyMember.parent_consent_given) {
+          reason = 'no_parental_consent';
+          message = 'Parental consent is required for platform access. Please ask your parent or guardian to grant consent through the Family Settings.';
+        }
+
+        logger.security('Login blocked - COPPA compliance check failed', {
           userId: user.id,
           familyMemberId: familyMember.id,
-          consentId: consentRecords[0].id,
-          expiredAt: consentRecords[0].expires_at
+          age: familyMember.current_age,
+          reason,
+          canAccess: familyMember.can_access_platform,
+          requiresConsent: familyMember.requires_parent_consent,
+          consentGiven: familyMember.parent_consent_given
         });
 
-        // Log to audit trail
+        // Log to age verification audit trail (async, don't wait)
         db.execute(
           `INSERT INTO AGE_VERIFICATION_AUDIT (
             id, family_member_id, age_at_check, birth_date,
@@ -364,51 +308,102 @@ export const login = asyncHandler(async (req, res) => {
             familyMember.id,
             familyMember.current_age,
             familyMember.birth_date,
-            'consent_expired',
+            reason === 'underage' ? 'blocked_underage' : 'blocked_no_consent',
             'login_attempt',
             clientIP,
             userAgent,
             '/api/auth/login',
-            `Consent expired on ${consentRecords[0].expires_at}`
+            `Login attempt blocked: ${reason}`
           ]
         ).catch(err => logger.error('Failed to log age verification audit', err));
 
         serverMonitoring.logFailedLogin(clientIP, email, {
-          reason: 'consent_expired',
+          reason: `coppa_${reason}`,
           userId: user.id,
           familyMemberId: familyMember.id,
-          consentId: consentRecords[0].id
+          age: familyMember.current_age
         });
 
-        throw AuthError.forbidden(
-          'Parental consent has expired and requires annual renewal. Please ask your parent or guardian to renew consent through the Family Settings.'
-        );
+        throw AuthError.forbidden(message);
       }
+
+      // Check for expired consent (annual renewal requirement)
+      if (familyMember.requires_parent_consent && familyMember.parent_consent_given) {
+        const [consentRecords] = await connection.execute(
+          `SELECT id, expires_at
+           FROM PARENT_CONSENT_RECORDS
+           WHERE family_member_id = ?
+             AND consent_given = TRUE
+             AND is_active = TRUE
+           ORDER BY created_at DESC
+           LIMIT 1`,
+          [familyMember.id]
+        );
+
+        if (consentRecords.length > 0 && new Date(consentRecords[0].expires_at) < new Date()) {
+          logger.security('Login blocked - parental consent expired', {
+            userId: user.id,
+            familyMemberId: familyMember.id,
+            consentId: consentRecords[0].id,
+            expiredAt: consentRecords[0].expires_at
+          });
+
+          // Log to audit trail
+          db.execute(
+            `INSERT INTO AGE_VERIFICATION_AUDIT (
+              id, family_member_id, age_at_check, birth_date,
+              action_taken, check_context, ip_address, user_agent, endpoint, notes
+            ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              familyMember.id,
+              familyMember.current_age,
+              familyMember.birth_date,
+              'consent_expired',
+              'login_attempt',
+              clientIP,
+              userAgent,
+              '/api/auth/login',
+              `Consent expired on ${consentRecords[0].expires_at}`
+            ]
+          ).catch(err => logger.error('Failed to log age verification audit', err));
+
+          serverMonitoring.logFailedLogin(clientIP, email, {
+            reason: 'consent_expired',
+            userId: user.id,
+            familyMemberId: familyMember.id,
+            consentId: consentRecords[0].id
+          });
+
+          throw AuthError.forbidden(
+            'Parental consent has expired and requires annual renewal. Please ask your parent or guardian to renew consent through the Family Settings.'
+          );
+        }
+      }
+
+      // Success - log access granted
+      logger.debug('Login: Family member consent and age verification passed');
+
+      // Log successful access (async, don't wait)
+      connection.execute(
+        `INSERT INTO AGE_VERIFICATION_AUDIT (
+          id, family_member_id, age_at_check, birth_date,
+          action_taken, check_context, ip_address, user_agent, endpoint
+        ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          familyMember.id,
+          familyMember.current_age,
+          familyMember.birth_date,
+          familyMember.access_level === 'full' ? 'allowed_full' : 'allowed_supervised',
+          'login_attempt',
+          clientIP,
+          userAgent,
+          '/api/auth/login'
+        ]
+      ).catch(err => logger.error('Failed to log age verification audit', err));
     }
-
-    // Success - log access granted
-    logger.debug('Login: Family member consent and age verification passed');
-
-    // Log successful access (async, don't wait)
-    connection.execute(
-      `INSERT INTO AGE_VERIFICATION_AUDIT (
-        id, family_member_id, age_at_check, birth_date,
-        action_taken, check_context, ip_address, user_agent, endpoint
-      ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        familyMember.id,
-        familyMember.current_age,
-        familyMember.birth_date,
-        familyMember.access_level === 'full' ? 'allowed_full' : 'allowed_supervised',
-        'login_attempt',
-        clientIP,
-        userAgent,
-        '/api/auth/login'
-      ]
-    ).catch(err => logger.error('Failed to log age verification audit', err));
+  } finally {
+    connection.release();
   }
-
-  connection.release();
 
   // Generate tokens with family member context
   const tokenPayload = {
@@ -480,17 +475,17 @@ export const verifyAuth = asyncHandler(async (req, res) => {
     });
   }
 
+  let connection;
   try {
     const decoded = jwt.verify(token, getJwtSecret());
     logger.debug('Auth verification - token decoded');
 
     // Verify user still exists
-    const connection = await pool.getConnection();
+    connection = await pool.getConnection();
     const [rows] = await connection.execute(
       'SELECT id, email, role, is_active, first_name, last_name FROM app_users WHERE id = ?',
       [decoded.userId]
     );
-    connection.release();
 
     if (rows.length === 0 || !rows[0].is_active) {
       logger.debug('Auth verification failed - user not found or inactive');
@@ -526,6 +521,8 @@ export const verifyAuth = asyncHandler(async (req, res) => {
       message: error.message,
       tokenValid: false
     });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
@@ -545,9 +542,10 @@ export const refresh = asyncHandler(async (req, res, next) => {
       return next(AuthError.tokenInvalid());
     }
 
+    let connection;
     try {
       // Verify user still exists with timeout
-      const connection = await Promise.race([
+      connection = await Promise.race([
         pool.getConnection(),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
@@ -567,7 +565,6 @@ export const refresh = asyncHandler(async (req, res, next) => {
         WHERE u.id = ? AND u.is_active = true`,
         [decoded.userId]
       );
-      connection.release();
 
       if (rows.length === 0) {
         return next(AuthError.sessionExpired());
@@ -611,6 +608,8 @@ export const refresh = asyncHandler(async (req, res, next) => {
     } catch (dbError) {
       logger.error('Database error in token refresh', dbError);
       return next(ServerError.database('token refresh'));
+    } finally {
+      if (connection) connection.release();
     }
   });
 });
@@ -675,7 +674,6 @@ export const registerFromInvitation = asyncHandler(async (req, res) => {
 
 // Register from family invitation
 export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
-  const connection = await pool.getConnection();
   const {
     firstName,
     lastName,
@@ -692,6 +690,9 @@ export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
     parentConsentRequired,
     parentConsentGiven
   } = req.body;
+
+  const connection = await pool.getConnection();
+  try {
 
   // Create user account
   const userId = generateUUID();
@@ -899,9 +900,10 @@ export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
     }
   }
 
-  connection.release();
-
   res.status(201).json({ success: true, user });
+  } finally {
+    connection.release();
+  }
 });
 
 // ============================================================================

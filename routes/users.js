@@ -13,8 +13,8 @@ export function setUsersPool(dbPool) {
 
 // Update user attributes
 export const updateUser = async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    const connection = await pool.getConnection();
     const { id } = req.params;
     const updates = req.body;
 
@@ -112,8 +112,6 @@ export const updateUser = async (req, res) => {
       WHERE u.id = ? AND u.is_active = true
     `, [id]);
 
-    connection.release();
-
     if (userRows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -155,13 +153,15 @@ export const updateUser = async (req, res) => {
   } catch (error) {
     console.error('Error updating user:', error);
     res.status(500).json({ error: 'Failed to update user' });
+  } finally {
+    connection.release();
   }
 };
 
 // Send invitation to user
 export const sendInvitationToUser = async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    const connection = await pool.getConnection();
     const { id } = req.params;
     const { invitationType = 'profile_completion', expiresInDays = 7 } = req.body;
     const invitedBy = req.user.id;
@@ -173,7 +173,6 @@ export const sendInvitationToUser = async (req, res) => {
     );
 
     if (userRows.length === 0) {
-      connection.release();
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -186,7 +185,6 @@ export const sendInvitationToUser = async (req, res) => {
     );
 
     if (existingRows.length > 0) {
-      connection.release();
       return res.status(409).json({ error: 'User already has a pending invitation' });
     }
 
@@ -255,8 +253,6 @@ export const sendInvitationToUser = async (req, res) => {
       invitation.updatedAt
     ]);
 
-    connection.release();
-
     res.status(201).json({
       invitation,
       message: `Invitation sent to ${user.first_name} ${user.last_name} (${user.email})`
@@ -264,6 +260,8 @@ export const sendInvitationToUser = async (req, res) => {
   } catch (error) {
     console.error('Error sending invitation:', error);
     res.status(500).json({ error: 'Failed to send invitation' });
+  } finally {
+    connection.release();
   }
 };
 
@@ -275,12 +273,12 @@ export const sendInvitationToUser = async (req, res) => {
 export const searchUsers = async (req, res) => {
   console.log('🚀 API: Users search endpoint called');
 
+  const connection = await pool.getConnection();
   try {
     const { q = '', limit = 50 } = req.query;
 
     // Use database
     console.log('🔍 API: Getting database connection...');
-    const connection = await pool.getConnection();
     console.log('🔗 API: Database connection obtained successfully');
 
     console.log('📋 API: Request parameters - q:', q, 'limit:', limit);
@@ -377,13 +375,15 @@ export const searchUsers = async (req, res) => {
       details: error.message,
       code: error.code
     });
+  } finally {
+    connection.release();
   }
 };
 
 // Get user profile details for invitation
 export const getUserProfile = async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    const connection = await pool.getConnection();
     const { id } = req.params;
 
     console.log('[API] Fetching user profile for ID:', id);
@@ -426,7 +426,6 @@ export const getUserProfile = async (req, res) => {
     `;
 
     const [rows] = await connection.execute(query, [id]);
-    connection.release();
 
     console.log('[API] Query result rows:', rows.length);
     if (rows.length > 0) {
@@ -486,14 +485,15 @@ export const getUserProfile = async (req, res) => {
   } catch (error) {
     console.error('Error fetching user profile:', error);
     res.status(500).json({ error: 'Failed to fetch user profile' });
+  } finally {
+    connection.release();
   }
 };
 
 // Get current user profile (basic User object for AuthContext)
 export const getCurrentUserProfile = async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    // Use database
-    const connection = await pool.getConnection();
     const userId = req.user.id;
 
     // Get basic user info (same format as login response)
@@ -517,7 +517,6 @@ export const getCurrentUserProfile = async (req, res) => {
     const [rows] = await connection.execute(query, [userId]);
 
     if (rows.length === 0) {
-      connection.release();
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -578,11 +577,12 @@ export const getCurrentUserProfile = async (req, res) => {
       }
     }
 
-    connection.release();
     res.json(user);
   } catch (error) {
     console.error('Get current user error:', error);
     res.status(500).json({ error: 'Failed to get user profile' });
+  } finally {
+    connection.release();
   }
 };
 

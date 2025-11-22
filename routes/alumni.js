@@ -14,11 +14,9 @@ export function setAlumniPool(dbPool) {
 
 // Search alumni members (MUST come before the :id route to avoid matching "search" as an ID)
 export const searchAlumniMembers = async (req, res) => {
+  const connection = await pool.getConnection();
   try {
     const { q = '', limit = 50 } = req.query;
-
-    // Use database
-    const connection = await pool.getConnection();
 
     console.log('API: Searching alumni members:', q);
 
@@ -38,7 +36,6 @@ export const searchAlumniMembers = async (req, res) => {
 
     const searchTerm = `%${q}%`;
     const [rows] = await connection.execute(searchQuery, [searchTerm, searchTerm, searchTerm, searchTerm, limitNum]);
-    connection.release();
 
     const members = rows.map(row => ({
       id: row.id,
@@ -59,33 +56,34 @@ export const searchAlumniMembers = async (req, res) => {
   } catch (error) {
     console.error('Error searching alumni members:', error);
     res.status(500).json({ error: 'Failed to search alumni members' });
+  } finally {
+    connection.release();
   }
 };
 
 // Get alumni directory with pagination and filters
 export const getAlumniDirectory = async (req, res) => {
+  // Parse query parameters
+  const {
+    q = '',                           // Search query
+    page = 1,                         // Page number
+    perPage = 20,                     // Items per page
+    graduationYear,                   // Specific year filter
+    graduationYearMin,                // Year range min
+    graduationYearMax,                // Year range max
+    department,                       // Department filter
+    sortBy = 'name',                  // Sort field
+    sortOrder = 'asc'                 // Sort direction
+  } = req.query;
+
+  // Validate and sanitize inputs
+  const pageNum = Math.max(1, parseInt(page) || 1);
+  const perPageNum = Math.min(100, Math.max(1, parseInt(perPage) || 20));
+  const offset = (pageNum - 1) * perPageNum;
+
+  // Get database connection
+  const connection = await pool.getConnection();
   try {
-    // Parse query parameters
-    const {
-      q = '',                           // Search query
-      page = 1,                         // Page number
-      perPage = 20,                     // Items per page
-      graduationYear,                   // Specific year filter
-      graduationYearMin,                // Year range min
-      graduationYearMax,                // Year range max
-      department,                       // Department filter
-      sortBy = 'name',                  // Sort field
-      sortOrder = 'asc'                 // Sort direction
-    } = req.query;
-
-    // Validate and sanitize inputs
-    const pageNum = Math.max(1, parseInt(page) || 1);
-    const perPageNum = Math.min(100, Math.max(1, parseInt(perPage) || 20));
-    const offset = (pageNum - 1) * perPageNum;
-
-    // Get database connection
-    const connection = await pool.getConnection();
-
     console.log('API: Fetching alumni directory:', { q, page: pageNum, perPage: perPageNum, graduationYear, department });
 
     // Build WHERE clause
@@ -185,8 +183,6 @@ export const getAlumniDirectory = async (req, res) => {
       ORDER BY center_name ASC
     `);
 
-    connection.release();
-
     // Transform data
     const data = dataRows.map(row => ({
       id: row.id,
@@ -236,6 +232,8 @@ export const getAlumniDirectory = async (req, res) => {
       error: 'Failed to fetch alumni directory',
       message: error.message
     });
+  } finally {
+    connection.release();
   }
 };
 
@@ -253,8 +251,8 @@ function extractLocation(address) {
 
 // Get alumni member by ID
 export const getAlumniMember = async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    const connection = await pool.getConnection();
     const { id } = req.params;
 
     console.log('API: Fetching alumni member source data:', id);
@@ -269,7 +267,6 @@ export const getAlumniMember = async (req, res) => {
     `;
 
     const [rows] = await connection.execute(query, [id]);
-    connection.release();
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Alumni member not found' });
@@ -294,13 +291,15 @@ export const getAlumniMember = async (req, res) => {
   } catch (error) {
     console.error('Error fetching alumni member:', error);
     res.status(500).json({ error: 'Failed to fetch alumni member' });
+  } finally {
+    connection.release();
   }
 };
 
 // Update alumni member contact information
 export const updateAlumniMember = async (req, res) => {
+  const connection = await pool.getConnection();
   try {
-    const connection = await pool.getConnection();
     const { id } = req.params;
     const updates = req.body;
 
@@ -320,7 +319,6 @@ export const updateAlumniMember = async (req, res) => {
     });
 
     if (updateFields.length === 0) {
-      connection.release();
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
@@ -336,7 +334,6 @@ export const updateAlumniMember = async (req, res) => {
     const [result] = await connection.execute(query, updateValues);
 
     if (result.affectedRows === 0) {
-      connection.release();
       return res.status(404).json({ error: 'Alumni member not found' });
     }
 
@@ -345,7 +342,6 @@ export const updateAlumniMember = async (req, res) => {
       'SELECT id, student_id, first_name, last_name, email, phone, batch as graduation_year, result as degree, center_name as department, address, created_at, updated_at FROM alumni_members WHERE id = ?',
       [id]
     );
-    connection.release();
 
     const member = updatedRows[0];
     res.json({
@@ -366,6 +362,8 @@ export const updateAlumniMember = async (req, res) => {
   } catch (error) {
     console.error('Error updating alumni member:', error);
     res.status(500).json({ error: 'Failed to update alumni member' });
+  } finally {
+    connection.release();
   }
 };
 

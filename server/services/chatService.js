@@ -61,19 +61,17 @@ async function createConversation(userId, data) {
              ORDER BY user_id`,
             [existingConvId]
           );
-          
+
           const existingParticipantIds = participants.map(p => p.user_id).sort();
           const newParticipantIds = [...allParticipantIds].sort();
-          
+
           // If same participants, return existing conversation
           if (JSON.stringify(existingParticipantIds) === JSON.stringify(newParticipantIds)) {
-            connection.release();
             // Fetch and return existing conversation
             return await getConversationById(existingConvId, userId);
           }
         } else if (type === 'GROUP') {
           // For GROUP conversations, prevent duplicates - return existing
-          connection.release();
           return await getConversationById(existing[0].id, userId);
         }
       }
@@ -177,8 +175,6 @@ async function createConversation(userId, data) {
         [conversationId]
       );
     }
-
-    connection.release();
 
     return {
       id: conversation.id,
@@ -534,8 +530,6 @@ async function sendMessage(userId, data) {
        WHERE m.id = ?`,
       [messageId]
     );
-
-    connection.release();
 
     const message = messages[0];
 
