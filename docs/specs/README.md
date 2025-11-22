@@ -1,14 +1,20 @@
 # SGS Gita Alumni - Specifications
 
 This directory contains the spec-driven development framework following the
-**Constitution → Spec → Plan → Tasks** workflow from `/docs/spec_driven_coding_guide.md`.
+**Scout → Plan → Build** workflow from `/docs/spec_driven_coding_guide.md`.
 
 ## Structure
 
 ```
 specs/
-├── CONSTITUTION.md          # Phase 1: Immutable principles & constraints
-├── functional/              # Phase 2: WHAT & WHY (business features)
+├── CONSTITUTION.md          # Original full constitution (reference)
+├── context/                  # Layered context for R&D Framework
+│   ├── always-on.md         # <50 lines - loads every session
+│   ├── layer-auth.md        # Authentication context
+│   ├── layer-database.md    # Database patterns
+│   ├── layer-api.md         # API standards
+│   └── layer-ui.md          # UI patterns
+├── functional/              # WHAT & WHY (business features)
 │   ├── authentication.md
 │   ├── user-management.md
 │   ├── directory.md
@@ -18,51 +24,80 @@ specs/
 │   ├── moderation.md
 │   ├── notifications.md
 │   └── rating.md
-├── technical/               # Phase 2: WHAT & WHY (technical requirements)
+├── technical/               # WHAT & WHY (technical requirements)
 │   ├── api-standards.md
 │   ├── error-handling.md
 │   ├── database.md
 │   ├── testing.md
-│   └── deployment.md
-├── plans/                   # Phase 3: HOW to implement
+│   ├── deployment.md
+│   ├── ui-standards.md
+│   ├── code-standards.md
+│   ├── security.md
+│   └── structure-standards.md
+├── scouts/                  # Scout phase outputs
+│   └── (discovery reports)
+├── plans/                   # Plan phase outputs
 │   └── (implementation plans)
-├── tasks/                   # Phase 4: Atomic work units
+├── tasks/                   # Build phase task breakdowns
 │   └── (task breakdowns)
 └── templates/               # Reusable templates
     ├── feature-spec.md
     ├── implementation-plan.md
-    └── task-breakdown.md
+    ├── task-breakdown.md
+    └── scout-report.md
 ```
 
-## Workflow
+## Scout-Plan-Build Workflow
 
-### For New Features
-1. **Constitution** - Review `CONSTITUTION.md` for principles
-2. **Specify** - Create spec using `templates/feature-spec.md`
-3. **Plan** - Create implementation plan using `templates/implementation-plan.md`
-4. **Tasks** - Break down into atomic tasks using `templates/task-breakdown.md`
-5. **Execute** - Implement task by task, validating at each step
+### Phase 1: Scout (Use Haiku - fast/cheap)
+1. Load `context/always-on.md` + relevant `layer-*.md`
+2. Search for existing implementations (avoid duplicates)
+3. Document findings in `scouts/[feature]-discovery.md`
 
-### For Existing Features
-1. Read `CONSTITUTION.md` for project principles
-2. Find the relevant spec in `functional/` or `technical/`
-3. Review requirements and acceptance criteria
-4. Implement following the spec
-5. Check off acceptance criteria as completed
+### Phase 2: Plan (Use Sonnet)
+1. Review scout findings
+2. Create implementation plan in `plans/[feature]-plan.md`
+3. Break into phases with validation checkpoints
+
+### Phase 3: Build (Use Sonnet)
+1. Execute plan phase by phase
+2. Create tasks in `tasks/[feature]-tasks.md` if needed
+3. Validate each phase before proceeding
+4. Update spec status when complete
+
+## Context Loading
+
+### Always Load
+- `context/always-on.md` - Core rules, reference implementations
+
+### Load Based on Task
+- Auth work → `context/layer-auth.md`
+- Database work → `context/layer-database.md`
+- API work → `context/layer-api.md`
+- UI work → `context/layer-ui.md`
+
+## Model Selection
+
+| Phase | Model | Use For |
+|-------|-------|---------|
+| Scout | Haiku | File discovery, pattern matching |
+| Plan | Sonnet | Implementation design |
+| Build | Sonnet | Coding, testing |
+| Architect | Opus | Complex decisions only |
 
 ## Status Legend
-- **Complete** - Implemented and working
-- **In Progress** - Partially implemented
-- **Pending** - Not yet started
+- **planned** - Spec written, not started
+- **in-progress** - Partially implemented
+- **implemented** - Complete and working
+- **deprecated** - No longer used
 
 ## Maintaining Specs
 - Update status as implementation progresses
-- Add notes for deviations from original spec
+- Add implementation links to spec YAML metadata
 - Keep acceptance criteria current
-- Create plans/tasks for pending features before implementation
+- Create scout report before each new feature
 
 ## Reference
-- Project Report: `/mvp_pending_tasks_report.html`
 - Spec-Driven Guide: `/docs/spec_driven_coding_guide.md`
+- Project Report: `/mvp_pending_tasks_report.html`
 - Audits: `/docs/audits/`
-- Quick Action Plan: `/docs/audits/QUICK_ACTION_PLAN.md`
