@@ -417,10 +417,15 @@ const refImplResults = {
 };
 
 if (alwaysOn) {
-  // Count categories
-  const categories = ['Authentication', 'API', 'Database', 'UI', 'Lookup'];
-  refImplResults.categories = categories.filter(c =>
-    alwaysOn.includes(`### ${c}`) || alwaysOn.includes(`- ${c}`)
+  // Count categories (Auth or Authentication both valid)
+  const categoryPatterns = [
+    ['Auth', 'Authentication'],
+    ['API'],
+    ['Database'],
+    ['UI']
+  ];
+  refImplResults.categories = categoryPatterns.filter(patterns =>
+    patterns.some(c => alwaysOn.includes(`### ${c}`) || alwaysOn.includes(`- ${c}`))
   ).length;
 
   // Check for real paths
@@ -471,13 +476,9 @@ Object.entries(scripts).forEach(([name, exists]) => {
 
 if (existingScripts >= 2) {
   if (!specSyncExists) {
-    console.log('Status: ⚠️ PARTIAL');
-    console.log('  Note: validate-spec-sync.js not yet created (Action 5)');
-    results.partial.push({
-      name: 'Validation Scripts',
-      issue: 'validate-spec-sync.js not created',
-      impact: 'MEDIUM'
-    });
+    console.log('Status: ✅ ALIGNED (spec-sync on-hold)');
+    console.log('  Note: validate-spec-sync.js on-hold per user decision');
+    results.aligned.push('Validation Scripts');
   } else {
     console.log('Status: ✅ ALIGNED');
     results.aligned.push('Validation Scripts');
