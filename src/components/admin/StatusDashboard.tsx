@@ -1,5 +1,8 @@
 import { apiClient } from '../../lib/api';
 import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { Alert, AlertDescription } from '../ui/alert';
 
 interface SubFeature {
   name: string;
@@ -69,23 +72,67 @@ const StatusDashboard: React.FC = () => {
     });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusClasses = (status: string) => {
     const s = status.toLowerCase();
-    if (s.includes('complete') || s.includes('implement')) return 'text-green-600';
-    if (s.includes('progress')) return 'text-orange-500';
-    return 'text-red-600';
+    if (s.includes('complete') || s.includes('implement')) {
+      return 'bg-green-500/10 text-green-700 dark:text-green-400';
+    }
+    if (s.includes('progress')) {
+      return 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
+    }
+    return 'bg-destructive/10 text-destructive';
   };
 
-  const getStatusBg = (status: string) => {
+  const getStatusDot = (status: string) => {
     const s = status.toLowerCase();
-    if (s.includes('complete') || s.includes('implement')) return 'bg-green-100';
-    if (s.includes('progress')) return 'bg-orange-100';
-    return 'bg-red-100';
+    if (s.includes('complete') || s.includes('implement')) return 'bg-green-500';
+    if (s.includes('progress')) return 'bg-yellow-500';
+    return 'bg-destructive';
   };
 
-  if (loading) return <div className="p-4">Loading status...</div>;
-  if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
-  if (!data) return <div className="p-4">No data available</div>;
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold">Feature Status Dashboard</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader>
+                <div className="h-4 bg-muted rounded w-3/4"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
+                <div className="h-3 bg-muted rounded w-full"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold">Feature Status Dashboard</h2>
+        <Alert>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <Button onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold">Feature Status Dashboard</h2>
+        <Alert>
+          <AlertDescription>No data available</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   const filteredFeatures = data.features.filter(f => {
     if (filter === 'all') return true;
@@ -97,47 +144,72 @@ const StatusDashboard: React.FC = () => {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold mb-2">Feature Status Dashboard</h1>
-      <p className="text-gray-500 text-sm mb-6">
-        Auto-generated from specs on {new Date(data.generated).toLocaleDateString()}
-      </p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Feature Status Dashboard</h2>
+          <p className="text-sm text-muted-foreground">
+            Auto-generated from specs on {new Date(data.generated).toLocaleDateString()}
+          </p>
+        </div>
+        <Button onClick={() => window.location.reload()} variant="outline">
+          Refresh
+        </Button>
+      </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-          <div className="text-2xl font-bold">{data.summary.total}</div>
-          <div className="text-gray-600 text-sm">Total Features</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
-          <div className="text-2xl font-bold text-green-600">{data.summary.implemented}</div>
-          <div className="text-gray-600 text-sm">Implemented</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-orange-500">
-          <div className="text-2xl font-bold text-orange-500">{data.summary.inProgress}</div>
-          <div className="text-gray-600 text-sm">In Progress</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
-          <div className="text-2xl font-bold text-red-600">{data.summary.pending}</div>
-          <div className="text-gray-600 text-sm">Pending</div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Features</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{data.summary.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Implemented</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{data.summary.implemented}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">In Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{data.summary.inProgress}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pending</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{data.summary.pending}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Sub-totals */}
-      <div className="bg-gray-50 p-4 rounded-lg mb-6">
-        <div className="flex gap-6 text-sm">
-          <span><strong>{data.summary.totalSubFeatures}</strong> sub-features tracked</span>
-          <span><strong>{data.summary.totalTechnicalTasks}</strong> technical tasks tracked</span>
-        </div>
-      </div>
+      <Card>
+        <CardContent className="py-4">
+          <div className="flex gap-6 text-sm">
+            <span><strong>{data.summary.totalSubFeatures}</strong> sub-features tracked</span>
+            <span><strong>{data.summary.totalTechnicalTasks}</strong> technical tasks tracked</span>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filter */}
-      <div className="mb-4">
-        <label className="mr-2 text-sm font-medium">Filter:</label>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-medium">Filter:</span>
         <select
           value={filter}
           onChange={e => setFilter(e.target.value)}
-          className="border rounded px-2 py-1 text-sm"
+          className="border rounded px-3 py-1.5 text-sm bg-background border-input"
         >
           <option value="all">All</option>
           <option value="implemented">Implemented</option>
@@ -147,156 +219,164 @@ const StatusDashboard: React.FC = () => {
       </div>
 
       {/* Features Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-        <table className="w-full">
-          <thead className="bg-gray-800 text-white">
-            <tr>
-              <th className="px-4 py-3 text-left text-sm">Feature</th>
-              <th className="px-4 py-3 text-left text-sm">Status</th>
-              <th className="px-4 py-3 text-left text-sm">Test</th>
-              <th className="px-4 py-3 text-left text-sm">Diagram</th>
-              <th className="px-4 py-3 text-left text-sm">Sub-features</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredFeatures.map(feature => (
-              <React.Fragment key={feature.id}>
-                <tr
-                  className="border-b hover:bg-gray-50 cursor-pointer"
-                  onClick={() => toggleFeature(feature.id)}
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400">
-                        {expandedFeatures.has(feature.id) ? '▼' : '▶'}
-                      </span>
-                      <strong>{feature.name}</strong>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-sm ${getStatusBg(feature.status)} ${getStatusColor(feature.status)}`}>
-                      {feature.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {feature.test ? (
-                      <span className="text-green-600">✅</span>
-                    ) : (
-                      <span className="text-red-600">❌</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {feature.diagram ? (
-                      <span className="text-green-600">✅</span>
-                    ) : (
-                      <span className="text-red-600">❌</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {feature.subFeatures.length} items
-                  </td>
+      <Card>
+        <CardHeader>
+          <CardTitle>Features</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium">Feature</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">Test</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">Diagram</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">Sub-features</th>
                 </tr>
-                {expandedFeatures.has(feature.id) && (
-                  <tr className="bg-gray-50">
-                    <td colSpan={5} className="px-8 py-4">
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium text-gray-700 mb-2">Sub-features:</div>
-                        {feature.subFeatures.map((sf, idx) => (
-                          <div key={idx} className="flex items-center gap-3 text-sm">
-                            <span className={`w-3 h-3 rounded-full ${
-                              sf.status.includes('complete') ? 'bg-green-500' :
-                              sf.status.includes('progress') ? 'bg-orange-500' : 'bg-red-500'
-                            }`}></span>
-                            <span>{sf.name}</span>
-                            <span className={`text-xs ${getStatusColor(sf.status)}`}>
-                              ({sf.status})
-                            </span>
-                          </div>
-                        ))}
-                        {feature.components.length > 0 && (
-                          <div className="mt-3 pt-3 border-t">
-                            <div className="text-sm font-medium text-gray-700 mb-1">Components:</div>
-                            <div className="flex flex-wrap gap-2">
-                              {feature.components.map((c, idx) => (
-                                <code key={idx} className="text-xs bg-gray-200 px-2 py-1 rounded">
-                                  {c}
-                                </code>
-                              ))}
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredFeatures.map(feature => (
+                  <React.Fragment key={feature.id}>
+                    <tr
+                      className="hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => toggleFeature(feature.id)}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">
+                            {expandedFeatures.has(feature.id) ? '▼' : '▶'}
+                          </span>
+                          <strong>{feature.name}</strong>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusClasses(feature.status)}`}>
+                          {feature.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        {feature.test ? (
+                          <span className="text-green-600 dark:text-green-400">✓</span>
+                        ) : (
+                          <span className="text-destructive">✗</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {feature.diagram ? (
+                          <span className="text-green-600 dark:text-green-400">✓</span>
+                        ) : (
+                          <span className="text-destructive">✗</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {feature.subFeatures.length} items
+                      </td>
+                    </tr>
+                    {expandedFeatures.has(feature.id) && (
+                      <tr className="bg-muted/30">
+                        <td colSpan={5} className="px-8 py-4">
+                          <div className="space-y-3">
+                            <div className="text-sm font-medium mb-2">Sub-features:</div>
+                            {feature.subFeatures.map((sf, idx) => (
+                              <div key={idx} className="flex items-center gap-3 text-sm">
+                                <span className={`w-2 h-2 rounded-full ${getStatusDot(sf.status)}`}></span>
+                                <span>{sf.name}</span>
+                                <span className={`text-xs ${getStatusClasses(sf.status)} px-1.5 py-0.5 rounded`}>
+                                  {sf.status}
+                                </span>
+                              </div>
+                            ))}
+                            {feature.components.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-border">
+                                <div className="text-sm font-medium mb-2">Components:</div>
+                                <div className="flex flex-wrap gap-2">
+                                  {feature.components.map((c, idx) => (
+                                    <code key={idx} className="text-xs bg-muted px-2 py-1 rounded">
+                                      {c}
+                                    </code>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            <div className="mt-2 text-xs">
+                              <a href={feature.spec} className="text-primary hover:underline">
+                                View Spec →
+                              </a>
                             </div>
                           </div>
-                        )}
-                        <div className="mt-2 text-xs text-gray-500">
-                          <a href={feature.spec} className="text-blue-600 hover:underline">
-                            View Spec →
-                          </a>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Technical Tasks */}
-      <h2 className="text-xl font-bold mb-4">Technical Tasks</h2>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-700 text-white">
-            <tr>
-              <th className="px-4 py-3 text-left text-sm">Technical Spec</th>
-              <th className="px-4 py-3 text-left text-sm">Tasks</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.technicalTasks.map(tech => (
-              <React.Fragment key={tech.spec}>
-                <tr
-                  className="border-b hover:bg-gray-50 cursor-pointer"
-                  onClick={() => toggleTech(tech.spec)}
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-400">
-                        {expandedTech.has(tech.spec) ? '▼' : '▶'}
-                      </span>
-                      <strong className="capitalize">{tech.spec.replace(/-/g, ' ')}</strong>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {tech.tasks.length} tasks
-                  </td>
+      <Card>
+        <CardHeader>
+          <CardTitle>Technical Tasks</CardTitle>
+          <CardDescription>Implementation tasks from technical specifications</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-medium">Technical Spec</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium">Tasks</th>
                 </tr>
-                {expandedTech.has(tech.spec) && (
-                  <tr className="bg-gray-50">
-                    <td colSpan={2} className="px-8 py-4">
-                      <div className="space-y-2">
-                        {tech.tasks.map((task, idx) => (
-                          <div key={idx} className="flex items-center gap-3 text-sm">
-                            <span className={`w-3 h-3 rounded-full ${
-                              task.status.includes('complete') ? 'bg-green-500' :
-                              task.status.includes('progress') ? 'bg-orange-500' : 'bg-red-500'
-                            }`}></span>
-                            <span>{task.name}</span>
-                            <span className={`text-xs ${getStatusColor(task.status)}`}>
-                              ({task.status})
-                            </span>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {data.technicalTasks.map(tech => (
+                  <React.Fragment key={tech.spec}>
+                    <tr
+                      className="hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() => toggleTech(tech.spec)}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground">
+                            {expandedTech.has(tech.spec) ? '▼' : '▶'}
+                          </span>
+                          <strong className="capitalize">{tech.spec.replace(/-/g, ' ')}</strong>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                        {tech.tasks.length} tasks
+                      </td>
+                    </tr>
+                    {expandedTech.has(tech.spec) && (
+                      <tr className="bg-muted/30">
+                        <td colSpan={2} className="px-8 py-4">
+                          <div className="space-y-2">
+                            {tech.tasks.map((task, idx) => (
+                              <div key={idx} className="flex items-center gap-3 text-sm">
+                                <span className={`w-2 h-2 rounded-full ${getStatusDot(task.status)}`}></span>
+                                <span>{task.name}</span>
+                                <span className={`text-xs ${getStatusClasses(task.status)} px-1.5 py-0.5 rounded`}>
+                                  {task.status}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
-      <p className="mt-6 text-sm text-gray-500">
-        Regenerate data: <code className="bg-gray-100 px-2 py-1 rounded">node scripts/validation/audit-framework.cjs</code>
+      <p className="text-sm text-muted-foreground">
+        Regenerate data: <code className="bg-muted px-2 py-1 rounded">node scripts/validation/audit-framework.cjs</code>
       </p>
     </div>
   );
