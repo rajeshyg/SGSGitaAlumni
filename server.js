@@ -32,6 +32,8 @@ process.on('unhandledRejection', (reason, promise) => {
 
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
+import path from 'path';
 
 // Import database utilities (AFTER dotenv is loaded)
 import { getPool, testDatabaseConnection, startPoolMonitoring } from './utils/database.js';
@@ -624,6 +626,53 @@ app.get('/api/users/totp/status/:email', getTOTPStatus);
 app.get('/api/users/profile/:email', getOTPUserProfile);
 
 // ============================================================================
+// FEATURE STATUS DASHBOARD API
+// ============================================================================
+app.get('/api/feature-status', authenticateToken, (req, res) => {
+  try {
+    // Try multiple locations
+    const locations = [
+      path.join(process.cwd(), 'scripts/validation/feature-status.json'),
+      path.join(process.cwd(), 'public/api/feature-status.json')
+    ];
+
+    let statusPath = null;
+    for (const loc of locations) {
+      if (fs.existsSync(loc)) {
+        statusPath = loc;
+        break;
+      }
+    }
+    
+    if (!statusPath) {
+      console.error('Feature status file not found in locations:', locations);
+      return res.status(404).json({ 
+        error: 'Status report not found', 
+        checkedLocations: locations 
+      });
+    }
+    
+    const fileContent = fs.readFileSync(statusPath, 'utf8');
+    try {
+      const statusData = JSON.parse(fileContent);
+      res.json(statusData);
+    } catch (parseError) {
+      console.error('Error parsing JSON:', parseError);
+      return res.status(500).json({ 
+        error: 'Invalid JSON in status file', 
+        message: parseError.message 
+      });
+    }
+  } catch (err) {
+    console.error('Error reading status:', err);
+    res.status(500).json({ 
+      error: 'Failed to read status', 
+      message: err.message
+    });
+  }
+});
+
+// ============================================================================
 // ERROR HANDLING MIDDLEWARE
 // ============================================================================
 // IMPORTANT: Must be registered AFTER all routes
@@ -650,26 +699,7 @@ try {
 }
 
 
-// ============================================================================
-// FEATURE STATUS DASHBOARD API
-// ============================================================================
-app.get('/api/feature-status', authenticateToken, (req, res) => {
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const statusPath = path.join(process.cwd(), 'scripts/validation/feature-status.json');
-    
-    if (!fs.existsSync(statusPath)) {
-      return res.status(404).json({ error: 'Status report not found. Run: node scripts/validation/audit-framework.cjs' });
-    }
-    
-    const statusData = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
-    res.json(statusData);
-  } catch (err) {
-    console.error('Error reading status:', err);
-    res.status(500).json({ error: 'Failed to read status' });
-  }
-});
+
 
 const server = app.listen(PORT, '0.0.0.0', async () => {
   try {
