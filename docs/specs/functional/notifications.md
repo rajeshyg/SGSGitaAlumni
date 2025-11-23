@@ -61,18 +61,44 @@ Keep users informed of relevant activity through multiple notification channels.
 - SMS notifications
 - Desktop notifications
 
-## Workflow
-1. **Scout**: Identify related files and patterns
-2. **Plan**: Design implementation approach
-3. **Build**: Implement with tests
-4. **Validate**: Run E2E tests and verify
+## Implementation Workflow
 
-## Dependencies
+This feature follows the Scout-Plan-Build workflow documented in `/docs/spec_driven_coding_guide.md`.
+
+### Workflow Documentation
+- **Scout Report** (Planning Phase): `docs/specs/workflows/notifications/scout.md`
+  - Planned scope and features
+  - Preliminary technical considerations
+  - Database schema design
+  - Integration points with existing systems
+  - Estimated effort: 16-24 hours
+  - Recommendations for phased rollout
+
+**Status**: 🔜 PENDING - Post-MVP feature. Scout phase will begin after MVP is complete and stable.
+
+### Implementation Priority
+- **Phase 1** (High): Email notifications - Essential for user engagement
+- **Phase 2** (Medium): In-app notifications - Improves user experience
+- **Phase 3** (Low): Push notifications - Nice to have, can be deferred
+
+### Dependencies
+- Email service provider selection (SendGrid, AWS SES, etc.)
+- Socket.IO infrastructure (already exists for chat)
 - Authentication context required for all protected features
 - Database connection pool from `server/config/database.js`
+- Integration with postings, messaging, and moderation systems
+
+## When to Start Implementation
+
+Begin when:
+1. Core MVP features are complete and stable
+2. Email service provider has been selected
+3. Notification requirements have been finalized
+4. Development resources are available
 
 ## Report
 After implementation, document:
 - Files modified
 - Tests added/updated
 - Any deviations from spec
+- Create plan.md and tasks.md in workflows/notifications/
