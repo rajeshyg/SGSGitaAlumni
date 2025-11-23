@@ -242,6 +242,22 @@ app.use(monitoringMiddleware);
 app.post('/api/auth/login', loginRateLimit, validateRequest({ body: LoginSchema }), login);
 app.post('/api/auth/logout', authenticateToken, logout);
 app.get('/api/auth/verify', verifyAuth); // Mobile debugging endpoint - no auth required
+
+// Feature status endpoint for StatusDashboard
+app.get('/api/feature-status', (req, res) => {
+  try {
+    const statusPath = path.join(__dirname, 'scripts/validation/feature-status.json');
+    if (fs.existsSync(statusPath)) {
+      const status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+      res.json(status);
+    } else {
+      res.status(404).json({ error: 'Status file not found. Run: node scripts/validation/audit-framework.cjs' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load status' });
+  }
+});
+
 app.post('/api/auth/refresh', refresh);
 app.post('/api/auth/register-from-invitation', registrationRateLimit, validateRequest({ body: RegisterFromInvitationSchema }), (req, res, next) => {
   // Reduce verbose logging in production
