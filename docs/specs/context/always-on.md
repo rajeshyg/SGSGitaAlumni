@@ -39,13 +39,27 @@ Node.js 18+, Express, MySQL2, React 18, TypeScript, Socket.IO, JWT
 - `postcss.config.js` - PostCSS config
 
 ## File Locations
-- Specs: `docs/specs/functional/` and `docs/specs/technical/`
-- Context Layers: `docs/specs/context/layer-*.md` (load as needed)
-- Standards: `docs/archive/standards/` (quality, performance, security)
-- Architecture: `docs/archive/root-docs/ARCHITECTURE.md`
+
+### Specifications (Primary Reference)
+- Technical Specs: `docs/specs/technical/` - Architecture, security, database, testing, UI, coding standards
+- Functional Specs: `docs/specs/functional/` - Feature specifications
+- Tech Specs Index: `docs/specs/technical/README.md` - Quick reference for all standards
+
+### Critical Technical Docs
+- Theme System: `docs/specs/technical/ui-standards/theme-system.md` - **Read before UI work**
+- Architecture: `docs/specs/technical/architecture/README.md`
+- Security: `docs/specs/technical/security/README.md`
+- Code Review: `docs/specs/technical/coding-standards/code-review-checklist.md`
+- Error Handling: `docs/specs/technical/architecture/error-handling.md`
+
+### Code Locations
 - Routes: `routes/` (backend API)
 - Services: `server/services/`
 - E2E Tests: `tests/e2e/` (one per module)
+- UI Components: `src/components/`
+
+### Archive (Historical Reference Only)
+- `docs/archive/` - Obsolete documents, do not use for active development
 
 ## Model Selection
 - Scout (Haiku): File discovery, simple searches

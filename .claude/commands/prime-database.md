@@ -10,8 +10,9 @@ Load this context before working on database-related tasks.
 ## Context to Load
 Read these files to understand database patterns:
 - `docs/specs/context/always-on.md` - Critical rules
-- `docs/specs/context/layer-database.md` - DB-specific context
-- `docs/specs/technical/database.md` - Optimization spec
+- `docs/specs/technical/database/connection-management.md` - Connection patterns (try/finally)
+- `docs/specs/technical/database/indexing.md` - Query optimization
+- `docs/specs/technical/database/README.md` - Database overview
 
 ## Key Files
 - `server/config/database.js` - Connection pool
