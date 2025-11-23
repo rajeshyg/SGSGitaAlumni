@@ -10,8 +10,9 @@ Load this context before working on React components.
 ## Context to Load
 Read these files to understand UI patterns:
 - `docs/specs/context/always-on.md` - Critical rules
-- `docs/specs/context/layer-ui.md` - UI-specific context
-- `docs/specs/technical/ui-standards.md` - UI standards
+- `docs/specs/technical/ui-standards/theme-system.md` - **CRITICAL** Theme & CSS variables
+- `docs/specs/technical/ui-standards/accessibility.md` - WCAG compliance
+- `docs/specs/technical/ui-standards/component-patterns.md` - Component development
 
 ## Key Files
 - `src/contexts/AuthContext.tsx` - Auth state

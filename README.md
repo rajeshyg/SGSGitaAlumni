@@ -115,12 +115,20 @@ See [Quality Standards](docs/QUALITY_STANDARDS.md) for comprehensive redundancy 
 
 ## 📚 Documentation
 
-- [Architecture Overview](ARCHITECTURE.md)
-- [Quality Standards](docs/QUALITY_STANDARDS.md)
-- [AI Collaboration Guidelines](docs/AI_COLLABORATION_GUIDELINES.md)
-- [Development Guidelines](docs/DEVELOPMENT_GUIDELINES.md)
-- [Code Review Checklist](docs/CODE_REVIEW_CHECKLIST.md)
-- [Tool Usage](docs/TOOL_USAGE.md)
+### Specifications (Primary Reference)
+- [Technical Specifications](docs/specs/technical/README.md) - All technical standards
+- [Functional Specifications](docs/specs/functional/) - Feature specifications
+- [Context & Patterns](docs/specs/context/always-on.md) - Essential development context
+
+### Key Technical Docs
+- [Architecture Overview](docs/specs/technical/architecture/README.md)
+- [Theme System](docs/specs/technical/ui-standards/theme-system.md) - **Critical for UI work**
+- [Code Review Checklist](docs/specs/technical/coding-standards/code-review-checklist.md)
+- [Security Standards](docs/specs/technical/security/README.md)
+
+### Development Guides
+- [Spec-Driven Development](docs/spec-driven-development/README.md) - SDD framework
+- [Feature Matrix](docs/FEATURE_MATRIX.md) - Feature status tracking
 
 ## 📊 Quality Improvements
 

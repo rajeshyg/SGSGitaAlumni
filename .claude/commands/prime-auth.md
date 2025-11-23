@@ -9,8 +9,9 @@ Load this context before working on auth-related tasks.
 ## Context to Load
 Read these files to understand the auth patterns:
 - `docs/specs/context/always-on.md` - Critical rules
-- `docs/specs/context/layer-auth.md` - Auth-specific context
-- `docs/specs/functional/authentication.md` - Full spec
+- `docs/specs/technical/security/authentication.md` - JWT, OTP, sessions
+- `docs/specs/technical/security/authorization.md` - RBAC, permissions
+- `docs/specs/functional/authentication.md` - Full feature spec
 
 ## Key Files
 - `middleware/auth.js` - Token verification (verifyToken)

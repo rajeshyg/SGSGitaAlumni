@@ -10,8 +10,8 @@ Load this context before working on API endpoints.
 ## Context to Load
 Read these files to understand API patterns:
 - `docs/specs/context/always-on.md` - Critical rules
-- `docs/specs/context/layer-api.md` - API-specific context
-- `docs/specs/technical/api-standards.md` - API standards
+- `docs/specs/technical/architecture/api-design.md` - API design standards
+- `docs/specs/technical/architecture/error-handling.md` - Error response patterns
 
 ## Key Files
 - `routes/*.js` - Existing route patterns

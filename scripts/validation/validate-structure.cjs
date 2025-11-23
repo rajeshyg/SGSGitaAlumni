@@ -281,6 +281,49 @@ function findFiles(dir, extension, excludeDirs) {
 }
 
 // =============================================================================
+// Rule 6: Each technical spec folder must have README.md
+// =============================================================================
+function validateSpecFolderReadmes() {
+  console.log('\n📁 Validating technical spec folder structure...');
+
+  const techSpecDir = path.join(PROJECT_ROOT, 'docs/specs/technical');
+  if (!fs.existsSync(techSpecDir)) {
+    ERRORS.push('Technical specs directory not found: docs/specs/technical/');
+    return;
+  }
+
+  const requiredFolders = [
+    'architecture',
+    'security',
+    'database',
+    'testing',
+    'ui-standards',
+    'coding-standards',
+    'deployment',
+    'integration'
+  ];
+
+  let missingReadmes = [];
+
+  requiredFolders.forEach(folder => {
+    const folderPath = path.join(techSpecDir, folder);
+    const readmePath = path.join(folderPath, 'README.md');
+
+    if (!fs.existsSync(folderPath)) {
+      ERRORS.push(`Missing technical spec folder: docs/specs/technical/${folder}/`);
+    } else if (!fs.existsSync(readmePath)) {
+      missingReadmes.push(folder);
+    }
+  });
+
+  if (missingReadmes.length > 0) {
+    ERRORS.push(`Missing README.md in spec folders: ${missingReadmes.join(', ')}`);
+  }
+
+  console.log(`  Checked ${requiredFolders.length} required spec folders`);
+}
+
+// =============================================================================
 // Main execution
 // =============================================================================
 console.log('🔎 Running Structure Validation...\n');
@@ -291,6 +334,7 @@ validatePlaywrightFiles();
 detectDuplicateFiles();
 detectSimilarFileNames();
 detectDatabaseDuplicatePatterns();
+validateSpecFolderReadmes();
 
 console.log('\n' + '='.repeat(60));
 
