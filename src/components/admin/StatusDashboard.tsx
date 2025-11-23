@@ -46,7 +46,8 @@ const StatusDashboard: React.FC = () => {
 
   useEffect(() => {
     APIService.request('GET', '/api/feature-status', {})
-      setData(response);
+      .then(response => setData(response))
+      .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
 
