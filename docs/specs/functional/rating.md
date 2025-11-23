@@ -74,18 +74,73 @@ CREATE TABLE contribution_log (
 - Annual awards
 - Point redemption
 
-## Workflow
-1. **Scout**: Identify related files and patterns
-2. **Plan**: Design implementation approach
-3. **Build**: Implement with tests
-4. **Validate**: Run E2E tests and verify
+## Implementation Workflow
 
-## Dependencies
+This feature follows the Scout-Plan-Build workflow documented in `/docs/spec_driven_coding_guide.md`.
+
+### Workflow Documentation
+- **Scout Report** (Planning Phase): `docs/specs/workflows/rating/scout.md`
+  - Planned rating tier system (Bronze/Silver/Gold)
+  - Point economy design and triggers
+  - Database schema for ratings and contribution log
+  - Integration points across postings and moderation
+  - Estimated effort: 12-16 hours
+  - Risk analysis and recommendations
+
+**Status**: 🔜 PENDING - Low priority post-MVP enhancement. Implementation should be validated with users first.
+
+### Implementation Approach
+- **Phase 1**: Database and point service (4 hours)
+- **Phase 2**: Frontend components - badges and display (6 hours)
+- **Phase 3**: Integration and testing (4 hours)
+- **Optional**: Leaderboard feature (4 hours)
+
+### Key Decisions Needed
+1. Real-time vs batch point calculation
+2. Point values calibration
+3. Abuse prevention mechanisms
+4. Whether gamification fits community culture
+
+### Validation Before Implementation
+- Survey users: Is gamification desired?
+- Analyze similar platforms
+- Define clear goals (engagement? content quality?)
+- Establish metrics for success
+
+### Dependencies
+- Postings system must be complete and stable
+- Moderation workflow must be functional
+- User profile display system
+- Comment system
 - Authentication context required for all protected features
 - Database connection pool from `server/config/database.js`
+
+## When to Start Implementation
+
+Begin when:
+1. MVP is live and stable
+2. User engagement patterns are understood
+3. Need for gamification is validated through user feedback
+4. Point values can be calibrated based on actual activity
+
+## Recommendations
+
+### Start Simple
+- Basic point tracking only
+- Tier badge on profile
+- Total points display
+- Defer leaderboard and detailed history
+
+### Monitor for Gaming
+- Quality thresholds for earning points
+- Point caps per time period
+- Admin tools for manual adjustments
 
 ## Report
 After implementation, document:
 - Files modified
 - Tests added/updated
 - Any deviations from spec
+- Point value calibration results
+- User feedback and engagement metrics
+- Create plan.md and tasks.md in workflows/rating/

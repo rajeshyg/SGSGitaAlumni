@@ -70,18 +70,54 @@ Enable users to manage their profiles, preferences, and interests for effective 
 - Photo galleries
 - Video introductions
 
-## Workflow
-1. **Scout**: Identify related files and patterns
-2. **Plan**: Design implementation approach
-3. **Build**: Implement with tests
-4. **Validate**: Run E2E tests and verify
+## Implementation Workflow
 
-## Dependencies
+This feature follows the Scout-Plan-Build workflow documented in `/docs/spec_driven_coding_guide.md`.
+
+### Workflow Documentation
+- **Scout Report**: `docs/specs/workflows/user-management/scout.md`
+  - Comprehensive discovery of related files and architecture
+  - Current implementation state analysis
+  - Integration points and dependencies
+  - Technical considerations and risks
+  
+- **Implementation Plan**: `docs/specs/workflows/user-management/plan.md`
+  - 4-phase implementation strategy
+  - Database migration plans
+  - Testing strategy and rollout plan
+  - Risk mitigation approaches
+  
+- **Task Breakdown**: `docs/specs/workflows/user-management/tasks.md`
+  - 11 detailed, actionable tasks
+  - Task dependencies and complexity estimates
+  - Acceptance criteria and testing requirements
+  - Implementation order by sprint
+
+### Dependencies
 - Authentication context required for all protected features
 - Database connection pool from `server/config/database.js`
+- File upload infrastructure (for profile pictures - Phase 3)
+
+## Implementation Progress
+
+### Completed
+- ✅ Profile viewing functionality
+- ✅ Family member profile selection
+- ✅ Basic preference selection UI
+- ✅ Matching posts based on preferences
+
+### In Progress (See workflows/user-management/tasks.md for details)
+- 🔄 Profile editing UI (Task 1)
+- 🔄 Profile update API endpoint (Task 2)
+- 🔄 Domain preference 5-limit enforcement (Tasks 4-5)
+
+### Pending (See workflows/user-management/plan.md for phases)
+- ⏳ Profile picture upload (Phase 3)
+- ⏳ Extended profile fields (bio, social links) (Phase 4)
 
 ## Report
 After implementation, document:
 - Files modified
 - Tests added/updated
 - Any deviations from spec
+- Update status in workflows/user-management/tasks.md
