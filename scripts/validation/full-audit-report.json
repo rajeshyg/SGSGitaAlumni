@@ -1,0 +1,42 @@
+{
+  "timestamp": "2025-11-23T02:11:42.754Z",
+  "audits": [
+    {
+      "name": "Framework Structure",
+      "script": "audit-framework.cjs",
+      "status": "WARN",
+      "exitCode": 1
+    },
+    {
+      "name": "Root Clutter",
+      "script": "audit-root-clutter.cjs",
+      "status": "PASS",
+      "exitCode": 0
+    },
+    {
+      "name": "File Organization",
+      "script": "audit-file-organization.cjs",
+      "status": "PASS",
+      "exitCode": 0
+    },
+    {
+      "name": "Code Quality",
+      "script": "audit-code-quality.cjs",
+      "status": "WARN",
+      "exitCode": 1
+    },
+    {
+      "name": "Documentation",
+      "script": "audit-documentation.cjs",
+      "status": "PASS",
+      "exitCode": 0
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 3,
+    "warned": 2,
+    "skipped": 0
+  },
+  "overallStatus": "MINOR ISSUES"
+}

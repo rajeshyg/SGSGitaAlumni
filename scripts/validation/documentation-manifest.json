@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-11-23T02:11:42.745Z",
+  "total": 223,
+  "issues": {
+    "forbiddenLocations": [
+      ".claude/commands/prime-api.md",
+      ".claude/commands/prime-auth.md",
+      ".claude/commands/prime-database.md",
+      ".claude/commands/prime-ui.md",
+      "scripts/README.md",
+      "src/lib/database/README.md"
+    ],
+    "missingReadme": [
+      "src",
+      "server",
+      "tests",
+      "docs"
+    ],
+    "stale": []
+  }
+}

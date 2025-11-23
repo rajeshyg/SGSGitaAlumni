@@ -1,0 +1,1020 @@
+{
+  "timestamp": "2025-11-23T02:11:42.515Z",
+  "summary": {
+    "largeFiles": 57,
+    "todoFiles": 13,
+    "totalTodos": 22,
+    "consoleLogs": 164,
+    "secrets": 16
+  },
+  "issues": {
+    "largeFiles": [
+      {
+        "file": "routes/postings.js",
+        "lines": 1362
+      },
+      {
+        "file": "server/services/chatService.js",
+        "lines": 1309
+      },
+      {
+        "file": "src/services/APIService.ts",
+        "lines": 1302
+      },
+      {
+        "file": "src/pages/CreatePostingPage.tsx",
+        "lines": 1155
+      },
+      {
+        "file": "routes/auth.js",
+        "lines": 1123
+      },
+      {
+        "file": "routes/invitations.js",
+        "lines": 1052
+      },
+      {
+        "file": "src/components/admin/InvitationSection.tsx",
+        "lines": 1015
+      },
+      {
+        "file": "tests/e2e/archive/posts-workflow.spec.ts",
+        "lines": 1014
+      },
+      {
+        "file": "src/lib/accessibility/AccessibilityCIAutomation.ts",
+        "lines": 931
+      },
+      {
+        "file": "scripts/validation/audit-framework.cjs",
+        "lines": 850
+      },
+      {
+        "file": "tests/e2e/archive/create-posting.spec.ts",
+        "lines": 845
+      },
+      {
+        "file": "src/services/OTPService.ts",
+        "lines": 835
+      },
+      {
+        "file": "routes/preferences.js",
+        "lines": 827
+      },
+      {
+        "file": "src/__tests__/integration/user-flows.test.tsx",
+        "lines": 821
+      },
+      {
+        "file": "scripts/validate-documentation-standards.js",
+        "lines": 804
+      },
+      {
+        "file": "routes/chat.js",
+        "lines": 793
+      },
+      {
+        "file": "server.js",
+        "lines": 758
+      },
+      {
+        "file": "src/components/debug/DraggableDebugPanel.tsx",
+        "lines": 753
+      },
+      {
+        "file": "server/routes/moderation-new.js",
+        "lines": 739
+      },
+      {
+        "file": "routes/otp.js",
+        "lines": 735
+      },
+      {
+        "file": "utils/emailService.js",
+        "lines": 725
+      },
+      {
+        "file": "src/components/chat/ChatWindow.tsx",
+        "lines": 694
+      },
+      {
+        "file": "routes/dashboard.js",
+        "lines": 687
+      },
+      {
+        "file": "src/lib/ai/RemediationOrchestrator.ts",
+        "lines": 682
+      },
+      {
+        "file": "tests/e2e/chat.spec.ts",
+        "lines": 630
+      },
+      {
+        "file": "src/pages/PreferencesPage.tsx",
+        "lines": 629
+      },
+      {
+        "file": "src/lib/performance/CapacityPlanningEngine.ts",
+        "lines": 620
+      },
+      {
+        "file": "src/components/security/SecurityDashboard.tsx",
+        "lines": 619
+      },
+      {
+        "file": "src/pages/PostingDetailPage.tsx",
+        "lines": 614
+      },
+      {
+        "file": "routes/users.js",
+        "lines": 610
+      },
+      {
+        "file": "src/services/InvitationService.ts",
+        "lines": 609
+      },
+      {
+        "file": "src/services/__tests__/OTPService.test.ts",
+        "lines": 608
+      },
+      {
+        "file": "src/lib/accessibility/MultiModalTestingEngine.ts",
+        "lines": 601
+      },
+      {
+        "file": "src/lib/performance/UserExperienceCorrelationEngine.ts",
+        "lines": 593
+      },
+      {
+        "file": "src/components/performance/PerformanceDashboard.tsx",
+        "lines": 589
+      },
+      {
+        "file": "src/components/dashboard/QualityDashboard.tsx",
+        "lines": 585
+      },
+      {
+        "file": "src/components/admin/UserEditor.tsx",
+        "lines": 582
+      },
+      {
+        "file": "src/pages/EditPostingPage.tsx",
+        "lines": 576
+      },
+      {
+        "file": "src/lib/accessibility/WCAGComplianceEngine.ts",
+        "lines": 567
+      },
+      {
+        "file": "src/lib/performance/AnomalyDetectionEngine.ts",
+        "lines": 559
+      },
+      {
+        "file": "src/lib/security/SecurityChaosEngine.ts",
+        "lines": 558
+      },
+      {
+        "file": "src/__tests__/InvitationSection.test.tsx",
+        "lines": 557
+      },
+      {
+        "file": "src/lib/performance/devops/PerformanceDevOpsIntegration.ts",
+        "lines": 545
+      },
+      {
+        "file": "tests/e2e/postings.spec.ts",
+        "lines": 541
+      },
+      {
+        "file": "src/contexts/AuthContext.tsx",
+        "lines": 531
+      },
+      {
+        "file": "src/lib/accessibility/InclusiveDesignMetricsEngine.ts",
+        "lines": 531
+      },
+      {
+        "file": "src/pages/OTPVerificationPage.tsx",
+        "lines": 529
+      },
+      {
+        "file": "src/pages/PreferencesPage-Enhanced.tsx",
+        "lines": 527
+      },
+      {
+        "file": "src/lib/ai/QualityIntelligenceEngine.ts",
+        "lines": 520
+      },
+      {
+        "file": "services/FamilyMemberService.js",
+        "lines": 519
+      },
+      {
+        "file": "src/lib/performance/devops/PerformanceGate.ts",
+        "lines": 518
+      },
+      {
+        "file": "routes/alumni.js",
+        "lines": 516
+      },
+      {
+        "file": "src/pages/MyPostingsPage.tsx",
+        "lines": 516
+      },
+      {
+        "file": "src/config/domainHierarchy.ts",
+        "lines": 515
+      },
+      {
+        "file": "src/lib/theme/configs.ts",
+        "lines": 511
+      },
+      {
+        "file": "src/lib/security/ComplianceAutomationEngine.ts",
+        "lines": 510
+      },
+      {
+        "file": "src/lib/accessibility/AssistiveTechnologyCompatibilityEngine.ts",
+        "lines": 503
+      }
+    ],
+    "todoComments": [
+      {
+        "file": "server.js",
+        "count": 4
+      },
+      {
+        "file": "routes/users.js",
+        "count": 3
+      },
+      {
+        "file": "routes/tags.js",
+        "count": 2
+      },
+      {
+        "file": "src/lib/auth/SMSOTPService.ts",
+        "count": 2
+      },
+      {
+        "file": "src/lib/utils/rateLimitHandler.ts",
+        "count": 2
+      },
+      {
+        "file": "vitest.config.ts",
+        "count": 2
+      },
+      {
+        "file": "routes/health.js",
+        "count": 1
+      },
+      {
+        "file": "server/routes/moderation-new.js",
+        "count": 1
+      },
+      {
+        "file": "src/components/dashboard/MemberDashboard.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/components/moderation/PostingQueueList.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/pages/AlumniDirectoryPage.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/pages/moderator/ModerationQueueHeader.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/services/EmailService.ts",
+        "count": 1
+      }
+    ],
+    "consoleLogs": [
+      {
+        "file": "scripts/validation/audit-framework.cjs",
+        "count": 179
+      },
+      {
+        "file": "scripts/archive/check/diagnose-db-performance.js",
+        "count": 74
+      },
+      {
+        "file": "migrations/fix-moderation-data-types.cjs",
+        "count": 58
+      },
+      {
+        "file": "routes/otp.js",
+        "count": 50
+      },
+      {
+        "file": "routes/postings.js",
+        "count": 50
+      },
+      {
+        "file": "scripts/archive/check/diagnose-moderation-500.js",
+        "count": 50
+      },
+      {
+        "file": "src/contexts/AuthContext.tsx",
+        "count": 49
+      },
+      {
+        "file": "scripts/debug/check-matching-issue.js",
+        "count": 48
+      },
+      {
+        "file": "scripts/database/populate-user-10026-preferences.js",
+        "count": 47
+      },
+      {
+        "file": "scripts/backfill-alumni-timestamps.js",
+        "count": 46
+      },
+      {
+        "file": "scripts/database/verify-and-populate-feed.js",
+        "count": 44
+      },
+      {
+        "file": "scripts/debug/explain-why-postings-match.js",
+        "count": 43
+      },
+      {
+        "file": "scripts/validation/audit-root-clutter.cjs",
+        "count": 42
+      },
+      {
+        "file": "scripts/database/verify-preferences-tables.js",
+        "count": 40
+      },
+      {
+        "file": "server.js",
+        "count": 40
+      },
+      {
+        "file": "scripts/database/run-expiry-migration.mjs",
+        "count": 39
+      },
+      {
+        "file": "scripts/archive/check/check-current-users.js",
+        "count": 38
+      },
+      {
+        "file": "scripts/link-family-members-by-email.js",
+        "count": 38
+      },
+      {
+        "file": "migrations/add-moderation-schema.cjs",
+        "count": 37
+      },
+      {
+        "file": "utils/emailService.js",
+        "count": 37
+      },
+      {
+        "file": "scripts/archive/check/verify-clean-state.js",
+        "count": 35
+      },
+      {
+        "file": "scripts/archive/create/create-fresh-invitation.js",
+        "count": 35
+      },
+      {
+        "file": "scripts/database/run-unique-group-chat-migration.js",
+        "count": 35
+      },
+      {
+        "file": "scripts/validation/audit-file-organization.cjs",
+        "count": 35
+      },
+      {
+        "file": "src/pages/LoginPage.tsx",
+        "count": 35
+      },
+      {
+        "file": "scripts/database/verify-family-schema.js",
+        "count": 34
+      },
+      {
+        "file": "scripts/validate-documentation-standards.js",
+        "count": 33
+      },
+      {
+        "file": "scripts/validation/audit-documentation.cjs",
+        "count": 33
+      },
+      {
+        "file": "scripts/archive/other/db-analysis.cjs",
+        "count": 32
+      },
+      {
+        "file": "scripts/database/populate-feed-from-postings.js",
+        "count": 32
+      },
+      {
+        "file": "routes/preferences.js",
+        "count": 30
+      },
+      {
+        "file": "scripts/database/migrate-existing-users-to-family.js",
+        "count": 30
+      },
+      {
+        "file": "scripts/database/setup-family-schema.js",
+        "count": 30
+      },
+      {
+        "file": "scripts/validation/audit-code-quality.cjs",
+        "count": 30
+      },
+      {
+        "file": "scripts/validation/run-full-audit.cjs",
+        "count": 30
+      },
+      {
+        "file": "migrations/add-moderation-schema.js",
+        "count": 28
+      },
+      {
+        "file": "scripts/archive/cleanup/cleanup-duplicate-otps.js",
+        "count": 28
+      },
+      {
+        "file": "scripts/archive/fix/fix-collation-ultimate.js",
+        "count": 28
+      },
+      {
+        "file": "scripts/archive/fix/fix-preferences-collation.js",
+        "count": 28
+      },
+      {
+        "file": "scripts/check-redundancy.js",
+        "count": 28
+      },
+      {
+        "file": "scripts/debug/check-matched-postings-detailed.js",
+        "count": 28
+      },
+      {
+        "file": "scripts/debug/check-prefs-parsing.js",
+        "count": 28
+      },
+      {
+        "file": "routes/users.js",
+        "count": 27
+      },
+      {
+        "file": "scripts/archive/cleanup/cleanup-old-invitations.js",
+        "count": 27
+      },
+      {
+        "file": "scripts/database/setup-dev-family-data.js",
+        "count": 27
+      },
+      {
+        "file": "src/components/chat/ChatWindow.tsx",
+        "count": 27
+      },
+      {
+        "file": "scripts/archive/fix/fix-app-users-collation.js",
+        "count": 26
+      },
+      {
+        "file": "scripts/check-integration-patterns.js",
+        "count": 26
+      },
+      {
+        "file": "scripts/archive/debug-migration.js",
+        "count": 25
+      },
+      {
+        "file": "scripts/database/add-education-domains.js",
+        "count": 24
+      },
+      {
+        "file": "scripts/archive/fix/fix-all-collations.js",
+        "count": 23
+      },
+      {
+        "file": "scripts/database/run-schema-corrections.js",
+        "count": 23
+      },
+      {
+        "file": "scripts/archive/check/investigate-db-schema.js",
+        "count": 22
+      },
+      {
+        "file": "scripts/archive/debug/debug-preferences.js",
+        "count": 22
+      },
+      {
+        "file": "scripts/database/run-step1-improvements.js",
+        "count": 22
+      },
+      {
+        "file": "scripts/check-documentation.js",
+        "count": 21
+      },
+      {
+        "file": "scripts/database/check-preferences-10025.js",
+        "count": 21
+      },
+      {
+        "file": "scripts/database/populate-posting-associations.js",
+        "count": 21
+      },
+      {
+        "file": "scripts/validation/cleanup-duplicates.cjs",
+        "count": 21
+      },
+      {
+        "file": "src/lib/socket/chatClient.ts",
+        "count": 21
+      },
+      {
+        "file": "src/services/APIService.ts",
+        "count": 21
+      },
+      {
+        "file": "routes/chat.js",
+        "count": 20
+      },
+      {
+        "file": "scripts/archive/check/check-invitation-token.js",
+        "count": 20
+      },
+      {
+        "file": "scripts/archive/check/check-postings-status-enum.js",
+        "count": 20
+      },
+      {
+        "file": "scripts/database/run-migration-simplify-chat.mjs",
+        "count": 20
+      },
+      {
+        "file": "scripts/debug/list-users.js",
+        "count": 20
+      },
+      {
+        "file": "routes/invitations.js",
+        "count": 19
+      },
+      {
+        "file": "scripts/archive/check/check-postings-expiry.mjs",
+        "count": 19
+      },
+      {
+        "file": "scripts/database/add-missing-columns.js",
+        "count": 19
+      },
+      {
+        "file": "scripts/detect-mock-data.js",
+        "count": 19
+      },
+      {
+        "file": "scripts/validation/validate-structure.cjs",
+        "count": 19
+      },
+      {
+        "file": "scripts/database/create-feed-tables-direct.js",
+        "count": 18
+      },
+      {
+        "file": "scripts/database/fix-user-profile-immediate.js",
+        "count": 18
+      },
+      {
+        "file": "scripts/database/run-schema-improvements.js",
+        "count": 18
+      },
+      {
+        "file": "server/socket/chatSocket.js",
+        "count": 18
+      },
+      {
+        "file": "src/pages/InvitationAcceptancePage.tsx",
+        "count": 18
+      },
+      {
+        "file": "src/pages/PreferencesPage.tsx",
+        "count": 18
+      },
+      {
+        "file": "scripts/archive/cleanup/cleanup-truncated-invitations.js",
+        "count": 17
+      },
+      {
+        "file": "scripts/database/migrate-sannidhi-sriharsha.js",
+        "count": 17
+      },
+      {
+        "file": "scripts/debug/set-user-preferences.js",
+        "count": 17
+      },
+      {
+        "file": "scripts/archive/fix/fix-invitations-after-cleanup.js",
+        "count": 16
+      },
+      {
+        "file": "scripts/database/check-admin-user.js",
+        "count": 16
+      },
+      {
+        "file": "scripts/debug/verify-api-vs-prefs.js",
+        "count": 16
+      },
+      {
+        "file": "scripts/archive/check/check-app-users-schema.js",
+        "count": 15
+      },
+      {
+        "file": "scripts/archive/check/check-otp-tokens.js",
+        "count": 15
+      },
+      {
+        "file": "scripts/archive/fix/fix-approved-postings.cjs",
+        "count": 15
+      },
+      {
+        "file": "scripts/database/check-migration-status.js",
+        "count": 15
+      },
+      {
+        "file": "src/pages/MyPostingsPage.tsx",
+        "count": 15
+      },
+      {
+        "file": "scripts/archive/fix/fix-existing-postings.cjs",
+        "count": 14
+      },
+      {
+        "file": "scripts/archive/fix/fix-moderation-collations.cjs",
+        "count": 14
+      },
+      {
+        "file": "scripts/database/debug-user-profile.js",
+        "count": 14
+      },
+      {
+        "file": "scripts/database/migrate-invitation-token-size.js",
+        "count": 14
+      },
+      {
+        "file": "scripts/add-account-columns.js",
+        "count": 13
+      },
+      {
+        "file": "scripts/archive/check/check-real-tokens.js",
+        "count": 13
+      },
+      {
+        "file": "scripts/database/check-posting-data.js",
+        "count": 13
+      },
+      {
+        "file": "scripts/database/create-posting-engagement-tables.js",
+        "count": 13
+      },
+      {
+        "file": "scripts/database/create-preferences-tables-direct.js",
+        "count": 13
+      },
+      {
+        "file": "scripts/database/run-add-archived-status-migration.js",
+        "count": 13
+      },
+      {
+        "file": "scripts/database/run-task-7-migrations.js",
+        "count": 13
+      },
+      {
+        "file": "scripts/deployment-validation.cjs",
+        "count": 13
+      },
+      {
+        "file": "scripts/archive/check/check-jayanthi-invitations.js",
+        "count": 12
+      },
+      {
+        "file": "scripts/archive/debug/debug-moderation-queue-collations.cjs",
+        "count": 12
+      },
+      {
+        "file": "routes/alumni.js",
+        "count": 11
+      },
+      {
+        "file": "scripts/archive/check/check-family-account-flags.js",
+        "count": 11
+      },
+      {
+        "file": "scripts/archive/check/check-refresh-collations.js",
+        "count": 11
+      },
+      {
+        "file": "scripts/archive/fix/fix-family-access-flags.js",
+        "count": 11
+      },
+      {
+        "file": "scripts/database/check-table-structure.js",
+        "count": 11
+      },
+      {
+        "file": "scripts/debug/find-relevant-domains.js",
+        "count": 11
+      },
+      {
+        "file": "server/routes/moderation-new.js",
+        "count": 11
+      },
+      {
+        "file": "scripts/database/add-expiry-constraint.mjs",
+        "count": 10
+      },
+      {
+        "file": "scripts/database/check-alumni-members.js",
+        "count": 10
+      },
+      {
+        "file": "scripts/database/check-raw-data-format.js",
+        "count": 10
+      },
+      {
+        "file": "scripts/database/execute-schema.js",
+        "count": 10
+      },
+      {
+        "file": "src/components/family/FamilyProfileSelector.tsx",
+        "count": 10
+      },
+      {
+        "file": "src/pages/OTPVerificationPage.tsx",
+        "count": 10
+      },
+      {
+        "file": "src/services/OTPService.ts",
+        "count": 10
+      },
+      {
+        "file": "src/services/StreamlinedRegistrationService.ts",
+        "count": 10
+      },
+      {
+        "file": "routes/monitoring.js",
+        "count": 9
+      },
+      {
+        "file": "routes/quality.js",
+        "count": 9
+      },
+      {
+        "file": "routes/tags.js",
+        "count": 9
+      },
+      {
+        "file": "scripts/archive/check/check-moderation-columns.js",
+        "count": 9
+      },
+      {
+        "file": "scripts/database/create-admin.js",
+        "count": 9
+      },
+      {
+        "file": "scripts/database/run-add-is-group-migration.js",
+        "count": 9
+      },
+      {
+        "file": "scripts/debug/check-which-match.js",
+        "count": 9
+      },
+      {
+        "file": "scripts/debug/show-posting-content.js",
+        "count": 9
+      },
+      {
+        "file": "src/lib/api.ts",
+        "count": 9
+      },
+      {
+        "file": "src/lib/encryption/migration/DataMigrationService.ts",
+        "count": 9
+      },
+      {
+        "file": "src/lib/security/SecureAPIClient.ts",
+        "count": 9
+      },
+      {
+        "file": "src/pages/ProfileSelectionPage.tsx",
+        "count": 9
+      },
+      {
+        "file": "routes/domains.js",
+        "count": 8
+      },
+      {
+        "file": "scripts/archive/check/check-all-family-accounts.js",
+        "count": 8
+      },
+      {
+        "file": "scripts/archive/check/check-posting-relationships.js",
+        "count": 8
+      },
+      {
+        "file": "scripts/archive/list-unused-invitations.js",
+        "count": 8
+      },
+      {
+        "file": "scripts/database/check-app-users.js",
+        "count": 8
+      },
+      {
+        "file": "scripts/database/check-migration-audit.js",
+        "count": 8
+      },
+      {
+        "file": "scripts/database/verify-coppa-tables.js",
+        "count": 8
+      },
+      {
+        "file": "scripts/validate-theme-compliance.js",
+        "count": 8
+      },
+      {
+        "file": "services/FamilyMemberService.js",
+        "count": 8
+      },
+      {
+        "file": "src/lib/accessibility/AccessibilityCIAutomation.ts",
+        "count": 8
+      },
+      {
+        "file": "src/lib/monitoring/alerting.ts",
+        "count": 8
+      },
+      {
+        "file": "src/pages/DashboardPage.tsx",
+        "count": 8
+      },
+      {
+        "file": "utils/logger.js",
+        "count": 8
+      },
+      {
+        "file": "scripts/archive/check/show-family-members-structure.js",
+        "count": 7
+      },
+      {
+        "file": "scripts/debug/find-all-with-user-domains.js",
+        "count": 7
+      },
+      {
+        "file": "scripts/run-add-missing-columns.js",
+        "count": 7
+      },
+      {
+        "file": "server/middleware/errorHandler.js",
+        "count": 7
+      },
+      {
+        "file": "utils/database.js",
+        "count": 7
+      },
+      {
+        "file": "utils/domainValidation.js",
+        "count": 7
+      },
+      {
+        "file": "middleware/rateLimit.js",
+        "count": 6
+      },
+      {
+        "file": "routes/email.js",
+        "count": 6
+      },
+      {
+        "file": "scripts/archive/check/check-duplicate-jayanthi.js",
+        "count": 6
+      },
+      {
+        "file": "scripts/archive/check/check-family-members-structure.cjs",
+        "count": 6
+      },
+      {
+        "file": "scripts/archive/check/check-tables.js",
+        "count": 6
+      },
+      {
+        "file": "scripts/archive/check/check-tables.mjs",
+        "count": 6
+      },
+      {
+        "file": "scripts/archive/check-table-structure-stale-20240930.js",
+        "count": 6
+      },
+      {
+        "file": "scripts/database/check-foreign-keys.js",
+        "count": 6
+      },
+      {
+        "file": "scripts/database/run-migration.js",
+        "count": 6
+      },
+      {
+        "file": "scripts/debug/check-raw-prefs.js",
+        "count": 6
+      },
+      {
+        "file": "server/services/moderationNotification.js",
+        "count": 6
+      },
+      {
+        "file": "src/components/debug/DraggableDebugPanel.tsx",
+        "count": 6
+      },
+      {
+        "file": "src/components/moderation/useModerationActions.ts",
+        "count": 6
+      },
+      {
+        "file": "src/lib/development-guards.ts",
+        "count": 6
+      },
+      {
+        "file": "src/lib/security/index.js",
+        "count": 6
+      },
+      {
+        "file": "src/pages/PostingDetailPage.tsx",
+        "count": 6
+      }
+    ],
+    "hardcodedSecrets": [
+      {
+        "file": "scripts/archive/create/create-test-refresh-user.js",
+        "matches": 1
+      },
+      {
+        "file": "scripts/archive/create/reset-test-passwords.js",
+        "matches": 1
+      },
+      {
+        "file": "scripts/archive/test/test-chat-conversation-fix.js",
+        "matches": 1
+      },
+      {
+        "file": "scripts/archive/test/test-refresh-simple.js",
+        "matches": 1
+      },
+      {
+        "file": "scripts/archive/test-bcrypt.js",
+        "matches": 1
+      },
+      {
+        "file": "scripts/archive/test-exact-login-flow.js",
+        "matches": 1
+      },
+      {
+        "file": "scripts/archive/test-login-endpoint.js",
+        "matches": 1
+      },
+      {
+        "file": "scripts/archive/test-real-user-login.js",
+        "matches": 1
+      },
+      {
+        "file": "scripts/database/create-admin.js",
+        "matches": 1
+      },
+      {
+        "file": "src/lib/auth/__tests__/TOTPService.test.ts",
+        "matches": 13
+      },
+      {
+        "file": "src/lib/auth/errorHandling.ts",
+        "matches": 1
+      },
+      {
+        "file": "src/lib/security/__tests__/TokenSecretManager.test.ts",
+        "matches": 1
+      },
+      {
+        "file": "src/pages/LoginPage.tsx",
+        "matches": 2
+      },
+      {
+        "file": "src/pages/ResetPasswordPage.tsx",
+        "matches": 2
+      },
+      {
+        "file": "src/test/setup.ts",
+        "matches": 1
+      },
+      {
+        "file": "tests/setup/api-test-setup.ts",
+        "matches": 1
+      }
+    ]
+  }
+}

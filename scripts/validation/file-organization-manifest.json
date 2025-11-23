@@ -1,0 +1,32 @@
+{
+  "timestamp": "2025-11-23T02:11:42.128Z",
+  "total": 17,
+  "issues": {
+    "backup": [
+      "scripts/archive/cleanup/cleanup-old-invitations.js",
+      "scripts/archive/cleanup/clear-old-otp-tokens.js",
+      "src/lib/security/RedisRateLimiter.ts.backup",
+      "src/lib/security/index.js.stub-backup",
+      "src/lib/security/index.ts.backup",
+      "src/pages/PreferencesPage-CardVersion.tsx.bak",
+      "src/pages/PreferencesPage-Old.tsx.bak"
+    ],
+    "duplicate": [
+      "docs/archive/progress/progress/phase-6/task-6.6.3-final-validation.md",
+      "docs/archive/progress/progress/phase-6/task-6.6.4-final-reporting.md",
+      "scripts/archive/test/test-fixed-moderation-query.js",
+      "scripts/archive/test/test-new-moderation-api.cjs",
+      "scripts/database/test-updated-apis.js",
+      "scripts/debug/test-new-matching-logic.js",
+      "server/routes/moderation-new.js"
+    ],
+    "empty": [
+      "tests/e2e/archive/posts-chat-integration.spec.ts"
+    ],
+    "temp": [],
+    "stub": [
+      "src/schemas/validation/index.js",
+      "src/utils/logger.js"
+    ]
+  }
+}
