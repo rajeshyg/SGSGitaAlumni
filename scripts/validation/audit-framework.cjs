@@ -869,14 +869,55 @@ functionalSpecs.forEach(specFile => {
     d.toLowerCase().includes(featureName.toLowerCase())
   ) || '';
 
+  // Extract sub-features from ## Features section
+  const subFeatures = [];
+  const featuresMatch = content.match(/## Features\s*\n([\s\S]*?)(?=\n## |$)/);
+  if (featuresMatch) {
+    const featuresContent = featuresMatch[1];
+    const subFeatureMatches = featuresContent.matchAll(/### \d+\.\s+(.+?)\n\*\*Status\*\*:\s*(.+?)(?:\n|$)/g);
+    for (const match of subFeatureMatches) {
+      subFeatures.push({
+        name: match[1].trim(),
+        status: match[2].trim().toLowerCase()
+      });
+    }
+  }
+
   matrixData.push({
     feature: featureName,
     spec: `docs/specs/functional/${specFile}`,
     status,
     test: testFile,
     diagram,
-    components: implLinks.slice(0, 3)
+    components: implLinks.slice(0, 3),
+    subFeatures
   });
+});
+
+// Extract technical spec tasks
+const technicalTasks = [];
+technicalSpecs.forEach(specFile => {
+  const content = readFile(`docs/specs/technical/${specFile}`);
+  if (!content) return;
+
+  const specName = specFile.replace('.md', '');
+  const tasks = [];
+
+  // Extract implementation status items
+  const statusMatches = content.matchAll(/### \d+\.\s+(.+?)\n\*\*Status\*\*:\s*(.+?)(?:\n|$)/g);
+  for (const match of statusMatches) {
+    tasks.push({
+      name: match[1].trim(),
+      status: match[2].trim().toLowerCase()
+    });
+  }
+
+  if (tasks.length > 0) {
+    technicalTasks.push({
+      spec: specName,
+      tasks
+    });
+  }
 });
 
 // Generate FEATURE_MATRIX.md
@@ -957,7 +998,9 @@ const statusJson = {
     total: matrixData.length,
     implemented: statusSummary.implemented.length,
     inProgress: statusSummary['in-progress'].length,
-    pending: statusSummary.pending.length
+    pending: statusSummary.pending.length,
+    totalSubFeatures: matrixData.reduce((sum, f) => sum + f.subFeatures.length, 0),
+    totalTechnicalTasks: technicalTasks.reduce((sum, t) => sum + t.tasks.length, 0)
   },
   features: matrixData.map(f => ({
     id: f.feature.toUpperCase().replace(/-/g, '_'),
@@ -966,8 +1009,10 @@ const statusJson = {
     spec: f.spec,
     test: f.test,
     diagram: f.diagram,
-    components: f.components
-  }))
+    components: f.components,
+    subFeatures: f.subFeatures
+  })),
+  technicalTasks
 };
 
 const statusJsonPath = path.join(ROOT, 'scripts/validation/feature-status.json');

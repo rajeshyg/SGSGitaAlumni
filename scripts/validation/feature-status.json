@@ -1,10 +1,12 @@
 {
-  "generated": "2025-11-23T03:45:25.891Z",
+  "generated": "2025-11-23T04:43:14.400Z",
   "summary": {
     "total": 9,
     "implemented": 5,
     "inProgress": 2,
-    "pending": 2
+    "pending": 2,
+    "totalSubFeatures": 35,
+    "totalTechnicalTasks": 36
   },
   "features": [
     {
@@ -18,6 +20,24 @@
         "routes/auth.js",
         "routes/otp.js",
         "routes/invitations.js"
+      ],
+      "subFeatures": [
+        {
+          "name": "Login & Registration",
+          "status": "complete"
+        },
+        {
+          "name": "Family Accounts",
+          "status": "complete"
+        },
+        {
+          "name": "Age Verification",
+          "status": "in progress"
+        },
+        {
+          "name": "Password Reset",
+          "status": "pending"
+        }
       ]
     },
     {
@@ -30,6 +50,28 @@
       "components": [
         "routes/users.js",
         "routes/preferences.js"
+      ],
+      "subFeatures": [
+        {
+          "name": "Alumni Profiles",
+          "status": "in progress"
+        },
+        {
+          "name": "Profile Selection",
+          "status": "complete"
+        },
+        {
+          "name": "User Preferences",
+          "status": "in progress"
+        },
+        {
+          "name": "Matching Posts",
+          "status": "complete"
+        },
+        {
+          "name": "Profile Pictures & Extended Attributes",
+          "status": "pending"
+        }
       ]
     },
     {
@@ -42,6 +84,24 @@
       "components": [
         "routes/directory.js",
         "routes/alumni.js"
+      ],
+      "subFeatures": [
+        {
+          "name": "Alumni Directory",
+          "status": "complete"
+        },
+        {
+          "name": "Advanced Search",
+          "status": "complete"
+        },
+        {
+          "name": "Profile Cards",
+          "status": "complete"
+        },
+        {
+          "name": "Enhanced Directory",
+          "status": "pending (enhancement)"
+        }
       ]
     },
     {
@@ -55,6 +115,28 @@
         "routes/postings.js",
         "routes/moderation.js",
         "server/services/postingService.js"
+      ],
+      "subFeatures": [
+        {
+          "name": "Job Postings",
+          "status": "complete"
+        },
+        {
+          "name": "Domain Taxonomy",
+          "status": "in progress"
+        },
+        {
+          "name": "Posting Engagement",
+          "status": "in progress"
+        },
+        {
+          "name": "Posting Expiry Logic",
+          "status": "in progress (high priority)"
+        },
+        {
+          "name": "Chat Integration with Posts",
+          "status": "in progress"
+        }
       ]
     },
     {
@@ -68,6 +150,28 @@
         "routes/chat.js",
         "server/services/chatService.js",
         "socket/chatSocket.js"
+      ],
+      "subFeatures": [
+        {
+          "name": "Basic Chat",
+          "status": "complete"
+        },
+        {
+          "name": "Real-time Chat",
+          "status": "complete"
+        },
+        {
+          "name": "Post-Linked Chats",
+          "status": "complete"
+        },
+        {
+          "name": "Message Features",
+          "status": "complete"
+        },
+        {
+          "name": "Chat-Post Integration",
+          "status": "in progress"
+        }
       ]
     },
     {
@@ -80,6 +184,20 @@
       "components": [
         "routes/dashboard.js",
         "routes/feed.js"
+      ],
+      "subFeatures": [
+        {
+          "name": "Member Dashboard",
+          "status": "complete"
+        },
+        {
+          "name": "Feed Integration",
+          "status": "complete"
+        },
+        {
+          "name": "Dashboard Widgets",
+          "status": "complete"
+        }
       ]
     },
     {
@@ -92,6 +210,24 @@
       "components": [
         "routes/moderation.js",
         "server/services/moderationService.js"
+      ],
+      "subFeatures": [
+        {
+          "name": "Content Moderation",
+          "status": "complete"
+        },
+        {
+          "name": "Moderator Review System",
+          "status": "complete"
+        },
+        {
+          "name": "Admin Tools",
+          "status": "complete"
+        },
+        {
+          "name": "Reporting System",
+          "status": "pending (future)"
+        }
       ]
     },
     {
@@ -101,7 +237,21 @@
       "spec": "docs/specs/functional/notifications.md",
       "test": "",
       "diagram": "",
-      "components": []
+      "components": [],
+      "subFeatures": [
+        {
+          "name": "Email Notifications",
+          "status": "pending"
+        },
+        {
+          "name": "In-App Notifications",
+          "status": "pending"
+        },
+        {
+          "name": "Push Notifications",
+          "status": "pending (low priority)"
+        }
+      ]
     },
     {
       "id": "RATING",
@@ -110,7 +260,203 @@
       "spec": "docs/specs/functional/rating.md",
       "test": "",
       "diagram": "",
-      "components": []
+      "components": [],
+      "subFeatures": [
+        {
+          "name": "Rating Structure",
+          "status": "pending"
+        },
+        {
+          "name": "Contribution Tracking",
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "technicalTasks": [
+    {
+      "spec": "api-standards",
+      "tasks": [
+        {
+          "name": "Rate Limiting",
+          "status": "complete"
+        },
+        {
+          "name": "Standardized Error Responses",
+          "status": "pending (high priority)"
+        },
+        {
+          "name": "Request Validation",
+          "status": "complete"
+        }
+      ]
+    },
+    {
+      "spec": "error-handling",
+      "tasks": [
+        {
+          "name": "Error Boundaries (Frontend)",
+          "status": "pending (high priority)"
+        },
+        {
+          "name": "Backend Error Handling",
+          "status": "in progress"
+        },
+        {
+          "name": "Database Error Handling",
+          "status": "in progress"
+        },
+        {
+          "name": "Structured Logging",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "spec": "database",
+      "tasks": [
+        {
+          "name": "Database Indexes",
+          "status": "pending"
+        },
+        {
+          "name": "Connection Pool Management",
+          "status": "in progress"
+        },
+        {
+          "name": "Query Optimization",
+          "status": "in progress"
+        },
+        {
+          "name": "SQL Injection Prevention",
+          "status": "high priority"
+        }
+      ]
+    },
+    {
+      "spec": "testing",
+      "tasks": [
+        {
+          "name": "Unit Tests",
+          "status": "in progress (low priority for mvp)"
+        },
+        {
+          "name": "Integration Tests",
+          "status": "pending"
+        },
+        {
+          "name": "E2E Tests",
+          "status": "pending"
+        },
+        {
+          "name": "Test Data Management",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "spec": "deployment",
+      "tasks": [
+        {
+          "name": "Deployment Setup",
+          "status": "pending (high priority)"
+        },
+        {
+          "name": "CI/CD Pipeline",
+          "status": "pending"
+        },
+        {
+          "name": "Monitoring & Alerting",
+          "status": "pending"
+        },
+        {
+          "name": "Pilot User Testing",
+          "status": "pending (high priority)"
+        },
+        {
+          "name": "Backup & Recovery",
+          "status": "pending"
+        }
+      ]
+    },
+    {
+      "spec": "ui-standards",
+      "tasks": [
+        {
+          "name": "Theme System",
+          "status": "complete"
+        },
+        {
+          "name": "Responsive Design",
+          "status": "complete"
+        },
+        {
+          "name": "Accessibility",
+          "status": "complete"
+        },
+        {
+          "name": "Component Patterns",
+          "status": "complete"
+        }
+      ]
+    },
+    {
+      "spec": "code-standards",
+      "tasks": [
+        {
+          "name": "TypeScript Standards",
+          "status": "complete (frontend)"
+        },
+        {
+          "name": "Code Style",
+          "status": "complete"
+        },
+        {
+          "name": "Naming Conventions",
+          "status": "complete"
+        },
+        {
+          "name": "File Organization",
+          "status": "complete"
+        },
+        {
+          "name": "Import Order",
+          "status": "complete"
+        },
+        {
+          "name": "Backend Standards",
+          "status": "in progress"
+        }
+      ]
+    },
+    {
+      "spec": "security",
+      "tasks": [
+        {
+          "name": "Authentication",
+          "status": "complete"
+        },
+        {
+          "name": "Authorization",
+          "status": "complete"
+        },
+        {
+          "name": "Input Validation",
+          "status": "complete"
+        },
+        {
+          "name": "Rate Limiting",
+          "status": "complete"
+        },
+        {
+          "name": "HTTPS & Headers",
+          "status": "complete"
+        },
+        {
+          "name": "Data Protection",
+          "status": "partial"
+        }
+      ]
     }
   ]
 }
