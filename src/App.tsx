@@ -1,3 +1,4 @@
+import StatusDashboard from './components/admin/StatusDashboard';
 import { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import ThemeProvider from './lib/theme/provider'
@@ -240,6 +241,13 @@ function App() {
                 } />
 
                 {/* Admin routes */}
+                <Route path="/admin/status" element={
+                  <ErrorBoundary level="page">
+                    <AdminRoute>
+                      <StatusDashboard />
+                    </AdminRoute>
+                  </ErrorBoundary>
+                } />
                 <Route path="/admin" element={
                   <ErrorBoundary level="page">
                     <AdminRoute>
@@ -252,6 +260,13 @@ function App() {
                     <AdminRoute>
                       <AdminPage />
                     </AdminRoute>
+                <Route path="/admin/status" element={
+                  <ErrorBoundary level="page">
+                    <AdminRoute>
+                      <StatusDashboard />
+                    </AdminRoute>
+                  </ErrorBoundary>
+                } />
                   </ErrorBoundary>
                 } />
 

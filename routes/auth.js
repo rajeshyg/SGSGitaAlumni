@@ -115,6 +115,8 @@ export const authenticateToken = async (req, res, next) => {
 
 // User login
 export const login = asyncHandler(async (req, res) => {
+  let user;
+
   const clientIP = req.ip || req.connection.remoteAddress || 'unknown';
   const userAgent = req.headers['user-agent'] || 'unknown';
   const isMobile = /mobile|android|iphone|ipad|ipod/i.test(userAgent);
@@ -189,7 +191,7 @@ export const login = asyncHandler(async (req, res) => {
       throw AuthError.invalidCredentials();
     }
 
-    const user = rows[0];
+    user = rows[0];
     logger.debug('Login: User record retrieved');
 
     // Check if user is active
@@ -496,7 +498,7 @@ export const verifyAuth = asyncHandler(async (req, res) => {
       });
     }
 
-    const user = rows[0];
+    user = rows[0];
     logger.debug('Auth verification successful');
 
     return res.json({
@@ -570,7 +572,7 @@ export const refresh = asyncHandler(async (req, res, next) => {
         return next(AuthError.sessionExpired());
       }
 
-      const user = rows[0];
+      user = rows[0];
 
       // Generate new tokens with family member context
       const tokenPayload = {

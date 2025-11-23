@@ -649,6 +649,28 @@ try {
   // Continue without Redis - middleware will handle gracefully
 }
 
+
+// ============================================================================
+// FEATURE STATUS DASHBOARD API
+// ============================================================================
+app.get('/api/feature-status', authenticateToken, (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const statusPath = path.join(process.cwd(), 'scripts/validation/feature-status.json');
+    
+    if (!fs.existsSync(statusPath)) {
+      return res.status(404).json({ error: 'Status report not found. Run: node scripts/validation/audit-framework.cjs' });
+    }
+    
+    const statusData = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+    res.json(statusData);
+  } catch (err) {
+    console.error('Error reading status:', err);
+    res.status(500).json({ error: 'Failed to read status' });
+  }
+});
+
 const server = app.listen(PORT, '0.0.0.0', async () => {
   try {
     // Get actual network IP

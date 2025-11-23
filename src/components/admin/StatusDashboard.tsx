@@ -1,3 +1,4 @@
+import { APIService } from '../../services/APIService';
 import React, { useState, useEffect } from 'react';
 
 interface SubFeature {
@@ -44,13 +45,8 @@ const StatusDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/feature-status')
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch status');
-        return res.json();
-      })
-      .then(setData)
-      .catch(err => setError(err.message))
+    APIService.request('GET', '/api/feature-status', {})
+      setData(response);
       .finally(() => setLoading(false));
   }, []);
 
