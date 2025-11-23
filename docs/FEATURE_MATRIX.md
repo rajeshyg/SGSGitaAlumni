@@ -13,7 +13,7 @@ This matrix links each feature to its specification, tests, diagrams, and implem
 | authentication | implemented | [spec](docs/specs/functional/authentication.md) | [test](tests/e2e/auth.spec.ts) | ❌ | routes/auth.js, routes/otp.js |
 | user-management | in-progress | [spec](docs/specs/functional/user-management.md) | ❌ | ❌ | routes/users.js, routes/preferences.js |
 | directory | implemented | [spec](docs/specs/functional/directory.md) | ❌ | ❌ | routes/directory.js, routes/alumni.js |
-| postings | in-progress | [spec](docs/specs/functional/postings.md) | [test](tests/e2e/postings.spec.ts) | [diagram](docs\archive\design\postings.mmd) | routes/postings.js, routes/moderation.js |
+| postings | in-progress | [spec](docs/specs/functional/postings.md) | [test](tests/e2e/postings.spec.ts) | [diagram](docs/archive/design/postings.mmd) | routes/postings.js, routes/moderation.js |
 | messaging | implemented | [spec](docs/specs/functional/messaging.md) | [test](tests/e2e/chat.spec.ts) | ❌ | routes/chat.js, server/services/chatService.js |
 | dashboard | implemented | [spec](docs/specs/functional/dashboard.md) | [test](tests/e2e/dashboard.spec.ts) | ❌ | routes/dashboard.js, routes/feed.js |
 | moderation | implemented | [spec](docs/specs/functional/moderation.md) | ❌ | ❌ | routes/moderation.js, server/services/moderationService.js |
