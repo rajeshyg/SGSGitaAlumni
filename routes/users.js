@@ -304,6 +304,7 @@ export const searchUsers = async (req, res) => {
       console.log('🔎 API: Search query added for:', trimmedQ);
     }
 
+    const limitNum = parseInt(limit) || 50;
     const searchQuery = `
       SELECT
         u.id,
@@ -320,10 +321,9 @@ export const searchUsers = async (req, res) => {
       FROM app_users u
       ${whereClause}
       ORDER BY COALESCE(u.last_name, 'Unknown'), COALESCE(u.first_name, 'Unknown')
-      LIMIT ?
+      LIMIT ${limitNum}
     `;
 
-    queryParams.push(parseInt(limit));
     console.log('⚡ API: Final search query:', searchQuery);
     console.log('🎯 API: Query parameters:', queryParams);
 

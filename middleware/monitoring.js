@@ -3,7 +3,7 @@
 // ============================================================================
 // Middleware for tracking requests, responses, and performance metrics
 
-import { serverMonitoring } from '../src/lib/monitoring/server.js';
+import { serverMonitoring } from '../src/lib/monitoring/server.ts';
 
 const logger = {
   info: (message, data) => console.log(`[Monitoring-Middleware] [INFO] ${message}`, data || ''),

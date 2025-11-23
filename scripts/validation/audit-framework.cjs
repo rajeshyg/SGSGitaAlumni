@@ -903,8 +903,10 @@ technicalSpecs.forEach(specFile => {
   const specName = specFile.replace('.md', '');
   const tasks = [];
 
-  // Extract implementation status items
-  const statusMatches = content.matchAll(/### \d+\.\s+(.+?)\n\*\*Status\*\*:\s*(.+?)(?:\n|$)/g);
+  // Extract implementation status items - match both patterns:
+  // Pattern 1: ### 1. Title\n**Status**: Complete
+  // Pattern 2: ### 1. Title\n\n**Status**: Complete
+  const statusMatches = content.matchAll(/### \d+\.\s+(.+?)\n+\*\*Status\*\*:\s*(.+?)(?:\n|$)/gs);
   for (const match of statusMatches) {
     tasks.push({
       name: match[1].trim(),

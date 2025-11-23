@@ -40,6 +40,9 @@ Node.js 18+, Express, MySQL2, React 18, TypeScript, Socket.IO, JWT
 
 ## File Locations
 - Specs: `docs/specs/functional/` and `docs/specs/technical/`
+- Context Layers: `docs/specs/context/layer-*.md` (load as needed)
+- Standards: `docs/archive/standards/` (quality, performance, security)
+- Architecture: `docs/archive/root-docs/ARCHITECTURE.md`
 - Routes: `routes/` (backend API)
 - Services: `server/services/`
 - E2E Tests: `tests/e2e/` (one per module)

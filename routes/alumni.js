@@ -163,9 +163,8 @@ export const getAlumniDirectory = async (req, res) => {
       FROM alumni_members am
       ${whereClause}
       ${orderByClause}
-      LIMIT ? OFFSET ?
+      LIMIT ${perPageNum} OFFSET ${offset}
     `;
-    queryParams.push(perPageNum, offset);
     const [dataRows] = await connection.execute(dataQuery, queryParams);
 
     // Get filter options (available years and departments)

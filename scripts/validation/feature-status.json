@@ -1,11 +1,11 @@
 {
-  "generated": "2025-11-23T12:22:08.146Z",
+  "generated": "2025-11-23T15:55:44.671Z",
   "summary": {
     "total": 9,
     "implemented": 5,
     "inProgress": 2,
     "pending": 2,
-    "totalSubFeatures": 35,
+    "totalSubFeatures": 0,
     "totalTechnicalTasks": 36
   },
   "features": [
@@ -21,24 +21,7 @@
         "routes/otp.js",
         "routes/invitations.js"
       ],
-      "subFeatures": [
-        {
-          "name": "Login & Registration",
-          "status": "complete"
-        },
-        {
-          "name": "Family Accounts",
-          "status": "complete"
-        },
-        {
-          "name": "Age Verification",
-          "status": "in progress"
-        },
-        {
-          "name": "Password Reset",
-          "status": "pending"
-        }
-      ]
+      "subFeatures": []
     },
     {
       "id": "USER_MANAGEMENT",
@@ -51,28 +34,7 @@
         "routes/users.js",
         "routes/preferences.js"
       ],
-      "subFeatures": [
-        {
-          "name": "Alumni Profiles",
-          "status": "in progress"
-        },
-        {
-          "name": "Profile Selection",
-          "status": "complete"
-        },
-        {
-          "name": "User Preferences",
-          "status": "in progress"
-        },
-        {
-          "name": "Matching Posts",
-          "status": "complete"
-        },
-        {
-          "name": "Profile Pictures & Extended Attributes",
-          "status": "pending"
-        }
-      ]
+      "subFeatures": []
     },
     {
       "id": "DIRECTORY",
@@ -85,24 +47,7 @@
         "routes/directory.js",
         "routes/alumni.js"
       ],
-      "subFeatures": [
-        {
-          "name": "Alumni Directory",
-          "status": "complete"
-        },
-        {
-          "name": "Advanced Search",
-          "status": "complete"
-        },
-        {
-          "name": "Profile Cards",
-          "status": "complete"
-        },
-        {
-          "name": "Enhanced Directory",
-          "status": "pending (enhancement)"
-        }
-      ]
+      "subFeatures": []
     },
     {
       "id": "POSTINGS",
@@ -110,34 +55,13 @@
       "status": "in-progress",
       "spec": "docs/specs/functional/postings.md",
       "test": "tests/e2e/postings.spec.ts",
-      "diagram": "docs/archive/design/postings.mmd",
+      "diagram": "docs\\archive\\design\\postings.mmd",
       "components": [
         "routes/postings.js",
         "routes/moderation.js",
         "server/services/postingService.js"
       ],
-      "subFeatures": [
-        {
-          "name": "Job Postings",
-          "status": "complete"
-        },
-        {
-          "name": "Domain Taxonomy",
-          "status": "in progress"
-        },
-        {
-          "name": "Posting Engagement",
-          "status": "in progress"
-        },
-        {
-          "name": "Posting Expiry Logic",
-          "status": "in progress (high priority)"
-        },
-        {
-          "name": "Chat Integration with Posts",
-          "status": "in progress"
-        }
-      ]
+      "subFeatures": []
     },
     {
       "id": "MESSAGING",
@@ -151,28 +75,7 @@
         "server/services/chatService.js",
         "socket/chatSocket.js"
       ],
-      "subFeatures": [
-        {
-          "name": "Basic Chat",
-          "status": "complete"
-        },
-        {
-          "name": "Real-time Chat",
-          "status": "complete"
-        },
-        {
-          "name": "Post-Linked Chats",
-          "status": "complete"
-        },
-        {
-          "name": "Message Features",
-          "status": "complete"
-        },
-        {
-          "name": "Chat-Post Integration",
-          "status": "in progress"
-        }
-      ]
+      "subFeatures": []
     },
     {
       "id": "DASHBOARD",
@@ -185,20 +88,7 @@
         "routes/dashboard.js",
         "routes/feed.js"
       ],
-      "subFeatures": [
-        {
-          "name": "Member Dashboard",
-          "status": "complete"
-        },
-        {
-          "name": "Feed Integration",
-          "status": "complete"
-        },
-        {
-          "name": "Dashboard Widgets",
-          "status": "complete"
-        }
-      ]
+      "subFeatures": []
     },
     {
       "id": "MODERATION",
@@ -211,24 +101,7 @@
         "routes/moderation.js",
         "server/services/moderationService.js"
       ],
-      "subFeatures": [
-        {
-          "name": "Content Moderation",
-          "status": "complete"
-        },
-        {
-          "name": "Moderator Review System",
-          "status": "complete"
-        },
-        {
-          "name": "Admin Tools",
-          "status": "complete"
-        },
-        {
-          "name": "Reporting System",
-          "status": "pending (future)"
-        }
-      ]
+      "subFeatures": []
     },
     {
       "id": "NOTIFICATIONS",
@@ -238,20 +111,7 @@
       "test": "",
       "diagram": "",
       "components": [],
-      "subFeatures": [
-        {
-          "name": "Email Notifications",
-          "status": "pending"
-        },
-        {
-          "name": "In-App Notifications",
-          "status": "pending"
-        },
-        {
-          "name": "Push Notifications",
-          "status": "pending (low priority)"
-        }
-      ]
+      "subFeatures": []
     },
     {
       "id": "RATING",
@@ -261,16 +121,7 @@
       "test": "",
       "diagram": "",
       "components": [],
-      "subFeatures": [
-        {
-          "name": "Rating Structure",
-          "status": "pending"
-        },
-        {
-          "name": "Contribution Tracking",
-          "status": "pending"
-        }
-      ]
+      "subFeatures": []
     }
   ],
   "technicalTasks": [

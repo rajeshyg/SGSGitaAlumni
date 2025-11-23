@@ -93,10 +93,7 @@ src/
 - Magic number extraction
 
 ## Quality Metrics
-- Test coverage: 80% minimum
-- No ESLint errors
-- No TypeScript errors
-- Bundle size < 500KB (gzipped)
+See [Quality Metrics](../../archive/standards/QUALITY_METRICS.md) for detailed standards.
 
 ## Archived Guidelines
 Historical reference: `docs/archive/guidelines/DEVELOPMENT_GUIDELINES.md`, `QUALITY_STANDARDS.md`

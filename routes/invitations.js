@@ -41,7 +41,8 @@ export const getAllInvitations = asyncHandler(async (req, res) => {
     const total = countResult[0].total;
 
     // Get paginated regular invitations
-    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const pageSizeNum = parseInt(pageSize) || 20;
+    const offsetNum = (parseInt(page) - 1) * pageSizeNum;
     const dataQuery = `
       SELECT
         ui.*,
@@ -52,10 +53,9 @@ export const getAllInvitations = asyncHandler(async (req, res) => {
       LEFT JOIN app_users u ON ui.user_id = u.id
       ${whereClause}
       ORDER BY ui.created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${pageSizeNum} OFFSET ${offsetNum}
     `;
 
-    queryParams.push(parseInt(pageSize), offset);
     const [rows] = await connection.execute(dataQuery, queryParams);
     logger.info('Rows fetched from DB', { count: rows.length });
 
@@ -151,16 +151,16 @@ export const getFamilyInvitations = asyncHandler(async (req, res) => {
     const total = countResult[0].total;
 
     // Get paginated data
-    const offset = (parseInt(page) - 1) * parseInt(pageSize);
+    const pageSizeNum = parseInt(pageSize) || 20;
+    const offsetNum = (parseInt(page) - 1) * pageSizeNum;
     const dataQuery = `
       SELECT * FROM FAMILY_INVITATIONS
       ${whereClause}
       ORDER BY created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${pageSizeNum} OFFSET ${offsetNum}
     `;
 
-    const dataParams = [...queryParams, parseInt(pageSize), offset];
-    const [rows] = await connection.execute(dataQuery, dataParams);
+    const [rows] = await connection.execute(dataQuery, queryParams);
 
     // Transform data to match expected format
     const invitations = rows.map(row => {

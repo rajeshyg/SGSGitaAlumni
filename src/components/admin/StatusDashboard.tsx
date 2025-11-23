@@ -3,6 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
+import { TanStackAdvancedTable } from '../ui/tanstack-advanced-table';
+import { ColumnDef } from '@tanstack/react-table';
+import Badge from '../ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { ChevronDown, ChevronRight, CheckCircle, XCircle } from 'lucide-react';
 
 interface SubFeature {
   name: string;
@@ -72,23 +77,33 @@ const StatusDashboard: React.FC = () => {
     });
   };
 
-  const getStatusClasses = (status: string) => {
+  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
     const s = status.toLowerCase();
     if (s.includes('complete') || s.includes('implement')) {
-      return 'bg-green-500/10 text-green-700 dark:text-green-400';
+      return 'default'; // green
     }
     if (s.includes('progress')) {
-      return 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400';
+      return 'secondary'; // yellow/amber
     }
-    return 'bg-destructive/10 text-destructive';
+    return 'destructive'; // red
   };
 
-  const getStatusDot = (status: string) => {
+  const getStatusIcon = (status: string) => {
     const s = status.toLowerCase();
-    if (s.includes('complete') || s.includes('implement')) return 'bg-green-500';
-    if (s.includes('progress')) return 'bg-yellow-500';
-    return 'bg-destructive';
+    if (s.includes('complete') || s.includes('implement')) return <CheckCircle className="h-3 w-3" />;
+    if (s.includes('progress')) return <div className="h-2 w-2 rounded-full bg-yellow-500" />;
+    return <XCircle className="h-3 w-3" />;
   };
+
+  const renderStatusBadge = (status: string) => (
+    <Badge variant={getStatusVariant(status)} className="text-xs">
+      {status}
+    </Badge>
+  );
+
+  const renderCheckIcon = (hasItem: boolean) => (
+    hasItem ? <CheckCircle className="h-4 w-4 text-green-600" /> : <XCircle className="h-4 w-4 text-destructive" />
+  );
 
   if (loading) {
     return (
@@ -142,6 +157,108 @@ const StatusDashboard: React.FC = () => {
     if (filter === 'pending') return !s.includes('implement') && !s.includes('complete') && !s.includes('progress');
     return true;
   });
+
+  // Column definitions for features table
+  const featureColumns: ColumnDef<Feature>[] = [
+    {
+      id: 'expand',
+      header: '',
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toggleFeature(row.original.id)}
+          className="h-6 w-6 p-0"
+        >
+          {expandedFeatures.has(row.original.id) ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </Button>
+      ),
+      size: 40,
+      enableSorting: false,
+    },
+    {
+      accessorKey: 'name',
+      header: 'Feature',
+      cell: ({ row }) => <strong>{row.original.name}</strong>,
+      size: 200,
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => renderStatusBadge(row.original.status),
+      size: 120,
+    },
+    {
+      accessorKey: 'test',
+      header: 'Test',
+      cell: ({ row }) => renderCheckIcon(!!row.original.test),
+      size: 80,
+    },
+    {
+      accessorKey: 'diagram',
+      header: 'Diagram',
+      cell: ({ row }) => renderCheckIcon(!!row.original.diagram),
+      size: 80,
+    },
+    {
+      id: 'subFeatures',
+      header: 'Sub-features',
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {row.original.subFeatures.length} items
+        </span>
+      ),
+      size: 120,
+    },
+  ];
+
+  // Column definitions for technical tasks table
+  const techColumns: ColumnDef<TechnicalTask>[] = [
+    {
+      id: 'expand',
+      header: '',
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => toggleTech(row.original.spec)}
+          className="h-6 w-6 p-0"
+        >
+          {expandedTech.has(row.original.spec) ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </Button>
+      ),
+      size: 40,
+      enableSorting: false,
+    },
+    {
+      accessorKey: 'spec',
+      header: 'Technical Spec',
+      cell: ({ row }) => (
+        <strong className="capitalize">
+          {row.original.spec.replace(/-/g, ' ')}
+        </strong>
+      ),
+      size: 200,
+    },
+    {
+      id: 'tasks',
+      header: 'Tasks',
+      cell: ({ row }) => (
+        <span className="text-sm text-muted-foreground">
+          {row.original.tasks.length} tasks
+        </span>
+      ),
+      size: 120,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -206,16 +323,17 @@ const StatusDashboard: React.FC = () => {
       {/* Filter */}
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">Filter:</span>
-        <select
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-          className="border rounded px-3 py-1.5 text-sm bg-background border-input"
-        >
-          <option value="all">All</option>
-          <option value="implemented">Implemented</option>
-          <option value="in-progress">In Progress</option>
-          <option value="pending">Pending</option>
-        </select>
+        <Select value={filter} onValueChange={setFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Select filter" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="implemented">Implemented</SelectItem>
+            <SelectItem value="in-progress">In Progress</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Features Table */}
@@ -223,98 +341,56 @@ const StatusDashboard: React.FC = () => {
         <CardHeader>
           <CardTitle>Features</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Feature</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Test</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Diagram</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Sub-features</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredFeatures.map(feature => (
-                  <React.Fragment key={feature.id}>
-                    <tr
-                      className="hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => toggleFeature(feature.id)}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">
-                            {expandedFeatures.has(feature.id) ? '▼' : '▶'}
-                          </span>
-                          <strong>{feature.name}</strong>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusClasses(feature.status)}`}>
-                          {feature.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {feature.test ? (
-                          <span className="text-green-600 dark:text-green-400">✓</span>
-                        ) : (
-                          <span className="text-destructive">✗</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {feature.diagram ? (
-                          <span className="text-green-600 dark:text-green-400">✓</span>
-                        ) : (
-                          <span className="text-destructive">✗</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {feature.subFeatures.length} items
-                      </td>
-                    </tr>
-                    {expandedFeatures.has(feature.id) && (
-                      <tr className="bg-muted/30">
-                        <td colSpan={5} className="px-8 py-4">
-                          <div className="space-y-3">
-                            <div className="text-sm font-medium mb-2">Sub-features:</div>
-                            {feature.subFeatures.map((sf, idx) => (
-                              <div key={idx} className="flex items-center gap-3 text-sm">
-                                <span className={`w-2 h-2 rounded-full ${getStatusDot(sf.status)}`}></span>
-                                <span>{sf.name}</span>
-                                <span className={`text-xs ${getStatusClasses(sf.status)} px-1.5 py-0.5 rounded`}>
-                                  {sf.status}
-                                </span>
-                              </div>
-                            ))}
-                            {feature.components.length > 0 && (
-                              <div className="mt-3 pt-3 border-t border-border">
-                                <div className="text-sm font-medium mb-2">Components:</div>
-                                <div className="flex flex-wrap gap-2">
-                                  {feature.components.map((c, idx) => (
-                                    <code key={idx} className="text-xs bg-muted px-2 py-1 rounded">
-                                      {c}
-                                    </code>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            <div className="mt-2 text-xs">
-                              <a href={feature.spec} className="text-primary hover:underline">
-                                View Spec →
-                              </a>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <CardContent>
+          <TanStackAdvancedTable
+            data={filteredFeatures as unknown as Record<string, unknown>[]}
+            columns={featureColumns as unknown as ColumnDef<Record<string, unknown>>[]}
+            loading={false}
+            emptyMessage="No features found"
+            maxHeight="600px"
+          />
         </CardContent>
       </Card>
+
+      {/* Expanded Feature Details */}
+      {Array.from(expandedFeatures).map(featureId => {
+        const feature = data.features.find(f => f.id === featureId);
+        if (!feature) return null;
+
+        return (
+          <Card key={featureId} className="mt-4">
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                <div className="text-sm font-medium mb-2">Sub-features:</div>
+                {feature.subFeatures.map((sf, idx) => (
+                  <div key={idx} className="flex items-center gap-3 text-sm">
+                    {getStatusIcon(sf.status)}
+                    <span>{sf.name}</span>
+                    {renderStatusBadge(sf.status)}
+                  </div>
+                ))}
+                {feature.components.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <div className="text-sm font-medium mb-2">Components:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {feature.components.map((c, idx) => (
+                        <code key={idx} className="text-xs bg-muted px-2 py-1 rounded">
+                          {c}
+                        </code>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-2 text-xs">
+                  <a href={feature.spec} className="text-primary hover:underline">
+                    View Spec →
+                  </a>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
 
       {/* Technical Tasks */}
       <Card>
@@ -322,58 +398,38 @@ const StatusDashboard: React.FC = () => {
           <CardTitle>Technical Tasks</CardTitle>
           <CardDescription>Implementation tasks from technical specifications</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Technical Spec</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Tasks</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {data.technicalTasks.map(tech => (
-                  <React.Fragment key={tech.spec}>
-                    <tr
-                      className="hover:bg-muted/50 cursor-pointer transition-colors"
-                      onClick={() => toggleTech(tech.spec)}
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">
-                            {expandedTech.has(tech.spec) ? '▼' : '▶'}
-                          </span>
-                          <strong className="capitalize">{tech.spec.replace(/-/g, ' ')}</strong>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {tech.tasks.length} tasks
-                      </td>
-                    </tr>
-                    {expandedTech.has(tech.spec) && (
-                      <tr className="bg-muted/30">
-                        <td colSpan={2} className="px-8 py-4">
-                          <div className="space-y-2">
-                            {tech.tasks.map((task, idx) => (
-                              <div key={idx} className="flex items-center gap-3 text-sm">
-                                <span className={`w-2 h-2 rounded-full ${getStatusDot(task.status)}`}></span>
-                                <span>{task.name}</span>
-                                <span className={`text-xs ${getStatusClasses(task.status)} px-1.5 py-0.5 rounded`}>
-                                  {task.status}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <CardContent>
+          <TanStackAdvancedTable
+            data={data.technicalTasks as unknown as Record<string, unknown>[]}
+            columns={techColumns as unknown as ColumnDef<Record<string, unknown>>[]}
+            loading={false}
+            emptyMessage="No technical tasks found"
+            maxHeight="400px"
+          />
         </CardContent>
       </Card>
+
+      {/* Expanded Technical Task Details */}
+      {Array.from(expandedTech).map(techSpec => {
+        const tech = data.technicalTasks.find(t => t.spec === techSpec);
+        if (!tech) return null;
+
+        return (
+          <Card key={techSpec} className="mt-4">
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                {tech.tasks.map((task, idx) => (
+                  <div key={idx} className="flex items-center gap-3 text-sm">
+                    {getStatusIcon(task.status)}
+                    <span>{task.name}</span>
+                    {renderStatusBadge(task.status)}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
 
       <p className="text-sm text-muted-foreground">
         Regenerate data: <code className="bg-muted px-2 py-1 rounded">node scripts/validation/audit-framework.cjs</code>
