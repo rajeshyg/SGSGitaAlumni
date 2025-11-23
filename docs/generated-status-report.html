@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gita Connect - Auto-Generated Status Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #333; color: white; position: sticky; top: 0; }
+        .complete { color: #009900; font-weight: bold; }
+        .in-progress { color: #ff6600; font-weight: bold; }
+        .pending { color: #cc0000; font-weight: bold; }
+        .category-cell {
+            writing-mode: sideways-lr;
+            text-orientation: mixed;
+            width: 25px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .category-icon { font-size: 18px; }
+        .summary { background-color: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .summary h3 { margin-top: 0; }
+        .has-test { color: #009900; }
+        .no-test { color: #cc0000; }
+        a { color: #0066cc; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .generated-note { color: #666; font-style: italic; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Gita Connect - Feature Status Report</h1>
+    <p class="generated-note">Auto-generated from functional specs on 2025-11-23</p>
+
+    <div class="summary">
+        <h3>Summary</h3>
+        <p><strong>Total Features:</strong> 9</p>
+        <p><strong>Implemented:</strong> 5 |
+           <strong>In Progress:</strong> 2 |
+           <strong>Pending:</strong> 2</p>
+        <p><strong>Test Coverage:</strong> 4/9 features have E2E tests</p>
+        <p><strong>Diagram Coverage:</strong> 1/9 features have diagrams</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                <th>Feature</th>
+                <th>Status</th>
+                <th>Spec</th>
+                <th>Test</th>
+                <th>Diagram</th>
+                <th>Key Components</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="category-cell"><span class="category-icon">🔒</span>Auth & Security</td>
+                <td><strong>Authentication</strong></td>
+                <td class="complete">Implemented</td>
+                <td><a href="docs/specs/functional/authentication.md">View Spec</a></td>
+                <td class="has-test"><a href="tests/e2e/auth.spec.ts">✅ auth.spec.ts</a></td>
+                <td>❌ Missing</td>
+                <td><code>routes/auth.js</code><br><code>routes/otp.js</code><br><code>routes/invitations.js</code></td>
+            </tr>
+            <tr>
+                <td class="category-cell"><span class="category-icon">👥</span>User Mgmt</td>
+                <td><strong>User management</strong></td>
+                <td class="in-progress">In progress</td>
+                <td><a href="docs/specs/functional/user-management.md">View Spec</a></td>
+                <td class="no-test">❌ Missing</td>
+                <td>❌ Missing</td>
+                <td><code>routes/users.js</code><br><code>routes/preferences.js</code></td>
+            </tr>
+            <tr>
+                <td class="category-cell"><span class="category-icon">📋</span>Directory</td>
+                <td><strong>Directory</strong></td>
+                <td class="complete">Implemented</td>
+                <td><a href="docs/specs/functional/directory.md">View Spec</a></td>
+                <td class="no-test">❌ Missing</td>
+                <td>❌ Missing</td>
+                <td><code>routes/directory.js</code><br><code>routes/alumni.js</code></td>
+            </tr>
+            <tr>
+                <td class="category-cell"><span class="category-icon">📝</span>Postings</td>
+                <td><strong>Postings</strong></td>
+                <td class="in-progress">In progress</td>
+                <td><a href="docs/specs/functional/postings.md">View Spec</a></td>
+                <td class="has-test"><a href="tests/e2e/postings.spec.ts">✅ postings.spec.ts</a></td>
+                <td><a href="docs/archive/design/postings.mmd">✅ View</a></td>
+                <td><code>routes/postings.js</code><br><code>routes/moderation.js</code><br><code>server/services/postingService.js</code></td>
+            </tr>
+            <tr>
+                <td class="category-cell"><span class="category-icon">💬</span>Messaging</td>
+                <td><strong>Messaging</strong></td>
+                <td class="complete">Implemented</td>
+                <td><a href="docs/specs/functional/messaging.md">View Spec</a></td>
+                <td class="has-test"><a href="tests/e2e/chat.spec.ts">✅ chat.spec.ts</a></td>
+                <td>❌ Missing</td>
+                <td><code>routes/chat.js</code><br><code>server/services/chatService.js</code><br><code>socket/chatSocket.js</code></td>
+            </tr>
+            <tr>
+                <td class="category-cell"><span class="category-icon">📊</span>Dashboard</td>
+                <td><strong>Dashboard</strong></td>
+                <td class="complete">Implemented</td>
+                <td><a href="docs/specs/functional/dashboard.md">View Spec</a></td>
+                <td class="has-test"><a href="tests/e2e/dashboard.spec.ts">✅ dashboard.spec.ts</a></td>
+                <td>❌ Missing</td>
+                <td><code>routes/dashboard.js</code><br><code>routes/feed.js</code></td>
+            </tr>
+            <tr>
+                <td class="category-cell"><span class="category-icon">🛡️</span>Moderation</td>
+                <td><strong>Moderation</strong></td>
+                <td class="complete">Implemented</td>
+                <td><a href="docs/specs/functional/moderation.md">View Spec</a></td>
+                <td class="no-test">❌ Missing</td>
+                <td>❌ Missing</td>
+                <td><code>routes/moderation.js</code><br><code>server/services/moderationService.js</code></td>
+            </tr>
+            <tr>
+                <td class="category-cell"><span class="category-icon">🔔</span>Notifications</td>
+                <td><strong>Notifications</strong></td>
+                <td class="pending">Pending</td>
+                <td><a href="docs/specs/functional/notifications.md">View Spec</a></td>
+                <td class="no-test">❌ Missing</td>
+                <td>❌ Missing</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td class="category-cell"><span class="category-icon">⭐</span>Rating</td>
+                <td><strong>Rating</strong></td>
+                <td class="pending">Pending</td>
+                <td><a href="docs/specs/functional/rating.md">View Spec</a></td>
+                <td class="no-test">❌ Missing</td>
+                <td>❌ Missing</td>
+                <td>-</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Missing Items</h2>
+    <h3>Features Without Tests</h3>
+    <ul>
+        <li>user-management - needs <code>tests/e2e/user-management.spec.ts</code></li>
+        <li>directory - needs <code>tests/e2e/directory.spec.ts</code></li>
+        <li>moderation - needs <code>tests/e2e/moderation.spec.ts</code></li>
+        <li>notifications - needs <code>tests/e2e/notifications.spec.ts</code></li>
+        <li>rating - needs <code>tests/e2e/rating.spec.ts</code></li>
+    </ul>
+
+    <h3>Features Without Diagrams</h3>
+    <ul>
+        <li>authentication - needs <code>docs/diagrams/authentication.mmd</code></li>
+        <li>user-management - needs <code>docs/diagrams/user-management.mmd</code></li>
+        <li>directory - needs <code>docs/diagrams/directory.mmd</code></li>
+        <li>messaging - needs <code>docs/diagrams/messaging.mmd</code></li>
+        <li>dashboard - needs <code>docs/diagrams/dashboard.mmd</code></li>
+        <li>moderation - needs <code>docs/diagrams/moderation.mmd</code></li>
+        <li>notifications - needs <code>docs/diagrams/notifications.mmd</code></li>
+        <li>rating - needs <code>docs/diagrams/rating.mmd</code></li>
+    </ul>
+
+    <p><em>Regenerate this report: <code>node scripts/validation/audit-framework.cjs</code></em></p>
+</body>
+</html>

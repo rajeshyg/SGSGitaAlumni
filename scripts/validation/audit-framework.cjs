@@ -974,6 +974,126 @@ const statusJsonPath = path.join(ROOT, 'scripts/validation/feature-status.json')
 fs.writeFileSync(statusJsonPath, JSON.stringify(statusJson, null, 2));
 
 console.log(`  Generated: scripts/validation/feature-status.json`);
+
+// Generate HTML status report
+const categoryIcons = {
+  'authentication': '🔒',
+  'user-management': '👥',
+  'directory': '📋',
+  'postings': '📝',
+  'messaging': '💬',
+  'dashboard': '📊',
+  'moderation': '🛡️',
+  'notifications': '🔔',
+  'rating': '⭐'
+};
+
+const categoryNames = {
+  'authentication': 'Auth & Security',
+  'user-management': 'User Mgmt',
+  'directory': 'Directory',
+  'postings': 'Postings',
+  'messaging': 'Messaging',
+  'dashboard': 'Dashboard',
+  'moderation': 'Moderation',
+  'notifications': 'Notifications',
+  'rating': 'Rating'
+};
+
+const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gita Connect - Auto-Generated Status Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #333; color: white; position: sticky; top: 0; }
+        .complete { color: #009900; font-weight: bold; }
+        .in-progress { color: #ff6600; font-weight: bold; }
+        .pending { color: #cc0000; font-weight: bold; }
+        .category-cell {
+            writing-mode: sideways-lr;
+            text-orientation: mixed;
+            width: 25px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .category-icon { font-size: 18px; }
+        .summary { background-color: #f5f5f5; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+        .summary h3 { margin-top: 0; }
+        .has-test { color: #009900; }
+        .no-test { color: #cc0000; }
+        a { color: #0066cc; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .generated-note { color: #666; font-style: italic; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Gita Connect - Feature Status Report</h1>
+    <p class="generated-note">Auto-generated from functional specs on ${new Date().toISOString().split('T')[0]}</p>
+
+    <div class="summary">
+        <h3>Summary</h3>
+        <p><strong>Total Features:</strong> ${matrixData.length}</p>
+        <p><strong>Implemented:</strong> ${statusSummary.implemented.length} |
+           <strong>In Progress:</strong> ${statusSummary['in-progress'].length} |
+           <strong>Pending:</strong> ${statusSummary.pending.length}</p>
+        <p><strong>Test Coverage:</strong> ${matrixData.filter(f => f.test).length}/${matrixData.length} features have E2E tests</p>
+        <p><strong>Diagram Coverage:</strong> ${matrixData.filter(f => f.diagram).length}/${matrixData.length} features have diagrams</p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th></th>
+                <th>Feature</th>
+                <th>Status</th>
+                <th>Spec</th>
+                <th>Test</th>
+                <th>Diagram</th>
+                <th>Key Components</th>
+            </tr>
+        </thead>
+        <tbody>
+${matrixData.map(f => {
+  const statusClass = f.status.toLowerCase().includes('progress') ? 'in-progress' :
+                      f.status.toLowerCase().includes('implement') || f.status.toLowerCase().includes('complete') ? 'complete' : 'pending';
+  const statusText = f.status.charAt(0).toUpperCase() + f.status.slice(1).replace(/-/g, ' ');
+  return `            <tr>
+                <td class="category-cell"><span class="category-icon">${categoryIcons[f.feature] || '📁'}</span>${categoryNames[f.feature] || f.feature}</td>
+                <td><strong>${f.feature.charAt(0).toUpperCase() + f.feature.slice(1).replace(/-/g, ' ')}</strong></td>
+                <td class="${statusClass}">${statusText}</td>
+                <td><a href="${f.spec}">View Spec</a></td>
+                <td class="${f.test ? 'has-test' : 'no-test'}">${f.test ? '<a href="' + f.test + '">✅ ' + f.test.split('/').pop() + '</a>' : '❌ Missing'}</td>
+                <td>${f.diagram ? '<a href="' + f.diagram + '">✅ View</a>' : '❌ Missing'}</td>
+                <td>${f.components.length > 0 ? f.components.map(c => '<code>' + c + '</code>').join('<br>') : '-'}</td>
+            </tr>`;
+}).join('\n')}
+        </tbody>
+    </table>
+
+    <h2>Missing Items</h2>
+    <h3>Features Without Tests</h3>
+    <ul>
+${matrixData.filter(f => !f.test).map(f => `        <li>${f.feature} - needs <code>tests/e2e/${f.feature}.spec.ts</code></li>`).join('\n')}
+    </ul>
+
+    <h3>Features Without Diagrams</h3>
+    <ul>
+${matrixData.filter(f => !f.diagram).map(f => `        <li>${f.feature} - needs <code>docs/diagrams/${f.feature}.mmd</code></li>`).join('\n')}
+    </ul>
+
+    <p><em>Regenerate this report: <code>node scripts/validation/audit-framework.cjs</code></em></p>
+</body>
+</html>`;
+
+const htmlPath = path.join(ROOT, 'docs/generated-status-report.html');
+fs.writeFileSync(htmlPath, htmlContent);
+
+console.log(`  Generated: docs/generated-status-report.html`);
 console.log('Status: ✅ GENERATED');
 results.aligned.push('Status Report Generation');
 console.log('');
