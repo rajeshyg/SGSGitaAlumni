@@ -8,7 +8,7 @@ This modular guide provides a comprehensive methodology for spec-driven developm
 
 ## Module Structure
 
-This guide is organized into five core modules, each focusing on specific aspects of spec-driven development:
+This guide is organized into six core modules, each focusing on specific aspects of spec-driven development:
 
 ### [Module 1: Understanding Spec-Driven Development](./01-understanding-sdd.md)
 **Topics Covered:**
@@ -64,9 +64,24 @@ This guide is organized into five core modules, each focusing on specific aspect
 
 **When to Read**: For optimization, scaling, and measuring the impact of SDD adoption.
 
+### [Module 6: Agent Orchestration Implementation](./06-agent-orchestration-implementation.md)
+**Topics Covered:**
+- How to actually trigger agents in Claude Code
+- Task tool usage for sub-agent delegation
+- Complete Scout-Plan-Build workflow with real prompts
+- Context priming commands usage
+- Agent communication patterns (file-based, context bundles)
+- Model selection guide
+- Error handling and recovery
+- Practical examples and templates
+
+**When to Read**: **START HERE** if you want to know how to actually USE the SDD framework. This bridges theory with practice.
+
 ## Quick Start
 
 **New to SDD?** Start with [Module 1](./01-understanding-sdd.md) to understand the fundamentals.
+
+**Want to start using SDD immediately?** Jump to [Module 6](./06-agent-orchestration-implementation.md) for practical agent triggering instructions.
 
 **Ready to implement?** Jump to [Module 4](./04-implementation-techniques.md) for practical techniques and tool selection.
 
@@ -74,7 +89,7 @@ This guide is organized into five core modules, each focusing on specific aspect
 
 ## How to Use This Guide
 
-1. **Linear Learning**: Read modules 1-5 in order for comprehensive understanding
+1. **Linear Learning**: Read modules 1-6 in order for comprehensive understanding
 2. **Task-Focused**: Jump to specific modules based on your current need
 3. **Reference**: Use as a handbook when implementing specific patterns
 4. **Team Onboarding**: Share relevant modules with team members based on their role
@@ -129,6 +144,8 @@ Module 1: Learn SDD Fundamentals (2-3 hours)
     ↓
 Module 2: Master Prompt Engineering (2-3 hours)
     ↓
+Module 6: Agent Orchestration (1-2 hours) ← HOW TO ACTUALLY USE IT
+    ↓
 Implement Level 1 SDD (1-2 weeks)
     ↓
 Module 3: Context & Orchestration (2-3 hours)
@@ -146,8 +163,8 @@ Implement Level 3 SDD (3-6 months)
 
 This guide is a living document. As SDD practices evolve and new tools emerge, modules will be updated to reflect best practices.
 
-**Version**: 2.0 (Modular Structure)
-**Last Updated**: 2025-01-XX
+**Version**: 2.1 (Added Implementation Guide)
+**Last Updated**: 2025-01-24
 **Original Guide**: docs/archive/spec_driven_coding_guide.md
 
 ---
