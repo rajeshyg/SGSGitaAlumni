@@ -91,5 +91,4 @@ npm run build             # Build verification
 
 ## Related Documentation
 
-- [Structure Standards](../structure-standards.md)
-- [Code Standards](../code-standards.md)
+For detailed coding standards, see the individual specification files in this directory.

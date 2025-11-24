@@ -1,7 +1,7 @@
 ---
 title: Data Protection Specification
 version: 1.0
-status: partial
+status: in-progress
 last_updated: 2025-11-23
 applies_to: all
 enforcement: required
