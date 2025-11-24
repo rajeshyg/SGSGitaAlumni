@@ -264,11 +264,14 @@ console.log('');
 console.log('4. FUNCTIONAL SPECS - YAML METADATA');
 console.log('-'.repeat(40));
 
-const functionalSpecs = [
-  'authentication.md', 'user-management.md', 'directory.md',
-  'postings.md', 'messaging.md', 'dashboard.md',
-  'moderation.md', 'notifications.md', 'rating.md'
-];
+// Dynamically read functional spec directories (excluding admin for now)
+const functionalSpecsDir = path.join(ROOT, 'docs/specs/functional');
+const functionalSpecs = fs.readdirSync(functionalSpecsDir)
+  .filter(item => {
+    const itemPath = path.join(functionalSpecsDir, item);
+    return fs.statSync(itemPath).isDirectory() && item !== 'admin';
+  })
+  .map(dir => `${dir}/README.md`);
 
 const requiredFunctionalYaml = ['version', 'status', 'last_updated', 'recommended_model', 'implementation_links'];
 const functionalResults = {};
@@ -364,11 +367,14 @@ console.log('');
 console.log('6. TECHNICAL SPECS - YAML METADATA');
 console.log('-'.repeat(40));
 
-const technicalSpecs = [
-  'api-standards.md', 'error-handling.md', 'database.md',
-  'testing.md', 'deployment.md', 'ui-standards.md',
-  'code-standards.md', 'security.md', 'structure-standards.md'
-];
+// Dynamically read technical spec directories
+const technicalSpecsDir = path.join(ROOT, 'docs/specs/technical');
+const technicalSpecs = fs.readdirSync(technicalSpecsDir)
+  .filter(item => {
+    const itemPath = path.join(technicalSpecsDir, item);
+    return fs.statSync(itemPath).isDirectory();
+  })
+  .map(dir => `${dir}/README.md`);
 
 const requiredTechnicalYaml = ['version', 'last_updated', 'applies_to', 'enforcement'];
 const technicalResults = {};
@@ -756,17 +762,17 @@ const diagramResults = {
   missing: []
 };
 
-// Map specs to expected diagrams
+// Map spec directory names to expected diagrams
 const specToDiagram = {
-  'authentication.md': 'auth',
-  'user-management.md': 'user',
-  'directory.md': 'directory',
-  'postings.md': 'postings',
-  'messaging.md': 'messaging',
-  'dashboard.md': 'dashboard',
-  'moderation.md': 'moderation',
-  'notifications.md': 'notifications',
-  'rating.md': 'rating'
+  'authentication': 'auth',
+  'user-management': 'user',
+  'directory': 'directory',
+  'postings': 'postings',
+  'messaging': 'messaging',
+  'dashboard': 'dashboard',
+  'moderation': 'moderation',
+  'notifications': 'notifications',
+  'rating': 'rating'
 };
 
 // Find all .mmd files
@@ -783,7 +789,9 @@ diagramDirs.forEach(dir => {
 
 // Check each spec has a diagram
 functionalSpecs.forEach(spec => {
-  const baseName = specToDiagram[spec];
+  // Extract directory name from path like 'authentication/README.md'
+  const specDir = spec.split('/')[0];
+  const baseName = specToDiagram[specDir];
   diagramResults.expected.push(baseName);
 
   const hasDiagram = allDiagrams.some(d =>
@@ -838,20 +846,21 @@ functionalSpecs.forEach(specFile => {
   const content = readFile(`docs/specs/functional/${specFile}`);
   if (!content) return;
 
-  const featureName = specFile.replace('.md', '');
+  // Extract directory name from path like 'authentication/README.md'
+  const featureName = specFile.split('/')[0];
 
   // Extract YAML fields
   let status = 'unknown';
   let testFile = '';
   let implLinks = [];
 
-  // Parse YAML
-  const yamlMatch = content.match(/```yaml\s*\n---\s*\n([\s\S]*?)\n---\s*\n```/) ||
-                    content.match(/^---\n([\s\S]*?)\n---/);
+  // Parse YAML (handle both Unix and Windows line endings)
+  const yamlMatch = content.match(/```yaml\s*\r?\n---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n```/) ||
+                    content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
 
   if (yamlMatch) {
     const yaml = yamlMatch[1];
-    const statusMatch = yaml.match(/^status:\s*(.+)$/m);
+    const statusMatch = yaml.match(/^status:\s*(.+?)(?:\r)?$/m);
     if (statusMatch) status = statusMatch[1].trim();
 
     const linksMatch = yaml.match(/implementation_links:\s*\n((?:\s+-\s+.+\n?)+)/);
@@ -869,17 +878,20 @@ functionalSpecs.forEach(specFile => {
     d.toLowerCase().includes(featureName.toLowerCase())
   ) || '';
 
-  // Extract sub-features from ## Features section
+  // Extract sub-features from ## Sub-Features section (markdown table format)
   const subFeatures = [];
-  const featuresMatch = content.match(/## Features\s*\n([\s\S]*?)(?=\n## |$)/);
+  const featuresMatch = content.match(/## Sub-Features\s*\r?\n([\s\S]*?)(?=\r?\n## |$)/);
   if (featuresMatch) {
     const featuresContent = featuresMatch[1];
-    const subFeatureMatches = featuresContent.matchAll(/### \d+\.\s+(.+?)\n\*\*Status\*\*:\s*(.+?)(?:\n|$)/g);
-    for (const match of subFeatureMatches) {
-      subFeatures.push({
-        name: match[1].trim(),
-        status: match[2].trim().toLowerCase()
-      });
+    // Parse markdown table rows: | [Name](./file.md) | Status | ... |
+    const tableRows = featuresContent.matchAll(/\|\s*\[([^\]]+)\]\([^)]+\)\s*\|\s*([^|]+)\s*\|/g);
+    for (const match of tableRows) {
+      const name = match[1].trim();
+      const status = match[2].trim().toLowerCase();
+      // Skip header row
+      if (name.toLowerCase() !== 'feature') {
+        subFeatures.push({ name, status });
+      }
     }
   }
 
@@ -900,18 +912,20 @@ technicalSpecs.forEach(specFile => {
   const content = readFile(`docs/specs/technical/${specFile}`);
   if (!content) return;
 
-  const specName = specFile.replace('.md', '');
+  // Extract directory name from path like 'architecture/README.md'
+  const specName = specFile.split('/')[0];
   const tasks = [];
 
-  // Extract implementation status items - match both patterns:
-  // Pattern 1: ### 1. Title\n**Status**: Complete
-  // Pattern 2: ### 1. Title\n\n**Status**: Complete
-  const statusMatches = content.matchAll(/### \d+\.\s+(.+?)\n+\*\*Status\*\*:\s*(.+?)(?:\n|$)/gs);
-  for (const match of statusMatches) {
-    tasks.push({
-      name: match[1].trim(),
-      status: match[2].trim().toLowerCase()
-    });
+  // Extract tasks from markdown tables with Status column
+  // Format: | [Document](./file.md) | Description | Status |
+  const tableMatches = content.matchAll(/\|\s*\[([^\]]+)\]\([^)]+\)\s*\|[^|]*\|\s*([^|]+)\s*\|/g);
+  for (const match of tableMatches) {
+    const name = match[1].trim();
+    const status = match[2].trim().toLowerCase();
+    // Skip header rows
+    if (name.toLowerCase() !== 'document' && name.toLowerCase() !== 'feature') {
+      tasks.push({ name, status });
+    }
   }
 
   if (tasks.length > 0) {

@@ -95,7 +95,8 @@
     "scan-mock-data": "node scripts/core/detect-mock-data.js",
     "audit-mock-data": "node scripts/core/detect-mock-data.js",
     "validate-no-mock-usage": "node scripts/core/detect-mock-data.js",
-    "validate-structure": "node scripts/core/validate-structure.cjs"
+    "validate-structure": "node scripts/core/validate-structure.cjs",
+    "audit:status": "node scripts/validation/audit-framework.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.883.0",
