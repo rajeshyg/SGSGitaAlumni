@@ -89,7 +89,7 @@ export const generateAndSendOTP = async (req, res) => {
         if (userRows.length === 0) {
         console.log('❌ [DEBUG] Email not found in app_users for login OTP');
         return res.status(400).json({
-          error: 'Email not found. Please check your email address or register first.'
+          error: 'Email not found. Please use the email address from your invitation.'
         });
       }
       console.log('✅ [DEBUG] Email validated for login OTP');
