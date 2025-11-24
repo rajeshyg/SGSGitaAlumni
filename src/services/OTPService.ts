@@ -156,6 +156,9 @@ export class OTPService implements OTPServiceInterface {
         throw error;
       }
 
+      // Preserve the original error message from the API (e.g., "Email not found")
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate OTP';
+      
       logError(error as Error, {
         context: 'OTPService.generateOTP',
         email: request.email,
@@ -163,7 +166,7 @@ export class OTPService implements OTPServiceInterface {
       });
 
       throw new OTPError(
-        'Failed to generate OTP',
+        errorMessage,
         'OTP_GENERATION_FAILED',
         500
       );
