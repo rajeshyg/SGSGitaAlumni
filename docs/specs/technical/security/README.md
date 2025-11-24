@@ -104,5 +104,5 @@ The SGSGita Alumni platform implements a comprehensive security architecture des
 
 ## Related Documentation
 
-- [Security Requirements (Archive)](../../archive/standards/SECURITY_REQUIREMENTS.md)
-- [Compliance Framework (Archive)](../../archive/security/COMPLIANCE_FRAMEWORK.md)
+- [Security Requirements (Archive)](../../../archive/standards/SECURITY_REQUIREMENTS.md)
+- [Compliance Framework (Archive)](../../../archive/security/COMPLIANCE_FRAMEWORK.md)

@@ -62,5 +62,5 @@ const MyComponent = () => {
 ## Related Documentation
 
 - [Core Technical Standards](../README.md)
-- [Database Standards](../database-standards.md)
-- [API Standards](../api-standards.md)
+- [Database Standards](../database/README.md)
+- [Architecture Standards](../architecture/README.md)

@@ -18,12 +18,8 @@ Fixed critical posting system issues and implemented professional UI improvement
 
 ## 📚 Detailed Documentation
 
-- **[Matched Postings Bug Fix](posting-matching-bug-fix.md)**
-- **[Architecture Overhaul](posting-architecture-overhaul.md)**
-- **[Filter Fixes](posting-filter-fixes.md)**
-- **[Author Names Fix](author-names-fix.md)**
-- **[Shared Components Fixes](shared-components-fixes.md)**
-- **[UI Improvements](ui-improvements-summary.md)**
+- **[Matched Postings Bug Fix](../archive/iterations/posting-matching-bug-fix.md)**
+- **[Author Names Fix](../archive/iterations/author-names-fix.md)**
 
 ## 📊 Impact
 

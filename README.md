@@ -34,7 +34,7 @@ A modern React-based alumni management platform with advanced data table functio
 - 🔍 **SonarJS Rules**: Advanced redundancy detection
 - 📊 **jscpd**: Copy-paste detection (10+ lines, 50+ tokens)
 
-See [Quality Standards](docs/QUALITY_STANDARDS.md) for complete coding guidelines and metrics.
+See [Quality Standards](docs/specs/technical/coding-standards/README.md) for complete coding guidelines and metrics.
 
 ## 🚦 Getting Started
 
@@ -107,11 +107,11 @@ src/
 
 ## 🔧 Tool Configuration
 
-See [Tool Usage Guide](docs/TOOL_USAGE.md) for complete setup instructions and configuration details.
+See [Technical Specifications](docs/specs/technical/README.md) for complete setup instructions and configuration details.
 
 ## 🚫 Preventing Redundancy
 
-See [Quality Standards](docs/QUALITY_STANDARDS.md) for comprehensive redundancy prevention guidelines and automated quality checks.
+See [Quality Standards](docs/specs/technical/coding-standards/README.md) for comprehensive redundancy prevention guidelines and automated quality checks.
 
 ## 📚 Documentation
 
@@ -160,7 +160,7 @@ NODE_ENV=development
 
 ## 🤖 AI Assistant Guidelines
 
-See [AI Collaboration Guidelines](docs/AI_COLLABORATION_GUIDELINES.md) for comprehensive AI assistance protocols and best practices.
+See [Spec-Driven Development](docs/spec-driven-development/README.md) for comprehensive AI assistance protocols and best practices.
 
 ## 📈 CI/CD
 

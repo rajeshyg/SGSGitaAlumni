@@ -72,5 +72,5 @@ npm run test:watch
 
 ## Related Documentation
 
-- [Testing Technical Spec](../testing.md)
-- [Quality Metrics](/docs/archive/standards/QUALITY_METRICS.md)
+- [Coverage Targets](./coverage-targets.md)
+- [Quality Metrics](../../../archive/standards/QUALITY_METRICS.md)

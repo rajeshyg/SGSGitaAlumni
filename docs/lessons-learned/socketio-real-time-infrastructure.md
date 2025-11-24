@@ -480,8 +480,8 @@ app.listen(3000);
 
 ## Related Documentation
 
-- [Task 7.9 - Socket.IO Infrastructure](../progress/phase-7/task-7.9-socketio-infrastructure.md)
-- [Task 7.10 - Chat & Messaging System](../progress/phase-7/task-7.10-chat-messaging.md)
+- [Task 7.9 - Socket.IO Infrastructure](../archive/progress/progress/phase-7/task-7.9-socketio-infrastructure.md)
+- [Task 7.10 - Chat & Messaging System](../archive/progress/progress/phase-7/task-7.10-chat-messaging.md)
 - [Socket.IO Official Docs](https://socket.io/docs/v4/)
 
 ---

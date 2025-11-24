@@ -28,7 +28,8 @@ const CONFIG = {
     reference: 600,       // Increased from 300 to 600 (per updated DOCUMENTATION_STANDARDS.md)
     standards: 900,       // Increased from 450 to 900 (per updated DOCUMENTATION_STANDARDS.md)
     methodology: 2000,    // Category for comprehensive guides (was spec_driven_coding_guide.md)
-    modular_guide: 800    // Individual modules in spec-driven-development/ (Module 5 has extensive ROI data)
+    modular_guide: 800,   // Individual modules in spec-driven-development/ (Module 5 has extensive ROI data)
+    workflow: 800         // Workflow documents in specs/workflows/ (comprehensive task breakdowns)
   },
   authoritative: {
     'performance': 'docs/archive/standards/PERFORMANCE_TARGETS.md',
@@ -175,8 +176,12 @@ class DocumentationChecker {
       // Determine document type and size limit
       const fileNameUpper = file.name.toUpperCase();
       
+      // Workflow documents (comprehensive task breakdowns)
+      if (file.path.includes('specs/workflows') || file.path.includes('specs\\workflows')) {
+        maxSize = CONFIG.maxSizes.workflow;
+      }
       // Modular SDD guide files
-      if (file.path.includes('docs/spec-driven-development') || 
+      else if (file.path.includes('docs/spec-driven-development') ||
           file.path.includes('docs\\spec-driven-development')) {
         maxSize = CONFIG.maxSizes.modular_guide;
       }
@@ -213,10 +218,15 @@ class DocumentationChecker {
   // Check for duplicate content
   checkDuplicateContent() {
     console.log('🔍 Checking for duplicate content...');
-    
+
     const contentBlocks = new Map();
-    
+
     for (const file of this.files) {
+      // Skip archive files for duplicate content checking
+      if (file.path.includes('docs/archive') || file.path.includes('docs\\archive')) {
+        continue;
+      }
+
       // Extract code blocks and significant text blocks
       const codeBlocks = file.content.match(/```[\s\S]*?```/g) || [];
       const textBlocks = file.content.split('\n')

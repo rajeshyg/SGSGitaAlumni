@@ -70,7 +70,7 @@ The SGS Gita Alumni platform follows a cloud-ready architecture designed for rap
 
 - [Security Specifications](../security/) - Authentication, authorization, data protection
 - [Database Schema](../database/) - Data models and migrations
-- [Deployment Guide](../../deployment/) - AWS deployment procedures
+- [Deployment Guide](../deployment/) - Deployment procedures
 
 ## Migration Notes
 
