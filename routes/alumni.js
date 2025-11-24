@@ -20,7 +20,9 @@ export const searchAlumniMembers = async (req, res) => {
 
     console.log('API: Searching alumni members:', q);
 
-    const limitNum = parseInt(limit) || 50;
+    const limitNum = Math.max(1, Math.min(1000, parseInt(limit) || 50));
+    const searchTerm = `%${q}%`;
+    
     const searchQuery = `
       SELECT
         am.id, am.student_id, am.first_name, am.last_name, am.email, am.phone,
@@ -31,11 +33,10 @@ export const searchAlumniMembers = async (req, res) => {
       LEFT JOIN OTP_TOKENS ot ON ot.user_id = au.id AND ot.is_used = false AND ot.expires_at > NOW()
       WHERE am.first_name LIKE ? OR am.last_name LIKE ? OR am.email LIKE ? OR am.student_id LIKE ?
       ORDER BY am.last_name, am.first_name
-      LIMIT ?
+      LIMIT ${limitNum}
     `;
 
-    const searchTerm = `%${q}%`;
-    const [rows] = await connection.execute(searchQuery, [searchTerm, searchTerm, searchTerm, searchTerm, limitNum]);
+    const [rows] = await connection.execute(searchQuery, [searchTerm, searchTerm, searchTerm, searchTerm]);
 
     const members = rows.map(row => ({
       id: row.id,

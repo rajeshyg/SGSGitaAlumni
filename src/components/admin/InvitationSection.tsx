@@ -55,6 +55,7 @@ export function InvitationSection() {
   }, []);
 
   // Fetch active OTP for an email
+  // Note: 404 responses in browser console are expected - they indicate no active OTP exists for that email
   const fetchActiveOtp = useCallback(async (email: string) => {
     try {
       const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
@@ -356,14 +357,9 @@ export function InvitationSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run on mount
 
-  // Fetch active OTPs when invitations are loaded
-  useEffect(() => {
-    if (activeTab === 'invitations' && invitations.length > 0) {
-      invitations.forEach(inv => {
-        fetchActiveOtp(inv.email);
-      });
-    }
-  }, [invitations, activeTab, fetchActiveOtp]);
+  // Note: We don't automatically fetch OTPs for all invitations to avoid unnecessary 404 errors
+  // OTPs are only displayed from the "All Active OTPs" admin panel which shows genuinely active OTPs
+  // Individual OTP checking can be added via a manual button if needed
 
   // Periodic expiry check - update every 30 seconds
   useEffect(() => {

@@ -338,6 +338,17 @@ function validateSpecFolderStructure(specType, requiredFolders = null) {
     ERRORS.push(`Missing README.md in ${typeName} spec folders: ${missingReadmes.join(', ')}`);
   }
 
+  // Check for stray .md files directly in the spec root (except README.md)
+  const strayFiles = fs.readdirSync(specDir)
+    .filter(item => {
+      const itemPath = path.join(specDir, item);
+      return fs.statSync(itemPath).isFile() && item.endsWith('.md') && item !== 'README.md';
+    });
+
+  if (strayFiles.length > 0) {
+    ERRORS.push(`STRAY FILES: Found ${strayFiles.length} .md files directly in ${typeName} specs root (should be in module subfolders):\n  - ${strayFiles.join('\n  - ')}`);
+  }
+
   console.log(`  Checked ${modules.length} ${typeName} spec modules`);
   return modules;
 }
