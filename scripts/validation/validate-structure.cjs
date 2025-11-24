@@ -493,6 +493,43 @@ function validateSpecDocumentContent(specType, modules) {
 }
 
 // =============================================================================
+// Rule 8: Detect root-level clutter
+// =============================================================================
+function detectRootLevelClutter() {
+  console.log('\n🧹 Checking for root-level clutter...');
+
+  const clutterPatterns = [
+    { ext: '.sql', desc: 'SQL files (should be in scripts/database/)' },
+    { ext: '.txt', desc: 'Text files (temporary/debug output)' },
+    { ext: '.log', desc: 'Log files (should be gitignored)' },
+    { pattern: /^temp/, desc: 'Temporary files' },
+    { pattern: /^db-.*\.(txt|json)$/, desc: 'Database debug output' }
+  ];
+
+  const rootFiles = fs.readdirSync(PROJECT_ROOT);
+  const clutter = [];
+
+  rootFiles.forEach(file => {
+    const filePath = path.join(PROJECT_ROOT, file);
+    if (!fs.statSync(filePath).isFile()) return;
+
+    clutterPatterns.forEach(pattern => {
+      if (pattern.ext && file.endsWith(pattern.ext)) {
+        clutter.push(`${file} - ${pattern.desc}`);
+      } else if (pattern.pattern && pattern.pattern.test(file)) {
+        clutter.push(`${file} - ${pattern.desc}`);
+      }
+    });
+  });
+
+  if (clutter.length > 0) {
+    ERRORS.push(`ROOT CLUTTER: Found ${clutter.length} files that should be moved or deleted:\n  - ${clutter.join('\n  - ')}`);
+  }
+
+  console.log(`  Checked root directory for clutter`);
+}
+
+// =============================================================================
 // Main execution
 // =============================================================================
 console.log('🔎 Running Structure Validation...\n');
@@ -503,6 +540,7 @@ validatePlaywrightFiles();
 detectDuplicateFiles();
 detectSimilarFileNames();
 detectDatabaseDuplicatePatterns();
+detectRootLevelClutter();
 validateSpecFolderReadmes();
 
 // Validate functional specs (dynamic discovery)
