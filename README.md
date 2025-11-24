@@ -2,6 +2,14 @@
 
 A modern React-based alumni management platform with advanced data table functionality, theme system, and robust development tooling.
 
+---
+
+## 🤖 Working with AI Agents?
+
+**Start here**: [`docs/specs/context/always-on.md`](docs/specs/context/always-on.md) — Designed for both humans and AI models to understand the project, tech stack, and Scout-Plan-Build workflow (SDD framework).
+
+Also see: [`claude.md`](claude.md) for a quick pointer to all essential context.
+
 ## 🚀 Features
 
 - **Advanced Data Tables**: TanStack Table with sorting, filtering, pagination, and inline editing
