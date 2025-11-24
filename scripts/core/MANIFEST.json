@@ -1,0 +1,44 @@
+{
+  "description": "Official validation and quality scripts - DO NOT DELETE",
+  "protected": true,
+  "scripts": [
+    {
+      "name": "validate-structure.cjs",
+      "purpose": "Structure validation, duplicate detection, spec validation",
+      "usedBy": "pre-commit"
+    },
+    {
+      "name": "check-documentation.js",
+      "purpose": "Documentation consistency, size limits, broken links",
+      "usedBy": "pre-commit"
+    },
+    {
+      "name": "detect-mock-data.js",
+      "purpose": "Zero tolerance mock data policy enforcement",
+      "usedBy": "pre-commit, build"
+    },
+    {
+      "name": "check-integration-patterns.js",
+      "purpose": "Integration pattern validation",
+      "usedBy": "pre-commit (disabled)"
+    },
+    {
+      "name": "check-redundancy.js",
+      "purpose": "Code redundancy detection",
+      "usedBy": "pre-commit"
+    }
+  ],
+  "allowedLocations": {
+    "scripts/core/": "Protected validation scripts",
+    "scripts/database/migrations/": "Official database migrations",
+    "scripts/database/": "Database utilities",
+    "scripts/validation/": "Additional validation utilities",
+    "scripts/archive/": "Deprecated scripts",
+    "scripts/temp/": "Temporary scripts (will be flagged if stale)"
+  },
+  "rules": {
+    "rootScripts": "ERROR - No scripts allowed at scripts/ root",
+    "tempScripts": "WARNING - Scripts in temp/ older than 7 days",
+    "unknownLocation": "WARNING - Scripts outside designated folders"
+  }
+}

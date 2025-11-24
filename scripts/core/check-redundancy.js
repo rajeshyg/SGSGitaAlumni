@@ -44,7 +44,7 @@ function checkDuplicateImports() {
 function checkFileSizes() {
   console.log('\n📏 Checking file sizes...')
 
-  const srcDir = path.join(__dirname, '..', 'src')
+  const srcDir = path.join(__dirname, '..', '..', 'src')
   const largeFiles = []
 
   function scanDirectory(dir) {
@@ -109,7 +109,7 @@ function checkConsoleStatements() {
 function checkDuplicateComponents() {
   console.log('\n🧩 Checking for duplicate component names...')
 
-  const componentsDir = path.join(__dirname, '..', 'src', 'components')
+  const componentsDir = path.join(__dirname, '..', '..', 'src', 'components')
   const componentNames = new Map()
 
   function scanComponents(dir) {
@@ -155,7 +155,7 @@ function checkDuplicateComponents() {
 function checkUnusedImports() {
   console.log('\n🗑️ Checking for potential unused imports...')
 
-  const srcDir = path.join(__dirname, '..', 'src')
+  const srcDir = path.join(__dirname, '..', '..', 'src')
   const issues = []
 
   function scanFile(filePath) {

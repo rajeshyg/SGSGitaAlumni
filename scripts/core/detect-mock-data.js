@@ -16,8 +16,8 @@ const __dirname = path.dirname(__filename);
 class MockDataDetector {
   constructor() {
     this.violations = [];
-    this.srcDir = path.join(__dirname, '..', 'src');
-    this.serverFile = path.join(__dirname, '..', 'server.js');
+    this.srcDir = path.join(__dirname, '..', '..', 'src');
+    this.serverFile = path.join(__dirname, '..', '..', 'server.js');
   }
 
   // Mock data patterns to detect

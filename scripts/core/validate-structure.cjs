@@ -530,6 +530,63 @@ function detectRootLevelClutter() {
 }
 
 // =============================================================================
+// Rule 9: Validate script folder structure
+// =============================================================================
+function validateScriptLocations() {
+  console.log('\n📂 Validating script folder structure...');
+
+  const scriptsDir = path.join(PROJECT_ROOT, 'scripts');
+  const allowedFolders = ['core', 'database', 'validation', 'archive', 'temp', 'debug'];
+
+  // Check for scripts at scripts/ root (not allowed)
+  const rootScripts = fs.readdirSync(scriptsDir).filter(item => {
+    const itemPath = path.join(scriptsDir, item);
+    return fs.statSync(itemPath).isFile() &&
+           (item.endsWith('.js') || item.endsWith('.cjs') || item.endsWith('.mjs') || item.endsWith('.ps1'));
+  });
+
+  if (rootScripts.length > 0) {
+    ERRORS.push(`SCRIPT LOCATION: Found ${rootScripts.length} scripts at scripts/ root (should be in subfolders):\n  - ${rootScripts.join('\n  - ')}\n  Move to: scripts/core/, scripts/database/, scripts/temp/, or scripts/archive/`);
+  }
+
+  // Check for stale temp scripts (older than 7 days)
+  const tempDir = path.join(scriptsDir, 'temp');
+  if (fs.existsSync(tempDir)) {
+    const now = Date.now();
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    const staleScripts = [];
+
+    fs.readdirSync(tempDir).forEach(file => {
+      const filePath = path.join(tempDir, file);
+      if (fs.statSync(filePath).isFile()) {
+        const mtime = fs.statSync(filePath).mtimeMs;
+        if (now - mtime > sevenDays) {
+          const daysOld = Math.floor((now - mtime) / (24 * 60 * 60 * 1000));
+          staleScripts.push(`${file} (${daysOld} days old)`);
+        }
+      }
+    });
+
+    if (staleScripts.length > 0) {
+      WARNINGS.push(`STALE TEMP SCRIPTS: Found ${staleScripts.length} scripts in temp/ older than 7 days:\n  - ${staleScripts.join('\n  - ')}\n  Consider moving to archive/ or deleting`);
+    }
+  }
+
+  // Check for unknown folders in scripts/
+  const existingFolders = fs.readdirSync(scriptsDir).filter(item => {
+    const itemPath = path.join(scriptsDir, item);
+    return fs.statSync(itemPath).isDirectory();
+  });
+
+  const unknownFolders = existingFolders.filter(folder => !allowedFolders.includes(folder));
+  if (unknownFolders.length > 0) {
+    WARNINGS.push(`UNKNOWN SCRIPT FOLDERS: Found ${unknownFolders.length} non-standard folders in scripts/:\n  - ${unknownFolders.join('\n  - ')}\n  Standard folders: ${allowedFolders.join(', ')}`);
+  }
+
+  console.log(`  Checked script folder structure`);
+}
+
+// =============================================================================
 // Main execution
 // =============================================================================
 console.log('🔎 Running Structure Validation...\n');
@@ -541,6 +598,7 @@ detectDuplicateFiles();
 detectSimilarFileNames();
 detectDatabaseDuplicatePatterns();
 detectRootLevelClutter();
+validateScriptLocations();
 validateSpecFolderReadmes();
 
 // Validate functional specs (dynamic discovery)

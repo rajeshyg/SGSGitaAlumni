@@ -2,18 +2,18 @@ echo "🔍 Running pre-commit quality checks..."
 
 # Run structure validation (duplicate detection, file rules)
 echo "📁 Running structure validation..."
-node scripts/validation/validate-structure.cjs
+node scripts/core/validate-structure.cjs
 
 # If structure validation fails, exit
 if [ $? -ne 0 ]; then
   echo "❌ Structure validation failed. Commit blocked."
-  echo "Run 'node scripts/validation/validate-structure.cjs' for details."
+  echo "Run 'node scripts/core/validate-structure.cjs' for details."
   exit 1
 fi
 
 # Run documentation consistency check
 echo "📄 Checking documentation consistency..."
-node scripts/check-documentation.js
+node scripts/core/check-documentation.js
 
 # If documentation check fails, exit
 if [ $? -ne 0 ]; then
@@ -21,11 +21,10 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Run linting with logging for violation tracking
-echo "📏 Running ESLint with violation logging..."
-npm run lint 2>&1 | tee -a eslint-violations.log
+# Run linting
+echo "📏 Running ESLint..."
+npm run lint
 ESLINT_EXIT_CODE=$?
-echo "$(date '+%Y-%m-%d %H:%M:%S') - ESLint run completed with exit code $ESLINT_EXIT_CODE" >> eslint-violations.log
 
 if [ $ESLINT_EXIT_CODE -ne 0 ]; then
   echo "❌ ESLint failed. Commit blocked."
