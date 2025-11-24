@@ -572,7 +572,7 @@ export const refresh = asyncHandler(async (req, res, next) => {
         return next(AuthError.sessionExpired());
       }
 
-      user = rows[0];
+      const user = rows[0];
 
       // Generate new tokens with family member context
       const tokenPayload = {
