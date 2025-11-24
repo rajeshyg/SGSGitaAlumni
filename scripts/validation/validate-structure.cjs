@@ -281,18 +281,70 @@ function findFiles(dir, extension, excludeDirs) {
 }
 
 // =============================================================================
-// Rule 6: Each technical spec folder must have README.md
+// Rule 6: Validate spec folder structure (technical and functional)
 // =============================================================================
-function validateSpecFolderReadmes() {
-  console.log('\n📁 Validating technical spec folder structure...');
+function validateSpecFolderStructure(specType, requiredFolders = null) {
+  const typeName = specType === 'technical' ? 'technical' : 'functional';
+  console.log(`\n📁 Validating ${typeName} spec folder structure...`);
 
-  const techSpecDir = path.join(PROJECT_ROOT, 'docs/specs/technical');
-  if (!fs.existsSync(techSpecDir)) {
-    ERRORS.push('Technical specs directory not found: docs/specs/technical/');
-    return;
+  const specDir = path.join(PROJECT_ROOT, `docs/specs/${specType}`);
+  if (!fs.existsSync(specDir)) {
+    ERRORS.push(`${typeName} specs directory not found: docs/specs/${specType}/`);
+    return [];
   }
 
-  const requiredFolders = [
+  // Get all subdirectories (modules)
+  const modules = fs.readdirSync(specDir)
+    .filter(item => {
+      const itemPath = path.join(specDir, item);
+      return fs.statSync(itemPath).isDirectory();
+    });
+
+  if (modules.length === 0) {
+    WARNINGS.push(`No module folders found in docs/specs/${specType}/`);
+    return [];
+  }
+
+  // If specific folders are required, check for them
+  if (requiredFolders) {
+    const missingFolders = requiredFolders.filter(f => !modules.includes(f));
+    if (missingFolders.length > 0) {
+      ERRORS.push(`Missing ${typeName} spec folders: ${missingFolders.join(', ')}`);
+    }
+  }
+
+  let missingReadmes = [];
+
+  modules.forEach(module => {
+    const modulePath = path.join(specDir, module);
+    const readmePath = path.join(modulePath, 'README.md');
+
+    if (!fs.existsSync(readmePath)) {
+      missingReadmes.push(module);
+    } else {
+      // Validate README has YAML frontmatter
+      try {
+        const content = fs.readFileSync(readmePath, 'utf8');
+        if (!content.startsWith('---') || !content.includes('version:')) {
+          WARNINGS.push(`README.md in ${typeName}/${module} missing YAML frontmatter`);
+        }
+      } catch (err) {
+        WARNINGS.push(`Cannot read README.md in ${typeName}/${module}`);
+      }
+    }
+  });
+
+  if (missingReadmes.length > 0) {
+    ERRORS.push(`Missing README.md in ${typeName} spec folders: ${missingReadmes.join(', ')}`);
+  }
+
+  console.log(`  Checked ${modules.length} ${typeName} spec modules`);
+  return modules;
+}
+
+// Legacy wrapper for technical specs with required folders
+function validateSpecFolderReadmes() {
+  const requiredTechnicalFolders = [
     'architecture',
     'security',
     'database',
@@ -302,25 +354,142 @@ function validateSpecFolderReadmes() {
     'deployment',
     'integration'
   ];
+  validateSpecFolderStructure('technical', requiredTechnicalFolders);
+}
 
-  let missingReadmes = [];
+// Legacy wrapper for functional specs (dynamic discovery)
+function validateFunctionalSpecFolders() {
+  return validateSpecFolderStructure('functional');
+}
 
-  requiredFolders.forEach(folder => {
-    const folderPath = path.join(techSpecDir, folder);
-    const readmePath = path.join(folderPath, 'README.md');
+// =============================================================================
+// Rule 7: Validate spec document content (technical and functional)
+// =============================================================================
+function validateSpecDocumentContent(specType, modules) {
+  const typeName = specType === 'technical' ? 'technical' : 'functional';
+  console.log(`\n📄 Validating ${typeName} spec document content...`);
 
-    if (!fs.existsSync(folderPath)) {
-      ERRORS.push(`Missing technical spec folder: docs/specs/technical/${folder}/`);
-    } else if (!fs.existsSync(readmePath)) {
-      missingReadmes.push(folder);
-    }
-  });
-
-  if (missingReadmes.length > 0) {
-    ERRORS.push(`Missing README.md in spec folders: ${missingReadmes.join(', ')}`);
+  const specDir = path.join(PROJECT_ROOT, `docs/specs/${specType}`);
+  if (!fs.existsSync(specDir) || !modules || modules.length === 0) {
+    return;
   }
 
-  console.log(`  Checked ${requiredFolders.length} required spec folders`);
+  const validStatuses = ['implemented', 'in-progress', 'pending', 'active'];
+  const requiredSections = ['Purpose', 'User Flow', 'Acceptance Criteria', 'Implementation', 'Related'];
+  
+  let docsChecked = 0;
+  let contentIssues = 0;
+
+  modules.forEach(module => {
+    const modulePath = path.join(specDir, module);
+    if (!fs.existsSync(modulePath)) return;
+
+    // Get all .md files except README.md
+    const files = fs.readdirSync(modulePath)
+      .filter(f => f.endsWith('.md') && f !== 'README.md');
+
+    files.forEach(file => {
+      const filePath = path.join(modulePath, file);
+      docsChecked++;
+
+      try {
+        const content = fs.readFileSync(filePath, 'utf8');
+
+        // Check 1: YAML frontmatter
+        if (!content.startsWith('---')) {
+          ERRORS.push(`${typeName}/${module}/${file}: Missing YAML frontmatter`);
+          contentIssues++;
+          return;
+        }
+
+        // Handle both Unix (LF) and Windows (CRLF) line endings
+        const frontmatterMatch = content.match(/^---[\r\n]+([\s\S]*?)[\r\n]+---/);
+        if (!frontmatterMatch) {
+          ERRORS.push(`${typeName}/${module}/${file}: Invalid YAML frontmatter format`);
+          contentIssues++;
+          return;
+        }
+
+        const frontmatter = frontmatterMatch[1];
+
+        // Check 2: Required frontmatter fields
+        if (!frontmatter.includes('version:')) {
+          ERRORS.push(`${typeName}/${module}/${file}: Missing 'version' in frontmatter`);
+          contentIssues++;
+        }
+        if (!frontmatter.includes('status:')) {
+          ERRORS.push(`${typeName}/${module}/${file}: Missing 'status' in frontmatter`);
+          contentIssues++;
+        }
+        if (!frontmatter.includes('last_updated:')) {
+          ERRORS.push(`${typeName}/${module}/${file}: Missing 'last_updated' in frontmatter`);
+          contentIssues++;
+        }
+
+        // Check 3: Valid status value
+        const statusMatch = frontmatter.match(/status:\s*(\S+)/);
+        if (statusMatch && !validStatuses.includes(statusMatch[1])) {
+          WARNINGS.push(`${typeName}/${module}/${file}: Invalid status '${statusMatch[1]}' (should be: ${validStatuses.join(', ')})`);
+        }
+
+        // Check 4: Required sections (only for functional specs non-placeholder docs)
+        if (specType === 'functional') {
+          const isPending = content.includes('status: pending');
+          if (!isPending) {
+            const missingSections = requiredSections.filter(section => {
+              // Use flexible matching for sections
+              const regex = new RegExp(`^##\\s+${section}`, 'm');
+              return !regex.test(content);
+            });
+
+            if (missingSections.length > 0) {
+              WARNINGS.push(`${typeName}/${module}/${file}: Missing sections: ${missingSections.join(', ')}`);
+            }
+          }
+
+          // Check 5: Acceptance Criteria format
+          if (content.includes('## Acceptance Criteria')) {
+            const criteriaSection = content.split('## Acceptance Criteria')[1]?.split('##')[0];
+            if (criteriaSection && !criteriaSection.match(/[-✅⏳☐]/)) {
+              WARNINGS.push(`${typeName}/${module}/${file}: Acceptance Criteria should use checkboxes (✅ ⏳ ☐)`);
+            }
+          }
+        }
+
+        // Check 6: Validate internal links
+        const internalLinks = content.match(/\[.*?\]\(\.\/.+?\.md\)/g) || [];
+        internalLinks.forEach(link => {
+          const linkPath = link.match(/\((\.\/.*?\.md)\)/)?.[1];
+          if (linkPath) {
+            const absoluteLinkPath = path.join(modulePath, linkPath.replace('./', ''));
+            if (!fs.existsSync(absoluteLinkPath)) {
+              WARNINGS.push(`${typeName}/${module}/${file}: Broken link: ${linkPath}`);
+            }
+          }
+        });
+
+        // Check 7: Cross-module links
+        const crossLinks = content.match(/\[.*?\]\(\.\.\/.*?\.md\)/g) || [];
+        crossLinks.forEach(link => {
+          const linkPath = link.match(/\((\.\.\/.*?\.md)\)/)?.[1];
+          if (linkPath) {
+            const absoluteLinkPath = path.join(modulePath, linkPath);
+            if (!fs.existsSync(absoluteLinkPath)) {
+              WARNINGS.push(`${typeName}/${module}/${file}: Broken cross-reference: ${linkPath}`);
+            }
+          }
+        });
+
+      } catch (err) {
+        WARNINGS.push(`${typeName}/${module}/${file}: Cannot read or parse file - ${err.message}`);
+      }
+    });
+  });
+
+  console.log(`  Checked ${docsChecked} ${typeName} sub-spec documents`);
+  if (contentIssues > 0) {
+    console.log(`  Found ${contentIssues} content issues`);
+  }
 }
 
 // =============================================================================
@@ -335,6 +504,14 @@ detectDuplicateFiles();
 detectSimilarFileNames();
 detectDatabaseDuplicatePatterns();
 validateSpecFolderReadmes();
+
+// Validate functional specs (dynamic discovery)
+const functionalModules = validateFunctionalSpecFolders();
+validateSpecDocumentContent('functional', functionalModules);
+
+// Validate technical specs (dynamic discovery)
+const technicalModules = validateSpecFolderStructure('technical');
+validateSpecDocumentContent('technical', technicalModules);
 
 console.log('\n' + '='.repeat(60));
 

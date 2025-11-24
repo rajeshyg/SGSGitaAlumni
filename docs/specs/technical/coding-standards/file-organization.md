@@ -280,5 +280,4 @@ Summary: 0 errors, 0 warnings
 
 ## Related Documentation
 
-- [Structure Standards](../structure-standards.md)
 - [Naming Conventions](./naming-conventions.md)

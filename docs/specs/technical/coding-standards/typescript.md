@@ -278,5 +278,4 @@ src/types/
 
 ## Related Documentation
 
-- [Code Standards](../code-standards.md)
 - [Naming Conventions](./naming-conventions.md)
