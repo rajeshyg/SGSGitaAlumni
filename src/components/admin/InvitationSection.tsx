@@ -55,7 +55,6 @@ export function InvitationSection() {
   }, []);
 
   // Fetch active OTP for an email
-  // Note: 404 responses in browser console are expected - they indicate no active OTP exists for that email
   const fetchActiveOtp = useCallback(async (email: string) => {
     try {
       const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
