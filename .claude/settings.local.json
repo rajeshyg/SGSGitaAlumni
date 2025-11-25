@@ -40,7 +40,8 @@
       "Bash(tasklist:*)",
       "Bash(powershell -Command:*)",
       "Bash(cmd /c \"taskkill /F /IM node.exe\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
