@@ -465,6 +465,199 @@ Show me each file before moving to next.
 
 ---
 
+## Parallel Agents for Large Features
+
+### When to Use Parallel Agents
+
+**Decision Matrix**:
+| File Count | Approach | Agents | Execution Pattern |
+|-----------|----------|--------|-------------------|
+| 1-2 files | Direct build | 1 | Single session |
+| 3-10 files | Sequential build | 1 | Scout → Plan → Build |
+| 10+ files | Parallel build | 3-5 | Git worktrees + parallel agents |
+
+### Build Phase: Parallel Focused Agents
+
+**CRITICAL**: Build is NOT monolithic. For large features, it's multiple specialized agents working simultaneously.
+
+❌ **WRONG**: Single agent builds entire 15-file feature
+✅ **RIGHT**: Multiple agents build in parallel
+
+### Execution Pattern for 15-File Feature
+
+```markdown
+# Prompt to Claude Code:
+
+I need to implement [FEATURE] which affects 15 files.
+
+Based on the plan, spawn parallel Build agents:
+- Agent 1: API routes (files 1-5) → Work on backend endpoints
+- Agent 2: UI components (files 6-10) → Work on React components
+- Agent 3: Database (files 11-15) → Work on schema and migrations
+
+Run these agents in parallel and report when all complete.
+```
+
+### File Dependency Rule
+
+**Independent files** → parallel agents
+```
+Frontend changes (UI) + Backend changes (API) = No dependencies
+→ Run in parallel
+```
+
+**Dependent files** → sequential in same agent
+```
+Database schema MUST complete before API routes that use it
+→ Run sequentially or same agent
+```
+
+---
+
+## Git Worktrees for True Parallelism
+
+### The Problem
+
+Parallel agents can't modify the same working directory simultaneously without conflicts.
+
+### The Solution: Git Worktrees
+
+Git worktrees create isolated parallel working directories from the same repository.
+
+**Benefits**:
+- Same repo, separate working directories = no file conflicts
+- True parallel development
+- Each agent has clean workspace
+
+### Setup and Usage
+
+```bash
+# Create parallel work environments
+git worktree add ../project-backend feature/backend
+git worktree add ../project-frontend feature/frontend
+
+# Each directory is a separate working tree
+# Changes are tracked on different branches
+
+# Run agents truly in parallel
+(cd ../project-backend && claude -p "implement backend per specs" &)
+(cd ../project-frontend && claude -p "implement frontend per specs" &)
+wait  # Both agents complete
+
+# Review changes in each worktree
+cd ../project-backend && git status
+cd ../project-frontend && git status
+
+# Merge when ready
+cd [original-directory]
+git merge feature/backend
+git merge feature/frontend
+
+# Cleanup worktrees
+git worktree remove ../project-backend
+git worktree remove ../project-frontend
+```
+
+### When to Use Worktrees
+
+**Use worktrees when**:
+- 10+ files across distinct domains (frontend/backend/database)
+- Features can be developed independently
+- Want true parallel execution without conflicts
+
+**Don't use worktrees when**:
+- Files are interdependent
+- Sequential development is required
+- Simple feature affecting <10 files
+
+### Worktree Commands Reference
+
+```bash
+# List all worktrees
+git worktree list
+
+# Add new worktree
+git worktree add [path] [branch-name]
+
+# Remove worktree
+git worktree remove [path]
+
+# Remove worktree (force, even if dirty)
+git worktree remove [path] --force
+```
+
+---
+
+## Orchestrator Pattern (Advanced)
+
+### When You Need an Orchestrator
+
+**Indicators**:
+- 15+ files across multiple domains
+- Complex dependencies between components
+- Need coordination between parallel agents
+
+### Orchestrator Responsibilities
+
+```
+1. Parse task complexity
+2. Launch Scout agents (parallel if domains independent)
+3. Aggregate scout findings → single context bundle
+4. Trigger Planner with combined context
+5. Analyze plan → identify parallelizable batches
+6. Spawn Build agents (parallel where no file deps)
+7. Monitor progress, detect conflicts
+8. Run Validator on completion
+9. Report results
+```
+
+### Orchestrator Prompt Template
+
+```markdown
+# Your prompt to Claude Code:
+
+I need you to act as an **Orchestrator** for implementing [LARGE FEATURE].
+
+This feature affects 20+ files across frontend, backend, and database.
+
+Execute this workflow:
+
+## Phase 1: Parallel Reconnaissance
+Spawn Scout agents in parallel:
+- Scout-Frontend: Find UI components (React, TypeScript)
+- Scout-Backend: Find API routes (Express, services)
+- Scout-Database: Find schemas and migrations
+
+Wait for all scouts to complete.
+
+## Phase 2: Unified Planning
+Create Planner agent with combined scout outputs.
+Generate comprehensive implementation plan with:
+- Architecture decisions
+- Dependencies between components
+- Batch strategy for parallel work
+
+## Phase 3: Parallel Building
+Based on plan, spawn Builder agents:
+- If components are independent: run in parallel (use git worktrees)
+- If components have dependencies: run sequentially
+
+Suggested batches:
+- Batch 1 (parallel): Database schema + Backend models
+- Batch 2 (parallel): API routes + Frontend services
+- Batch 3 (parallel): UI components + Integration tests
+
+## Phase 4: Validation
+Run Validator to:
+- Verify all tests pass
+- Check for integration issues
+- Validate against original spec
+
+Report final status with summary of all changes.
+```
+
+---
+
 ## Common Mistakes to Avoid
 
 1. **Skipping Scout for complex features** - Leads to missed dependencies
