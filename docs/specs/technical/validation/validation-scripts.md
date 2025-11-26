@@ -39,6 +39,31 @@ node scripts/validation/check-redundancy.js
 
 ---
 
+### check-file-locations.cjs
+**Location**: `scripts/validation/check-file-locations.cjs`
+**Purpose**: Enforce file organization standards
+**Used By**: Pre-commit hooks (recommended)
+**Exit Codes**:
+- `0`: All files in correct locations
+- `1`: Warnings (should move but not blocking)
+- `2`: Errors (must move, blocks commit)
+
+**Usage**:
+```bash
+node scripts/validation/check-file-locations.cjs
+```
+
+**Checks**:
+- SQL files outside migrations/ or schema/
+- HTML files in root or src/
+- Shell scripts in root
+- Check/test scripts in wrong locations
+- Generated files not in .gitignore
+
+**Reference**: `docs/specs/technical/file-organization.md`
+
+---
+
 ### detect-mock-data.js
 **Location**: `scripts/core/detect-mock-data.js`
 **Purpose**: Find mock data patterns in production code

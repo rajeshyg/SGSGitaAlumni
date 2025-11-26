@@ -64,5 +64,12 @@ blob-report/
 reports/
 *.txt
 
+# Generated Reports and Outputs (File Organization Standard)
+*-report.html
+*-output.json
+generated-*.html
+eslint-output.json
+lint-violations.json
+
 # Root level SQL files (migrations should be in scripts/database/)
 /*.sql
