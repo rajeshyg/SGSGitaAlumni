@@ -28,7 +28,7 @@ async function runMigrations() {
     // Run Task 7.7.4 migrations (Preferences tables)
     console.log('📋 Running Task 7.7.4 migrations (Preferences tables)...');
     const preferencesSQL = fs.readFileSync(
-      path.join(__dirname, 'task-7.7.4-preferences-tables.sql'),
+      path.join(__dirname, 'migrations/task-7.7.4-preferences-tables.sql'),
       'utf8'
     );
     
@@ -48,7 +48,7 @@ async function runMigrations() {
     // Run Task 7.4.1 migrations (Feed tables)
     console.log('📋 Running Task 7.4.1 migrations (Feed tables)...');
     const feedSQL = fs.readFileSync(
-      path.join(__dirname, 'task-7.4.1-feed-tables.sql'),
+      path.join(__dirname, 'migrations/task-7.4.1-feed-tables.sql'),
       'utf8'
     );
     

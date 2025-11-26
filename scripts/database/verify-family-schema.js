@@ -138,7 +138,7 @@ async function verifySchema() {
       console.log('Issues found:');
       issues.forEach(issue => console.log(`  - ${issue}`));
       console.log('\nAction required:');
-      console.log('  1. Run: mysql -u root -p sgsgita_alumni < scripts/database/create-family-members-tables.sql');
+      console.log('  1. Run: mysql -u root -p sgsgita_alumni < scripts/database/migrations/create-family-members-tables.sql');
       console.log('  2. Re-run this verification script');
     }
     console.log('═══════════════════════════════════════════════════════════\n');

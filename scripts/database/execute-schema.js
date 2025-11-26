@@ -61,7 +61,7 @@ async function executeSqlFile(sqlFilePath) {
   }
 }
 
-const sqlFile = path.join(__dirname, 'create-family-members-tables.sql');
+const sqlFile = path.join(__dirname, 'migrations/create-family-members-tables.sql');
 executeSqlFile(sqlFile)
   .then(() => {
     console.log('\n✨ Schema creation completed!');
