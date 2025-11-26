@@ -225,19 +225,110 @@ git worktree remove ../project-frontend
 
 ---
 
-## Cost Optimization Matrix
+## Model Selection Guide (Cost Optimization)
 
-| Task Type | Model | Approx Cost | Decision Rule |
-|-----------|-------|-------------|---------------|
-| File discovery | Haiku | ~$0.02 | Pure information retrieval |
-| Documentation | Haiku | ~$0.02 | <500 lines output |
-| Simple CRUD | Haiku | ~$0.02 | Straightforward patterns |
-| Architecture | Sonnet | ~$1-2 | Design decisions |
-| Complex refactor | Sonnet | ~$3-4 | Multi-file changes |
-| Debugging | Sonnet | ~$2-3 | Requires reasoning |
-| Orchestration | Sonnet/Opus | ~$3-5 | Coordination logic |
+### The Golden Rule
+**Haiku**: Information retrieval, discovery, simple patterns, documentation (< 500 lines)
+**Sonnet**: Design decisions, complex logic, multi-file reasoning, debugging
 
-**Rule**: If task requires <500 lines or pure retrieval → Haiku. Otherwise → Sonnet.
+### Detailed Decision Matrix
+
+| Task Type | Model | Approx Cost | When to Use | Example Commands |
+|-----------|-------|-------------|-------------|------------------|
+| **File discovery** | Haiku | ~$0.02 | Finding files by pattern or keyword | `claude --model haiku -p "find all auth-related files"` |
+| **Code search** | Haiku | ~$0.02 | Searching for implementations | `claude --model haiku -p "search for JWT verification logic"` |
+| **Documentation** | Haiku | ~$0.02 | Writing docs < 500 lines | `claude --model haiku -p "document the API endpoints"` |
+| **Simple CRUD** | Haiku | ~$0.02 | Basic create/read/update/delete | `claude --model haiku -p "add basic user CRUD endpoints"` |
+| **Scout phase** | Haiku | ~$0.02 | Reconnaissance for any feature | `claude --model haiku -p "scout the posting system"` |
+| **Architecture** | Sonnet | ~$1-2 | Design decisions needed | Default model (no flag needed) |
+| **Complex refactor** | Sonnet | ~$3-4 | Multi-file reasoning | Default model |
+| **Debugging** | Sonnet | ~$2-3 | Requires deep analysis | Default model |
+| **Orchestration** | Sonnet/Opus | ~$3-5 | Multi-agent coordination | Default model or `--model opus` |
+| **Plan phase** | Sonnet | ~$1-2 | Strategic planning | Default model |
+| **Build phase** | Sonnet | ~$2-4 | Implementation work | Default model |
+
+### Cost Impact
+
+**10x Savings with Haiku**:
+- Haiku: ~$0.25 per 1M tokens
+- Sonnet: ~$3.00 per 1M tokens
+- **Savings**: Use Haiku for Scout = 10x cheaper than using Sonnet
+
+**Example Workflow Costs**:
+```
+Traditional (all Sonnet):
+├─ Scout:  $2.00
+├─ Plan:   $1.50
+├─ Build:  $3.00
+└─ Total:  $6.50
+
+Optimized (Haiku + Sonnet):
+├─ Scout:  $0.20 (Haiku)
+├─ Plan:   $1.50 (Sonnet)
+├─ Build:  $3.00 (Sonnet)
+└─ Total:  $4.70 (28% savings)
+```
+
+### Decision Flowchart
+
+```
+START
+  ↓
+Is this pure information retrieval?
+  ├─ YES → Haiku
+  └─ NO ↓
+Is output < 500 lines?
+  ├─ YES → Haiku
+  └─ NO ↓
+Does it require design decisions?
+  ├─ YES → Sonnet
+  └─ NO ↓
+Is it straightforward CRUD/simple pattern?
+  ├─ YES → Haiku
+  └─ NO → Sonnet (default)
+```
+
+### Practical Examples
+
+**Use Haiku for**:
+```bash
+# File discovery
+claude --model haiku -p "find all middleware files"
+
+# Scout phase
+claude --model haiku -p "scout the authentication system to understand its structure"
+
+# Simple documentation
+claude --model haiku -p "document the UserService class"
+
+# Pattern search
+claude --model haiku -p "find examples of rate limiting in the codebase"
+```
+
+**Use Sonnet for**:
+```bash
+# Complex implementation (default model)
+claude -p "implement the notification system with real-time updates"
+
+# Architecture decisions (default model)
+claude -p "design the data model for the rating system"
+
+# Debugging (default model)
+claude -p "debug why the OTP verification is failing"
+
+# Refactoring (default model)
+claude -p "refactor the ChatService to split it into focused services"
+```
+
+### When in Doubt
+
+Ask yourself:
+1. **"Am I asking it to find/read/discover?"** → Haiku
+2. **"Am I asking it to think/design/decide?"** → Sonnet
+3. **"Is the output straightforward?"** → Haiku
+4. **"Does this need reasoning?"** → Sonnet
+
+**Default to Sonnet if uncertain** - it's better to use Sonnet unnecessarily than to use Haiku for complex tasks that need reasoning.
 
 ---
 
