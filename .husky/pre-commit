@@ -54,4 +54,10 @@ echo "⚠️ Integration pattern check temporarily disabled for quality control 
 # echo "🧪 Running tests..."
 # npm run test:run
 
+# Optional: Collect quality metrics (can be slow, set SKIP_METRICS=1 to skip)
+if [ -z "$SKIP_METRICS" ]; then
+  echo "📊 Collecting quality metrics..."
+  npm run collect-metrics || echo "⚠️ Quality metrics collection failed, continuing..."
+fi
+
 echo "✅ All quality checks passed!"

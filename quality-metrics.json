@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-11-26T06:16:38.095Z",
+  "eslint": {
+    "errors": -1,
+    "warnings": -1,
+    "files": 0,
+    "status": "error"
+  },
+  "tests": {
+    "coverage": {
+      "lines": 88,
+      "statements": 88,
+      "functions": 85,
+      "branches": 82
+    },
+    "status": "estimated"
+  },
+  "duplication": {
+    "percentage": 2.5,
+    "duplicateLines": 0,
+    "totalLines": 0,
+    "status": "estimated"
+  },
+  "architecture": {
+    "totalFiles": 301,
+    "totalLines": 68135,
+    "averageFileSize": 226,
+    "largeFiles": 83,
+    "moduleCount": 14,
+    "status": "passed"
+  },
+  "security": {
+    "securePatterns": 4,
+    "totalPatterns": 5,
+    "score": 80,
+    "status": "passed"
+  },
+  "overallScore": 76,
+  "breakdown": {
+    "eslint": 112,
+    "tests": 85.75,
+    "duplication": 75,
+    "architecture": 0,
+    "security": 80
+  }
+}

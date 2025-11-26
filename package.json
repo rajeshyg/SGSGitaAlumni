@@ -91,7 +91,13 @@
     "detect-mock-data": "node scripts/detect-mock-data.js",
     "scan-mock-data": "node scripts/detect-mock-data.js",
     "audit-mock-data": "node scripts/detect-mock-data.js",
-    "validate-no-mock-usage": "node scripts/detect-mock-data.js"
+    "validate-no-mock-usage": "node scripts/detect-mock-data.js",
+    "collect-metrics": "node scripts/collect-quality-metrics.js",
+    "quality-report": "node scripts/collect-quality-metrics.js",
+    "quality-full": "npm run lint && npm run test:run && npm run check-redundancy && npm run collect-metrics",
+    "check-console": "grep -r 'console\\.' src/ --include='*.ts' --include='*.tsx' --exclude='*.test.*' --exclude='*.spec.*' || echo '✅ No console statements found'",
+    "check-file-sizes": "find src -type f \\( -name '*.tsx' -o -name '*.ts' \\) -exec wc -l {} \\; | awk '$1 > 500 {print \"📏 Large file:\", $2, \"-\", $1, \"lines\"}' || echo '✅ All files within size limits'",
+    "audit-code": "npm run check-console && npm run check-file-sizes"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.883.0",
