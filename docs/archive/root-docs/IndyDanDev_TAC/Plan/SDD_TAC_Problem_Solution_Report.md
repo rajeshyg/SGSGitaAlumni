@@ -108,47 +108,65 @@ Your pain point analysis (7.9/10 average severity) reveals systemic issues that 
 
 ---
 
-#### Problem 3: Mock Data Deception (10%)
+#### Problem 3: Fake Production Code Deception (10%)
 
-**Your Evidence**: Custom ESLint rule `no-mock-data.js`, 14+ failed fixes masked by mock data
+**Your Evidence**: Custom ESLint rule `no-mock-data.js`, 14+ failed fixes masked by fake implementations
+
+**CRITICAL CLARIFICATION**: This pain point is about AI creating **fake production UI with hardcoded values** that appears functional but has **NO real API/database connectivity**. This is **NOT about test mocking** - unit tests using mock data/fixtures is perfectly acceptable and standard practice.
+
+**The Actual Problem**:
+- AI creates a dashboard that shows "5 Alumni Online" as a hardcoded string instead of fetching from API
+- AI builds a form that "saves" data to localStorage instead of calling the real backend
+- AI delivers "100% production ready" code that is entirely fake with no real logic
+- AI uses fallback data that bypasses actual API calls
+
+**What IS Allowed**:
+- Unit tests with test fixtures and mock data
+- Test files using `faker` or similar libraries
+- Integration tests with test databases
+- Mocking external services in tests
 
 | Cause | Solution | Tool/Pattern | Implementation |
 |-------|----------|--------------|----------------|
-| AI creates fake data to "pass" | **ESLint Rule** | `no-mock-data.js` | ✅ Already implemented |
+| AI creates fake production UI | **ESLint Rule** | `no-mock-data.js` | ✅ Applied to production code only |
 | No real integration testing | **Validator Phase** | Playwright/Gemini E2E | TAC Phase 5 |
-| Claude not told to avoid mocks | **Skills** | Anti-pattern documentation | Auto-applies rules |
+| Claude not told to avoid fakes | **Skills** | Anti-pattern documentation | Auto-applies rules |
 | Pre-commit bypassed | **Hook Enforcement** | Exit code 2 blocks | Deterministic gate |
 
 **Recommended Stack**:
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   MOCK DATA PREVENTION                       │
+│               FAKE PRODUCTION CODE PREVENTION                │
 ├─────────────────────────────────────────────────────────────┤
 │ Layer 1: Skills (Proactive)                                 │
-│   → .claude/skills/testing-patterns.md                      │
-│   → Contains: "NEVER use mock data in integration tests"    │
-│   → Auto-activates when writing test files                  │
+│   → .claude/skills/coding-standards.md                      │
+│   → Contains: "Production code MUST use real APIs"          │
+│   → Auto-activates when writing components/services         │
 ├─────────────────────────────────────────────────────────────┤
 │ Layer 2: ESLint Rule (✅ Already Have)                      │
-│   → no-mock-data.js catches faker, Math.random, etc.        │
+│   → no-mock-data.js - DISABLED for test files               │
+│   → Only catches patterns in production code (src/pages,    │
+│     src/components, services - NOT test files)              │
 ├─────────────────────────────────────────────────────────────┤
 │ Layer 3: Pre-commit Hook                                    │
-│   → detect-mock-data.js runs before commit                  │
-│   → Exit code 1 blocks commit if mocks found                │
+│   → detect-mock-data.js EXEMPTS test files                  │
+│   → Only flags production code with fake implementations    │
 ├─────────────────────────────────────────────────────────────┤
 │ Layer 4: Validate Phase (TAC)                               │
-│   → E2E tests with real API calls                           │
-│   → "Block until tests pass with real data"                 │
+│   → E2E tests verify real API connectivity                  │
+│   → Tests use appropriate test data/fixtures (allowed)      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **IndyDevDan's TDD Pattern** (from Anthropic best practices):
 > "Be explicit about the fact that you're doing test-driven development so that it avoids creating mock implementations, even for functionality that doesn't exist yet in the codebase."
 
+**Correct Interpretation**: This quote means don't create fake/stub production implementations. It does NOT mean tests should avoid mock data. Tests SHOULD use appropriate fixtures and mocks for isolation.
+
 **Action Items**:
-1. ✅ Keep `no-mock-data.js` ESLint rule
-2. ✅ Keep `detect-mock-data.js` pre-commit
-3. 🔴 Add to skills: "When writing tests, use real API calls, never mock data"
+1. ✅ Keep `no-mock-data.js` ESLint rule (disabled for test files in eslint.config.js)
+2. ✅ Keep `detect-mock-data.js` pre-commit (properly exempts test files)
+3. ✅ Coding standards skill: "Production code MUST use real APIs/database - test files MAY use fixtures"
 4. 🟡 Fix 1425 ESLint errors to re-enable pre-commit (dogfooding opportunity)
 
 ---

@@ -66,12 +66,17 @@ node scripts/validation/check-file-locations.cjs
 
 ### detect-mock-data.js
 **Location**: `scripts/core/detect-mock-data.js`
-**Purpose**: Find mock data patterns in production code
+**Purpose**: Find fake/mock data patterns in **production code only**
 **Used By**: Pre-commit hooks
-**Detects**:
-- `faker` library usage
-- `Math.random()` in non-test files
-- Mock data patterns
+
+**IMPORTANT**: This script **exempts test files** (`.test.`, `.spec.`, `__tests__/`, etc.)
+Test files using mock data, fixtures, and faker is expected and correct.
+
+**Detects in Production Code**:
+- `faker` library usage (should only be in tests)
+- `Math.random()` for generating IDs (use proper IDs from DB)
+- Mock data patterns (hardcoded arrays that should come from APIs)
+- Variables named `mock*` in production components
 
 **Usage**:
 ```bash

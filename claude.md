@@ -1,34 +1,52 @@
 # Claude Context - SGSGitaAlumni
 
-**Primary Context File**: [`docs/specs/context/always-on.md`](docs/specs/context/always-on.md)
+**Primary Context**: `docs/specs/context/always-on.md`
 
-This file is designed for both AI agents and human collaborators. Read it first to understand:
-- The tech stack and reference implementations
-- Scout-Plan-Build workflow (SDD framework)
-- How to trigger agents and request context priming
-- Where to find specifications and docs
+---
+
+## Context Management Rules (CRITICAL)
+
+### What Goes Where
+
+| Location | Purpose | When to Create |
+|----------|---------|----------------|
+| **CLAUDE.md** (this file) | Navigation + essential rules | NEVER add new sections |
+| **Skills** (`.claude/skills/`) | Reusable AI patterns | Only for patterns used 5+ times |
+| **Commands** (`.claude/commands/`) | Quick context loading | Only 5 prime-* commands exist |
+| **Specs** (`docs/specs/`) | Human documentation | Not for AI context |
+
+### Context Budget: ~5 Skills Max
+
+Current skills (DO NOT ADD MORE without removing one):
+1. `duplication-prevention.md` - Check before creating
+2. `coding-standards.md` - Code quality rules
+3. `security-rules.md` - SQL injection, secrets
+4. `sdd-tac-workflow/` - Scout-Plan-Build
+
+**To add a new skill**: Merge into existing or replace one.
+
+### Structure Validation
+
+**Single source of truth**: `scripts/validation/structure-rules.cjs`
+- Defines allowed extensions per folder
+- Canonical vocabulary (validate vs check vs verify)
+- Exception registry
+
+Run: `node scripts/validation/structure-rules.cjs` to see rules.
 
 ---
 
 ## Quick Navigation
 
-**For AI Agents (all tools: Copilot, Windsurf, Claude Code, etc)**:
-1. Read `docs/specs/context/always-on.md` (5-10 minutes)
-2. Use Scout-Plan-Build workflow for complex features
-3. Request context priming: `/prime-auth`, `/prime-api`, `/prime-database`, `/prime-ui`
-4. For detailed implementation guide: `docs/spec-driven-development/06-agent-orchestration-implementation.md`
+**AI Agents**: Read `docs/specs/context/always-on.md` first.
 
-**For Technical Specifications**:
-- Functional specs: `docs/specs/functional/[feature]/`
-- Technical specs: `docs/specs/technical/` (architecture, security, database, testing, UI, coding standards)
-- Workflows: `docs/specs/workflows/[feature]/` (Scout-Plan-Build patterns for each feature)
+**Context priming**: `/prime-auth`, `/prime-api`, `/prime-database`, `/prime-ui`
 
-**For SDD Framework Deep Dive**:
-- Module 1-2: Foundations (why SDD matters, agentic prompting)
-- Module 3-5: Advanced patterns (context engineering, techniques, ROI)
-- Module 6: Practical implementation (how to trigger agents)
-- Full roadmap: `docs/spec-driven-development/README.md`
+**Specs location**:
+- Functional: `docs/specs/functional/[feature]/`
+- Technical: `docs/specs/technical/`
+- Workflows: `docs/specs/workflows/`
 
 ---
 
-**Everything you need is in `docs/specs/context/always-on.md` — start there.**
+**Start with `docs/specs/context/always-on.md`**

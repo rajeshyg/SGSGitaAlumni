@@ -1,3 +1,6 @@
+eslint-output.json
+lint-violations.json
+nul
 # Python  
 __pycache__/  
 *.py[cod]  

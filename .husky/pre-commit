@@ -1,67 +1,27 @@
 echo "🔍 Running pre-commit quality checks..."
 
-# Run structure validation (duplicate detection, file rules)
-echo "📁 Running structure validation..."
-node scripts/core/validate-structure.cjs
-
-# If structure validation fails, exit
+# 1) Unified structure validation (blocking)
+echo "📁 Validating project structure..."
+node scripts/validation/validate-project-structure.cjs
 if [ $? -ne 0 ]; then
-  echo "❌ Structure validation failed. Commit blocked."
-  echo "Run 'node scripts/core/validate-structure.cjs' for details."
+  echo "❌ Project structure validation failed. Commit blocked."
   exit 1
 fi
 
-# Run documentation consistency check
-echo "📄 Checking documentation consistency..."
-node scripts/core/check-documentation.js
-
-# If documentation check fails, exit
-if [ $? -ne 0 ]; then
-  echo "❌ Documentation check failed. Commit blocked."
-  exit 1
-fi
-
-# Run linting
+# 2) ESLint (blocking)
 echo "📏 Running ESLint..."
 npm run lint
-ESLINT_EXIT_CODE=$?
-
-if [ $ESLINT_EXIT_CODE -ne 0 ]; then
+if [ $? -ne 0 ]; then
   echo "❌ ESLint failed. Commit blocked."
   exit 1
 fi
 
-# Run redundancy checks
-echo "🔍 Checking for redundancy..."
-npm run check-redundancy
-
-# 🚫 ZERO TOLERANCE: Check for mock data usage
+# 3) Mock data detection (blocking)
 echo "🚫 Checking for mock data violations..."
 npm run detect-mock-data
-
-# If mock data check fails, exit
 if [ $? -ne 0 ]; then
-  echo "❌ Mock data detected! Zero tolerance policy violation. Commit blocked."
-  echo "Please remove all mock data and use real API endpoints instead."
+  echo "❌ Mock data detected! Commit blocked."
   exit 1
 fi
 
-# Check integration patterns (temporarily disabled for quality control implementation)
-# echo "🔗 Checking integration patterns..."
-# npm run check-integration
-
-# # If integration check fails, exit
-# if [ $? -ne 0 ]; then
-#   echo "❌ Integration pattern violations detected. Commit blocked."
-#   echo "Please fix integration pattern issues and try again."
-#   exit 1
-# fi
-
-echo "⚠️ Integration pattern check temporarily disabled for quality control implementation"
-
-# Run tests
-# Temporarily disabled due to test failures - will re-enable after deployment validation
-# echo "🧪 Running tests..."
-# npm run test:run
-
-echo "✅ All quality checks passed!"
+echo "✅ Pre-commit checks passed."

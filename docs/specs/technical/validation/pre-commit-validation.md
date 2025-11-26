@@ -56,10 +56,15 @@ implementation: .husky/pre-commit
 
 ### 5. Mock Data Detection
 **Script**: `scripts/core/detect-mock-data.js`
-**Checks**:
+**Purpose**: Detect fake production code (NOT test mocking)
+
+**IMPORTANT**: Test files are **exempted**. Using mock data in tests is correct.
+
+**Detects in Production Code Only**:
 - `faker` usage in non-test files
 - `Math.random()` in production code
-- Mock data patterns
+- Mock data patterns (hardcoded fake data)
+- Variables named `mock*` in components/services
 
 ---
 
@@ -93,7 +98,9 @@ git commit --no-verify -m "docs: update README (no-verify, intentional)"
 **Solution**: Remove duplicate file or add to whitelist
 
 ### Problem: Pre-commit fails on mock data
-**Solution**: Remove mock data or use real data in tests
+**Solution**: 
+- If in **production code**: Remove fake/hardcoded data and use real API calls
+- If in **test files**: This shouldn't happen - test files are exempt. Check file naming (must include `.test.`, `.spec.`, or be in `__tests__/`)
 
 ### Problem: Pre-commit fails on ESLint
 **Solution**: Fix ESLint errors or run `npm run lint:fix`

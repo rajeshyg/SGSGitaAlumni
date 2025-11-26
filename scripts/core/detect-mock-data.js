@@ -1,9 +1,23 @@
 #!/usr/bin/env node
 
 /**
- * Mock Data Detection Script
- * Automated validation to detect and prevent mock data usage
- * Part of Zero Tolerance Mock Data Policy
+ * Fake Production Code Detection Script
+ * 
+ * PURPOSE: Detect when AI creates fake production UI with hardcoded values
+ * instead of real API/database connectivity.
+ * 
+ * IMPORTANT CLARIFICATION:
+ * - This script EXEMPTS test files (.test., .spec., __tests__, etc.)
+ * - Test files using mock data, fixtures, faker is EXPECTED and CORRECT
+ * - This is about catching fake PRODUCTION code, not test mocking
+ * 
+ * What this catches in PRODUCTION code:
+ * - Hardcoded arrays that should come from APIs
+ * - faker/chance usage (should only be in tests)
+ * - Variables named mock* in production components
+ * - Fake server responses
+ * 
+ * This prevents AI from delivering "100% production ready" code that is fake.
  */
 
 import fs from 'fs';
@@ -205,7 +219,8 @@ class MockDataDetector {
 
   // Main scanning function
   async scanForMockData() {
-    console.log('🔍 Scanning for mock data violations...\n');
+    console.log('🔍 Scanning for fake/mock data in PRODUCTION code...\n');
+    console.log('   (Test files are exempted - mock data in tests is fine)\n');
 
     // Scan all TypeScript/JavaScript files in src
     this.scanDirectory(this.srcDir);
@@ -244,7 +259,8 @@ class MockDataDetector {
     const errors = this.violations.filter(v => v.severity === 'ERROR');
     const warnings = this.violations.filter(v => v.severity === 'WARNING');
 
-    console.log('📋 Mock Data Detection Report');
+    console.log('📋 Fake Production Code Detection Report');
+    console.log('   (Test files are exempt - only production code is checked)');
     console.log('='.repeat(50));
 
     if (errors.length > 0) {
@@ -268,14 +284,16 @@ class MockDataDetector {
     }
 
     if (errors.length === 0 && warnings.length === 0) {
-      console.log('✅ No mock data violations found!');
+      console.log('✅ No fake production code detected!');
+      console.log('   All production code appears to use real APIs/data.');
     }
 
     console.log('='.repeat(50));
 
     if (errors.length > 0) {
-      console.log('🚫 Mock data violations detected!');
-      console.log('Please remove all mock data and use real API endpoints instead.');
+      console.log('🚫 Fake production code detected!');
+      console.log('Production code must use real API endpoints, not hardcoded/mock data.');
+      console.log('(Note: Test files are exempt - this only applies to production code)');
       console.log('='.repeat(50));
     }
   }

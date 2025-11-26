@@ -398,6 +398,110 @@ This skill complements:
 - **duplication-prevention.md**: Reuse before creating
 - **sdd-tac-workflow**: Scout phase finds existing patterns
 
+## 🚨 Production Code vs Test Code - CRITICAL DISTINCTION
+
+### Production Code MUST Use Real APIs/Database
+
+**The Problem**: AI often creates "fake production code" - UI that appears functional but has NO real API/database connectivity. This includes:
+- Hardcoded data displayed in components
+- Mock UI with static values
+- Fallback data that bypasses API calls
+- "Demo mode" implementations delivered as production-ready
+
+**❌ NEVER IN PRODUCTION CODE**:
+```typescript
+// ❌ Hardcoded fake data in a component
+const Dashboard = () => {
+  const users = [
+    { id: 1, name: 'John Doe', email: 'john@example.com' },
+    { id: 2, name: 'Jane Smith', email: 'jane@example.com' }
+  ];
+  return <UserList users={users} />; // This is FAKE - not connected to API!
+};
+
+// ❌ Fallback that bypasses real data
+const getAlumniCount = () => {
+  return 42; // Hardcoded! Should fetch from API
+};
+
+// ❌ Mock data disguised as real
+const mockPosts = generateFakePosts(10);
+export default function Feed() {
+  return <PostList posts={mockPosts} />; // NOT production ready!
+}
+```
+
+**✅ CORRECT PRODUCTION CODE**:
+```typescript
+// ✅ Real API call
+const Dashboard = () => {
+  const { data: users, loading } = useQuery('/api/users');
+  if (loading) return <Spinner />;
+  return <UserList users={users} />;
+};
+
+// ✅ Real database query
+const getAlumniCount = async () => {
+  const result = await db.query('SELECT COUNT(*) FROM alumni');
+  return result[0].count;
+};
+
+// ✅ Real API integration
+export default function Feed() {
+  const { posts, loading } = usePosts();
+  return <PostList posts={posts} loading={loading} />;
+}
+```
+
+### Test Code CAN and SHOULD Use Test Data
+
+**Test files are EXEMPT** from mock data rules. Using fixtures, mocks, and test data is:
+- ✅ **Expected** in unit tests
+- ✅ **Correct** for integration tests (with test database)
+- ✅ **Standard practice** across the industry
+
+**✅ ALLOWED IN TEST FILES**:
+```typescript
+// ✅ Test fixtures are fine
+const testUser = { id: 1, name: 'Test User', email: 'test@test.com' };
+
+// ✅ Faker in test files is fine
+import { faker } from '@faker-js/faker';
+const mockUsers = Array.from({ length: 10 }, () => ({
+  name: faker.person.fullName(),
+  email: faker.internet.email()
+}));
+
+// ✅ Mocking API calls in tests is fine
+vi.mock('../services/api', () => ({
+  fetchUsers: vi.fn().mockResolvedValue([testUser])
+}));
+```
+
+### ESLint Enforcement
+
+The `no-mock-data` ESLint rules are:
+- **ENABLED** for `src/components/**`, `src/pages/**`, `server/**`
+- **DISABLED** for `*.test.*`, `*.spec.*`, `__tests__/**`, `tests/**`
+
+This is configured in `eslint.config.js`.
+
+### Pre-Commit Detection
+
+`scripts/core/detect-mock-data.js` runs on commit and:
+- **SKIPS** test files (`.test.`, `.spec.`, `__tests__`, etc.)
+- **FLAGS** mock patterns in production code only
+
+### Self-Check Questions
+
+Before delivering production code, ask:
+1. "Does this component fetch real data or is it hardcoded?"
+2. "Will this work if I delete the hardcoded values?"
+3. "Is there actual API/database connectivity?"
+4. "Am I using fallback data that bypasses the real implementation?"
+
+If any answer is concerning, **fix it before claiming production-ready**.
+
 ## Historical Issues (Never Repeat)
 
 1. **ChatService 1314 lines**: God object, hard to maintain → Split into focused services
