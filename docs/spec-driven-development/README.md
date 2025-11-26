@@ -1,3 +1,34 @@
+# ⚠️ DEPRECATED - Moved to Technical Specs
+
+**This directory has been deprecated as of 2025-11-26.**
+
+All SDD/TAC framework documentation has been consolidated into: **`docs/specs/technical/development-framework/`**
+
+**[→ Go to New Location](../specs/technical/development-framework/README.md)**
+
+---
+
+## Why the Move?
+
+1. **Single Source of Truth**: Framework was scattered across 4+ locations
+2. **Consistent Structure**: Now part of technical specs (like theme system, database design, etc.)
+3. **Status Dashboard Integration**: Tracked via `public/api/feature-status.json`
+
+## Quick Migration
+
+| Old Module | New Location |
+|------------|--------------|
+| Understanding SDD | [sdd-tac-methodology.md](../specs/technical/development-framework/sdd-tac-methodology.md) |
+| Context & Orchestration | [context-management.md](../specs/technical/development-framework/context-management.md) |
+| Agent Orchestration | [agent-orchestration.md](../specs/technical/development-framework/agent-orchestration.md) |
+| Model Selection | [model-selection-guide.md](../specs/technical/development-framework/model-selection-guide.md) |
+
+**This directory will be removed in a future cleanup.**
+
+---
+
+# Original Content (For Reference Only)
+
 # Spec-Driven Development Guide
 
 ## Overview

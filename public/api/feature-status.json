@@ -1,5 +1,5 @@
 {
-  "generated": "2025-11-23T04:53:26.878Z",
+  "generated": "2025-11-26T00:00:00.000Z",
   "summary": {
     "total": 9,
     "implemented": 5,
@@ -124,5 +124,88 @@
       "subFeatures": []
     }
   ],
-  "technicalTasks": []
+  "technicalTasks": [
+    {
+      "id": "DEVELOPMENT_FRAMEWORK",
+      "name": "Development Framework (SDD/TAC)",
+      "status": "implemented",
+      "spec": "docs/specs/technical/development-framework/README.md",
+      "components": {
+        "sdd-tac-methodology": {
+          "name": "Scout-Plan-Build Workflow",
+          "status": "implemented",
+          "spec": "docs/specs/technical/development-framework/sdd-tac-methodology.md",
+          "skill": ".claude/skills/sdd-tac-workflow/SKILL.md"
+        },
+        "model-selection": {
+          "name": "Model Selection Guide (Haiku/Sonnet)",
+          "status": "implemented",
+          "spec": "docs/specs/technical/development-framework/model-selection-guide.md",
+          "integration": ".claude/commands/prime-framework.md"
+        },
+        "context-management": {
+          "name": "R&D Framework (Context Management)",
+          "status": "implemented",
+          "spec": "docs/specs/technical/development-framework/context-management.md"
+        },
+        "agent-orchestration": {
+          "name": "Parallel Agents & Git Worktrees",
+          "status": "documented",
+          "spec": "docs/specs/technical/development-framework/agent-orchestration.md"
+        },
+        "duplication-prevention": {
+          "name": "Duplication Prevention",
+          "status": "implemented",
+          "spec": "docs/specs/technical/development-framework/duplication-prevention.md",
+          "skill": ".claude/skills/duplication-prevention.md",
+          "validation": "scripts/validation/check-redundancy.js"
+        },
+        "security-enforcement": {
+          "name": "Security Enforcement",
+          "status": "implemented",
+          "spec": "docs/specs/technical/development-framework/security-enforcement.md",
+          "skill": ".claude/skills/security-rules.md"
+        },
+        "coding-standards": {
+          "name": "Coding Standards",
+          "status": "implemented",
+          "spec": "docs/specs/technical/development-framework/coding-standards.md",
+          "skill": ".claude/skills/coding-standards.md"
+        }
+      }
+    },
+    {
+      "id": "VALIDATION_FRAMEWORK",
+      "name": "Validation & Quality Gates",
+      "status": "partial",
+      "spec": "docs/specs/technical/validation/README.md",
+      "components": {
+        "pre-commit-validation": {
+          "name": "Pre-Commit Hooks",
+          "status": "implemented",
+          "spec": "docs/specs/technical/validation/pre-commit-validation.md",
+          "implementation": ".husky/pre-commit",
+          "scripts": [
+            "scripts/validation/check-redundancy.js",
+            "scripts/core/detect-mock-data.js",
+            "scripts/core/validate-structure.cjs",
+            "scripts/core/check-documentation.js"
+          ]
+        },
+        "real-time-validation": {
+          "name": "Real-Time Validation (Claude Hooks)",
+          "status": "planned",
+          "spec": "docs/specs/technical/validation/real-time-validation.md",
+          "implementation": ".claude/hooks/pre-tool-use.sh",
+          "priority": "TIER 1"
+        },
+        "validation-scripts": {
+          "name": "Validation Scripts Catalog",
+          "status": "implemented",
+          "spec": "docs/specs/technical/validation/validation-scripts.md",
+          "location": "scripts/validation/"
+        }
+      }
+    }
+  ]
 }

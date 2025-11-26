@@ -1,3 +1,17 @@
+# ⚠️ DEPRECATED - Moved to Technical Specs
+
+**This file has been deprecated as of 2025-11-26.**
+
+SDD Framework documentation has been consolidated into: **`docs/specs/technical/development-framework/`**
+
+**[→ Go to New Location](./specs/technical/development-framework/sdd-tac-methodology.md)**
+
+**This file will be removed in a future cleanup.**
+
+---
+
+# Original Content (For Reference Only)
+
 # Spec-Driven Development (SDD) Framework - Productivity Report
 
 > **Report Date**: November 24, 2025

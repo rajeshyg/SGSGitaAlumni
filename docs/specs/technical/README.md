@@ -2,9 +2,9 @@
 
 ```yaml
 ---
-version: 2.0
+version: 2.1
 status: active
-last_updated: 2025-11-23
+last_updated: 2025-11-26
 description: Technical standards and patterns for SGS Gita Alumni development
 ---
 ```
@@ -17,6 +17,8 @@ This directory contains all technical specifications organized by domain. Each s
 
 | Folder | Purpose | Key Documents |
 |--------|---------|---------------|
+| [development-framework/](./development-framework/) | **SDD/TAC methodology** | Scout-Plan-Build workflow, model selection, context management |
+| [validation/](./validation/) | **Quality gates** | Pre-commit hooks, real-time validation, validation scripts |
 | [architecture/](./architecture/) | System design & patterns | API design, error handling, logging, performance |
 | [security/](./security/) | Security & compliance | Authentication, authorization, data protection, COPPA |
 | [database/](./database/) | Database design & operations | Schema, indexing, connection management |
@@ -37,12 +39,16 @@ This directory contains all technical specifications organized by domain. Each s
 
 | Task | Read This |
 |------|-----------|
+| **3+ file features** | [development-framework/sdd-tac-methodology.md](./development-framework/sdd-tac-methodology.md) |
+| **Model selection** | [development-framework/model-selection-guide.md](./development-framework/model-selection-guide.md) |
+| **Before creating files** | [development-framework/duplication-prevention.md](./development-framework/duplication-prevention.md) |
 | UI/Theme work | [ui-standards/theme-system.md](./ui-standards/theme-system.md) |
 | API development | [architecture/api-design.md](./architecture/api-design.md) |
 | Database queries | [database/connection-management.md](./database/connection-management.md) |
 | Error handling | [architecture/error-handling.md](./architecture/error-handling.md) |
 | Code review | [coding-standards/code-review-checklist.md](./coding-standards/code-review-checklist.md) |
 | Security | [security/README.md](./security/README.md) |
+| Validation setup | [validation/README.md](./validation/README.md) |
 
 ## Specification Format
 
