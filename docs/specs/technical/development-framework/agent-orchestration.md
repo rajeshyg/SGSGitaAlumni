@@ -1,10 +1,10 @@
-# Agent Orchestration (Parallel Execution)
-
 ---
 version: 1.0
 status: implemented
 last_updated: 2025-11-26
 ---
+
+# Agent Orchestration (Parallel Execution)
 
 ```yaml
 ---

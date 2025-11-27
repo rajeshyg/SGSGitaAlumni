@@ -1,10 +1,10 @@
-# Security Enforcement
-
 ---
 version: 1.0
 status: implemented
 last_updated: 2025-11-26
 ---
+
+# Security Enforcement
 
 ```yaml
 ---

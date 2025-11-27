@@ -1,10 +1,10 @@
-# Context Management (R&D Framework)
-
 ---
 version: 1.0
 status: implemented
 last_updated: 2025-11-26
 ---
+
+# Context Management (R&D Framework)
 
 ```yaml
 ---

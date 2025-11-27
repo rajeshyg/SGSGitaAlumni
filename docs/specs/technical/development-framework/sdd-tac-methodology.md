@@ -1,10 +1,10 @@
-# SDD/TAC Methodology: Scout-Plan-Build Workflow
-
 ---
 version: 1.0
 status: implemented
 last_updated: 2025-11-26
 ---
+
+# SDD/TAC Methodology: Scout-Plan-Build Workflow
 
 ```yaml
 ---
