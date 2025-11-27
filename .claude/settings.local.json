@@ -46,7 +46,9 @@
       "Bash(test:*)",
       "Bash(chmod:*)",
       "Skill(sdd-tac-workflow)",
-      "Bash(mysql:*)"
+      "Bash(mysql:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []

@@ -53,7 +53,7 @@ try {
 ### 4. Transaction Support
 **Pattern**: Accept optional connection parameter
 ```javascript
-async function createUser(userData, connection = null) {
+async function createEntity(entityData, connection = null) {
   // Enables transactions across multiple operations
 }
 ```
@@ -62,13 +62,13 @@ async function createUser(userData, connection = null) {
 **Rule**: If loop + query, batch instead
 ```javascript
 // ❌ N+1: Loop with query inside
-for (const post of posts) {
-  post.author = await getUser(post.authorId);
+for (const item of items) {
+  item.relatedData = await getRelatedData(item.relatedId);
 }
 
-// ✅ Batched: Single query for all authors
-const authorIds = [...new Set(posts.map(p => p.authorId))];
-const authors = await getUsersByIds(authorIds);
+// ✅ Batched: Single query for all related data
+const relatedIds = [...new Set(items.map(i => i.relatedId))];
+const relatedData = await getRelatedDataByIds(relatedIds);
 ```
 
 ### 6. Avoid God Objects

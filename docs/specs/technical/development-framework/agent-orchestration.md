@@ -114,8 +114,8 @@ UI components (src/components/Auth.tsx)
 
 **Dependent files** → Sequential in same agent:
 ```
-Service (services/UserService.js)  ← Must exist first
-Route (routes/users.js)             ← Depends on service
+Service (services/[EntityName]Service.js)  ← Must exist first
+Route (routes/[entity-name].js)            ← Depends on service
 → Same agent, sequential order
 ```
 

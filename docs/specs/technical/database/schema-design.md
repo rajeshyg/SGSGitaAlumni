@@ -1,50 +1,57 @@
 ---
-title: Database Schema Design
-version: 1.0
+title: Database Schema Design Patterns
+version: 2.0
 status: implemented
-last_updated: 2025-11-23
+last_updated: 2025-11-27
 applies_to: database
 ---
 
-# Database Schema Design
+# Database Schema Design Patterns
 
 ## Overview
 
-Core schema design for the SGS Gita Alumni application, including table relationships, primary/foreign keys, and data type conventions.
+Generic schema design patterns and conventions for database architecture, including table relationships, primary/foreign keys, and data type conventions.
+
+**Note**: This document provides patterns and conventions. For feature-specific schemas, see `docs/specs/functional/[feature-name]/db-schema.md`.
 
 ## Table Naming Conventions
 
-- **UPPERCASE**: Core domain tables (e.g., `POSTINGS`, `MESSAGES`, `CONVERSATIONS`)
-- **snake_case**: Legacy/migrated tables (e.g., `app_users`, `alumni_members`)
+- **UPPERCASE**: Feature-specific tables (e.g., `ENTITY_NAME`, `FEATURE_DATA`)
+- **snake_case**: System/core tables (e.g., `app_users`, `system_config`)
 
-## Core Table Relationships
+## Common Table Relationship Patterns
 
-### User Domain
-
-```
-app_users (1) ----< (N) FAMILY_MEMBERS
-app_users (1) ----< (N) USER_INVITATIONS
-app_users (1) ---- (1) USER_PREFERENCES
-app_users (1) ---- (1) alumni_members
-```
-
-### Content Domain
+### One-to-Many Pattern
 
 ```
-app_users (1) ----< (N) POSTINGS
-POSTINGS (N) >----< (N) DOMAINS (via POSTING_DOMAINS)
-POSTINGS (N) >----< (N) TAGS (via POSTING_TAGS)
-POSTINGS (1) ----< (N) POSTING_COMMENTS
-POSTINGS (1) ----< (N) POSTING_LIKES
-POSTINGS (1) ----< (N) POSTING_ATTACHMENTS
+[PARENT_TABLE] (1) ----< (N) [CHILD_TABLE]
 ```
 
-### Messaging Domain
+**Example**: Users to their items
+```
+app_users (1) ----< (N) [ENTITY_NAME]
+```
+
+### Many-to-Many Pattern (with Junction Table)
 
 ```
-CONVERSATIONS (1) ----< (N) MESSAGES
-CONVERSATIONS (N) >----< (N) app_users (via CONVERSATION_PARTICIPANTS)
-MESSAGES (1) ----< (N) MESSAGE_REACTIONS
+[TABLE_A] (N) >----< (N) [TABLE_B] (via [JUNCTION_TABLE])
+```
+
+**Example**: Items with multiple tags
+```
+[ENTITY_NAME] (N) >----< (N) [TAG_TABLE] (via [ENTITY_TAG_JOIN])
+```
+
+### One-to-One Pattern
+
+```
+[TABLE_A] (1) ---- (1) [TABLE_B]
+```
+
+**Example**: User preferences
+```
+app_users (1) ---- (1) [USER_PREFERENCES]
 ```
 
 ## Primary Key Strategy
@@ -56,7 +63,7 @@ All tables use UUID (CHAR(36)) as primary keys for:
 
 ```sql
 -- Example primary key definition
-CREATE TABLE POSTINGS (
+CREATE TABLE [TABLE_NAME] (
   id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   ...
 );
@@ -65,13 +72,13 @@ CREATE TABLE POSTINGS (
 ## Foreign Key Conventions
 
 ```sql
--- User reference pattern
+-- User reference pattern (INT primary key)
 user_id INT NOT NULL,
 FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE
 
--- UUID reference pattern
-posting_id CHAR(36) NOT NULL,
-FOREIGN KEY (posting_id) REFERENCES POSTINGS(id) ON DELETE CASCADE
+-- UUID reference pattern (CHAR(36) primary key)
+[entity]_id CHAR(36) NOT NULL,
+FOREIGN KEY ([entity]_id) REFERENCES [TABLE_NAME](id) ON DELETE CASCADE
 ```
 
 ## Common Column Types
@@ -97,23 +104,27 @@ updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
 ## ENUM Types
 
-### User Status
+### Status Pattern (Generic)
 ```sql
+-- For user/entity status
 ENUM('pending', 'active', 'suspended', 'deactivated')
-```
 
-### Posting Status
-```sql
+-- For content/workflow status
 ENUM('draft', 'pending_review', 'approved', 'active', 'rejected', 'expired', 'archived')
 ```
 
-### Conversation Type
+### Type/Classification Pattern
 ```sql
+-- For entity types
+ENUM('[TYPE_1]', '[TYPE_2]', '[TYPE_3]')
+
+-- Example: Conversation types
 ENUM('DIRECT', 'GROUP')
 ```
 
-### Participant Role
+### Role/Permission Pattern
 ```sql
+-- For user roles or permissions
 ENUM('OWNER', 'ADMIN', 'MEMBER')
 ```
 
@@ -128,9 +139,14 @@ areas_of_interest_ids JSON DEFAULT '[]',
 media_metadata JSON DEFAULT NULL
 ```
 
-## Reference Files
+## Reference Implementation Patterns
 
-- `/utils/database.js` - Database connection and utilities
-- `/routes/users.js` - User table operations
-- `/routes/postings.js` - Posting table operations
-- `/routes/chat.js` - Chat table operations
+- `server/config/database.js` - Database connection and utilities
+- `routes/[feature-name].js` - Feature-specific table operations
+- `server/services/[FeatureName]Service.js` - Business logic and database interactions
+
+## Feature-Specific Schemas
+
+For detailed table schemas of specific features:
+- See `docs/specs/functional/[feature-name]/db-schema.md`
+- Use template: `docs/specs/functional/_TEMPLATE_db-schema.md`

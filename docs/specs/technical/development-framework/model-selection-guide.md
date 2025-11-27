@@ -44,7 +44,7 @@ Choosing the right model for each task can save 28% on typical Scout-Plan-Build 
 | **Code search** | Haiku | ~$0.02 | Searching for implementations | `claude --model haiku -p "search for JWT verification logic"` |
 | **Documentation** | Haiku | ~$0.02 | Writing docs < 500 lines | `claude --model haiku -p "document the API endpoints"` |
 | **Simple CRUD** | Haiku | ~$0.02 | Basic create/read/update/delete | `claude --model haiku -p "add basic user CRUD endpoints"` |
-| **Scout phase** | Haiku | ~$0.02 | Reconnaissance for any feature | `claude --model haiku -p "scout the posting system"` |
+| **Scout phase** | Haiku | ~$0.02 | Reconnaissance for any feature | `claude --model haiku -p "scout the [feature-name] system"` |
 | **Architecture** | Sonnet | ~$1-2 | Design decisions needed | Default model (no flag needed) |
 | **Complex refactor** | Sonnet | ~$3-4 | Multi-file reasoning | Default model |
 | **Debugging** | Sonnet | ~$2-3 | Requires deep analysis | Default model |
@@ -123,7 +123,7 @@ claude --model haiku -p "scout the authentication system to understand its struc
 
 **Simple Documentation**:
 ```bash
-claude --model haiku -p "document the UserService class"
+claude --model haiku -p "document the [ServiceName] class"
 ```
 
 **Pattern Search**:
@@ -152,7 +152,7 @@ claude -p "implement the notification system with real-time updates"
 
 **Architecture Decisions** (default model):
 ```bash
-claude -p "design the data model for the rating system"
+claude -p "design the data model for the [feature] system"
 ```
 
 **Debugging** (default model):
@@ -162,12 +162,12 @@ claude -p "debug why the OTP verification is failing"
 
 **Refactoring** (default model):
 ```bash
-claude -p "refactor the ChatService to split it into focused services"
+claude -p "refactor the [ServiceName] to split it into focused services"
 ```
 
 **Complex Planning** (default model):
 ```bash
-claude -p "plan the implementation of COPPA compliance across the application"
+claude -p "plan the implementation of [feature/compliance] across the application"
 ```
 
 ---
@@ -297,9 +297,9 @@ claude -p "coordinate the parallel agents and resolve conflicts"
 
 Keep a simple log:
 ```
-Task: Scout user management | Model: Haiku | Cost: $0.02
-Task: Plan user management  | Model: Sonnet | Cost: $1.50
-Task: Build user management | Model: Sonnet | Cost: $3.00
+Task: Scout [feature-name] | Model: Haiku | Cost: $0.02
+Task: Plan [feature-name]  | Model: Sonnet | Cost: $1.50
+Task: Build [feature-name] | Model: Sonnet | Cost: $3.00
 Total: $4.52
 ```
 

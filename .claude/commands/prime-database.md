@@ -4,20 +4,27 @@ Load this context before working on database-related tasks.
 
 ## Variables
 - `$TASK`: The specific database task to perform
+- `$FEATURE`: (Optional) Feature/module name (e.g., "authentication", "messaging")
 - `$TABLE`: (Optional) Target table name
 - `$QUERY`: (Optional) Problem query to optimize
 
 ## Context to Load
 Read these files to understand database patterns:
-- `docs/specs/context/always-on.md` - Critical rules
-- `docs/specs/technical/database/connection-management.md` - Connection patterns (try/finally)
+- `docs/specs/context/always-on.md` - Critical security rules
+- `docs/specs/technical/database/schema-design.md` - Schema patterns and conventions
+- `docs/specs/technical/database/connection-management.md` - Connection pool patterns (try/finally)
 - `docs/specs/technical/database/indexing.md` - Query optimization
 - `docs/specs/technical/database/README.md` - Database overview
 
+## Feature-Specific Schemas
+For feature-specific database schemas:
+- **Read**: `docs/specs/functional/[feature-name]/db-schema.md` (if exists)
+- **Create**: Use template `docs/specs/functional/_TEMPLATE_db-schema.md` for new features
+
 ## Key Files
-- `server/config/database.js` - Connection pool
-- `src/lib/database/schema/` - Schema definitions
-- `routes/*.js` - See existing query patterns
+- `server/config/database.js` - Connection pool implementation
+- `routes/[feature-name].js` - See existing query patterns for features
+- `server/services/[FeatureName]Service.js` - Business logic and database interactions
 
 ## Critical Rules
 1. **ALWAYS** use parameterized queries: `[?, ?]` syntax

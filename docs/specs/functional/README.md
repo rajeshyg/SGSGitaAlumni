@@ -73,6 +73,25 @@ Step-by-step user journey
 
 These specifications are tracked by the StatusDashboard component via `scripts/validation/feature-status.json`. Each sub-feature can have its status and E2E test tracked separately.
 
+## Database Schemas
+
+Each functional module contains a `db-schema.md` file documenting the database tables specific to that feature:
+
+| Module | Schema File |
+|--------|-------------|
+| authentication | [db-schema.md](./authentication/db-schema.md) |
+| user-management | [db-schema.md](./user-management/db-schema.md) |
+| directory | [db-schema.md](./directory/db-schema.md) |
+| postings | [db-schema.md](./postings/db-schema.md) |
+| messaging | [db-schema.md](./messaging/db-schema.md) |
+| dashboard | [db-schema.md](./dashboard/db-schema.md) |
+| moderation | [db-schema.md](./moderation/db-schema.md) |
+| notifications | [db-schema.md](./notifications/db-schema.md) |
+| admin | [db-schema.md](./admin/db-schema.md) |
+| rating | [db-schema.md](./rating/db-schema.md) |
+
+**Template**: Use [`_TEMPLATE_db-schema.md`](./_TEMPLATE_db-schema.md) when adding new feature schemas.
+
 ## Technical Specifications
 
 For implementation details, see:

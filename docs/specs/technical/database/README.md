@@ -35,12 +35,19 @@ The SGS Gita Alumni application uses MySQL as the primary database. This folder 
 
 | File | Description | Status |
 |------|-------------|--------|
-| [schema-design.md](./schema-design.md) | Core schema, relationships, data types | Implemented |
+| [schema-design.md](./schema-design.md) | Core schema patterns, conventions, data types | Implemented |
 | [user-management.md](./user-management.md) | User and family member tables | Implemented |
 | [content-management.md](./content-management.md) | Postings and moderation tables | Implemented |
 | [messaging.md](./messaging.md) | Chat conversations and messages | Implemented |
 | [indexing.md](./indexing.md) | Index recommendations and optimization | Pending |
 | [connection-management.md](./connection-management.md) | Pool configuration and patterns | Implemented |
+
+## Feature-Specific Schemas
+
+For detailed schema documentation of specific features, see:
+- `docs/specs/functional/[feature-name]/db-schema.md` - Feature-specific database schemas
+
+**Template**: Use `docs/specs/functional/_TEMPLATE_db-schema.md` to create new feature schemas
 
 ## Quick Links
 
