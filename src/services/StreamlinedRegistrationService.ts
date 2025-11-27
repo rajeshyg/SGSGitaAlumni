@@ -232,6 +232,19 @@ export class StreamlinedRegistrationService {
         JSON.stringify(additionalData)
       ]);
 
+      // Create primary FAMILY_MEMBER record for the alumni
+      const familyMemberId = uuidv4();
+      await this.createPrimaryFamilyMember(connection, userId, alumniProfile, familyMemberId);
+
+      // Update app_users with primary_family_member_id and family account settings
+      await connection.execute(`
+        UPDATE app_users
+        SET primary_family_member_id = ?,
+            is_family_account = TRUE,
+            family_account_type = 'alumni'
+        WHERE id = ?
+      `, [familyMemberId, userId]);
+
       await connection.commit();
 
       const user: User = {
@@ -257,6 +270,92 @@ export class StreamlinedRegistrationService {
   }
 
   /**
+   * Create primary family member record for alumni
+   * Uses birth_date if available, falls back to estimated age from graduation year
+   */
+  private async createPrimaryFamilyMember(
+    connection: mysql.PoolConnection,
+    userId: string,
+    alumniProfile: AlumniProfile,
+    familyMemberId: string
+  ): Promise<void> {
+    // Calculate age from birth_date or estimate from graduation year
+    let birthDate: string | null = alumniProfile.birthDate || null;
+    let currentAge: number | null = null;
+    let canAccess = true;
+    let requiresConsent = false;
+    let accessLevel = 'full';
+
+    if (birthDate) {
+      // Calculate age from actual birth date
+      const today = new Date();
+      const birth = new Date(birthDate);
+      currentAge = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        currentAge--;
+      }
+    } else if (alumniProfile.estimatedBirthYear) {
+      // Estimate age from estimated birth year
+      currentAge = new Date().getFullYear() - alumniProfile.estimatedBirthYear;
+      // Create estimated birth date (Jan 1 of estimated year)
+      birthDate = `${alumniProfile.estimatedBirthYear}-01-01`;
+    } else if (alumniProfile.graduationYear) {
+      // Fallback: estimate from graduation year (typical age 22 at graduation)
+      const estimatedBirthYear = alumniProfile.graduationYear - 22;
+      currentAge = new Date().getFullYear() - estimatedBirthYear;
+      // Create estimated birth date (Jan 1 of estimated year)
+      birthDate = `${estimatedBirthYear}-01-01`;
+    }
+
+    // COPPA compliance: determine access level based on age
+    if (currentAge !== null) {
+      if (currentAge < 14) {
+        canAccess = false;
+        accessLevel = 'blocked';
+      } else if (currentAge < 18) {
+        requiresConsent = true;
+        accessLevel = 'supervised';
+        canAccess = false; // Needs parent consent first
+      }
+    }
+
+    console.log(`📋 Creating primary family member for user ${userId}:`, {
+      birthDate,
+      currentAge,
+      accessLevel,
+      source: alumniProfile.birthDate ? 'actual_birth_date' : 
+              alumniProfile.estimatedBirthYear ? 'estimated_birth_year' : 
+              alumniProfile.graduationYear ? 'graduation_year' : 'unknown'
+    });
+
+    await connection.execute(`
+      INSERT INTO FAMILY_MEMBERS (
+        id, parent_user_id, alumni_member_id, first_name, last_name, display_name,
+        birth_date, current_age, can_access_platform, requires_parent_consent,
+        parent_consent_given, access_level, relationship, is_primary_contact, status,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+    `, [
+      familyMemberId,
+      userId,
+      alumniProfile.id,
+      alumniProfile.firstName,
+      alumniProfile.lastName,
+      `${alumniProfile.firstName} ${alumniProfile.lastName}`,
+      birthDate,
+      currentAge,
+      canAccess ? 1 : 0,
+      requiresConsent ? 1 : 0,
+      0, // parent_consent_given - needs to be granted via consent flow
+      accessLevel,
+      'self', // Primary member relationship to themselves
+      1, // is_primary_contact
+      canAccess ? 'active' : (requiresConsent ? 'pending_consent' : 'blocked')
+    ]);
+  }
+
+  /**
    * Handle incomplete alumni data (fallback registration)
    */
   async handleIncompleteAlumniData(token: string, userData: any): Promise<User> {
@@ -274,11 +373,26 @@ export class StreamlinedRegistrationService {
       const invitation = validation.invitation;
       const alumniProfile = validation.alumniProfile;
 
-      // Merge data if alumni profile exists
+      // Merge data if alumni profile exists, otherwise use invitation data
       let mergedData = userData;
       if (alumniProfile) {
         const mergeResult = this.alumniService.mergeAlumniDataWithUserInput(alumniProfile, userData);
         mergedData = mergeResult.mergedProfile;
+      } else {
+        // No alumni profile - extract from invitation_data
+        const invitationData = invitation.invitation_data
+          ? (typeof invitation.invitation_data === 'string'
+              ? JSON.parse(invitation.invitation_data)
+              : invitation.invitation_data)
+          : {};
+
+        mergedData = {
+          ...userData,
+          firstName: userData.firstName || invitationData.firstName || 'Unknown',
+          lastName: userData.lastName || invitationData.lastName || 'User',
+          graduationYear: userData.graduationYear || invitationData.graduationYear || null,
+          phone: userData.phone || null
+        };
       }
 
       // Create user account
@@ -335,6 +449,24 @@ export class StreamlinedRegistrationService {
         JSON.stringify(userData)
       ]);
 
+      // Create primary FAMILY_MEMBER record
+      const familyMemberId = uuidv4();
+      if (alumniProfile) {
+        await this.createPrimaryFamilyMember(connection, userId, alumniProfile, familyMemberId);
+      } else {
+        // Create basic family member without alumni profile
+        await this.createBasicFamilyMember(connection, userId, mergedData, familyMemberId);
+      }
+
+      // Update app_users with primary_family_member_id and family account settings
+      await connection.execute(`
+        UPDATE app_users
+        SET primary_family_member_id = ?,
+            is_family_account = TRUE,
+            family_account_type = 'alumni'
+        WHERE id = ?
+      `, [familyMemberId, userId]);
+
       await connection.commit();
 
       const user: User = {
@@ -357,6 +489,42 @@ export class StreamlinedRegistrationService {
     } finally {
       connection.release();
     }
+  }
+
+  /**
+   * Create basic family member when no alumni profile exists
+   */
+  private async createBasicFamilyMember(
+    connection: mysql.PoolConnection,
+    userId: string,
+    userData: any,
+    familyMemberId: string
+  ): Promise<void> {
+    console.log(`📋 Creating basic family member for user ${userId} (no alumni profile)`);
+
+    await connection.execute(`
+      INSERT INTO FAMILY_MEMBERS (
+        id, parent_user_id, first_name, last_name, display_name,
+        birth_date, current_age, can_access_platform, requires_parent_consent,
+        parent_consent_given, access_level, relationship, is_primary_contact, status,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+    `, [
+      familyMemberId,
+      userId,
+      userData.firstName,
+      userData.lastName,
+      `${userData.firstName} ${userData.lastName}`,
+      null, // birth_date - unknown
+      null, // current_age - unknown
+      1, // can_access_platform - assume yes (adult)
+      0, // requires_parent_consent - no
+      0, // parent_consent_given
+      'full', // access_level
+      'self',
+      1, // is_primary_contact
+      'active'
+    ]);
   }
 
   /**
