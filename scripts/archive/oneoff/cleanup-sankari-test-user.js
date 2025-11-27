@@ -12,8 +12,8 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables
-dotenv.config({ path: join(__dirname, '..', '.env') });
+// Load environment variables from project root
+dotenv.config({ path: join(__dirname, '..', '..', '..', '.env') });
 
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
@@ -40,6 +40,26 @@ async function cleanupUserData() {
     console.log('\n🧹 Starting cleanup for:', EMAIL);
     console.log('='.repeat(60));
 
+    // 0. Check alumni_members records (these will be preserved)
+    const [alumniMembers] = await connection.execute(
+      `SELECT id, first_name, last_name, batch, birth_date, estimated_birth_year
+       FROM alumni_members WHERE email = ?`,
+      [EMAIL]
+    );
+
+    if (alumniMembers.length > 0) {
+      console.log(`\n📚 Alumni Records (will be preserved):`);
+      alumniMembers.forEach((am, index) => {
+        console.log(`\n  Alumni ${index + 1}:`);
+        console.log(`    ID: ${am.id}`);
+        console.log(`    Name: ${am.first_name} ${am.last_name}`);
+        console.log(`    Batch: ${am.batch || 'N/A'}`);
+        console.log(`    Birth Date: ${am.birth_date || 'N/A'}`);
+        console.log(`    Estimated Birth Year: ${am.estimated_birth_year || 'N/A'}`);
+      });
+      console.log(`\n  Note: Alumni records are preserved, only registration data will be cleared`);
+    }
+
     // 1. Find all user IDs with this email
     const [users] = await connection.execute(
       `SELECT id, email, first_name, last_name, primary_family_member_id, created_at
@@ -48,9 +68,9 @@ async function cleanupUserData() {
     );
 
     if (users.length === 0) {
-      console.log('ℹ️  No users found with email:', EMAIL);
+      console.log('\nℹ️  No app_users found with email:', EMAIL);
     } else {
-      console.log(`\n📊 Found ${users.length} user(s):`);
+      console.log(`\n📊 Found ${users.length} app_users record(s) to delete:`);
       users.forEach((user, index) => {
         console.log(`\n  User ${index + 1}:`);
         console.log(`    ID: ${user.id}`);
@@ -72,16 +92,14 @@ async function cleanupUserData() {
       console.log(`\n✅ Deleted ${familyResult.affectedRows} family member record(s) (as parent)`);
     }
 
-    // 2b. Delete from FAMILY_MEMBERS (as child)
-    if (userIds.length > 0) {
-      const placeholders = userIds.map(() => '?').join(',');
-
-      const [childResult] = await connection.execute(
-        `DELETE FROM FAMILY_MEMBERS WHERE user_id IN (${placeholders})`,
-        userIds
-      );
-      console.log(`✅ Deleted ${childResult.affectedRows} family member record(s) (as child)`);
-    }
+    // 2b. Delete from FAMILY_MEMBERS by alumni_member_id (linked to alumni with same email)
+    // Note: FAMILY_MEMBERS doesn't have user_id column, it has parent_user_id and alumni_member_id
+    const [alumniMemberResult] = await connection.execute(
+      `DELETE FROM FAMILY_MEMBERS 
+       WHERE alumni_member_id IN (SELECT id FROM alumni_members WHERE email = ?)`,
+      [EMAIL]
+    );
+    console.log(`✅ Deleted ${alumniMemberResult.affectedRows} family member record(s) (by alumni email)`);
 
     // 3. Delete from USER_PREFERENCES
     if (userIds.length > 0) {
@@ -123,19 +141,12 @@ async function cleanupUserData() {
       console.log(`✅ Deleted ${fDelResult.affectedRows} FAMILY_INVITATIONS record(s)`);
     }
 
-    // 6. Reset USER_INVITATIONS status (including revoked ones)
+    // 6. Delete USER_INVITATIONS (fresh invitation needed from admin)
     const [inviteResult] = await connection.execute(
-      `UPDATE USER_INVITATIONS
-       SET status = 'pending',
-           is_used = 0,
-           user_id = NULL,
-           used_at = NULL,
-           completion_status = 'pending',
-           updated_at = NOW()
-       WHERE email = ?`,
+      `DELETE FROM USER_INVITATIONS WHERE email = ?`,
       [EMAIL]
     );
-    console.log(`✅ Reset ${inviteResult.affectedRows} invitation(s) to pending status (including revoked)`);
+    console.log(`✅ Deleted ${inviteResult.affectedRows} invitation(s)`);
 
     // 7. Delete OTP tokens
     const [otpResult] = await connection.execute(
@@ -159,10 +170,10 @@ async function cleanupUserData() {
     console.log('✅ Cleanup completed successfully!');
     console.log('\n📋 Summary:');
     console.log(`   - User accounts deleted: ${users.length}`);
-    console.log(`   - Invitations reset to pending`);
+    console.log(`   - Invitations DELETED: ${inviteResult.affectedRows}`);
     console.log(`   - OTP tokens cleared`);
     console.log(`   - Family members deleted`);
-    console.log(`   - Ready for fresh registration test`);
+    console.log(`   - Ready for fresh invitation (admin must resend)`);
     console.log('='.repeat(60));
 
   } catch (error) {
