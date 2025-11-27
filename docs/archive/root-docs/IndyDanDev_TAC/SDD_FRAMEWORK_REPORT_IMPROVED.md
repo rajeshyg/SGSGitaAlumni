@@ -1,3 +1,4 @@
+<!-- This report has been archived and is no longer in use. -->
 # Spec-Driven Development (SDD) Framework - Productivity Report v2.0
 
 > **Report Date**: November 24, 2025  

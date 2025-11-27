@@ -4,6 +4,8 @@
  */
 
 const EXCEPTION_REGISTRY = [
+  // Legacy documentation archive (ignore for validation)
+  { path: 'Archive', reason: 'Legacy documentation archive', permanent: true },
   // Tool conventions (permanent)
   { path: 'playwright.config.ts', reason: 'Playwright convention', permanent: true },
   { path: 'vitest.config.ts', reason: 'Vitest convention', permanent: true },

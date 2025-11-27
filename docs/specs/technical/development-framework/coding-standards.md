@@ -1,5 +1,11 @@
 # Coding Standards
 
+---
+version: 1.0
+status: implemented
+last_updated: 2025-11-26
+---
+
 ```yaml
 ---
 version: 1.0

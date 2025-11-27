@@ -2,13 +2,13 @@
 
 ```yaml
 ---
-version: 1.0
+version: 1.1
 status: active
 last_updated: 2025-11-26
 applies_to: all
 enforcement: required
 description: Canonical reference for file locations and organization
-validation: scripts/validation/check-file-locations.cjs
+validation: scripts/validation/validate-structure.cjs
 ---
 ```
 
@@ -31,8 +31,15 @@ validation: scripts/validation/check-file-locations.cjs
 | `index.html` | Vite entry point | `index.html` |
 | `package*.json` | npm configuration | `package.json`, `package-lock.json`, `server-package.json` |
 | `tsconfig*.json` | TypeScript config | `tsconfig.json`, `tsconfig.node.json` |
-| `vite.config.ts` | Vite configuration | `vite.config.ts` |
+| `vite.config.{js,ts}` | Vite configuration | `vite.config.js`, `vite.config.ts` |
 | `eslint.config.js` | ESLint configuration | `eslint.config.js` |
+| `tailwind.config.js` | Tailwind CSS config | `tailwind.config.js` |
+| `postcss.config.js` | PostCSS config | `postcss.config.js` |
+| `playwright.config.ts` | Playwright E2E config | `playwright.config.ts` |
+| `vitest.config.ts` | Vitest testing config | `vitest.config.ts` |
+| `docker-compose.yml` | Docker compose config | `docker-compose.yml` |
+| `Dockerfile` | Docker container config | `Dockerfile` |
+| `nginx.conf` | Nginx configuration | `nginx.conf` |
 | `.*.json` | Tool configurations | `.jscpd.json`, `.prettierrc.json` |
 
 ### Allowed Directories
@@ -49,6 +56,10 @@ validation: scripts/validation/check-file-locations.cjs
 | `tests/` | Tests |
 | `public/` | Static assets |
 | `eslint-rules/` | Custom ESLint rules |
+| `config/` | Application configuration files |
+| `terraform/` | Infrastructure as code (Terraform) |
+| `utils/` | Backend utility scripts |
+| `redis/` | Redis local installation |
 
 ### FORBIDDEN in Root
 
@@ -116,14 +127,23 @@ scripts/
 │   ├── check-documentation.js
 │   ├── check-redundancy.js
 │   ├── check-ports.js
-│   ├── validate-structure.cjs
 │   └── detect-mock-data.js
 ├── validation/                     # Validation and audit scripts
-│   ├── check-file-locations.cjs    # NEW: Enforce file organization
+│   ├── validate-structure.cjs      # Main orchestrator (runs all validators)
+│   ├── rules/                      # THE DICTIONARY (single source of truth)
+│   │   ├── structure-rules.cjs     # Aggregator + helpers
+│   │   ├── folder-rules.cjs        # Extensions per folder
+│   │   ├── module-rules.cjs        # Modules, duplicates, specs
+│   │   └── exceptions.cjs          # Exception registry
+│   ├── validators/                 # Focused validators
+│   │   ├── file-placement.cjs      # Wrong extensions/folders
+│   │   ├── file-uniqueness.cjs     # Duplicates via MD5
+│   │   ├── duplicate-helpers.cjs   # Helper functions
+│   │   ├── spec-documents.cjs      # Frontmatter, sections
+│   │   ├── spec-helpers.cjs        # Parsing helpers
+│   │   └── naming-conventions.cjs  # Script/folder naming
 │   ├── audit-framework.cjs
 │   ├── audit-code-quality.cjs
-│   ├── audit-documentation.cjs
-│   ├── audit-file-organization.cjs
 │   └── run-full-audit.cjs
 ├── database/                       # Database operations
 │   ├── migrations/                 # Migration runner scripts
@@ -157,6 +177,28 @@ scripts/
 3. **SQL schemas**: `scripts/database/schema/`
 4. **Deployment scripts**: `scripts/deployment/` (not root)
 5. **Debug scripts**: Organize by feature in `scripts/debug/[feature]/`
+
+### Canonical Vocabulary (Script Naming)
+
+**Single source of truth**: `scripts/validation/rules/module-rules.cjs` (CANONICAL_VOCABULARY)
+
+Scripts MUST use these canonical prefixes:
+
+| Prefix | Meaning | Replaces | Location | Example |
+|--------|---------|----------|----------|---------|
+| `validate-` | Enforce rules, block on failure | check, verify | `scripts/validation/` | `validate-structure.cjs` |
+| `audit-` | Generate reports, non-blocking | scan, analyze, report | `scripts/validation/` | `audit-framework.cjs` |
+| `detect-` | Find patterns | find, search, locate | `scripts/validation/`, `scripts/core/` | `detect-mock-data.js` |
+| `debug-` | Diagnostic scripts | diagnose, investigate, show, check, test, get, list, set, explain, verify, find | `scripts/debug/` | `debug-preferences.js` |
+
+**Key violations**:
+- ❌ `check-*.js` in `scripts/debug/` → Should be `debug-*.js`
+- ❌ `check-*.js` in `scripts/validation/` → Should be `validate-*.js` or `audit-*.js`
+- ❌ `verify-*.js` anywhere → Should be `validate-*.js`
+
+**Folder vocabulary**:
+- `validators/` - Validator modules (NOT `checkers/` or `verifiers/`)
+- `rules/` - Config files (NOT `config/` or `settings/`)
 
 ---
 
@@ -357,20 +399,30 @@ Is it temporary/generated?
 
 ## Validation
 
-**Script**: `scripts/validation/check-file-locations.cjs`
+**Script**: `scripts/validation/validate-structure.cjs` (orchestrator that runs all validators)
 
-**Runs**: Pre-commit hook
+**Runs**: Pre-commit hook + Claude Code hooks (real-time feedback)
 
-**Blocks**:
-- SQL files outside allowed locations
-- HTML files (except index.html) in root
-- Shell scripts in root
-- Check/test scripts outside proper directories
-- Mermaid HTML in src/
+**Validators**:
+1. `file-placement.cjs` - Wrong extensions/folders, forbidden patterns
+2. `file-uniqueness.cjs` - Duplicate content (MD5), similar filenames
+3. `spec-documents.cjs` - Missing frontmatter, broken links, stray files
+4. `naming-conventions.cjs` - Script naming (validate- vs check-), folder naming
+
+**Blocks** (errors):
+- `.js` files in `src/` (should be `.ts`)
+- SQL files outside migrations/ or scripts/database/schema/
+- Forbidden folders (e.g., `services/` at root)
+- Backup files (`.bak`, `.backup`) in src/
+- Missing YAML frontmatter in spec documents
+- Wrong script prefixes (e.g., `check-*.js` in scripts/debug/)
 
 **Warns**:
-- Files approaching 300 lines (services)
-- Missing README in major directories
+- Gitignored files in wrong locations
+- Similar filenames across folders
+- Files approaching 300 lines (services, routes, middleware)
+
+**Run manually**: `node scripts/validation/validate-structure.cjs`
 
 ---
 
@@ -395,6 +447,77 @@ git mv src/lib/database/mermaid/alumni-system.html docs/diagrams/database/alumni
 # Example: Move shell script
 git mv deploy-coppa-migration.sh scripts/deployment/deploy-coppa-migration.sh
 ```
+
+---
+
+## Module Definitions
+
+**Single source of truth**: `scripts/validation/rules/module-rules.cjs` (MODULE_DEFINITIONS)
+
+### Recognized Modules
+
+**Functional modules** (10):
+- authentication, user-management, directory, postings, messaging
+- dashboard, moderation, notifications, rating, admin
+
+**Technical spec folders** (10):
+- architecture, coding-standards, database, deployment, development-framework
+- integration, security, testing, ui-standards, validation
+
+### Module Pattern Mappings
+
+| File/Folder Pattern | Maps To Module |
+|---------------------|----------------|
+| `auth`, `login`, `register`, `otp` | authentication |
+| `chat`, `message` | messaging |
+| `post`, `posting` | postings |
+| `moderat` | moderation |
+| `notif` | notifications |
+| `user` | user-management |
+| `alumni` | directory |
+
+**Usage**: Validators use these mappings to detect duplicate modules (e.g., two Mermaid diagrams for "directory" module).
+
+---
+
+## Spec Document Requirements
+
+**Single source of truth**: `scripts/validation/rules/module-rules.cjs` (SPEC_RULES)
+
+**Location**: All specs must be in `docs/specs/functional/[module]/` or `docs/specs/technical/[category]/`
+
+### Required YAML Frontmatter
+
+Every spec in `docs/specs/functional/` and `docs/specs/technical/` MUST have:
+
+```yaml
+---
+version: 1.0
+status: implemented | in-progress | pending | active | proposed | deprecated
+last_updated: YYYY-MM-DD
+---
+```
+
+**Valid statuses**: `implemented`, `in-progress`, `pending`, `active`, `proposed`, `deprecated`
+
+### Required Sections
+
+**Functional specs** must include:
+- Purpose
+- User Flow
+- Acceptance Criteria
+- Implementation
+- Related
+
+**Technical specs**: No enforced sections (flexible)
+
+**Acceptance Criteria format**: Must use list markers (✅, ⏳, ☐, -, *, - [ ], - [x])
+
+### Stray Files
+
+**Allowed at `docs/specs/technical/` root**: README.md, CONSTITUTION.md, index.md
+
+All other `.md` files must be in a subfolder (e.g., `development-framework/`, `validation/`, etc.)
 
 ---
 

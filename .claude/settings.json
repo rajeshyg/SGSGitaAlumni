@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "post-tool-use": [
+      {
+        "matchers": {
+          "tool_name": ["Write", "Edit", "NotebookEdit"]
+        },
+        "commands": [
+          "node .claude/hooks/post-tool-use-validation.js"
+        ]
+      }
+    ]
+  }
+}

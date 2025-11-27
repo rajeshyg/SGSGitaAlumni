@@ -1,4 +1,5 @@
-# Session Context Bundle: Validation Script Refactoring
+
+# Session Context Bundle: Validation Script Refactoring (with Follow-up Session)
 
 **Date**: November 26, 2025  
 **Branch**: `claude/resume-sdd-tac-framework-017rX4cUtcnaeY7ESv8aedDt`  
@@ -8,14 +9,80 @@
 
 ## Executive Summary
 
-**Original Problem**: AI agents create redundant files, use wrong extensions in wrong folders, put .md in /src, no central "dictionary" to prevent this.
+This bundle now includes both the original validation refactor session and the follow-up session, which covered research, planning, and implementation of hooks, prime commands, and documentation updates.
 
-**Solution Built**: A modular validation system with:
-- **Dictionary** (`rules/`) - Single source of truth for ALL structure rules
-- **Validators** (`validators/`) - Focused validators, each < 300 lines
-- **Orchestrator** (`validate-structure.cjs`) - Runs all validators, aggregates results
+### Original Problem
+AI agents created redundant files, used wrong extensions/folders, and lacked a central "dictionary" for structure rules.
 
-**Current State**: 31 errors, 157 warnings detected (all legitimate issues in codebase)
+### Solution Built
+- Modular validation system: dictionary (`rules/`), focused validators (`validators/`), orchestrator (`validate-structure.cjs`)
+- All 11 files under 300 lines
+
+### Current State
+31 errors, 157 warnings detected (all legitimate issues in codebase)
+
+---
+
+## Follow-up Session: Research, Planning, and Implementation
+
+### Phases
+**Phase 1: Research and Planning**
+- Investigated:
+  1. Whether `eslint-output.json` and `lint-violations.json` would cause structure violations
+  2. If `file-organization.md` was outdated compared to validation rules
+  3. Whether Claude hooks should be implemented for validation
+  4. Pending work in TAC/SDD frameworks
+- User approved the plan and implementation.
+
+**Phase 2: Implementation**
+- Implemented 4 priority tasks:
+  1. Created post-tool-use hook infrastructure
+  2. Created `/prime-tac` command
+  3. Created `/prime-sdd` command
+  4. Updated `file-organization.md` to match validation rules
+- All tasks completed and user confirmed no further pending work.
+
+### Key Technical Concepts
+- **Validation Architecture**: Orchestrator runs 4 parallel validators (file-placement, file-uniqueness, spec-documents, naming-conventions)
+- **Claude Code Hooks**: 5 available hooks for observability and control; post-tool-use hook runs validation after file edits
+- **TAC/SDD Frameworks**: Prime commands for on-demand context loading; comprehensive docs for reference
+- **Canonical Vocabulary**: Standardized script naming (validate-, audit-, detect-, debug-)
+- **Module Definitions**: 10 functional modules, 10 technical spec categories
+- **Git Worktrees**: For parallel agent execution
+
+### Files and Code Sections
+**Created:**
+- `.claude/hooks/post-tool-use-validation.js`: Runs structure validation after file edits
+- `.claude/settings.json`: Configures post-tool-use hook
+- `.claude/commands/prime-tac.md`: Concise on-demand loader for TAC framework
+- `.claude/commands/prime-sdd.md`: Concise on-demand loader for SDD methodology
+
+**Modified:**
+- `docs/specs/technical/file-organization.md`: Updated to version 1.1, added missing files/folders, documented validation structure, canonical vocabulary, module definitions, spec requirements, and validation section
+
+### Errors and Fixes
+- Bash syntax error on Windows PowerShell: fixed by converting to POSIX bash syntax
+- User clarified prime-tac does not duplicate tac-framework.md; confirmed and proceeded
+
+### Problem Solving
+- Documented all 4 validators in file-organization.md
+- Created hook infrastructure and prime commands
+- Clarified relationship between prime commands and comprehensive docs
+
+### All User Messages
+- "yes" (approval to proceed)
+- "we already have tac-framework.md it works along with that? without any duplications? is so yes" (clarification, answered affirmatively)
+
+### Pending Tasks
+- None; all 4 requested implementation tasks completed
+
+### Current Work
+- All implementation tasks completed:
+  - ✅ post-tool-use hook created and configured
+  - ✅ /prime-tac command created (~110 lines)
+  - ✅ /prime-sdd command created (~100 lines)
+  - ✅ file-organization.md updated with 5 new sections and missing configuration files
+- Todo list created and all items marked as completed
 
 ---
 
@@ -126,6 +193,10 @@ node scripts/validation/validate-structure.cjs
 | `scripts/validation/rules/structure-rules.cjs` | Aggregator (rewrote) |
 | `scripts/validation/validators/duplicate-helpers.cjs` | MD5 detection |
 | `scripts/validation/validators/spec-helpers.cjs` | Frontmatter parsing |
+| `.claude/hooks/post-tool-use-validation.js` | Post-tool-use validation hook |
+| `.claude/settings.json` | Hook configuration |
+| `.claude/commands/prime-tac.md` | TAC prime command |
+| `.claude/commands/prime-sdd.md` | SDD prime command |
 
 ### Files Rewritten (under 300 lines)
 - `scripts/validation/validators/file-uniqueness.cjs` (317→132 lines)

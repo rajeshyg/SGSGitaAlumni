@@ -2,7 +2,7 @@ echo "🔍 Running pre-commit quality checks..."
 
 # 1) Unified structure validation (blocking)
 echo "📁 Validating project structure..."
-node scripts/validation/validate-project-structure.cjs
+node scripts/validation/validate-structure.cjs
 if [ $? -ne 0 ]; then
   echo "❌ Project structure validation failed. Commit blocked."
   exit 1
