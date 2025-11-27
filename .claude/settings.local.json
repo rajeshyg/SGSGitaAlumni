@@ -44,7 +44,9 @@
       "WebSearch",
       "Bash(cat:*)",
       "Bash(test:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Skill(sdd-tac-workflow)",
+      "Bash(mysql:*)"
     ],
     "deny": [],
     "ask": []
