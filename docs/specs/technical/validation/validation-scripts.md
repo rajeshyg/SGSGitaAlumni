@@ -1,10 +1,10 @@
-# Validation Scripts Catalog
-
 ---
 version: 1.0
 status: implemented
 last_updated: 2025-11-26
 ---
+
+# Validation Scripts Catalog
 
 ```yaml
 ---

@@ -1,10 +1,10 @@
-# Real-Time Validation (Claude Hooks)
-
 ---
 version: 1.0
 status: implemented
 last_updated: 2025-11-26
 ---
+
+# Real-Time Validation (Claude Hooks)
 
 ```yaml
 ---
