@@ -27,6 +27,7 @@ This directory contains all technical specifications organized by domain. Each s
 | [coding-standards/](./coding-standards/) | Code quality | TypeScript, file organization, code review |
 | [deployment/](./deployment/) | DevOps & infrastructure | Environments, CI/CD, monitoring |
 | [integration/](./integration/) | System integration | API contracts, Socket.IO, external services |
+| [mobile-version/](./mobile-version/) | **Mobile app development** | Technology research, component migration, deployment |
 
 ## Quick Reference
 

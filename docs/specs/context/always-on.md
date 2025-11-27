@@ -7,6 +7,9 @@
 ## Tech Stack
 Node.js 18+, Express, MySQL2, React 18, TypeScript, Socket.IO, JWT
 
+## Platform Constraints
+**Alumni-Only System**: Only individuals certified by the institution can be in the system. Admin adds/invites all members from institutional records. Users CANNOT add arbitrary people.
+
 ## File Structure
 - Routes: `routes/` | Services: `server/services/` | UI: `src/components/`
 - Specs: `docs/specs/technical/` and `docs/specs/functional/`

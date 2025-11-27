@@ -99,7 +99,9 @@ CREATE TABLE alumni_members (
   id INT AUTO_INCREMENT PRIMARY KEY,
   family_name VARCHAR(100),
   father_name VARCHAR(100),
-  batch INT,
+  first_name VARCHAR(100),
+  last_name VARCHAR(100),
+  batch INT COMMENT 'Graduation year',
   center_name VARCHAR(200),
   result VARCHAR(100),
   category VARCHAR(100),
@@ -107,10 +109,22 @@ CREATE TABLE alumni_members (
   email VARCHAR(255),
   student_id VARCHAR(50),
   status VARCHAR(50),
+  -- Age/DOB fields for COPPA compliance
+  birth_date DATE COMMENT 'Birth date for age calculation (admin-populated)',
+  estimated_birth_year INT COMMENT 'Estimated birth year from graduation year (batch - 22)',
+  -- Invitation tracking
+  invitation_sent_at DATETIME,
+  invitation_accepted_at DATETIME,
+  -- Timestamps
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
+
+**Age Calculation Priority**:
+1. `birth_date` - Actual birth date (admin-populated)
+2. `estimated_birth_year` - From graduation year (batch - 22)
+3. Fallback: `YEAR(CURDATE()) - (batch - 22)`
 
 ### USER_INVITATIONS
 
