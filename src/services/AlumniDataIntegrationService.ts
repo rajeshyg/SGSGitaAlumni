@@ -11,6 +11,8 @@ export interface AlumniProfile {
   degree?: string;
   program: string;
   address?: string;
+  birthDate?: string | null;
+  estimatedBirthYear?: number | null;
   estimatedAge?: number;
   isCompleteProfile: boolean;
   missingFields: string[];
@@ -69,9 +71,18 @@ export class AlumniDataIntegrationService {
     try {
       const connection = await this.pool.getConnection();
 
+      // Include birth_date and estimated_birth_year for COPPA age calculation
+      // Priority: actual birth_date > estimated_birth_year > graduation_year-based estimate
       const query = `
         SELECT am.*,
-               TIMESTAMPDIFF(YEAR, am.graduation_year + INTERVAL 22 YEAR, CURDATE()) as estimated_age
+               am.birth_date,
+               am.estimated_birth_year,
+               CASE 
+                 WHEN am.birth_date IS NOT NULL THEN TIMESTAMPDIFF(YEAR, am.birth_date, CURDATE())
+                 WHEN am.estimated_birth_year IS NOT NULL THEN YEAR(CURDATE()) - am.estimated_birth_year
+                 WHEN am.batch IS NOT NULL THEN YEAR(CURDATE()) - (am.batch - 22)
+                 ELSE NULL
+               END as estimated_age
         FROM alumni_members am
         WHERE am.email = ? AND am.email IS NOT NULL AND am.email != ''
         LIMIT 1
@@ -94,10 +105,12 @@ export class AlumniDataIntegrationService {
         lastName: alumni.last_name,
         email: alumni.email,
         phone: alumni.phone,
-        graduationYear: alumni.graduation_year,
-        degree: alumni.degree,
-        program: alumni.program,
+        graduationYear: alumni.batch || alumni.graduation_year,
+        degree: alumni.degree || alumni.result,
+        program: alumni.program || alumni.center_name,
         address: alumni.address,
+        birthDate: alumni.birth_date ? alumni.birth_date.toISOString().split('T')[0] : null,
+        estimatedBirthYear: alumni.estimated_birth_year || (alumni.batch ? alumni.batch - 22 : null),
         estimatedAge: alumni.estimated_age,
         isCompleteProfile: validation.isComplete,
         missingFields: validation.missingFields,
