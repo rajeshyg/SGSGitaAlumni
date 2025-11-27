@@ -5,7 +5,7 @@
  */
 
 import express from 'express';
-import FamilyMemberService from '../services/FamilyMemberService.js';
+import FamilyMemberService from '../server/services/FamilyMemberService.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { validateRequest } from '../server/middleware/validation.js';
 import { FamilyMemberCreateSchema, FamilyMemberUpdateSchema } from '../src/schemas/validation/index.js';

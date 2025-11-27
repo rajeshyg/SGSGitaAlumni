@@ -380,9 +380,10 @@ export const sendInvitationToAlumni = async (req, res) => {
 
     console.log('API: Sending invitation to alumni member:', id);
 
-    // Get alumni member details
+    // Get alumni member details including birth_date and batch for age calculation
     const [memberRows] = await connection.execute(
-      'SELECT first_name, last_name, email FROM alumni_members WHERE id = ?',
+      `SELECT first_name, last_name, email, birth_date, batch, estimated_birth_year 
+       FROM alumni_members WHERE id = ?`,
       [id]
     );
 
@@ -422,6 +423,21 @@ export const sendInvitationToAlumni = async (req, res) => {
       expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
     });
 
+    // Build invitation data with birth_date for COPPA age calculation
+    // Priority: actual birth_date > estimated from batch (graduation year - 22)
+    const invitationDataObj = {
+      alumniMemberId: id,
+      firstName: member.first_name,
+      lastName: member.last_name,
+      invitationType,
+      // Include birth_date if available (admin-populated)
+      birthDate: member.birth_date ? member.birth_date.toISOString().split('T')[0] : null,
+      // Include batch (graduation year) for fallback age estimation
+      graduationYear: member.batch || null,
+      // Include estimated birth year for additional fallback
+      estimatedBirthYear: member.estimated_birth_year || null
+    };
+
     // Create invitation
     const invitation = {
       id: invitationId,
@@ -429,12 +445,7 @@ export const sendInvitationToAlumni = async (req, res) => {
       invitationToken: hmacToken, // Store full HMAC token
       invitedBy,
       invitationType,
-      invitationData: JSON.stringify({
-        alumniMemberId: id,
-        firstName: member.first_name,
-        lastName: member.last_name,
-        invitationType
-      }).replace(/'/g, '"'), // Fix single quotes to double quotes
+      invitationData: JSON.stringify(invitationDataObj).replace(/'/g, '"'), // Fix single quotes to double quotes
       status: 'pending',
       sentAt: new Date(),
       expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000),
