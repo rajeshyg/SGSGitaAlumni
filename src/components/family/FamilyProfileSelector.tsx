@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getFamilyMembers, switchProfile, type FamilyMember } from '../../services/familyMemberService';
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus } from 'lucide-react';
+import ParentConsentModal from './ParentConsentModal';
 
 interface FamilyProfileSelectorProps {
   onProfileSelected?: (member: FamilyMember) => void;
@@ -26,6 +27,8 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
 
   useEffect(() => {
     console.log('[FamilyProfileSelector] Component mounted, loading family members...');
@@ -50,29 +53,33 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
   };
 
   const handleProfileClick = async (member: FamilyMember) => {
+    // Check access restrictions
     if (!member.can_access_platform) {
       if (member.access_level === 'blocked') {
         alert('This profile cannot access the platform (under 14 years old)');
         return;
       }
       if (member.status === 'pending_consent') {
-        alert('This profile requires parent consent before accessing the platform');
+        // Show consent modal instead of alert
+        setSelectedMember(member);
+        setShowConsentModal(true);
         return;
       }
     }
 
+    // Profile has access - proceed with switch
     try {
       console.log('[FamilyProfileSelector] 🔄 Switching to profile:', member.display_name);
-      
+
       // Switch profile on backend (updates primary_family_member_id)
       await switchProfile(member.id);
       console.log('[FamilyProfileSelector] ✅ Backend switch successful');
-      
+
       // 🆕 CRITICAL: Refresh the auth context to get updated user data with family member info
       console.log('[FamilyProfileSelector] 🔄 Refreshing auth context...');
       await refreshToken();
       console.log('[FamilyProfileSelector] ✅ Auth context refreshed with new family member data');
-      
+
       if (onProfileSelected) {
         onProfileSelected(member);
       } else {
@@ -82,6 +89,30 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
     } catch (err) {
       console.error('Error switching profile:', err);
       alert('Failed to switch profile');
+    }
+  };
+
+  const handleConsentGranted = async (updatedMember: FamilyMember) => {
+    console.log('[FamilyProfileSelector] ✅ Consent granted for:', updatedMember.display_name);
+
+    // Reload family members to get updated data
+    await loadFamilyMembers();
+
+    // Auto-switch to the newly consented profile
+    try {
+      console.log('[FamilyProfileSelector] 🔄 Auto-switching to consented profile...');
+      await switchProfile(updatedMember.id);
+      await refreshToken();
+
+      if (onProfileSelected) {
+        onProfileSelected(updatedMember);
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      console.error('Error auto-switching after consent:', err);
+      // Don't show alert - consent was successful, just switch failed
+      // User can manually click the profile again
     }
   };
 
@@ -223,6 +254,17 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Parent Consent Modal */}
+      <ParentConsentModal
+        isOpen={showConsentModal}
+        onClose={() => {
+          setShowConsentModal(false);
+          setSelectedMember(null);
+        }}
+        member={selectedMember}
+        onConsentGranted={handleConsentGranted}
+      />
     </div>
   );
 };
