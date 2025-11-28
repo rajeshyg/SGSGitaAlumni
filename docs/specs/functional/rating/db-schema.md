@@ -223,7 +223,7 @@ LIMIT 10;
 
 ---
 
-## Related Documentation
+## Related
 
 - Technical Spec: `docs/specs/technical/database/schema-design.md`
 - Functional Spec: `docs/specs/functional/rating/README.md`

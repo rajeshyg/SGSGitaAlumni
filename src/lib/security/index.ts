@@ -3,10 +3,43 @@
 // ============================================================================
 // Simplified exports for client-side use (ES module compatible)
 
+interface SecurityEventDetails {
+  [key: string]: unknown;
+}
+
+interface SecurityLogEntry {
+  timestamp: string;
+  event: string;
+  details: SecurityEventDetails;
+  userAgent: string;
+  url: string;
+}
+
+interface RequestOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: unknown | FormData;
+}
+
+interface APIResponse<T = unknown> {
+  data: T;
+  status: number;
+  headers: Record<string, string>;
+  requestId: string;
+}
+
+interface APIError extends Error {
+  status?: number;
+  code?: string | null;
+  details?: unknown;
+  response?: unknown;
+  originalError?: unknown;
+}
+
 /**
  * Initialize security services for the application
  */
-export function initializeSecurity() {
+export function initializeSecurity(): void {
   console.log('[Security] Initializing security services...');
   console.log('[Security] Security services initialized');
 }
@@ -14,8 +47,8 @@ export function initializeSecurity() {
 /**
  * Security audit logging
  */
-export function logSecurityEvent(event, details) {
-  const logEntry = {
+export function logSecurityEvent(event: string, details: SecurityEventDetails): void {
+  const logEntry: SecurityLogEntry = {
     timestamp: new Date().toISOString(),
     event,
     details,
@@ -30,6 +63,11 @@ export function logSecurityEvent(event, details) {
  * Simplified Secure API Client for client-side use
  */
 class SimpleSecureAPIClient {
+  private baseURL: string;
+  private authToken: string | null;
+  private refreshToken: string | null;
+  private requestId: number;
+
   constructor(baseURL = '') {
     this.baseURL = baseURL.replace(/\/$/, '');
     this.authToken = null;
@@ -37,50 +75,50 @@ class SimpleSecureAPIClient {
     this.requestId = 0;
   }
 
-  setAuthTokens(token, refresh) {
+  setAuthTokens(token: string, refresh: string): void {
     this.authToken = token;
     this.refreshToken = refresh;
   }
 
-  clearAuthTokens() {
+  clearAuthTokens(): void {
     this.authToken = null;
     this.refreshToken = null;
   }
 
-  getAuthHeaders() {
+  getAuthHeaders(): Record<string, string> {
     return this.authToken ? { Authorization: `Bearer ${this.authToken}` } : {};
   }
 
-  generateRequestId() {
+  generateRequestId(): string {
     return `req_${Date.now()}_${++this.requestId}`;
   }
 
-  buildURL(endpoint) {
+  buildURL(endpoint: string): string {
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     return `${this.baseURL}${cleanEndpoint}`;
   }
 
-  async get(endpoint, options = {}) {
-    return this.request(endpoint, { ...options, method: 'GET' });
+  async get<T = unknown>(endpoint: string, options: RequestOptions = {}): Promise<APIResponse<T>> {
+    return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
-  async post(endpoint, data, options = {}) {
-    return this.request(endpoint, { ...options, method: 'POST', body: data });
+  async post<T = unknown>(endpoint: string, data: unknown, options: RequestOptions = {}): Promise<APIResponse<T>> {
+    return this.request<T>(endpoint, { ...options, method: 'POST', body: data });
   }
 
-  async put(endpoint, data, options = {}) {
-    return this.request(endpoint, { ...options, method: 'PUT', body: data });
+  async put<T = unknown>(endpoint: string, data: unknown, options: RequestOptions = {}): Promise<APIResponse<T>> {
+    return this.request<T>(endpoint, { ...options, method: 'PUT', body: data });
   }
 
-  async delete(endpoint, options = {}) {
-    return this.request(endpoint, { ...options, method: 'DELETE' });
+  async delete<T = unknown>(endpoint: string, options: RequestOptions = {}): Promise<APIResponse<T>> {
+    return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 
-  async patch(endpoint, data, options = {}) {
-    return this.request(endpoint, { ...options, method: 'PATCH', body: data });
+  async patch<T = unknown>(endpoint: string, data: unknown, options: RequestOptions = {}): Promise<APIResponse<T>> {
+    return this.request<T>(endpoint, { ...options, method: 'PATCH', body: data });
   }
 
-  async request(endpoint, options = {}) {
+  async request<T = unknown>(endpoint: string, options: RequestOptions = {}): Promise<APIResponse<T>> {
     const requestId = this.generateRequestId();
     const url = this.buildURL(endpoint);
     

@@ -353,7 +353,7 @@ ORDER BY p.is_pinned DESC, p.created_at DESC;
 
 ---
 
-## Related Documentation
+## Related
 
 - Technical Spec: `docs/specs/technical/database/content-management.md`
 - Functional Spec: `docs/specs/functional/postings/README.md`

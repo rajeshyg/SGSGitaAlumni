@@ -296,7 +296,7 @@ ORDER BY cr.created_at ASC;
 
 ---
 
-## Related Documentation
+## Related
 
 - Technical Spec: `docs/specs/technical/database/schema-design.md`
 - Functional Spec: `docs/specs/functional/moderation/README.md`

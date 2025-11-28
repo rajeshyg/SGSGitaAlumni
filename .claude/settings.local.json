@@ -48,7 +48,9 @@
       "Skill(sdd-tac-workflow)",
       "Bash(mysql:*)",
       "Bash(git fetch:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(npm run validate-structure:*)",
+      "Bash(cmd /c \"rmdir /s /q playwright-report\")"
     ],
     "deny": [],
     "ask": []

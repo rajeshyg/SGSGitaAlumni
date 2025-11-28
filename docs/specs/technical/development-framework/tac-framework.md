@@ -1,6 +1,6 @@
 ---
 version: 2.1
-status: operational
+status: implemented
 last_updated: 2025-11-26
 implementation_date: 2025-11-26
 ---

@@ -44,7 +44,7 @@ function validateSpecDocument(filePath, relPath, specType) {
   
   // Validate sections (functional specs only)
   if (specType === 'functional') {
-    const sectionResult = validateRequiredSections(content, fmResult.frontmatter);
+    const sectionResult = validateRequiredSections(content, fmResult.frontmatter, filePath);
     errors.push(...sectionResult.errors);
     warnings.push(...sectionResult.warnings);
   }

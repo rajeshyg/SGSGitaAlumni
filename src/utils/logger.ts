@@ -1,58 +1,35 @@
-// ============================================================================
-// SIMPLE LOGGER UTILITY
-// ============================================================================
-// Provides logging with history for debugging
+// Simple logger utility for server-side logging
+// This is a CommonJS/ESM compatible logger for use in server.js
+/* eslint-disable no-console */
 
-export interface LogEntry {
-  timestamp: number;
-  level: 'info' | 'debug' | 'error';
-  message: string;
-  args: any[];
+interface Logger {
+  info: (message: string, data?: unknown) => void;
+  warn: (message: string, data?: unknown) => void;
+  error: (message: string, data?: unknown) => void;
+  debug: (message: string, data?: unknown) => void;
 }
 
-export class Logger {
-  private history: LogEntry[] = [];
-  private maxHistorySize = 100;
-
-  info(message: string, ...args: any[]) {
-    console.log(`[INFO] ${message}`, ...args);
-    this.addToHistory('info', message, args);
-  }
-
-  debug(message: string, ...args: any[]) {
-    console.log(`[DEBUG] ${message}`, ...args);
-    this.addToHistory('debug', message, args);
-  }
-
-  error(message: string, ...args: any[]) {
-    console.error(`[ERROR] ${message}`, ...args);
-    this.addToHistory('error', message, args);
-  }
-
-  private addToHistory(level: 'info' | 'debug' | 'error', message: string, args: any[]) {
-    this.history.push({
-      timestamp: Date.now(),
-      level,
-      message,
-      args: args.map(arg =>
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      )
-    });
-
-    // Keep only the last maxHistorySize entries
-    if (this.history.length > this.maxHistorySize) {
-      this.history.shift();
+export function createLogger(context?: string): Logger {
+  const prefix = context ? `[${context}]` : '';
+  
+  return {
+    info: (message: string, data?: unknown) => {
+      console.log(`${prefix} [INFO] ${message}`, data || '');
+    },
+    warn: (message: string, data?: unknown) => {
+      console.warn(`${prefix} [WARN] ${message}`, data || '');
+    },
+    error: (message: string, data?: unknown) => {
+      console.error(`${prefix} [ERROR] ${message}`, data || '');
+    },
+    debug: (message: string, data?: unknown) => {
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`${prefix} [DEBUG] ${message}`, data || '');
+      }
     }
-  }
-
-  getLogHistory(): LogEntry[] {
-    return [...this.history];
-  }
-
-  clearLogHistory() {
-    this.history = [];
-  }
+  };
 }
 
-export const logger = new Logger();
-export default logger;
+// Default logger instance
+export const logger = createLogger('Server');
+

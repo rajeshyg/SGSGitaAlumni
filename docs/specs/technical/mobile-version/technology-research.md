@@ -1,12 +1,10 @@
-```yaml
 ---
 version: 1.0
-status: complete
+status: implemented
 last_updated: 2025-11-27
 applies_to: mobile
 author: research-phase
 ---
-```
 
 # Mobile Technology Research
 

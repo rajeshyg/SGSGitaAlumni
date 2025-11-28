@@ -1,6 +1,3 @@
-# Validation Framework
-
-```yaml
 ---
 version: 1.0
 status: partial
@@ -9,7 +6,8 @@ applies_to: all
 enforcement: required
 description: Multi-layer validation framework for quality gates
 ---
-```
+
+# Validation Framework
 
 ## Overview
 

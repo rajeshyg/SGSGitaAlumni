@@ -36,9 +36,11 @@ const DUPLICATE_RULES = {
 
 const SPEC_RULES = {
   requiredFrontmatter: ['version', 'status', 'last_updated'],
-  validStatuses: ['implemented', 'in-progress', 'pending', 'active', 'proposed', 'deprecated'],
+  validStatuses: ['implemented', 'in-progress', 'pending', 'active', 'proposed', 'deprecated', 'template'],
   functionalRequiredSections: ['Purpose', 'User Flow', 'Acceptance Criteria', 'Implementation', 'Related'],
   technicalRequiredSections: [],
+  // DB Schema files have different required sections (focused on database documentation)
+  dbSchemaRequiredSections: ['Overview', 'Tables', 'Table Relationships', 'Common Query Patterns', 'Migration Notes', 'Related'],
   acceptanceCriteriaFormat: { required: true, allowedMarkers: ['✅', '⏳', '☐', '-', '*', '- [ ]', '- [x]'] },
   strayFileRules: { allowedAtRoot: ['README.md', 'CONSTITUTION.md', 'index.md'] },
 };

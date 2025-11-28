@@ -285,7 +285,7 @@ GROUP BY emoji;
 
 ---
 
-## Related Documentation
+## Related
 
 - Technical Spec: `docs/specs/technical/database/schema-design.md`
 - Functional Spec: `docs/specs/functional/messaging/README.md`

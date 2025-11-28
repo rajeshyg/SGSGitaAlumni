@@ -1,6 +1,6 @@
 ---
 version: 1.0
-status: planning
+status: pending
 last_updated: 2025-11-27
 applies_to: architecture
 ---

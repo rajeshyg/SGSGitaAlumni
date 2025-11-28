@@ -1,4 +1,3 @@
-```yaml
 ---
 version: 1.0
 status: research
@@ -6,7 +5,6 @@ last_updated: 2025-11-27
 applies_to: mobile
 enforcement: planning
 ---
-```
 
 # Mobile Version Technical Specification
 

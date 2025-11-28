@@ -1,6 +1,3 @@
-# Development Framework (SDD/TAC)
-
-```yaml
 ---
 version: 1.0
 status: implemented
@@ -9,7 +6,8 @@ applies_to: all
 enforcement: required
 description: Spec-Driven Development and Tactical Agentic Coding methodology for AI-assisted development
 ---
-```
+
+# Development Framework (SDD/TAC)
 
 ## Overview
 

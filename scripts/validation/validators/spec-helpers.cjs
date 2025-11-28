@@ -80,27 +80,37 @@ function validateFrontmatter(content, specType) {
 /**
  * Validate required sections for functional specs
  * @param {string} content - File content
- * @param {object} frontmatter - Parsed frontmatter  
+ * @param {object} frontmatter - Parsed frontmatter
+ * @param {string} [filePath] - File path (to determine if it's a db-schema file)
  * @returns {{ errors: string[], warnings: string[] }}
  */
-function validateRequiredSections(content, frontmatter) {
+function validateRequiredSections(content, frontmatter, filePath = '') {
   const errors = [];
   const warnings = [];
-  
+
   const isPending = frontmatter?.fields?.status === 'pending';
-  if (isPending) {
+  const isTemplate = frontmatter?.fields?.status === 'template';
+  if (isPending || isTemplate) {
     return { errors, warnings };
   }
-  
-  for (const section of SPEC_RULES.functionalRequiredSections) {
+
+  // Determine if this is a db-schema file
+  const isDbSchema = filePath.includes('db-schema.md');
+
+  // Use appropriate required sections
+  const requiredSections = isDbSchema
+    ? SPEC_RULES.dbSchemaRequiredSections
+    : SPEC_RULES.functionalRequiredSections;
+
+  for (const section of requiredSections) {
     const sectionRegex = new RegExp(`^##\\s+${section}`, 'm');
     if (!sectionRegex.test(content)) {
       warnings.push(`Missing section: ${section}`);
     }
   }
-  
-  // Check acceptance criteria format
-  if (content.includes('## Acceptance Criteria')) {
+
+  // Check acceptance criteria format (only for non-db-schema files)
+  if (!isDbSchema && content.includes('## Acceptance Criteria')) {
     const criteriaSection = content.split('## Acceptance Criteria')[1]?.split('##')[0];
     if (criteriaSection) {
       const hasMarkers = SPEC_RULES.acceptanceCriteriaFormat.allowedMarkers.some(
@@ -111,7 +121,7 @@ function validateRequiredSections(content, frontmatter) {
       }
     }
   }
-  
+
   return { errors, warnings };
 }
 

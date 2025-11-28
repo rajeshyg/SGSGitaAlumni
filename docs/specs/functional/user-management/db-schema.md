@@ -344,7 +344,7 @@ SELECT * FROM USER_PREFERENCES WHERE user_id = ?;
 
 ---
 
-## Related Documentation
+## Related
 
 - Technical Spec: `docs/specs/technical/database/schema-design.md`
 - Functional Spec: `docs/specs/functional/user-management/README.md`

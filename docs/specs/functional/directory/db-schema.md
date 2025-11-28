@@ -310,7 +310,7 @@ ORDER BY am.last_name, am.first_name;
 
 ---
 
-## Related Documentation
+## Related
 
 - Technical Spec: `docs/specs/technical/database/schema-design.md`
 - Functional Spec: `docs/specs/functional/directory/README.md`

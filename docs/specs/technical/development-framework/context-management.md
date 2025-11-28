@@ -2,20 +2,12 @@
 version: 1.0
 status: implemented
 last_updated: 2025-11-26
----
-
-# Context Management (R&D Framework)
-
-```yaml
----
-version: 1.0
-status: implemented
-last_updated: 2025-11-26
 applies_to: all
 enforcement: required
 description: Reduce and Delegate framework for managing AI context efficiently
 ---
-```
+
+# Context Management (R&D Framework)
 
 ## Overview
 
@@ -23,7 +15,7 @@ description: Reduce and Delegate framework for managing AI context efficiently
 
 **Solution**: R&D Framework (Reduce & Delegate) keeps context lean and efficient.
 
-**Source**: [IndyDevDan's TAC Framework](../../../../archive/root-docs/IndyDanDev_TAC/TAC_FRAMEWORK_REPORT_IMPROVED.md)
+**Source**: [TAC Framework Report](../../../archive/root-docs/IndyDanDev_TAC/TAC_FRAMEWORK_REPORT_IMPROVED.md)
 
 ---
 
