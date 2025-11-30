@@ -51,7 +51,7 @@ Key finding: OutreachTracker-v2 evolved the framework with **Phase 0 (Constraint
 | Prime Commands | ✅ Implemented | `.claude/commands/` | 7 commands |
 | Unified Prime-Framework | ✅ Implemented | `.claude/commands/prime-framework.md` | 404 lines |
 | PostToolUse Hook | ✅ Implemented | `.claude/hooks/post-tool-use-validation.js` | 99 lines |
-| Reduced always-on.md | ✅ Implemented | `docs/specs/context/always-on.md` | 46 lines |
+| Reduced always-on.md | ✅ Implemented | `docs/specs/context/always-on.md` | 64 lines |
 | Context Bundles Pattern | ✅ Documented | `docs/context-bundles/` | Session handoff |
 | Pre-commit Validation | ⚠️ Partial | `.husky/pre-commit` | Blocked by 1358 ESLint errors |
 
@@ -78,7 +78,7 @@ Key finding: OutreachTracker-v2 evolved the framework with **Phase 0 (Constraint
 | 3 | **Fake Production Code (10%)** | Hardcoded UI values | ESLint rule exists | Pre-commit bypassed |
 | 4 | **Overall Costs More Time** | No planning before build | Scout-Plan-Build documented | No mandatory Phase 0 |
 | 5 | **Fails to Deliver Entire Solution** | Manual planning | Plan phase exists | No spec workflow (cc-sdd) |
-| 6 | **Context Overload** | 144 lines always-on.md | Reduced to 46 lines | ✅ Resolved |
+| 6 | **Context Overload** | 144 lines always-on.md | Reduced to 64 lines | ✅ Resolved |
 | 7 | **Heavy Reviewing Required** | No quality gates | Hooks + skills exist | PostToolUse only, no PreToolUse |
 | 8 | **Misses Edge Cases** | No testing validation | Documented | No custom validation agent |
 | 9 | **Security Blindspots** | 5 vulnerabilities found | Security skill exists | No security hook |

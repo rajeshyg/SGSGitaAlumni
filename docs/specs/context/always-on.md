@@ -1,8 +1,9 @@
 # Essential Context (Always Loaded)
 
 > **For AI Agents**: This file contains minimal essentials. Load additional context on-demand via prime commands.
+> **Note:** This file currently has 64 lines. If referenced in documentation, use the correct line count.
+> **Slash Command Compatibility:** `/prime-*` commands only work in Claude Code CLI. For VS Code/GitHub Copilot or Claude.ai web, manually read the `.claude/commands/prime-*.md` files as context instead.
 
----
 
 ## Tech Stack
 Node.js 18+, Express, MySQL2, React 18, TypeScript, Socket.IO, JWT
