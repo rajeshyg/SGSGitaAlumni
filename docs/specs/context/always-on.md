@@ -31,6 +31,8 @@ Node.js 18+, Express, MySQL2, React 18, TypeScript, Socket.IO, JWT
 
 ## Framework Activation (SDD/TAC Workflow)
 
+> **Note**: Slash commands (`/prime-*`) only work in **Claude Code CLI**. For VS Code/GitHub Copilot, manually read the `.claude/commands/prime-*.md` files as context instead.
+
 **If sdd-tac-workflow skill didn't auto-activate**, for coding tasks:
 
 ### 1. Assess Complexity
@@ -38,7 +40,7 @@ Node.js 18+, Express, MySQL2, React 18, TypeScript, Socket.IO, JWT
 - **3+ files**: Apply Scout-Plan-Build workflow
 
 ### 2. For Scout-Plan-Build Tasks
-Load methodology: `/prime-framework`
+Load methodology: `/prime-framework` (Claude CLI) or read `.claude/commands/prime-framework.md`
 
 Execute workflow:
 1. **Scout**: Find affected files, patterns, dependencies (use Task tool or Haiku)
@@ -46,10 +48,10 @@ Execute workflow:
 3. **Build**: Execute plan (sequential or parallel based on file count)
 
 ### 3. Load Domain Context (On-Demand)
-- Auth work: `/prime-auth`
-- API work: `/prime-api`
-- Database work: `/prime-database`
-- UI work: `/prime-ui`
+- Auth work: `/prime-auth` or read `.claude/commands/prime-auth.md`
+- API work: `/prime-api` or read `.claude/commands/prime-api.md`
+- Database work: `/prime-database` or read `.claude/commands/prime-database.md`
+- UI work: `/prime-ui` or read `.claude/commands/prime-ui.md`
 
 ### 4. Model Selection
 - Scout: Haiku (fast, cheap file discovery)
