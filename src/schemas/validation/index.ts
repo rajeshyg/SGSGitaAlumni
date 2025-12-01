@@ -230,3 +230,63 @@ export const PostingFilterSchema = z.object({
   status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED']).optional(),
   ...PaginationSchema.shape
 });
+
+// ============================================
+// CHAT SCHEMAS
+// ============================================
+
+export const CreateConversationSchema = z.object({
+  type: z.enum(['DIRECT', 'GROUP', 'POST_LINKED']),
+  name: z.string().max(100).optional(),
+  postingId: UUIDSchema.optional(),
+  participantIds: z.array(z.coerce.number().int().positive()).min(1).max(50),
+  initialMessage: z.string().max(2000).optional()
+}).refine((data) => {
+  // Group conversations must have a name
+  if (data.type === 'GROUP' && !data.name) {
+    return false;
+  }
+  // Post-linked conversations must have a postingId
+  if (data.type === 'POST_LINKED' && !data.postingId) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Invalid conversation data'
+});
+
+export const SendMessageSchema = z.object({
+  conversationId: UUIDSchema,
+  content: z.string().min(1).max(2000),
+  messageType: z.enum(['TEXT', 'SYSTEM']).default('TEXT'),
+  replyTo: UUIDSchema.optional()
+});
+
+export const EditMessageSchema = z.object({
+  messageId: UUIDSchema,
+  content: z.string().min(1).max(2000)
+});
+
+export const AddReactionSchema = z.object({
+  messageId: UUIDSchema,
+  emoji: z.string().min(1).max(10)
+});
+
+export const AddParticipantSchema = z.object({
+  conversationId: UUIDSchema,
+  userId: z.coerce.number().int().positive(),
+  role: z.enum(['MEMBER', 'ADMIN']).default('MEMBER')
+});
+
+export const GetMessagesSchema = z.object({
+  conversationId: UUIDSchema,
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  before: z.string().datetime().optional(),
+  after: z.string().datetime().optional()
+});
+
+export const MarkAsReadSchema = z.object({
+  conversationId: UUIDSchema,
+  messageId: UUIDSchema
+});
