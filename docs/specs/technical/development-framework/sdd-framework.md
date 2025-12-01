@@ -1,14 +1,14 @@
 ---
 version: 2.1
 status: implemented
-last_updated: 2025-11-26
-implementation_date: 2025-11-26
+last_updated: 2025-11-30
+implementation_date: 2025-11-30
 ---
 
-# Spec-Driven Development (SDD) Framework - Productivity Report v2.0
+# Spec-Driven Development (SDD) Framework - Productivity Report v2.1
 
-> **Report Date**: November 24, 2025  
-> **Version**: 2.0 (Improved)  
+> **Report Date**: November 30, 2025  
+> **Version**: 2.1 (Tool-Agnostic Update)  
 > **Scope**: Universal framework for AI-driven development
 
 ---
@@ -17,10 +17,15 @@ implementation_date: 2025-11-26
 
 **Spec-Driven Development** structures AI-driven development through specifications, context management, and systematic workflows.
 
+**Tool-Agnostic Design**: This framework works with ANY AI tool:
+- Claude Code CLI (uses hooks and skills for automation)
+- VS Code + GitHub Copilot (read skill files as context)
+- Any AI Tool (run CLI validation scripts)
+
 **Core Principles**:
 - **Specs as Source of Truth**: Code follows specifications
 - **Context Hygiene**: Load only relevant context per task (R&D Framework)
-- **Scout-Plan-Build**: Systematic execution phases (implemented via TAC)
+- **Phase 0 → Scout → Plan → Build**: Systematic execution phases (NEW: Phase 0 for constraints)
 - **Validation First**: Quality gates catch errors before commit
 
 **Relationship to TAC**:

@@ -1,19 +1,19 @@
 ---
-version: 1.0
-status: implemented
-last_updated: 2025-11-26
+version: 2.0
+status: documented
+last_updated: 2025-11-30
 ---
 
 # Agent Orchestration (Parallel Execution)
 
 ```yaml
 ---
-version: 1.0
+version: 2.0
 status: documented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 applies_to: all
 enforcement: recommended
-description: Coordinating multiple parallel agents using git worktrees for 10+ file features
+description: Coordinating multiple parallel agents using git worktrees for 10+ file features (Tool-Agnostic)
 ---
 ```
 
@@ -24,6 +24,21 @@ description: Coordinating multiple parallel agents using git worktrees for 10+ f
 **Why**: 3-5x speedup, separate context windows, no file conflicts
 
 **How**: Git worktrees create isolated parallel environments
+
+**Note**: This pattern works with ANY AI tool that supports running multiple sessions. It's not specific to Claude Code CLI.
+
+---
+
+## Implementation Status
+
+| Pattern | Status | Notes |
+|---------|--------|-------|
+| Git worktrees documentation | ✅ Documented | See below |
+| Parallel agent spawning | ⚪ Deferred | Wait for Phase 1-2 to stabilize |
+| Orchestrator agent | ⚪ Deferred | Complex coordination logic |
+| Conflict detection | ⚪ Deferred | Part of orchestrator |
+
+**Priority**: Focus on Scout → Plan → Build → Validate workflow first. Orchestrator patterns are advanced and should be implemented after the basic workflow is solid.
 
 ---
 

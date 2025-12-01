@@ -1,7 +1,7 @@
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-27
+last_updated: 2025-11-30
 applies_to: architecture
 ---
 
@@ -9,33 +9,90 @@ applies_to: architecture
 
 ## Overview
 
-This document summarizes the changes made to generalize the development framework for use with any React application, eliminating domain-specific dependencies and adding mobile native UI extensibility.
+This document summarizes the changes made to generalize the development framework for use with any React application AND any AI tool, eliminating domain-specific dependencies and making the framework truly tool-agnostic.
 
-**Date**: 2025-11-27
-**Goal**: Make the SDD/TAC development framework reusable across different projects
+**Date**: 2025-11-30 (Updated)
+**Previous Update**: 2025-11-27
+**Goal**: Make the SDD/TAC development framework reusable across different projects AND different AI tools
 
 ---
 
-## Changes Implemented
+## v2.0 Updates (2025-11-30)
 
-### 1. **Removed Domain-Specific Examples from Framework Files**
+### Major Changes
 
-#### Files Modified:
-- `docs/specs/technical/development-framework/coding-standards.md`
-- `docs/specs/technical/development-framework/agent-orchestration.md`
-- `docs/specs/technical/development-framework/model-selection-guide.md`
+#### 1. **Added Phase 0: Constraints**
+The workflow is now: **Phase 0 → Scout → Plan → Build → Validate**
 
-#### Changes:
-| Before | After |
-|--------|-------|
-| `UserService.js` | `[EntityName]Service.js` |
-| `users.js` | `[entity-name].js` |
-| `posts`, `users`, `authors` | `items`, `entities`, `relatedData` |
-| `"scout the posting system"` | `"scout the [feature-name] system"` |
-| `"design the data model for the rating system"` | `"design the data model for the [feature] system"` |
-| `"refactor the ChatService"` | `"refactor the [ServiceName]"` |
+Phase 0 is MANDATORY and checks:
+- LOCKED files requiring approval
+- STOP triggers requiring confirmation
+- Port constraints (immutable)
 
-**Impact**: Framework documentation now uses generic placeholders instead of application-specific examples.
+#### 2. **Tool-Agnostic Validation Architecture**
+All validation logic now lives in `scripts/validation/` as CLI commands:
+
+```
+scripts/validation/rules/exceptions.cjs       # Source of truth
+scripts/validation/validators/constraint-check.cjs  # CLI + module
+```
+
+**Benefits**:
+- Works with any AI tool (Claude, Copilot, ChatGPT, etc.)
+- Pre-commit hooks use same logic
+- Manual CLI validation always available
+
+#### 3. **Created New Document: constraints-and-validation.md**
+Comprehensive documentation for:
+- LOCKED file definitions
+- STOP trigger definitions
+- Tool-agnostic validation commands
+- Phase 0 workflow
+
+#### 4. **Updated All Framework Documents**
+Every document now includes:
+- Tool-agnostic principles
+- CLI commands for validation
+- Alternative approaches for non-Claude tools
+
+---
+
+## Implementation Status
+
+### Phase 1: Foundation (Tool-Agnostic Validation)
+
+| Task | Status | File |
+|------|--------|------|
+| LOCKED_FILES in exceptions.cjs | 🟡 Planned | `scripts/validation/rules/exceptions.cjs` |
+| STOP_TRIGGERS in exceptions.cjs | 🟡 Planned | `scripts/validation/rules/exceptions.cjs` |
+| PORT_CONSTRAINTS in exceptions.cjs | 🟡 Planned | `scripts/validation/rules/exceptions.cjs` |
+| constraint-check.cjs validator | 🟡 Planned | `scripts/validation/validators/constraint-check.cjs` |
+| Update PostToolUse hook | 🟡 Planned | `.claude/hooks/post-tool-use-validation.js` |
+| Create PreToolUse hook | 🟡 Planned | `.claude/hooks/pre-tool-use-constraint.js` |
+
+### Phase 2: Skill & Context Improvements
+
+| Task | Status | File |
+|------|--------|------|
+| Create project-constraints skill | 🟡 Planned | `.claude/skills/project-constraints.md` |
+| Split coding-standards.md | 🟡 Planned | Multiple topic-specific files |
+| Update sdd-tac-workflow skill | 🟡 Planned | `.claude/skills/sdd-tac-workflow/SKILL.md` |
+| Add STOP trigger to duplication-prevention | ✅ Documented | `.claude/skills/duplication-prevention.md` |
+
+### Phase 3: Validation & Quality Gates
+
+| Task | Status | File |
+|------|--------|------|
+| Register constraint validator | 🟡 Planned | `scripts/validation/validate-structure.cjs` |
+| Test pre-commit integration | 🟡 Planned | `.husky/pre-commit` |
+
+### Phase 4: Future (Deferred)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Git Worktrees testing | ⚪ Deferred | After Phase 1-3 stable |
+| Orchestrator pattern | ⚪ Deferred | After Phase 1-3 stable |
+| cc-sdd integration | ⚪ Research | Evaluate if needed |
 
 ---
 

@@ -1,10 +1,10 @@
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 applies_to: all
 enforcement: required
-description: Reduce and Delegate framework for managing AI context efficiently
+description: Reduce and Delegate framework for managing AI context efficiently (Tool-Agnostic)
 ---
 
 # Context Management (R&D Framework)
@@ -15,7 +15,7 @@ description: Reduce and Delegate framework for managing AI context efficiently
 
 **Solution**: R&D Framework (Reduce & Delegate) keeps context lean and efficient.
 
-**Source**: [TAC Framework Report](../../../archive/root-docs/IndyDanDev_TAC/TAC_FRAMEWORK_REPORT_IMPROVED.md)
+**Tool-Agnostic**: These principles apply to any AI tool with context windows.
 
 ---
 
@@ -25,25 +25,22 @@ description: Reduce and Delegate framework for managing AI context efficiently
 
 **Principle**: Only load what's immediately needed
 
-**Implementation**:
+**Implementation** (adjust for your AI tool's token limit):
 ```
 always-on.md          → ≤50 lines (~100 tokens)
-Skills (scan)         → ~100 tokens per skill
+Skills (scan)         → ~100 tokens per skill (Claude CLI only)
 Skills (activated)    → <5k tokens when loaded
 Prime commands        → ~1500 tokens when invoked
-Total budget          → <80% of 200k token limit
+Total budget          → <80% of context limit
 ```
 
 **Rules**:
 1. **always-on.md**: Essential only (tech stack, critical rules)
-2. **Skills**: Auto-activate based on context (progressive disclosure)
+2. **Skills**: Auto-activate based on context (Claude CLI) or read manually (other tools)
 3. **Prime commands**: On-demand loading (not preloaded)
-4. **MCP tools**: Delete preloaded servers from `.claude.json`
+4. **Tool integrations**: Don't preload all tools
 
-**Monitor with**:
-```bash
-/context  # Check current token usage
-```
+**Monitor context usage**: Each AI tool has different ways to check usage
 
 ### D = DELEGATE (Offload to Sub-Agents)
 
@@ -59,15 +56,9 @@ Main Agent          → Lightweight orchestration
 
 **Benefits**:
 - Main agent context stays clean
-- Sub-agents have full 200k budget
+- Sub-agents have full context budget
 - Results summarized back (compress 10k → 1k)
 - True parallelism with git worktrees
-
-**Use Task tool**:
-```markdown
-Use Task tool with subagent_type=Explore for discovery
-Use Task tool with subagent_type=Plan for planning
-```
 
 ---
 

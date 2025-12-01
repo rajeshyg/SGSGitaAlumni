@@ -1,19 +1,19 @@
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 ---
 
 # Model Selection Guide (Cost Optimization)
 
 ```yaml
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 applies_to: all
 enforcement: recommended
-description: Decision matrix for choosing between Haiku and Sonnet models to optimize cost and performance
+description: Decision matrix for choosing between fast/cheap and thorough models (Tool-Agnostic)
 ---
 ```
 
@@ -21,36 +21,43 @@ description: Decision matrix for choosing between Haiku and Sonnet models to opt
 
 Choosing the right model for each task can save 28% on typical Scout-Plan-Build workflows and 10x on pure discovery tasks.
 
-**Cost Difference**:
+**This guide is AI-tool agnostic** - the principles apply to any AI assistant that offers model selection.
+
+**Cost Difference Example (Claude)**:
 - **Haiku**: ~$0.25 per 1M tokens (fast, efficient)
 - **Sonnet**: ~$3.00 per 1M tokens (thorough, reasoning)
-- **Savings**: Using Haiku for Scout = **10x cheaper** than Sonnet
+- **Savings**: Using fast model for Scout = **10x cheaper**
+
+**Applies to Other Tools**:
+- **OpenAI**: GPT-3.5 vs GPT-4
+- **Google**: Gemini Flash vs Gemini Pro
+- **GitHub Copilot**: Standard vs enhanced reasoning
 
 ---
 
 ## The Golden Rule
 
-**Haiku**: Information retrieval, discovery, simple patterns, documentation (< 500 lines)
+**Fast/Cheap Model**: Information retrieval, discovery, simple patterns, documentation (< 500 lines)
 
-**Sonnet**: Design decisions, complex logic, multi-file reasoning, debugging
+**Thorough Model**: Design decisions, complex logic, multi-file reasoning, debugging
 
 ---
 
 ## Detailed Decision Matrix
 
-| Task Type | Model | Approx Cost | When to Use | Example Commands |
-|-----------|-------|-------------|-------------|------------------|
-| **File discovery** | Haiku | ~$0.02 | Finding files by pattern or keyword | `claude --model haiku -p "find all auth-related files"` |
-| **Code search** | Haiku | ~$0.02 | Searching for implementations | `claude --model haiku -p "search for JWT verification logic"` |
-| **Documentation** | Haiku | ~$0.02 | Writing docs < 500 lines | `claude --model haiku -p "document the API endpoints"` |
-| **Simple CRUD** | Haiku | ~$0.02 | Basic create/read/update/delete | `claude --model haiku -p "add basic user CRUD endpoints"` |
-| **Scout phase** | Haiku | ~$0.02 | Reconnaissance for any feature | `claude --model haiku -p "scout the [feature-name] system"` |
-| **Architecture** | Sonnet | ~$1-2 | Design decisions needed | Default model (no flag needed) |
-| **Complex refactor** | Sonnet | ~$3-4 | Multi-file reasoning | Default model |
-| **Debugging** | Sonnet | ~$2-3 | Requires deep analysis | Default model |
-| **Orchestration** | Sonnet/Opus | ~$3-5 | Multi-agent coordination | Default model or `--model opus` |
-| **Plan phase** | Sonnet | ~$1-2 | Strategic planning | Default model |
-| **Build phase** | Sonnet | ~$2-4 | Implementation work | Default model |
+| Task Type | Model Type | Approx Cost | When to Use |
+|-----------|------------|-------------|-------------|
+| **File discovery** | Fast | ~$0.02 | Finding files by pattern or keyword |
+| **Code search** | Fast | ~$0.02 | Searching for implementations |
+| **Documentation** | Fast | ~$0.02 | Writing docs < 500 lines |
+| **Simple CRUD** | Fast | ~$0.02 | Basic create/read/update/delete |
+| **Scout phase** | Fast | ~$0.02 | Reconnaissance for any feature |
+| **Architecture** | Thorough | ~$1-2 | Design decisions needed |
+| **Complex refactor** | Thorough | ~$3-4 | Multi-file reasoning |
+| **Debugging** | Thorough | ~$2-3 | Requires deep analysis |
+| **Orchestration** | Thorough | ~$3-5 | Multi-agent coordination |
+| **Plan phase** | Thorough | ~$1-2 | Strategic planning |
+| **Build phase** | Thorough | ~$2-4 | Implementation work |
 
 ---
 

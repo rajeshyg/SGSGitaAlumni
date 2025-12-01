@@ -1,19 +1,19 @@
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 ---
 
 # Coding Standards
 
 ```yaml
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 applies_to: all
 enforcement: required
-description: Code quality standards enforced through skills and validation
+description: Code quality standards enforced through skills and validation (Tool-Agnostic)
 skill: .claude/skills/coding-standards.md
 ---
 ```
@@ -23,6 +23,12 @@ skill: .claude/skills/coding-standards.md
 **Purpose**: Maintain high code quality, prevent technical debt, enforce simplicity
 
 **Historical Issues**: 1314-line ChatService god object, resource leaks, N+1 queries
+
+**Planned Improvement**: Split into topic-specific skills (~150 lines core + topic files)
+- Core principles (this document)
+- React patterns (`coding-standards-react.md`) - planned
+- Backend patterns (`coding-standards-backend.md`) - planned
+- Database patterns (`coding-standards-database.md`) - planned
 
 ---
 
@@ -90,7 +96,9 @@ Extract hooks, utilities, sub-components
 
 **Full standards and examples**: See [.claude/skills/coding-standards.md](../../../../.claude/skills/coding-standards.md)
 
-**Auto-triggers**: When working on service files, database code, components
+**Auto-triggers** (Claude CLI): When working on service files, database code, components
+
+**For other AI tools**: Read `.claude/skills/coding-standards.md` as context
 
 **Self-Checklist**:
 - [ ] Service < 300 lines
@@ -101,8 +109,23 @@ Extract hooks, utilities, sub-components
 
 ---
 
+## ESLint Fix Strategy
+
+ESLint fixes happen **per-module during feature work**, not as separate framework task.
+
+When working on a module:
+1. Fix module's ESLint errors as part of the feature
+2. Run `npx eslint --fix` for auto-fixable issues first
+3. Address remaining errors manually
+4. Commit with feature changes
+
+This keeps fixes contextual and avoids massive "fix all ESLint" PRs.
+
+---
+
 ## Related
 
 - [Code Review Checklist](../coding-standards/code-review-checklist.md)
 - [TypeScript Standards](../coding-standards/typescript.md)
-- [File Organization](../coding-standards/file-organization.md)
+- [Code Size Standards](../coding-standards/code-size-standards.md)
+- [Historical Lessons](../../lessons-learnt/) - See for detailed case studies

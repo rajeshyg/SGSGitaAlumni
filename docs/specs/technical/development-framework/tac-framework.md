@@ -1,14 +1,14 @@
 ---
 version: 2.1
 status: implemented
-last_updated: 2025-11-26
-implementation_date: 2025-11-26
+last_updated: 2025-11-30
+implementation_date: 2025-11-30
 ---
 
-# Tactical Agentic Coding (TAC) - Execution Report v2.0
+# Tactical Agentic Coding (TAC) - Execution Report v2.1
 
-> **Report Date**: November 24, 2025  
-> **Version**: 2.0 (Improved)  
+> **Report Date**: November 30, 2025  
+> **Version**: 2.1 (Tool-Agnostic Update)  
 > **Scope**: Universal agent orchestration framework
 
 ---
@@ -26,25 +26,37 @@ implementation_date: 2025-11-26
 
 **Core Innovation**: Break complex work into coordinated phases with specialized agents, enabling 3-5x productivity for large features.
 
+**Tool-Agnostic Design**: These patterns work with any AI tool. The specific commands shown are for Claude Code CLI, but the principles apply universally.
+
 ---
 
-## 2. The 5 TAC Phases
+## 2. The 6 TAC Phases (Updated)
+
+### Phase 0: Constraints (NEW - MANDATORY)
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Check LOCKED files and STOP triggers before any work |
+| Tool | CLI validators (works with any AI tool) |
+| Output | Approval to proceed or blocked modification |
+
+**Command (any AI tool)**:
+```bash
+node scripts/validation/validators/constraint-check.cjs <file-path> [--block]
+```
 
 ### Phase 1: Scout
 | Aspect | Detail |
 |--------|--------|
 | Purpose | Discover files, patterns, dependencies |
-| Model | Haiku (fast, cheap) |
-| Cost | ~$0.25/1M tokens (10x cheaper than Sonnet) |
+| Model | Fast/cheap (e.g., Haiku, GPT-3.5, Gemini Flash) |
+| Cost | ~$0.02/task (10x cheaper than thorough model) |
 | Output | Scout report with paths, patterns, recommendations |
-
-**Command**: `claude --model haiku -p "scout codebase for [domain]"`
 
 ### Phase 2: Plan  
 | Aspect | Detail |
 |--------|--------|
 | Purpose | Create implementation strategy |
-| Model | Sonnet (thorough) |
+| Model | Thorough (e.g., Sonnet, GPT-4, Gemini Pro) |
 | Output | Architecture decisions, file changes, risks |
 
 **Key Rule**: Planner does NOT code—human reviews plan before build.
@@ -53,34 +65,26 @@ implementation_date: 2025-11-26
 | Aspect | Detail |
 |--------|--------|
 | Purpose | Execute plan with focused agents |
-| Model | Sonnet per agent |
+| Model | Thorough per agent |
 | **Structure** | **Multiple parallel agents, 3-5 files each** |
 
-**This is the most misunderstood phase.**
+This is the most misunderstood phase.
 
 ❌ Wrong: Single agent builds entire feature  
-✅ Right: Multiple agents build in parallel
-
-**Example: 15-file feature**
-```
-Orchestrator spawns:
-├─ Agent 1: API routes (files 1-5)      ─┐
-├─ Agent 2: UI components (files 6-10)  ─┼─ Run in parallel
-└─ Agent 3: Database (files 11-15)      ─┘
-```
+✅ Right: Multiple agents build in parallel (for 10+ files)
 
 ### Phase 4: Orchestrate
 | Aspect | Detail |
 |--------|--------|
 | Purpose | Coordinate agents, manage context handoffs |
-| Model | Sonnet/Opus |
-| Responsibilities | Launch order, conflict detection, consistency |
+| Model | Thorough/advanced |
+| Status | ⚪ Deferred - implement after Phase 0-3 stable |
 
 ### Phase 5: Validate
 | Aspect | Detail |
 |--------|--------|
 | Purpose | Verify implementation matches plan |
-| Model | Sonnet (or Gemini/Playwright for E2E) |
+| Tool | CLI validators + tests |
 | Output | Validation report, regression check |
 
 ---

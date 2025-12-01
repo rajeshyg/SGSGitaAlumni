@@ -1,19 +1,19 @@
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 ---
 
-# SDD/TAC Methodology: Scout-Plan-Build Workflow
+# SDD/TAC Methodology: Phase 0 → Scout → Plan → Build → Validate
 
 ```yaml
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 applies_to: all
 enforcement: required
-description: Core Scout-Plan-Build workflow for systematic AI-assisted development
+description: Core Phase 0-Scout-Plan-Build workflow for systematic AI-assisted development (Tool-Agnostic)
 skills: .claude/skills/sdd-tac-workflow/SKILL.md
 prime_command: /prime-framework
 ---
@@ -26,35 +26,85 @@ prime_command: /prime-framework
 
 This unified methodology ensures systematic, high-quality development through phased workflows.
 
+## Tool-Agnostic Design
+
+This methodology works with ANY AI tool:
+- **Claude Code CLI**: Uses hooks and skills for automation
+- **VS Code + Copilot**: Read `.claude/skills/*.md` files as context
+- **Any AI Tool**: Run `scripts/validation/` CLI commands manually
+
 ## Core Principles
 
-### 1. Specs as Source of Truth
+### 1. Phase 0: Constraints (MANDATORY)
+- **NEW**: Check LOCKED files and STOP triggers before ANY task
+- Run: `node scripts/validation/validators/constraint-check.cjs <file-path>`
+- If LOCKED file affected → STOP and ask for approval
+
+### 2. Specs as Source of Truth
 - Code follows specifications, not assumptions
 - Functional specs: `docs/specs/functional/[feature]/`
 - Technical specs: `docs/specs/technical/`
 - **If spec conflicts with code, spec wins**
 
-### 2. Context Hygiene (R&D Framework)
+### 3. Context Hygiene (R&D Framework)
 - **Reduce**: Minimize static context (always-on.md ≤50 lines)
 - **Delegate**: Offload work to sub-agents to prevent context pollution
 
-### 3. Quality Gates
+### 4. Quality Gates
 - Pre-commit validation (structure, docs, ESLint, redundancy, mock data)
 - Tests pass before features are complete
 - Code review checklist enforcement
 
-### 4. Workflow Phases
-Every complex task follows: **Scout → Plan → Build → Validate**
+### 5. Workflow Phases
+Every complex task follows: **Phase 0 → Scout → Plan → Build → Validate**
 
 ---
 
-## The 5 TAC Phases
+## The 6 TAC Phases
+
+### Phase 0: Constraints (MANDATORY - NEW)
+
+**Purpose**: Check constraints BEFORE any coding task begins
+
+**When**: ALWAYS - first step for every task
+
+**What to Check**:
+1. **LOCKED Files**: Critical files requiring approval before modification
+2. **STOP Triggers**: Actions requiring user confirmation
+3. **Port Constraints**: Immutable system configurations
+
+**Tool-Agnostic Execution**:
+```bash
+# CLI (works with any AI tool)
+node scripts/validation/validators/constraint-check.cjs server.js
+node scripts/validation/validators/constraint-check.cjs routes/auth.js --block
+```
+
+**LOCKED File Categories** (defined in `scripts/validation/rules/exceptions.cjs`):
+| Category | Files | Action |
+|----------|-------|--------|
+| Critical | `server.js`, `config/database.js`, `.env*` | **STOP** - approval required |
+| Security | `routes/auth.js`, `middleware/auth.js`, `routes/otp.js` | **STOP** - approval required |
+| Sensitive | `package.json`, `vite.config.js`, `eslint.config.js` | **WARN** - proceed with caution |
+
+**STOP Triggers**:
+- Creating database migrations
+- Deleting any file
+- Changing API endpoint signatures
+- Adding npm dependencies
+
+**Phase 0 Checklist**:
+- [ ] No LOCKED file modifications planned (or user approved)
+- [ ] No STOP trigger actions (or user confirmed)
+- [ ] Proceed to Scout phase
+
+---
 
 ### Phase 1: Scout (Reconnaissance)
 
 **Purpose**: Discover files, patterns, dependencies BEFORE making changes
 
-**Model**: Haiku (fast, cheap - ~$0.02/task)
+**Model**: Haiku/fast model (cheap - ~$0.02/task) or any lightweight model
 
 **What to Find**:
 - Existing files related to feature
@@ -62,13 +112,13 @@ Every complex task follows: **Scout → Plan → Build → Validate**
 - Dependencies and integrations
 - Potential impact areas
 
-**Execution**:
+**Tool-Agnostic Execution**:
 ```bash
-# Use Haiku for Scout phase (10x cheaper than Sonnet)
+# Claude Code CLI
 claude --model haiku -p "scout the [feature] system to understand its structure"
 
-# Or use Task tool
-Task tool with subagent_type=Explore, model="haiku"
+# VS Code + Copilot: Read files and search codebase manually
+# Any AI Tool: Use file search and grep to discover related files
 ```
 
 **Output Format**:
@@ -240,6 +290,12 @@ Orchestrator spawns:
 - Skills enforce standards (security, duplication, coding standards)
 - Manual code review using checklist
 
+**Tool-Agnostic Validation**:
+```bash
+# Run all validation (works with any AI tool)
+node scripts/validation/validate-structure.cjs
+```
+
 ---
 
 ## Decision Trees
@@ -247,16 +303,23 @@ Orchestrator spawns:
 ### When to Use Each Phase
 
 ```
+┌─ PHASE 0: CONSTRAINTS (ALWAYS FIRST)
+│  └─ Check LOCKED files and STOP triggers
+│  └─ LOCKED violation? → STOP, ask user approval
+│  └─ STOP trigger? → Confirm with user
+│  └─ Continue ↓
+
 ┌─ 1-2 files affected?
-│  └─ YES → Build directly (no Scout/Plan needed)
+│  └─ YES → Phase 0 → Build directly → Validate
 │  └─ NO → Continue ↓
 
 ┌─ 3-10 files affected?
-│  └─ YES → Scout → Plan → Build (single agent)
+│  └─ YES → Phase 0 → Scout → Plan → Build → Validate
 │  └─ NO → Continue ↓
 
 ┌─ 10+ files affected?
 │  └─ YES → Full TAC with parallel agents
+│      0. Phase 0 (constraints check)
 │      1. Scout (parallel if multi-domain)
 │      2. Plan (aggregated findings)
 │      3. Build (parallel agents, git worktrees)
@@ -265,16 +328,21 @@ Orchestrator spawns:
 
 ┌─ Research only (no code changes)?
 │  └─ YES → Scout phase only
-│  └─ NO → Scout → Plan → Build
+│  └─ NO → Phase 0 → Scout → Plan → Build → Validate
 ```
 
 ### When to Load Framework
 
-Load `/prime-framework` when:
+**Claude Code CLI**: Load `/prime-framework` when:
 - Implementing features (3+ files)
 - Refactoring code (multiple modules)
 - Planning complex implementations
 - Need orchestration guidance (10+ files)
+
+**VS Code + Copilot / Other AI Tools**: Read these files as context:
+- `.claude/commands/prime-framework.md`
+- `.claude/skills/project-constraints.md`
+- Relevant skill files for your task
 
 Do NOT load for:
 - Simple bug fixes (1-2 files)

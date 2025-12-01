@@ -1,19 +1,19 @@
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 ---
 
 # Security Enforcement
 
 ```yaml
 ---
-version: 1.0
+version: 2.0
 status: implemented
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 applies_to: backend, frontend
 enforcement: required
-description: Security patterns and rules enforced through skills and validation
+description: Security patterns and rules enforced through skills, validation, and LOCKED files (Tool-Agnostic)
 skill: .claude/skills/security-rules.md
 ---
 ```
@@ -22,7 +22,26 @@ skill: .claude/skills/security-rules.md
 
 **Historical Issues**: Auth bypass, SQL injection, OTP logging, JWT exposure
 
-**Enforcement**: Auto-activation skill + validation scripts + pre-commit hooks
+**Enforcement**: 
+- Phase 0 LOCKED files (blocks unauthorized modifications)
+- Auto-activation skill (Claude CLI) or manual context (other tools)
+- Validation scripts (tool-agnostic CLI)
+- Pre-commit hooks
+
+---
+
+## LOCKED Security Files
+
+**These files require explicit approval before modification:**
+
+| File | Reason | Check Command |
+|------|--------|---------------|
+| `routes/auth.js` | Authentication routes | `node scripts/validation/validators/constraint-check.cjs routes/auth.js` |
+| `middleware/auth.js` | Auth middleware | `node scripts/validation/validators/constraint-check.cjs middleware/auth.js` |
+| `routes/otp.js` | OTP verification | `node scripts/validation/validators/constraint-check.cjs routes/otp.js` |
+| `.env*` | Environment secrets | `node scripts/validation/validators/constraint-check.cjs .env` |
+
+**If modifying these files**: STOP and ask for user approval first.
 
 ---
 
@@ -59,11 +78,28 @@ Use `httpOnly`, `secure`, `sameSite` for auth cookies
 
 ---
 
+## Tool-Agnostic Security Validation
+
+```bash
+# Check if modifying security file (any AI tool)
+node scripts/validation/validators/constraint-check.cjs routes/auth.js --block
+
+# Run security-related validation
+node scripts/validation/validate-structure.cjs
+
+# Check for sensitive data in logs (manual grep)
+grep -r "console.log.*password\|token\|secret\|otp" src/ server/
+```
+
+---
+
 ## Implementation Details
 
 **Full security checklist and patterns**: See [.claude/skills/security-rules.md](../../../../.claude/skills/security-rules.md)
 
-**Auto-triggers**: When working on auth, database queries, API endpoints
+**Auto-triggers** (Claude CLI only): When working on auth, database queries, API endpoints
+
+**For other AI tools**: Read `.claude/skills/security-rules.md` as context before security work
 
 **Historical vulnerabilities** (never repeat):
 1. Client sent `otpVerified: true`, server accepted
@@ -75,6 +111,7 @@ Use `httpOnly`, `secure`, `sameSite` for auth cookies
 
 ## Related
 
+- [Constraints and Validation](./constraints-and-validation.md) - LOCKED files system
 - [Database Specs](../database/) - Connection management, query patterns
 - [Security Specs](../security/) - Authentication, authorization, compliance
 - [API Design](../architecture/api-design.md) - API security patterns
