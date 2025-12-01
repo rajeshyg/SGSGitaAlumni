@@ -99,7 +99,7 @@ None - framework implementation complete.
 ## Session Notes
 
 **Patterns Followed**:
-- R&D Framework (Reduce & Delegate) from IndyDanDev
+- R&D Framework (Reduce & Delegate) from indyDevDan
 - Progressive disclosure for skills (~100 tokens metadata, <5k when activated)
 - Context bundle pattern for session continuity (60-70% restoration)
 

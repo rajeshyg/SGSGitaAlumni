@@ -312,4 +312,4 @@ const API_ENDPOINTS = {
 ## Related Documentation
 
 - [TypeScript Patterns](./typescript.md)
-- [File Organization](./file-organization.md)
+- [Code Size Standards](./code-size-standards.md)

@@ -1,6 +1,6 @@
 ---
 version: 2.0
-status: documented
+status: documented-not-tested
 last_updated: 2025-11-30
 ---
 
@@ -9,11 +9,15 @@ last_updated: 2025-11-30
 ```yaml
 ---
 version: 2.0
-status: documented
+status: documented-not-tested
 last_updated: 2025-11-30
 applies_to: all
 enforcement: recommended
-description: Coordinating multiple parallel agents using git worktrees for 10+ file features (Tool-Agnostic)
+description: Coordinating multiple parallel agents using git worktrees for 10+ file features
+implementation_status:
+  documentation: ✅ Complete
+  git_worktrees: ❌ Not tested in practice
+  orchestrator_pattern: ❌ Deferred until Phases 1-3 complete
 ---
 ```
 
@@ -25,20 +29,17 @@ description: Coordinating multiple parallel agents using git worktrees for 10+ f
 
 **How**: Git worktrees create isolated parallel environments
 
-**Note**: This pattern works with ANY AI tool that supports running multiple sessions. It's not specific to Claude Code CLI.
+**Status**: ⚠️ Documented but not tested in practice. Deferred until Phase 1-3 of framework improvement complete.
 
 ---
 
-## Implementation Status
+## Prerequisite: Complete Phases 1-3 First
 
-| Pattern | Status | Notes |
-|---------|--------|-------|
-| Git worktrees documentation | ✅ Documented | See below |
-| Parallel agent spawning | ⚪ Deferred | Wait for Phase 1-2 to stabilize |
-| Orchestrator agent | ⚪ Deferred | Complex coordination logic |
-| Conflict detection | ⚪ Deferred | Part of orchestrator |
-
-**Priority**: Focus on Scout → Plan → Build → Validate workflow first. Orchestrator patterns are advanced and should be implemented after the basic workflow is solid.
+Before implementing orchestration patterns:
+1. ✅ Phase 0 (Constraints) must be working
+2. ✅ PreToolUse hook blocking dangerous operations
+3. ✅ Scout-Plan-Build workflow proven for 3-10 file tasks
+4. Then test orchestration for 10+ file features
 
 ---
 
@@ -69,9 +70,10 @@ Each worktree:
 
 ---
 
-## Orchestrator Pattern
+## Orchestrator Pattern (Future Implementation)
 
 ```
+0. Load constraints (Phase 0)
 1. Parse task complexity (file count, dependencies)
 2. Launch Scout agents (parallel if domains independent)
 3. Aggregate scout findings → single context bundle
@@ -85,7 +87,7 @@ Each worktree:
 
 ---
 
-## Example: 15-File Feature
+## Example: 15-File Feature (When Ready)
 
 ### Setup Worktrees
 ```bash
@@ -95,7 +97,7 @@ git worktree add ../project-api feature/api
 git worktree add ../project-ui feature/ui
 ```
 
-### Spawn Parallel Agents
+### Spawn Parallel Agents (Claude CLI)
 ```bash
 # Run agents truly in parallel (separate directories)
 (cd ../project-auth && claude -p "implement auth per plan files 1-5" &)
@@ -129,36 +131,28 @@ UI components (src/components/Auth.tsx)
 
 **Dependent files** → Sequential in same agent:
 ```
-Service (services/[EntityName]Service.js)  ← Must exist first
-Route (routes/[entity-name].js)            ← Depends on service
+Service ([FeatureName]Service.js)  ← Must exist first
+Route ([feature-name].js)          ← Depends on service
 → Same agent, sequential order
 ```
-
----
-
-## Orchestration Responsibilities
-
-1. **Launch Order**: Determine sequential vs parallel execution
-2. **Conflict Detection**: Track file ownership across agents
-3. **Consistency Validation**: Ensure interfaces match across agents
-4. **Context Handoff**: Manage information flow between agents
 
 ---
 
 ## When NOT to Use Parallel Agents
 
 - **1-2 files**: Direct build (no overhead)
-- **3-10 files**: Single agent, sequential
+- **3-10 files**: Single agent, sequential Scout-Plan-Build
 - **Tightly coupled files**: Same agent (dependencies)
 - **Simple refactors**: Not worth setup overhead
+- **Until Phases 1-3 complete**: Focus on foundation first
 
 ---
 
 ## Best Practices
 
 ### DO
-- ✅ Use for 10+ file features
-- ✅ Create worktrees for independent domains
+- ✅ Complete Phase 0-3 before attempting orchestration
+- ✅ Test with real 10+ file feature before documenting success
 - ✅ Run scout phase first to identify dependencies
 - ✅ Merge frequently to detect conflicts early
 - ✅ Clean up worktrees when done

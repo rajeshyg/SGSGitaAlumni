@@ -49,7 +49,7 @@ The SGS Gita Alumni project maintains high code quality through:
 | Document | Purpose |
 |----------|---------|
 | [TypeScript Patterns](./typescript.md) | Type safety, interfaces, generics |
-| [File Organization](./file-organization.md) | Structure, size limits, directories |
+| [Code Size Standards](./code-size-standards.md) | File and function size limits, structure |
 | [Naming Conventions](./naming-conventions.md) | Files, components, variables |
 | [Code Review Checklist](./code-review-checklist.md) | Review process and checklists |
 

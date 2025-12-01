@@ -4,7 +4,8 @@ status: implemented
 last_updated: 2025-11-30
 applies_to: all
 enforcement: required
-description: Reduce and Delegate framework for managing AI context efficiently (Tool-Agnostic)
+description: Reduce and Delegate framework for managing AI context efficiently
+tool_agnostic: true
 ---
 
 # Context Management (R&D Framework)
@@ -15,7 +16,32 @@ description: Reduce and Delegate framework for managing AI context efficiently (
 
 **Solution**: R&D Framework (Reduce & Delegate) keeps context lean and efficient.
 
-**Tool-Agnostic**: These principles apply to any AI tool with context windows.
+**Applies to**: Any AI coding tool (Claude CLI, GitHub Copilot, Claude.ai, etc.)
+
+---
+
+## Tool Compatibility
+
+| Feature | Claude Code CLI | VS Code + GitHub Copilot | Claude.ai Web |
+|---------|-----------------|--------------------------|---------------|
+| Skills auto-activation | ✅ | ❌ Manual context | ❌ Manual context |
+| `/context` monitoring | ✅ | ❌ No equivalent | ❌ No equivalent |
+| Sub-agent delegation | ✅ | ⚠️ Limited | ❌ Not available |
+| Context bundles | ✅ Works | ✅ Manual file read | ✅ Manual paste |
+
+**For non-Claude CLI tools**: Use context bundles manually and be mindful of prompt length.
+
+---
+
+## Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| always-on.md | ✅ Reduced | ~64 lines (target: ≤50) |
+| Skills | ✅ Implemented | 4 skills in `.claude/skills/` |
+| Prime commands | ✅ Implemented | 7+ commands in `.claude/commands/` |
+| Context bundles | ✅ Pattern defined | `docs/context-bundles/` |
+| R&D principles | ✅ Documented | This document |
 
 ---
 
@@ -25,22 +51,25 @@ description: Reduce and Delegate framework for managing AI context efficiently (
 
 **Principle**: Only load what's immediately needed
 
-**Implementation** (adjust for your AI tool's token limit):
+**Implementation**:
 ```
 always-on.md          → ≤50 lines (~100 tokens)
-Skills (scan)         → ~100 tokens per skill (Claude CLI only)
+Skills (scan)         → ~100 tokens per skill
 Skills (activated)    → <5k tokens when loaded
 Prime commands        → ~1500 tokens when invoked
-Total budget          → <80% of context limit
+Total budget          → <80% of 200k token limit
 ```
 
 **Rules**:
 1. **always-on.md**: Essential only (tech stack, critical rules)
-2. **Skills**: Auto-activate based on context (Claude CLI) or read manually (other tools)
+2. **Skills**: Auto-activate based on context (progressive disclosure)
 3. **Prime commands**: On-demand loading (not preloaded)
-4. **Tool integrations**: Don't preload all tools
+4. **MCP tools**: Delete preloaded servers from `.claude.json`
 
-**Monitor context usage**: Each AI tool has different ways to check usage
+**Monitor with**:
+```bash
+/context  # Check current token usage
+```
 
 ### D = DELEGATE (Offload to Sub-Agents)
 
@@ -56,9 +85,15 @@ Main Agent          → Lightweight orchestration
 
 **Benefits**:
 - Main agent context stays clean
-- Sub-agents have full context budget
+- Sub-agents have full 200k budget
 - Results summarized back (compress 10k → 1k)
 - True parallelism with git worktrees
+
+**Use Task tool**:
+```markdown
+Use Task tool with subagent_type=Explore for discovery
+Use Task tool with subagent_type=Plan for planning
+```
 
 ---
 

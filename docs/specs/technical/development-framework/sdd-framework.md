@@ -1,14 +1,14 @@
 ---
 version: 2.1
-status: implemented
+status: partially-implemented
 last_updated: 2025-11-30
-implementation_date: 2025-11-30
+implementation_date: 2025-11-26
 ---
 
-# Spec-Driven Development (SDD) Framework - Productivity Report v2.1
+# Spec-Driven Development (SDD) Framework - Status Report
 
 > **Report Date**: November 30, 2025  
-> **Version**: 2.1 (Tool-Agnostic Update)  
+> **Version**: 2.1 (Updated with improvement plan status)  
 > **Scope**: Universal framework for AI-driven development
 
 ---
@@ -17,15 +17,10 @@ implementation_date: 2025-11-30
 
 **Spec-Driven Development** structures AI-driven development through specifications, context management, and systematic workflows.
 
-**Tool-Agnostic Design**: This framework works with ANY AI tool:
-- Claude Code CLI (uses hooks and skills for automation)
-- VS Code + GitHub Copilot (read skill files as context)
-- Any AI Tool (run CLI validation scripts)
-
 **Core Principles**:
 - **Specs as Source of Truth**: Code follows specifications
 - **Context Hygiene**: Load only relevant context per task (R&D Framework)
-- **Phase 0 → Scout → Plan → Build**: Systematic execution phases (NEW: Phase 0 for constraints)
+- **Phase 0 + Scout-Plan-Build**: Systematic execution phases (with constraints first)
 - **Validation First**: Quality gates catch errors before commit
 
 **Relationship to TAC**:
@@ -37,172 +32,108 @@ implementation_date: 2025-11-30
 
 ---
 
-## 2. The 6 Modules (Reference)
+## 2. Implementation Status Summary
 
-| Module | Purpose | Productivity Gain |
-|--------|---------|-------------------|
-| 1. Understanding SDD | Theory | Shared mental model |
-| 2. Prompt Engineering | Role constraints | Agents stay focused |
-| 3. Context Engineering | Budget management | Parallel work enabled |
-| 4. Implementation | Tools & models | Right cost per task |
-| 5. Advanced Patterns | ROI analysis | Data-driven optimization |
-| 6. Agent Orchestration | Practical execution | Theory → practice |
+| Module | Status | Notes |
+|--------|--------|-------|
+| Context Priming | ✅ Implemented | Prime commands created |
+| Skills Directory | ✅ Implemented | 4 skills auto-activating |
+| PostToolUse Hook | ✅ Implemented | Validates after edits |
+| Phase 0 (Constraints) | ❌ Not Implemented | Critical gap |
+| PreToolUse Hook | ❌ Not Implemented | Cannot block before edits |
+| LOCKED Files | ❌ Not Implemented | No protection on critical files |
+| Pre-commit ESLint | ⚠️ Bypassed | Blocked by errors |
 
 ---
 
 ## 3. Infrastructure Status
 
 ### 3.1 Context Priming ✅
-| Command | Domain | Approx Lines Saved |
-|---------|--------|-------------------|
-| `/prime-auth` | Authentication | ~450 |
-| `/prime-api` | API development | ~400 |
-| `/prime-database` | Database schema | ~350 |
-| `/prime-ui` | UI components | ~300 |
+| Command | Domain | Status |
+|---------|--------|--------|
+| `/prime-auth` | Authentication | ✅ |
+| `/prime-api` | API development | ✅ |
+| `/prime-database` | Database schema | ✅ |
+| `/prime-ui` | UI components | ✅ |
+| `/prime-framework` | SDD/TAC methodology | ✅ |
 
-### 3.2 Specification Coverage ✅
-- **9 Functional**: auth, dashboard, directory, messaging, moderation, notifications, postings, rating, user-management
-- **8 Technical**: architecture, coding-standards, database, deployment, integration, security, testing, ui-standards
+### 3.2 Skills ✅ (Claude CLI Only)
+| Skill | Purpose | Status |
+|-------|---------|--------|
+| `sdd-tac-workflow` | Methodology auto-application | ✅ |
+| `duplication-prevention` | Prevent redundant files | ⚠️ Needs STOP trigger |
+| `security-rules` | Security patterns | ✅ |
+| `coding-standards` | Code quality | ⚠️ Too large (419+ lines) |
+| `project-constraints` | Phase 0 constraints | ❌ Not created |
 
-### 3.3 Pre-Commit Validation ⚠️
+### 3.3 Hooks (Claude CLI Only)
+| Hook | Purpose | Status |
+|------|---------|--------|
+| PostToolUse | Validate after file edits | ✅ |
+| PreToolUse | Block dangerous operations | ❌ Not created |
+
+### 3.4 Pre-Commit Validation
 | Check | Status |
 |-------|--------|
 | Structure | ✅ Active |
 | Documentation | ✅ Active |
-| ESLint | ❌ Blocked (1425 errors) |
+| ESLint | ❌ Bypassed (1358+ errors) |
 | Mock data | ✅ Active |
 | Redundancy | ✅ Active |
-
-### 3.4 Workflow Coverage: 44%
-✅ notifications, postings, rating, user-management  
-❌ authentication, dashboard, directory, messaging, moderation
 
 ---
 
 ## 4. Critical Gaps
 
-### Gap 1: Context Bloat
-| Metric | Current | Target |
-|--------|---------|--------|
-| `always-on.md` | 190 lines | ≤50 lines |
-| Overhead | 140 lines/session | 0 |
+### Gap 1: No Phase 0 (Constraints) - CRITICAL
+**Problem**: Agent can modify critical files without approval
+**Solution**: Implement LOCKED_FILES and STOP_TRIGGERS in `scripts/validation/rules/exceptions.cjs`
 
-**Violation**: Breaks the R&D (Reduce & Delegate) principle SDD teaches.
+### Gap 2: No PreToolUse Hook - HIGH
+**Problem**: Can only validate AFTER operations, not BLOCK before
+**Solution**: Create `.claude/hooks/pre-tool-use-constraint.js`
 
-### Gap 2: No Self-Discovery
-Fresh agent sessions don't auto-apply SDD. Test evidence: Agent gave manual steps instead of Scout-Plan-Build workflow.
+### Gap 3: Skill Size
+**Problem**: `coding-standards.md` at 419+ lines exceeds recommended budget
+**Solution**: Split into topic-specific skills, reference existing lessons-learnt docs
 
-### Gap 3: ~~Missing Skills Directory~~ ✅ RESOLVED
-**Key distinction from IndyDevDan's framework**:
-- **Prime Commands** = on-demand (`/prime-auth`)  
-- **Skills** (`.claude/skills/`) = always-on, auto-activate when relevant
-
-**Implemented skills**:
-- `coding-standards.md` - Applies when writing any code
-- `security-rules.md` - Applies for auth/security work
-- `duplication-prevention.md` - Prevents redundant file creation
-- `sdd-tac-workflow/SKILL.md` - SDD/TAC methodology auto-application
-
-### Gap 4: ~~Missing Hooks~~ ✅ RESOLVED
-Claude Hooks (`.claude/hooks/`) trigger automation on events:
-- ✅ `post-tool-use`: Structure validation after file edits (IMPLEMENTED)
-- ⚠️ `post-write`: Auto-format after saving (pending)
-- ⚠️ `pre-commit`: Lint before committing (pending)
-- ⚠️ `post-test`: Update coverage reports (pending)
-
-### Gap 5: Pre-Commit Bypassed
-1425 ESLint errors force `--no-verify`, defeating the validation system.
+### Gap 4: Pre-Commit Bypassed
+**Problem**: ESLint errors force `--no-verify`
+**Solution**: Fix ESLint errors per-module during feature work (not as separate task)
 
 ---
 
-## 5. Action Items (ROI-Ordered)
+## 5. Improvement Roadmap
 
-### 🔴 TIER 1: CRITICAL (Do This Week)
+See [SDD/TAC Framework Improvement Plan](../../../archive/root-docs/IndyDevDan_TAC/Plan/SDD_TAC_Framework_Improvement_Plan.md) for detailed roadmap:
 
-#### 5.1 ~~Fix Context Bloat → Create `/prime-sdd`~~ ✅ COMPLETE
-**ROI**: 70% context reduction every session  
-**Effort**: 2-3 hours
+### Phase 1: Foundation (Tool-Agnostic Validation) - PRIORITY
+- Extend exceptions.cjs with LOCKED_FILES, STOP_TRIGGERS
+- Create constraint-check.cjs validator
+- Create PreToolUse hook
+- Create project-constraints skill
 
-**Completed Actions** (Nov 26, 2025):
-1. ✅ Created `/prime-sdd` (~100 lines) at `.claude/commands/prime-sdd.md`
-2. ✅ Created `/prime-tac` (~110 lines) at `.claude/commands/prime-tac.md`
-3. ⚠️ `always-on.md` reduction still pending
+### Phase 2: Skill & Context Improvements
+- Split coding-standards.md by topic
+- Add STOP trigger to duplication-prevention
+- Update sdd-tac-workflow with Phase 0
 
-**Target `always-on.md` (≤50 lines)**:
-```markdown
-# Project: [Name]
-Tech: [stack summary - 5 lines]
-Structure: [key paths - 5 lines]
-Conventions: [critical rules - 10 lines]
+### Phase 3: Quality Gates
+- Register constraint validator in orchestrator
+- ESLint fixes per-module
 
-# Framework Activation
-For ANY task, first:
-1. Assess: How many files? Which domains?
-2. Select workflow:
-   - 1-2 files → Build directly
-   - 3-10 files → Scout → Plan → Build  
-   - 10+ files → Full TAC (parallel agents)
-3. Load context: /prime-[domain]
-4. For methodology: /prime-sdd
-5. For execution patterns: /prime-tac
-```
-
-**Validation**: `wc -l always-on.md` shows ≤50
+### Phase 4: Future (Deferred)
+- Orchestrator pattern
+- Git worktrees testing
+- cc-sdd integration
 
 ---
 
-#### 5.2 ~~Implement Skills Directory~~ ✅ COMPLETE
-**ROI**: Domain knowledge auto-applies (zero manual guidance)  
-**Effort**: 3-4 hours
+## 6. Reference
 
-**Implemented** `.claude/skills/`:
-```
-.claude/skills/
-├── coding-standards.md       # Applies when writing any code
-├── security-rules.md         # Applies for auth/security
-├── duplication-prevention.md # Prevents redundant files
-└── sdd-tac-workflow/
-    └── SKILL.md              # SDD/TAC auto-application
-```
-
-**Key Insight**: Skills don't need invocation—Claude reads them automatically when relevant.
-
----
-
-#### 5.3 Add Self-Discovery Triggers
-**ROI**: Framework activates automatically  
-**Effort**: 1-2 hours
-
-**Add to minimal `always-on.md`**:
-```markdown
-## Auto-Activation Protocol
-Before ANY coding task, state:
-1. "This task affects [N] files across [domains]"
-2. "Using [workflow name] workflow"
-3. "Loading /prime-[relevant domains]"
-4. For 10+ files: "Will use parallel agents for [batches]"
-```
-
-**Test**: Fresh session → ask to implement feature → should auto-mention workflow.
-
----
-
-### 🟡 TIER 2: HIGH VALUE (This Month)
-
-#### 5.4 Fix Pre-Commit via TAC (Dogfooding)
-**ROI**: Restores validation + proves framework  
-**Effort**: 4-6 hours
-
-**Execute**:
-```
-Scout (Haiku): "Categorize 1425 ESLint errors by:
-  - Auto-fixable vs manual
-  - File clusters
-  - Priority"
-
-Plan (Sonnet): "Create batched fix strategy"
-
-Build (Parallel):
+- [README.md](./README.md) - Framework overview and status
+- [sdd-tac-methodology.md](./sdd-tac-methodology.md) - Core workflow with Phase 0
+- [SDD/TAC Framework Improvement Plan](../../../archive/root-docs/IndyDevDan_TAC/Plan/SDD_TAC_Framework_Improvement_Plan.md) - Detailed improvement roadmap
   - Agent 1: eslint --fix (auto-fixable)
   - Agent 2-5: Manual fixes (3-5 files each)
 

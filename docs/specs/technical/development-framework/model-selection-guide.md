@@ -13,59 +13,77 @@ status: implemented
 last_updated: 2025-11-30
 applies_to: all
 enforcement: recommended
-description: Decision matrix for choosing between fast/cheap and thorough models (Tool-Agnostic)
+description: Decision matrix for choosing between models to optimize cost and performance
+tool_agnostic: true
 ---
 ```
 
 ## Overview
 
-Choosing the right model for each task can save 28% on typical Scout-Plan-Build workflows and 10x on pure discovery tasks.
+Choosing the right model for each task can save 28% on typical workflows and 10x on pure discovery tasks.
 
-**This guide is AI-tool agnostic** - the principles apply to any AI assistant that offers model selection.
+**Applies to**: Any AI coding tool (Claude CLI, GitHub Copilot, Claude.ai, etc.)
 
-**Cost Difference Example (Claude)**:
+**Cost Comparison (Claude Models)**:
 - **Haiku**: ~$0.25 per 1M tokens (fast, efficient)
 - **Sonnet**: ~$3.00 per 1M tokens (thorough, reasoning)
-- **Savings**: Using fast model for Scout = **10x cheaper**
-
-**Applies to Other Tools**:
-- **OpenAI**: GPT-3.5 vs GPT-4
-- **Google**: Gemini Flash vs Gemini Pro
-- **GitHub Copilot**: Standard vs enhanced reasoning
+- **Savings**: Using Haiku for Scout = **10x cheaper** than Sonnet
 
 ---
 
 ## The Golden Rule
 
-**Fast/Cheap Model**: Information retrieval, discovery, simple patterns, documentation (< 500 lines)
+**Lightweight Model (Haiku-class)**: Information retrieval, discovery, simple patterns, documentation (< 500 lines)
 
-**Thorough Model**: Design decisions, complex logic, multi-file reasoning, debugging
+**Standard Model (Sonnet-class)**: Design decisions, complex logic, multi-file reasoning, debugging
 
 ---
 
 ## Detailed Decision Matrix
 
-| Task Type | Model Type | Approx Cost | When to Use |
-|-----------|------------|-------------|-------------|
-| **File discovery** | Fast | ~$0.02 | Finding files by pattern or keyword |
-| **Code search** | Fast | ~$0.02 | Searching for implementations |
-| **Documentation** | Fast | ~$0.02 | Writing docs < 500 lines |
-| **Simple CRUD** | Fast | ~$0.02 | Basic create/read/update/delete |
-| **Scout phase** | Fast | ~$0.02 | Reconnaissance for any feature |
-| **Architecture** | Thorough | ~$1-2 | Design decisions needed |
-| **Complex refactor** | Thorough | ~$3-4 | Multi-file reasoning |
-| **Debugging** | Thorough | ~$2-3 | Requires deep analysis |
-| **Orchestration** | Thorough | ~$3-5 | Multi-agent coordination |
-| **Plan phase** | Thorough | ~$1-2 | Strategic planning |
-| **Build phase** | Thorough | ~$2-4 | Implementation work |
+| Task Type | Model Class | Approx Cost | When to Use |
+|-----------|-------------|-------------|-------------|
+| **File discovery** | Lightweight | ~$0.02 | Finding files by pattern or keyword |
+| **Code search** | Lightweight | ~$0.02 | Searching for implementations |
+| **Documentation** | Lightweight | ~$0.02 | Writing docs < 500 lines |
+| **Simple CRUD** | Lightweight | ~$0.02 | Basic create/read/update/delete |
+| **Scout phase** | Lightweight | ~$0.02 | Reconnaissance for any feature |
+| **Architecture** | Standard | ~$1-2 | Design decisions needed |
+| **Complex refactor** | Standard | ~$3-4 | Multi-file reasoning |
+| **Debugging** | Standard | ~$2-3 | Requires deep analysis |
+| **Orchestration** | Standard/Advanced | ~$3-5 | Multi-agent coordination |
+| **Plan phase** | Standard | ~$1-2 | Strategic planning |
+| **Build phase** | Standard | ~$2-4 | Implementation work |
+
+---
+
+## Tool-Specific Commands
+
+### Claude Code CLI
+```bash
+# Use Haiku for Scout phase
+claude --model haiku -p "scout the [feature-name] system to understand its structure"
+
+# Use Sonnet (default) for Build phase
+claude -p "implement the plan for [feature]"
+```
+
+### VS Code + GitHub Copilot
+- Model selection typically automatic based on context
+- For discovery tasks, use simpler prompts
+- For complex tasks, provide more detailed prompts
+
+### Claude.ai Web
+- Select model from dropdown when available
+- Haiku for quick searches, Sonnet for implementation
 
 ---
 
 ## Cost Impact Analysis
 
-### 10x Savings with Haiku
+### 10x Savings with Lightweight Models
 
-**Traditional Approach (all Sonnet)**:
+**Traditional Approach (all Standard model)**:
 ```
 ├─ Scout:  $2.00
 ├─ Plan:   $1.50
@@ -73,23 +91,13 @@ Choosing the right model for each task can save 28% on typical Scout-Plan-Build 
 └─ Total:  $6.50
 ```
 
-**Optimized Approach (Haiku + Sonnet)**:
+**Optimized Approach (Lightweight + Standard)**:
 ```
-├─ Scout:  $0.20 (Haiku) ← 10x cheaper!
-├─ Plan:   $1.50 (Sonnet)
-├─ Build:  $3.00 (Sonnet)
+├─ Scout:  $0.20 (Lightweight) ← 10x cheaper!
+├─ Plan:   $1.50 (Standard)
+├─ Build:  $3.00 (Standard)
 └─ Total:  $4.70 (28% savings)
 ```
-
-### Annual Cost Projection
-
-Assuming 100 Scout-Plan-Build cycles per year:
-- Traditional: $650/year
-- Optimized: $470/year
-- **Savings**: $180/year (28%)
-
-For teams running 500+ cycles:
-- **Savings**: $900/year
 
 ---
 
@@ -99,111 +107,37 @@ For teams running 500+ cycles:
 START
   ↓
 Is this pure information retrieval?
-  ├─ YES → Haiku
+  ├─ YES → Lightweight model
   └─ NO ↓
 Is output < 500 lines?
-  ├─ YES → Haiku
+  ├─ YES → Lightweight model
   └─ NO ↓
 Does it require design decisions?
-  ├─ YES → Sonnet
+  ├─ YES → Standard model
   └─ NO ↓
 Is it straightforward CRUD/simple pattern?
-  ├─ YES → Haiku
-  └─ NO → Sonnet (default)
-```
-
----
-
-## Practical Examples
-
-### Use Haiku For
-
-**File Discovery**:
-```bash
-claude --model haiku -p "find all middleware files"
-```
-
-**Scout Phase**:
-```bash
-claude --model haiku -p "scout the authentication system to understand its structure"
-```
-
-**Simple Documentation**:
-```bash
-claude --model haiku -p "document the [ServiceName] class"
-```
-
-**Pattern Search**:
-```bash
-claude --model haiku -p "find examples of rate limiting in the codebase"
-```
-
-**Code Search**:
-```bash
-claude --model haiku -p "search for all SQL queries in routes/ folder"
-```
-
-**List Generation**:
-```bash
-claude --model haiku -p "list all API endpoints in the application"
-```
-
----
-
-### Use Sonnet For
-
-**Complex Implementation** (default model):
-```bash
-claude -p "implement the notification system with real-time updates"
-```
-
-**Architecture Decisions** (default model):
-```bash
-claude -p "design the data model for the [feature] system"
-```
-
-**Debugging** (default model):
-```bash
-claude -p "debug why the OTP verification is failing"
-```
-
-**Refactoring** (default model):
-```bash
-claude -p "refactor the [ServiceName] to split it into focused services"
-```
-
-**Complex Planning** (default model):
-```bash
-claude -p "plan the implementation of [feature/compliance] across the application"
+  ├─ YES → Lightweight model
+  └─ NO → Standard model
 ```
 
 ---
 
 ## Phase-Specific Recommendations
 
-### Scout Phase → Haiku
+### Phase 0 (Constraints) → Any Model
+**Why**: Just loading/checking constraints
+
+### Scout Phase → Lightweight Model
 **Why**: Pure discovery, no design decisions
-```bash
-claude --model haiku -p "scout [feature] to find all related files and patterns"
-```
 
-### Plan Phase → Sonnet
+### Plan Phase → Standard Model
 **Why**: Requires architectural reasoning
-```bash
-claude -p "create implementation plan based on scout findings"
-```
 
-### Build Phase → Sonnet
+### Build Phase → Standard Model
 **Why**: Requires multi-file reasoning and consistency
-```bash
-claude -p "implement the plan for [feature]"
-```
 
-### Validate Phase → Sonnet
+### Validate Phase → Standard Model
 **Why**: Requires deep analysis to verify correctness
-```bash
-claude -p "validate the implementation matches the plan and specs"
-```
 
 ### Orchestrate Phase → Sonnet or Opus
 **Why**: Complex coordination logic

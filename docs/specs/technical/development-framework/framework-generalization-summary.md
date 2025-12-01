@@ -9,252 +9,138 @@ applies_to: architecture
 
 ## Overview
 
-This document summarizes the changes made to generalize the development framework for use with any React application AND any AI tool, eliminating domain-specific dependencies and making the framework truly tool-agnostic.
+This document summarizes the changes made to generalize the development framework for use with any React application, eliminating domain-specific dependencies and ensuring tool-agnostic design.
 
 **Date**: 2025-11-30 (Updated)
-**Previous Update**: 2025-11-27
-**Goal**: Make the SDD/TAC development framework reusable across different projects AND different AI tools
+**Goal**: Make the SDD/TAC development framework:
+1. **Project-agnostic** - Works with any React/Node.js project
+2. **Tool-agnostic** - Works with Claude CLI, VS Code + GitHub Copilot, Claude.ai, etc.
 
 ---
 
-## v2.0 Updates (2025-11-30)
+## Tool-Agnostic Architecture
 
-### Major Changes
+### Design Principle
 
-#### 1. **Added Phase 0: Constraints**
-The workflow is now: **Phase 0 → Scout → Plan → Build → Validate**
-
-Phase 0 is MANDATORY and checks:
-- LOCKED files requiring approval
-- STOP triggers requiring confirmation
-- Port constraints (immutable)
-
-#### 2. **Tool-Agnostic Validation Architecture**
-All validation logic now lives in `scripts/validation/` as CLI commands:
+**Core validation logic lives in `scripts/validation/`** - runnable as CLI commands by any tool:
+- Hooks (Claude Code CLI) → import/spawn validators
+- Pre-commit (Husky) → call validators
+- Manual (any AI tool) → run `node scripts/validation/...`
 
 ```
-scripts/validation/rules/exceptions.cjs       # Source of truth
-scripts/validation/validators/constraint-check.cjs  # CLI + module
+┌─────────────────────────────────────────────────────────────────────┐
+│                    SINGLE SOURCE OF TRUTH                           │
+│            scripts/validation/rules/exceptions.cjs                  │
+│                                                                     │
+│  Current exports: EXCEPTION_REGISTRY, IGNORED_PATHS                 │
+│  Planned exports: LOCKED_FILES, STOP_TRIGGERS, PORT_CONSTRAINTS     │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              scripts/validation/validators/                         │
+│                 (constraint-check.cjs - planned)                    │
+│                                                                     │
+│  - CLI: node constraint-check.cjs <file> [--block]                 │
+│  - Module: checkConstraints(path, options)                          │
+└─────────────────────────────────────────────────────────────────────┘
+           │                    │                      │
+           ▼                    ▼                      ▼
+   ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐
+   │ Claude CLI   │    │  Pre-commit  │    │ Other AI Tools   │
+   │   Hooks      │    │   (Husky)    │    │  (run CLI)       │
+   │              │    │              │    │                  │
+   │ pre-tool-use │    │ calls via    │    │ node constraint- │
+   │ post-tool-use│    │ npm script   │    │ check.cjs <file> │
+   └──────────────┘    └──────────────┘    └──────────────────┘
 ```
 
-**Benefits**:
-- Works with any AI tool (Claude, Copilot, ChatGPT, etc.)
-- Pre-commit hooks use same logic
-- Manual CLI validation always available
+---
 
-#### 3. **Created New Document: constraints-and-validation.md**
-Comprehensive documentation for:
-- LOCKED file definitions
-- STOP trigger definitions
-- Tool-agnostic validation commands
-- Phase 0 workflow
+## Tool/Platform Compatibility Matrix
 
-#### 4. **Updated All Framework Documents**
-Every document now includes:
-- Tool-agnostic principles
-- CLI commands for validation
-- Alternative approaches for non-Claude tools
+| Feature | Claude Code CLI | VS Code + GitHub Copilot | Claude.ai Web |
+|---------|-----------------|--------------------------|---------------|
+| `.claude/commands/` slash commands | ✅ Works | ❌ Not supported | ❌ Not supported |
+| `.claude/skills/` auto-activation | ✅ Works | ❌ Not supported | ❌ Not supported |
+| `.claude/hooks/` (Pre/PostToolUse) | ✅ Works | ❌ Not supported | ❌ Not supported |
+| `/context` command | ✅ Works | ❌ Not supported | ❌ Not supported |
+| **CLI validation scripts** | ✅ Works | ✅ Works | ✅ Works |
+| Manual file reading as context | ✅ Works | ✅ Works | ✅ Works |
+
+**For VS Code/GitHub Copilot users**: The `/prime-*` commands won't work. Instead, manually include the content of `.claude/commands/prime-*.md` files in your prompts or use `@workspace` to reference them.
 
 ---
 
-## Implementation Status
+## Changes Implemented
 
-### Phase 1: Foundation (Tool-Agnostic Validation)
-
-| Task | Status | File |
-|------|--------|------|
-| LOCKED_FILES in exceptions.cjs | 🟡 Planned | `scripts/validation/rules/exceptions.cjs` |
-| STOP_TRIGGERS in exceptions.cjs | 🟡 Planned | `scripts/validation/rules/exceptions.cjs` |
-| PORT_CONSTRAINTS in exceptions.cjs | 🟡 Planned | `scripts/validation/rules/exceptions.cjs` |
-| constraint-check.cjs validator | 🟡 Planned | `scripts/validation/validators/constraint-check.cjs` |
-| Update PostToolUse hook | 🟡 Planned | `.claude/hooks/post-tool-use-validation.js` |
-| Create PreToolUse hook | 🟡 Planned | `.claude/hooks/pre-tool-use-constraint.js` |
-
-### Phase 2: Skill & Context Improvements
-
-| Task | Status | File |
-|------|--------|------|
-| Create project-constraints skill | 🟡 Planned | `.claude/skills/project-constraints.md` |
-| Split coding-standards.md | 🟡 Planned | Multiple topic-specific files |
-| Update sdd-tac-workflow skill | 🟡 Planned | `.claude/skills/sdd-tac-workflow/SKILL.md` |
-| Add STOP trigger to duplication-prevention | ✅ Documented | `.claude/skills/duplication-prevention.md` |
-
-### Phase 3: Validation & Quality Gates
-
-| Task | Status | File |
-|------|--------|------|
-| Register constraint validator | 🟡 Planned | `scripts/validation/validate-structure.cjs` |
-| Test pre-commit integration | 🟡 Planned | `.husky/pre-commit` |
-
-### Phase 4: Future (Deferred)
-
-| Task | Status | Notes |
-|------|--------|-------|
-| Git Worktrees testing | ⚪ Deferred | After Phase 1-3 stable |
-| Orchestrator pattern | ⚪ Deferred | After Phase 1-3 stable |
-| cc-sdd integration | ⚪ Research | Evaluate if needed |
-
----
-
-### 2. **Created Generic Database Schema Template**
-
-#### New File:
-- `docs/specs/functional/_TEMPLATE_db-schema.md`
-
-#### Features:
-- Generic table definitions with `[TABLE_NAME]` placeholders
-- Standard schema structure (columns, indexes, relationships)
-- Common query patterns
-- Migration notes template
-- Clear usage instructions for AI agents
-
-#### Usage:
-```bash
-# Copy template to feature folder
-cp docs/specs/functional/_TEMPLATE_db-schema.md \
-   docs/specs/functional/[feature-name]/db-schema.md
-
-# Replace all [placeholders] with actual values
-# Reference in technical specs and prime commands
-```
-
-**Impact**: AI agents no longer need to connect to database to get schema context. Schema is documented in functional specs.
-
----
-
-### 3. **Updated Database Technical Specs with Generic Patterns**
+### 1. Removed Domain-Specific Examples
 
 #### Files Modified:
-- `docs/specs/technical/database/README.md`
-- `docs/specs/technical/database/schema-design.md`
+- `docs/specs/technical/development-framework/*.md`
 
 #### Changes:
-- **Title**: "Database Schema Design" → "Database Schema Design Patterns"
-- **Focus**: Changed from specific tables to generic patterns
-- **Examples**: Replaced specific table names with `[TABLE_NAME]`, `[ENTITY_NAME]`
-- **Added**: Reference to functional spec schema files
-- **Added**: Link to schema template
+| Before | After |
+|--------|-------|
+| `UserService.js` | `[EntityName]Service.js` |
+| `users.js` | `[entity-name].js` |
+| `posts`, `users`, `authors` | `items`, `entities`, `relatedData` |
+| `"scout the posting system"` | `"scout the [feature-name] system"` |
 
-#### New Content:
-```markdown
-## Common Table Relationship Patterns
-
-### One-to-Many Pattern
-[PARENT_TABLE] (1) ----< (N) [CHILD_TABLE]
-
-### Many-to-Many Pattern
-[TABLE_A] (N) >----< (N) [TABLE_B] (via [JUNCTION_TABLE])
-
-### One-to-One Pattern
-[TABLE_A] (1) ---- (1) [TABLE_B]
-```
-
-**Impact**: Technical specs now focus on patterns, not specific application tables.
+**Impact**: Framework documentation uses generic placeholders.
 
 ---
 
-### 4. **Updated Prime-Database Command**
+### 2. Added Tool Compatibility Notes
 
-#### File Modified:
-- `.claude/commands/prime-database.md`
-
-#### Changes:
-- Added `$FEATURE` variable for feature/module name
-- Updated context loading to reference `schema-design.md` (patterns)
-- Added section for feature-specific schemas:
-  - **Read**: `docs/specs/functional/[feature-name]/db-schema.md`
-  - **Create**: Use `_TEMPLATE_db-schema.md` template
-- Updated key files to use generic patterns:
-  - `routes/[feature-name].js`
-  - `server/services/[FeatureName]Service.js`
-
-**Impact**: AI agents are directed to create/read schema files in functional specs instead of connecting to database.
+Every framework document now includes:
+- Tool compatibility table where relevant
+- Notes for non-Claude CLI users
+- CLI validation commands that work with any tool
 
 ---
 
-### 5. **Added Mobile Native UI Extensibility Documentation**
+### 3. Updated Status to Reflect Reality
 
-#### New File:
-- `docs/specs/technical/development-framework/mobile-native-extensibility.md`
-
-#### Contents:
-- **Architecture Principles**: Backend API + Multiple UI layers
-- **Project Structure**: Monorepo vs separate repos
-- **Implementation Phases**: 4-phase plan for adding mobile
-- **Shared Code Strategy**: What to share (types, API client, validators) vs what not to share (UI components)
-- **Platform-Specific Considerations**: Storage, navigation, real-time communication
-- **Development Workflow**: Scout-Plan-Build for multi-platform features
-- **SDD/TAC Framework Adaptation**: New `/prime-mobile` command pattern
-- **Testing Strategy**: API, Web, Mobile, Shared code testing
-- **Migration Path**: Step-by-step guide for existing projects
-
-**Key Concepts**:
-```
-Backend (API) - Platform-agnostic
-     ↓
-  ┌──┴──┐
-Web UI  Mobile UI
-React   React Native
-```
-
-**Impact**: Framework now supports extending to mobile native UI layers with clear guidance and patterns.
+All documents updated from "implemented" to accurate status:
+- `README.md`: `partially-implemented`
+- `sdd-tac-methodology.md`: `partially-implemented` (needs Phase 0)
+- `agent-orchestration.md`: `documented-not-tested`
+- `duplication-prevention.md`: `partially-implemented` (needs STOP trigger)
+- `coding-standards.md`: `partially-implemented` (needs split)
 
 ---
 
-## Additional Improvements Suggested
+## Implementation Status Summary
 
-### 1. **Create Platform-Agnostic API Contract Documentation**
-
-**File to Create**: `docs/specs/technical/api/api-contracts.md`
-
-**Purpose**:
-- Document all API endpoints with request/response schemas
-- Use OpenAPI/Swagger format for platform-agnostic contracts
-- Enable auto-generation of API clients for web, mobile, native
-
-**Benefits**:
-- Web, mobile, and native developers have single source of truth
-- Can generate TypeScript types, API clients automatically
-- Easier to maintain API versioning
-
-**Implementation**:
-```bash
-# Use OpenAPI generator
-npm install -g @openapitools/openapi-generator-cli
-
-# Generate TypeScript client
-openapi-generator-cli generate -i api-spec.yaml \
-  -g typescript-fetch -o shared/api/generated
-```
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Skills Directory | ✅ Implemented | 4 skills (Claude CLI only) |
+| Prime Commands | ✅ Implemented | 7+ commands (Claude CLI only) |
+| PostToolUse Hook | ✅ Implemented | Claude CLI only |
+| Exception Registry | ✅ Implemented | Tool-agnostic (CLI) |
+| Constraint Validation | ❌ Planned | Will be tool-agnostic |
+| PreToolUse Hook | ❌ Planned | Claude CLI only |
+| Phase 0 (Constraints) | ❌ Planned | Skills + CLI validator |
+| Pre-commit Validation | ⚠️ Bypassed | Blocked by ESLint errors |
 
 ---
 
-### 2. **Add Generic E2E Test Template**
+## Next Steps
 
-**File to Create**: `tests/e2e/_TEMPLATE_feature-test.spec.ts`
+See [SDD/TAC Framework Improvement Plan](../../../archive/root-docs/IndyDevDan_TAC/Plan/SDD_TAC_Framework_Improvement_Plan.md) for detailed implementation roadmap:
 
-**Purpose**:
-- Provide template for E2E tests for new features
-- Use generic patterns (not domain-specific)
-- Include common test scenarios (CRUD, auth, validation)
+1. **Phase 1**: Create tool-agnostic validation infrastructure
+2. **Phase 2**: Improve skills and context management  
+3. **Phase 3**: Quality gate integration
+4. **Phase 4**: Deferred items (orchestrator, worktrees)
 
-**Example**:
-```typescript
-// _TEMPLATE_feature-test.spec.ts
-import { test, expect } from '@playwright/test';
+---
 
-test.describe('[Feature Name] - CRUD Operations', () => {
-  test('should create new [entity]', async ({ page }) => {
-    // Generic test pattern
-  });
+## Related
 
-  test('should read [entity] list', async ({ page }) => {
-    // Generic test pattern
-  });
-
-  test('should update [entity]', async ({ page }) => {
-    // Generic test pattern
-  });
+- [README.md](./README.md) - Framework overview
+- [SDD/TAC Framework Improvement Plan](../../../archive/root-docs/IndyDevDan_TAC/Plan/SDD_TAC_Framework_Improvement_Plan.md) - Detailed roadmap
 
   test('should delete [entity]', async ({ page }) => {
     // Generic test pattern

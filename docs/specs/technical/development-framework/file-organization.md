@@ -1,16 +1,14 @@
-# File Organization Standard
-
-```yaml
 ---
 version: 1.1
 status: active
-last_updated: 2025-11-26
+last_updated: 2025-11-30
 applies_to: all
 enforcement: required
 description: Canonical reference for file locations and organization
 validation: scripts/validation/validate-structure.cjs
 ---
-```
+
+# File Organization Standard
 
 ## Overview
 
@@ -524,7 +522,7 @@ All other `.md` files must be in a subfolder (e.g., `development-framework/`, `v
 ## Related Specs
 
 - [Validation Framework](./validation/README.md) - Enforcement via pre-commit
-- [Coding Standards](./coding-standards/file-organization.md) - Source code organization
+- [Code Size Standards](./coding-standards/code-size-standards.md) - File and function size limits
 - [Development Framework](./development-framework/duplication-prevention.md) - Before creating files
 
 ---

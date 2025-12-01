@@ -241,10 +241,10 @@ Remove-Item src/pages/*.bak
 Three overlapping files exist:
 - `docs/specs/technical/file-organization.md` (409 lines) - WHERE files go
 - `docs/specs/technical/PROJECT_STRUCTURE_MANIFEST.md` (633 lines) - Full manifest
-- `docs/specs/technical/coding-standards/file-organization.md` (283 lines) - SIZE limits
+- `docs/specs/technical/coding-standards/code-size-standards.md` (283 lines) - SIZE limits
 
 **Recommendation**: 
-- Keep `coding-standards/file-organization.md` (about file SIZE)
+- Keep `coding-standards/code-size-standards.md` (about file SIZE)
 - Move root `file-organization.md` to `architecture/` (about WHERE files go)
 - Archive or merge `PROJECT_STRUCTURE_MANIFEST.md`
 

@@ -1,6 +1,6 @@
 ---
 version: 2.0
-status: implemented
+status: partially-implemented
 last_updated: 2025-11-30
 ---
 
@@ -9,12 +9,16 @@ last_updated: 2025-11-30
 ```yaml
 ---
 version: 2.0
-status: implemented
+status: partially-implemented
 last_updated: 2025-11-30
 applies_to: all
 enforcement: required
-description: Code quality standards enforced through skills and validation (Tool-Agnostic)
+description: Code quality standards enforced through skills and validation
 skill: .claude/skills/coding-standards.md
+implementation_gaps:
+  - Skill file too large (419+ lines)
+  - Should be split into topic-specific files
+  - ESLint pre-commit bypassed
 ---
 ```
 
@@ -24,11 +28,31 @@ skill: .claude/skills/coding-standards.md
 
 **Historical Issues**: 1314-line ChatService god object, resource leaks, N+1 queries
 
-**Planned Improvement**: Split into topic-specific skills (~150 lines core + topic files)
-- Core principles (this document)
-- React patterns (`coding-standards-react.md`) - planned
-- Backend patterns (`coding-standards-backend.md`) - planned
-- Database patterns (`coding-standards-database.md`) - planned
+---
+
+## Implementation Status
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Skill created | ✅ | `.claude/skills/coding-standards.md` |
+| PostToolUse validation | ✅ | Runs after file edits |
+| Pre-commit ESLint | ⚠️ Bypassed | Blocked by existing errors |
+| Skill size | ⚠️ Too large | 419+ lines, should split by topic |
+
+### Planned Skill Split (Phase 2)
+
+| File | Content | ~Lines |
+|------|---------|--------|
+| `coding-standards.md` | Core principles only | ~150 |
+| `coding-standards-react.md` | React/component patterns | ~80 |
+| `coding-standards-backend.md` | Node/Express patterns | ~80 |
+| `coding-standards-database.md` | Query patterns, transactions | ~60 |
+
+**Leverage existing lessons-learnt docs** instead of duplicating:
+- `posting-architecture-overhaul.md` - State management, N+1 prevention
+- `socketio-real-time-infrastructure.md` - Real-time patterns
+- `phase-8-security-vulnerabilities-resolved.md` - Security patterns
+- `shared-components-fixes.md` - Component architecture
 
 ---
 
@@ -92,26 +116,9 @@ Extract hooks, utilities, sub-components
 
 ---
 
-## Implementation Details
-
-**Full standards and examples**: See [.claude/skills/coding-standards.md](../../../../.claude/skills/coding-standards.md)
-
-**Auto-triggers** (Claude CLI): When working on service files, database code, components
-
-**For other AI tools**: Read `.claude/skills/coding-standards.md` as context
-
-**Self-Checklist**:
-- [ ] Service < 300 lines
-- [ ] try/finally for connections
-- [ ] No N+1 queries
-- [ ] No god objects
-- [ ] Simplest solution chosen
-
----
-
 ## ESLint Fix Strategy
 
-ESLint fixes happen **per-module during feature work**, not as separate framework task.
+> ESLint fixes happen **per-module during feature work**, not as separate framework task.
 
 When working on a module:
 1. Fix module's ESLint errors as part of the feature
@@ -119,13 +126,10 @@ When working on a module:
 3. Address remaining errors manually
 4. Commit with feature changes
 
-This keeps fixes contextual and avoids massive "fix all ESLint" PRs.
-
 ---
 
 ## Related
 
 - [Code Review Checklist](../coding-standards/code-review-checklist.md)
 - [TypeScript Standards](../coding-standards/typescript.md)
-- [Code Size Standards](../coding-standards/code-size-standards.md)
-- [Historical Lessons](../../lessons-learnt/) - See for detailed case studies
+- [SDD/TAC Methodology](./sdd-tac-methodology.md) - Build phase applies these

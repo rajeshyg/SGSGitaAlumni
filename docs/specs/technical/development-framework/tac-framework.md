@@ -1,14 +1,14 @@
 ---
 version: 2.1
-status: implemented
+status: partially-implemented
 last_updated: 2025-11-30
-implementation_date: 2025-11-30
+implementation_date: 2025-11-26
 ---
 
-# Tactical Agentic Coding (TAC) - Execution Report v2.1
+# Tactical Agentic Coding (TAC) - Status Report
 
 > **Report Date**: November 30, 2025  
-> **Version**: 2.1 (Tool-Agnostic Update)  
+> **Version**: 2.1 (Updated with improvement plan status)  
 > **Scope**: Universal agent orchestration framework
 
 ---
@@ -26,182 +26,131 @@ implementation_date: 2025-11-30
 
 **Core Innovation**: Break complex work into coordinated phases with specialized agents, enabling 3-5x productivity for large features.
 
-**Tool-Agnostic Design**: These patterns work with any AI tool. The specific commands shown are for Claude Code CLI, but the principles apply universally.
-
 ---
 
-## 2. The 6 TAC Phases (Updated)
+## 2. The TAC Phases (Updated with Phase 0)
 
-### Phase 0: Constraints (NEW - MANDATORY)
-| Aspect | Detail |
-|--------|--------|
-| Purpose | Check LOCKED files and STOP triggers before any work |
-| Tool | CLI validators (works with any AI tool) |
-| Output | Approval to proceed or blocked modification |
+### Phase 0: Constraints (NEW - CRITICAL GAP)
 
-**Command (any AI tool)**:
-```bash
-node scripts/validation/validators/constraint-check.cjs <file-path> [--block]
-```
+> **Status**: ❌ Not yet implemented
+
+**Purpose**: Load constraints BEFORE any coding task
+
+**What to Check**:
+- LOCKED files (require approval)
+- STOP triggers (require confirmation)
+- Port constraints (immutable)
+
+**Implementation**: Add to `scripts/validation/rules/exceptions.cjs`
+
+---
 
 ### Phase 1: Scout
 | Aspect | Detail |
 |--------|--------|
 | Purpose | Discover files, patterns, dependencies |
-| Model | Fast/cheap (e.g., Haiku, GPT-3.5, Gemini Flash) |
-| Cost | ~$0.02/task (10x cheaper than thorough model) |
+| Model | Haiku-class (fast, cheap) |
+| Cost | ~$0.02/task |
 | Output | Scout report with paths, patterns, recommendations |
 
 ### Phase 2: Plan  
 | Aspect | Detail |
 |--------|--------|
 | Purpose | Create implementation strategy |
-| Model | Thorough (e.g., Sonnet, GPT-4, Gemini Pro) |
+| Model | Sonnet-class (thorough) |
 | Output | Architecture decisions, file changes, risks |
 
 **Key Rule**: Planner does NOT code—human reviews plan before build.
 
-### Phase 3: Build ⚠️ **CRITICAL: NOT MONOLITHIC**
+### Phase 3: Build
 | Aspect | Detail |
 |--------|--------|
 | Purpose | Execute plan with focused agents |
-| Model | Thorough per agent |
+| Model | Sonnet-class per agent |
 | **Structure** | **Multiple parallel agents, 3-5 files each** |
-
-This is the most misunderstood phase.
 
 ❌ Wrong: Single agent builds entire feature  
 ✅ Right: Multiple agents build in parallel (for 10+ files)
 
-### Phase 4: Orchestrate
+### Phase 4: Orchestrate (Deferred)
 | Aspect | Detail |
 |--------|--------|
+| Status | ⚠️ Documented, not tested |
 | Purpose | Coordinate agents, manage context handoffs |
-| Model | Thorough/advanced |
-| Status | ⚪ Deferred - implement after Phase 0-3 stable |
+| Model | Sonnet/Opus |
+| Prerequisite | Complete Phases 0-3 first |
 
 ### Phase 5: Validate
 | Aspect | Detail |
 |--------|--------|
 | Purpose | Verify implementation matches plan |
-| Tool | CLI validators + tests |
+| Model | Sonnet-class |
 | Output | Validation report, regression check |
 
 ---
 
-## 3. Missing Concepts from IndyDevDan
+## 3. Implementation Status
 
-### 3.1 Git Worktrees for True Parallelism
-**Current gap**: Parallel agents mentioned but no mechanism documented.
-
-**Solution**: Use git worktrees for isolated parallel development:
-```bash
-# Create parallel work environments
-git worktree add ../project-backend feature/backend
-git worktree add ../project-frontend feature/frontend
-
-# Run agents truly in parallel (separate directories)
-(cd ../project-backend && claude -p "implement backend per specs" &)
-(cd ../project-frontend && claude -p "implement frontend per specs" &)
-wait  # Both complete
-```
-
-**Why it matters**: Same repo, separate working directories = no file conflicts.
-
-### 3.2 Claude Code SDK Commands
-**Current gap**: No executable agent commands documented.
-
-**Essential commands**:
-```bash
-# Model selection (critical for cost)
-claude --model haiku -p "[scout task]"      # ~$0.02/task
-claude --model sonnet -p "[build task]"     # ~$3-4/feature
-
-# Tool restrictions (security)
-claude -p "[task]" --allowedTools "Read" "Write" "Edit"
-
-# Context monitoring
-claude /context    # Shows token usage
-
-# MCP server status
-claude /mcp        # Shows connected tools
-```
-
-### 3.3 Cost Decision Matrix
-**Current gap**: "Use Haiku for Scout" but no decision framework.
-
-| Task Type | Model | Approx Cost | Decision Rule |
-|-----------|-------|-------------|---------------|
-| File discovery | Haiku | ~$0.02 | Pure information retrieval |
-| Documentation | Haiku | ~$0.02 | <500 lines output |
-| Simple CRUD | Haiku | ~$0.02 | Straightforward patterns |
-| Architecture | Sonnet | ~$1-2 | Design decisions |
-| Complex refactor | Sonnet | ~$3-4 | Multi-file changes |
-| Debugging | Sonnet | ~$2-3 | Requires reasoning |
-| Orchestration | Sonnet/Opus | ~$3-5 | Coordination logic |
-
-**Rule**: If task requires <500 lines or pure retrieval → Haiku. Otherwise → Sonnet.
-
-### 3.4 MCP Integration
-**Current gap**: No MCP documentation.
-
-**Setup**:
-```bash
-# Add MCP server
-claude mcp add --transport stdio github \
-  -- npx -y @modelcontextprotocol/server-github
-
-# Dynamic loading (don't preload all tools)
-# Edit .claude.json directly, not via wizard
-```
-
-**Token optimization**: Load tools dynamically, not upfront.
-
-### 3.5 The Orchestrator Pattern (Detailed)
-**Current gap**: Pattern mentioned but not actionable.
-
-**Orchestrator responsibilities**:
-```
-1. Parse task complexity
-2. Launch Scout agents (parallel if domains independent)
-3. Aggregate scout findings → single context bundle
-4. Trigger Planner with combined context
-5. Analyze plan → identify parallelizable batches
-6. Spawn Build agents (parallel where no file deps)
-7. Monitor progress, detect conflicts
-8. Run Validator on completion
-9. Report results
-```
-
-**When to use Orchestrator**:
-- 10+ files affected
-- Multiple domains (frontend + backend + database)
-- Need true parallel execution
+| Component | Status | Location |
+|-----------|--------|----------|
+| Phase 0 (Constraints) | ❌ Todo | Not yet created |
+| Scout phase | ✅ Documented | Skills + methodology |
+| Plan phase | ✅ Documented | Skills + methodology |
+| Build phase | ✅ Documented | Skills + methodology |
+| Orchestrate | ⚠️ Deferred | Documentation only |
+| Validate | ⚠️ Partial | PostToolUse hook |
+| Git worktrees | ⚠️ Not tested | Documentation only |
+| Model selection | ✅ Documented | model-selection-guide.md |
 
 ---
 
-## 4. Test Results & Root Causes
+## 4. Tool Compatibility
 
-### Test 1: Initial TAC Test (Nov 21)
-- **Asked**: Plan pre-commit fixes
-- **Expected**: Scout-Plan-Build workflow
-- **Actual**: Manual step list
-- **Result**: ❌ Failed
+| Feature | Claude Code CLI | VS Code + GitHub Copilot | Other Tools |
+|---------|-----------------|--------------------------|-------------|
+| Skills auto-activation | ✅ | ❌ Manual context | ❌ |
+| Prime commands | ✅ | ❌ Manual file read | ❌ |
+| Model selection | ✅ --model flag | ⚠️ Limited | Varies |
+| Parallel agents | ✅ Git worktrees | ✅ Git worktrees | ✅ Git worktrees |
+| CLI validation | ✅ | ✅ | ✅ |
 
-### Test 2: Fresh Session
-- **Partial**: Mentioned Scout-Plan-Build phases ✅
-- **Missing**: No "parallel agents" mention ❌
-- **Missing**: No Orchestrator suggestion ❌
-- **Result**: ⚠️ Partial
+**For non-Claude CLI tools**: Read methodology documents as context, use CLI validators.
 
-### Root Causes
+---
 
-| Issue | Root Cause | Fix |
-|-------|------------|-----|
-| Build = single step | Not documented as parallel | Add explicit section |
-| No Orchestrator mention | Not in discoverable location | Add to always-on triggers |
-| No priming request | Agents wait for instruction | Make proactive |
-| No cost optimization | No decision matrix | Add selection guide |
+## 5. Decision Matrix
+
+| File Count | Approach | Phases |
+|------------|----------|--------|
+| 1-2 files | Direct build | Build only |
+| 3-10 files | Sequential | Phase 0 → Scout → Plan → Build → Validate |
+| 10+ files | Parallel | Full TAC (when Phase 0-3 proven) |
+
+---
+
+## 6. Key Gaps to Address
+
+### Gap 1: Phase 0 Not Enforced
+**Problem**: No constraint checking before Scout
+**Solution**: Create `project-constraints` skill and constraint validator
+
+### Gap 2: Git Worktrees Not Tested
+**Problem**: Parallel execution documented but never validated
+**Solution**: Test with real 10+ file feature after Phases 0-3 complete
+
+### Gap 3: PreToolUse Hook Missing
+**Problem**: Cannot BLOCK dangerous operations, only report after
+**Solution**: Create PreToolUse hook that imports shared constraint logic
+
+---
+
+## 7. Reference
+
+- [README.md](./README.md) - Framework overview and status
+- [sdd-tac-methodology.md](./sdd-tac-methodology.md) - Core workflow with Phase 0
+- [agent-orchestration.md](./agent-orchestration.md) - Parallel execution (when ready)
+- [model-selection-guide.md](./model-selection-guide.md) - Cost optimization
+- [SDD/TAC Framework Improvement Plan](../../../archive/root-docs/IndyDevDan_TAC/Plan/SDD_TAC_Framework_Improvement_Plan.md) - Detailed roadmap
 
 ---
 

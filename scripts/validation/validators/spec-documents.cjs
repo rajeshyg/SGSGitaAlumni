@@ -122,7 +122,7 @@ function checkStrayFiles(specsDir) {
     }
     
     if (type === 'technical') {
-      const allowed = ['file-organization.md', 'PROJECT_STRUCTURE_MANIFEST.md'];
+      const allowed = ['PROJECT_STRUCTURE_MANIFEST.md'];
       const stray = typeRootFiles.filter(f => !allowed.includes(f));
       if (stray.length) errors.push(`Stray files at technical/ root: ${stray.join(', ')}`);
       const known = typeRootFiles.filter(f => allowed.includes(f));

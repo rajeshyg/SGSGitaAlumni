@@ -1,5 +1,5 @@
 ---
-title: File Organization
+title: Code Size Standards
 version: 1.0
 status: active
 last_updated: 2025-11-23
@@ -11,7 +11,7 @@ eslint_rules:
   - "complexity"
 ---
 
-# File Organization
+# Code Size Standards
 
 ## File Size Limits
 

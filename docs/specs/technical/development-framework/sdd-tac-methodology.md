@@ -1,6 +1,6 @@
 ---
 version: 2.0
-status: implemented
+status: partially-implemented
 last_updated: 2025-11-30
 ---
 
@@ -9,13 +9,18 @@ last_updated: 2025-11-30
 ```yaml
 ---
 version: 2.0
-status: implemented
+status: partially-implemented
 last_updated: 2025-11-30
 applies_to: all
 enforcement: required
-description: Core Phase 0-Scout-Plan-Build workflow for systematic AI-assisted development (Tool-Agnostic)
+description: Core workflow with Phase 0 (Constraints) for systematic AI-assisted development
 skills: .claude/skills/sdd-tac-workflow/SKILL.md
 prime_command: /prime-framework
+implementation_gaps:
+  - Phase 0 not enforced in skills
+  - No LOCKED_FILES validation
+  - No STOP_TRIGGERS validation
+  - PreToolUse hook not implemented
 ---
 ```
 
@@ -24,79 +29,84 @@ prime_command: /prime-framework
 **SDD (Spec-Driven Development)** = WHAT to build (methodology)
 **TAC (Tactical Agentic Coding)** = HOW to build it (execution)
 
-This unified methodology ensures systematic, high-quality development through phased workflows.
+This methodology ensures systematic, high-quality development through phased workflows.
 
-## Tool-Agnostic Design
+---
 
-This methodology works with ANY AI tool:
-- **Claude Code CLI**: Uses hooks and skills for automation
-- **VS Code + Copilot**: Read `.claude/skills/*.md` files as context
-- **Any AI Tool**: Run `scripts/validation/` CLI commands manually
+## Tool Compatibility Note
+
+| Feature | Claude Code CLI | VS Code + GitHub Copilot | Other AI Tools |
+|---------|-----------------|--------------------------|----------------|
+| Skills auto-activation | ✅ | ❌ Manual context | ❌ Manual context |
+| Prime commands | ✅ | ❌ Manual file read | ❌ Manual file read |
+| Hooks (Pre/PostToolUse) | ✅ | ❌ Use CLI validators | ❌ Use CLI validators |
+| CLI validation scripts | ✅ | ✅ | ✅ |
+
+**For non-Claude CLI tools**: Read this document as context and run CLI validators manually.
+
+---
 
 ## Core Principles
 
-### 1. Phase 0: Constraints (MANDATORY)
-- **NEW**: Check LOCKED files and STOP triggers before ANY task
-- Run: `node scripts/validation/validators/constraint-check.cjs <file-path>`
-- If LOCKED file affected → STOP and ask for approval
-
-### 2. Specs as Source of Truth
+### 1. Specs as Source of Truth
 - Code follows specifications, not assumptions
 - Functional specs: `docs/specs/functional/[feature]/`
 - Technical specs: `docs/specs/technical/`
 - **If spec conflicts with code, spec wins**
 
-### 3. Context Hygiene (R&D Framework)
+### 2. Context Hygiene (R&D Framework)
 - **Reduce**: Minimize static context (always-on.md ≤50 lines)
 - **Delegate**: Offload work to sub-agents to prevent context pollution
 
-### 4. Quality Gates
+### 3. Quality Gates
 - Pre-commit validation (structure, docs, ESLint, redundancy, mock data)
 - Tests pass before features are complete
 - Code review checklist enforcement
 
-### 5. Workflow Phases
-Every complex task follows: **Phase 0 → Scout → Plan → Build → Validate**
+### 4. Workflow Phases (Updated with Phase 0)
+Every complex task follows: **Constraints → Scout → Plan → Build → Validate**
 
 ---
 
-## The 6 TAC Phases
+## The TAC Phases (Updated)
 
-### Phase 0: Constraints (MANDATORY - NEW)
+### ⚠️ Phase 0: Constraints (MANDATORY - NEW)
 
-**Purpose**: Check constraints BEFORE any coding task begins
+> **Status**: ❌ Not yet implemented in validation scripts
+> **Planned**: `scripts/validation/validators/constraint-check.cjs`
 
-**When**: ALWAYS - first step for every task
+**Purpose**: Load constraints BEFORE any coding task to prevent violations
 
 **What to Check**:
-1. **LOCKED Files**: Critical files requiring approval before modification
-2. **STOP Triggers**: Actions requiring user confirmation
-3. **Port Constraints**: Immutable system configurations
+1. **LOCKED Files** - Files requiring explicit approval before modification
+2. **STOP Triggers** - Actions requiring user confirmation
+3. **Port Constraints** - Immutable port assignments
 
-**Tool-Agnostic Execution**:
-```bash
-# CLI (works with any AI tool)
-node scripts/validation/validators/constraint-check.cjs server.js
-node scripts/validation/validators/constraint-check.cjs routes/auth.js --block
-```
-
-**LOCKED File Categories** (defined in `scripts/validation/rules/exceptions.cjs`):
-| Category | Files | Action |
-|----------|-------|--------|
-| Critical | `server.js`, `config/database.js`, `.env*` | **STOP** - approval required |
-| Security | `routes/auth.js`, `middleware/auth.js`, `routes/otp.js` | **STOP** - approval required |
-| Sensitive | `package.json`, `vite.config.js`, `eslint.config.js` | **WARN** - proceed with caution |
+**LOCKED Files (Require Approval)**:
+| Category | Files | Why |
+|----------|-------|-----|
+| Critical Infrastructure | `server.js`, `config/database.js`, `.env*` | Core system files |
+| Security-Sensitive | `routes/auth.js`, `middleware/auth.js`, `routes/otp.js` | Authentication system |
+| Configuration | `package.json`, `vite.config.js` | Build/dependency changes |
 
 **STOP Triggers**:
-- Creating database migrations
-- Deleting any file
-- Changing API endpoint signatures
-- Adding npm dependencies
+| Action | Required Confirmation |
+|--------|----------------------|
+| Creating database migration | Confirm schema changes |
+| Deleting any file | Confirm intentional |
+| Changing API endpoint signatures | May break clients |
+| Adding npm dependencies | Confirm necessity |
 
 **Phase 0 Checklist**:
 - [ ] No LOCKED file modifications planned (or user approved)
 - [ ] No STOP trigger actions (or user confirmed)
-- [ ] Proceed to Scout phase
+- [ ] Constraints loaded → Proceed to Scout
+
+**Manual Check (Until Validator Implemented)**:
+```bash
+# When validator exists:
+node scripts/validation/validators/constraint-check.cjs <file-path>
+```
 
 ---
 
@@ -104,7 +114,7 @@ node scripts/validation/validators/constraint-check.cjs routes/auth.js --block
 
 **Purpose**: Discover files, patterns, dependencies BEFORE making changes
 
-**Model**: Haiku/fast model (cheap - ~$0.02/task) or any lightweight model
+**Model**: Haiku (fast, cheap - ~$0.02/task)
 
 **What to Find**:
 - Existing files related to feature
@@ -112,13 +122,13 @@ node scripts/validation/validators/constraint-check.cjs routes/auth.js --block
 - Dependencies and integrations
 - Potential impact areas
 
-**Tool-Agnostic Execution**:
+**Execution**:
 ```bash
-# Claude Code CLI
+# Use Haiku for Scout phase (10x cheaper than Sonnet)
 claude --model haiku -p "scout the [feature] system to understand its structure"
 
-# VS Code + Copilot: Read files and search codebase manually
-# Any AI Tool: Use file search and grep to discover related files
+# Or use Task tool
+Task tool with subagent_type=Explore, model="haiku"
 ```
 
 **Output Format**:
@@ -290,12 +300,6 @@ Orchestrator spawns:
 - Skills enforce standards (security, duplication, coding standards)
 - Manual code review using checklist
 
-**Tool-Agnostic Validation**:
-```bash
-# Run all validation (works with any AI tool)
-node scripts/validation/validate-structure.cjs
-```
-
 ---
 
 ## Decision Trees
@@ -303,23 +307,16 @@ node scripts/validation/validate-structure.cjs
 ### When to Use Each Phase
 
 ```
-┌─ PHASE 0: CONSTRAINTS (ALWAYS FIRST)
-│  └─ Check LOCKED files and STOP triggers
-│  └─ LOCKED violation? → STOP, ask user approval
-│  └─ STOP trigger? → Confirm with user
-│  └─ Continue ↓
-
 ┌─ 1-2 files affected?
-│  └─ YES → Phase 0 → Build directly → Validate
+│  └─ YES → Build directly (no Scout/Plan needed)
 │  └─ NO → Continue ↓
 
 ┌─ 3-10 files affected?
-│  └─ YES → Phase 0 → Scout → Plan → Build → Validate
+│  └─ YES → Scout → Plan → Build (single agent)
 │  └─ NO → Continue ↓
 
 ┌─ 10+ files affected?
 │  └─ YES → Full TAC with parallel agents
-│      0. Phase 0 (constraints check)
 │      1. Scout (parallel if multi-domain)
 │      2. Plan (aggregated findings)
 │      3. Build (parallel agents, git worktrees)
@@ -328,21 +325,16 @@ node scripts/validation/validate-structure.cjs
 
 ┌─ Research only (no code changes)?
 │  └─ YES → Scout phase only
-│  └─ NO → Phase 0 → Scout → Plan → Build → Validate
+│  └─ NO → Scout → Plan → Build
 ```
 
 ### When to Load Framework
 
-**Claude Code CLI**: Load `/prime-framework` when:
+Load `/prime-framework` when:
 - Implementing features (3+ files)
 - Refactoring code (multiple modules)
 - Planning complex implementations
 - Need orchestration guidance (10+ files)
-
-**VS Code + Copilot / Other AI Tools**: Read these files as context:
-- `.claude/commands/prime-framework.md`
-- `.claude/skills/project-constraints.md`
-- Relevant skill files for your task
 
 Do NOT load for:
 - Simple bug fixes (1-2 files)
