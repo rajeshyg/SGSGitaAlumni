@@ -41,7 +41,8 @@ This framework prevents the top AI-assisted development problems:
 ### Status & Planning
 | Document | Purpose | Read When |
 |----------|---------|-----------|
-| [roadmap.md](./roadmap.md) | Implementation status, next steps, blockers | Tracking framework progress |
+| [vision-and-progress.md](./vision-and-progress.md) | Detailed progress, vision, roadmap, blockers | Tracking framework development |
+| [ROADMAP.md](./ROADMAP.md) | Implementation status by component | Need specific completion status |
 
 ---
 
@@ -90,7 +91,8 @@ Phase 5: Validate (quality gates)
 
 ## Current Status
 
-→ Full details: [roadmap.md](./roadmap.md)
+→ **Vision & detailed progress**: [vision-and-progress.md](./vision-and-progress.md)  
+→ **Component-level status**: [ROADMAP.md](./ROADMAP.md)
 
 | Component | Status |
 |-----------|--------|

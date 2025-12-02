@@ -484,9 +484,28 @@ git mv deploy-coppa-migration.sh scripts/deployment/deploy-coppa-migration.sh
 
 **Location**: All specs must be in `docs/specs/functional/[module]/` or `docs/specs/technical/[category]/`
 
+### Spec Folder Structure
+
+Every spec folder (`docs/specs/functional/[module]/` or `docs/specs/technical/[category]/`) MUST have:
+
+| File | Purpose | Validation |
+|------|---------|-----------|
+| `README.md` | High-level navigation, doc index | Required, no frontmatter needed |
+| `vision-and-progress.md` (optional) | Detailed progress tracking, roadmap | If present, requires YAML frontmatter |
+| `*.md` spec files | Individual specifications | All require YAML frontmatter |
+
+**Pattern Example**:
+```
+docs/specs/technical/database/
+├── README.md              # Navigation hub (no frontmatter)
+├── vision-and-progress.md # Optional: detailed progress (with frontmatter)
+├── schema.md              # Spec file (with frontmatter)
+└── migrations.md          # Spec file (with frontmatter)
+```
+
 ### Required YAML Frontmatter
 
-Every spec in `docs/specs/functional/` and `docs/specs/technical/` MUST have:
+Every spec file in `docs/specs/functional/` and `docs/specs/technical/` MUST have:
 
 ```yaml
 ---
@@ -497,6 +516,8 @@ last_updated: YYYY-MM-DD
 ```
 
 **Valid statuses**: `implemented`, `in-progress`, `pending`, `active`, `proposed`, `deprecated`
+
+**Exception**: `README.md` files do NOT require frontmatter (they're navigation, not specs)
 
 ### Required Sections
 

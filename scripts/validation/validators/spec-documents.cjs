@@ -6,10 +6,13 @@
  * Uses spec-helpers.cjs for frontmatter/link parsing.
  * 
  * Checks:
- * - YAML frontmatter and required fields
+ * - YAML frontmatter and required fields (except README.md)
  * - Required sections, acceptance criteria
  * - Link validity
  * - Stray files, module folder completeness
+ * 
+ * NOTE: README.md files in spec folders are navigation hubs and do NOT require frontmatter.
+ * Only spec content files (*.md other than README.md) require frontmatter.
  */
 
 const fs = require('fs');
