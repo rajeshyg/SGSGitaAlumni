@@ -1,15 +1,25 @@
 {
-  "PostToolUse": [
-    {
-      "matcher": {
-        "tools": ["Write", "Edit", "NotebookEdit"]
-      },
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node .claude/hooks/post-tool-use-validation.js"
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use-validation.js\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop-session-analyzer.js\""
+          }
+        ]
+      }
+    ]
+  }
 }

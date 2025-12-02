@@ -9,7 +9,7 @@ applies_to: frontend-backend
 
 ## Overview
 
-This document outlines the data flow patterns, API integration strategies, and state management architecture for the SGS Gita Alumni platform.
+This document outlines the data flow patterns, API integration strategies, and state management architecture for the Generic Platform.
 
 ## Data Flow Patterns
 
@@ -25,10 +25,10 @@ User Interaction → Component → Hook → API Service → Express.js API → M
 
 ```
 Data Separation Architecture:
-├── Alumni Members (Source Data) → alumni_members table
-├── App Users (Authenticated) → users table
+├── Members (Source Data) → members table
+├── Authenticated Users (Authenticated) → authenticated_users table
 ├── User Profiles (Extended) → user_profiles table
-└── Invitations (Access Control) → user_invitations table
+└── Access Requests (Access Control) → access_requests table
 ```
 
 ## Frontend Data Management
@@ -41,18 +41,18 @@ Data Separation Architecture:
 // Custom hook pattern for data management
 // Implementation: src/hooks/
 
-function useAlumniData() {
-  const [alumni, setAlumni] = useState<Alumni[]>([])
+function useMemberData() {
+  const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchAlumni = useCallback(async (filters?: AlumniFilters) => {
+  const fetchMembers = useCallback(async (filters?: MemberFilters) => {
     setLoading(true)
     setError(null)
 
     try {
-      const data = await apiService.getAlumni(filters)
-      setAlumni(data)
+      const data = await apiService.getMembers(filters)
+      setMembers(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     } finally {
@@ -60,7 +60,7 @@ function useAlumniData() {
     }
   }, [])
 
-  return { alumni, loading, error, fetchAlumni }
+  return { members, loading, error, fetchMembers }
 }
 ```
 

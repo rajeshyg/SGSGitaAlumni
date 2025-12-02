@@ -1,10 +1,14 @@
 ---
-version: 1.0
-status: proposed
+version: 2.0
+status: partial
 last_updated: 2025-12-02
 applies_to: all
 enforcement: required
 description: Single source of truth for ALL project structure rules - files, folders, naming, and exceptions
+related_docs:
+  - ../development-framework/ROADMAP.md
+  - ../development-framework/file-organization.md
+  - ../development-framework/constraints-enforcement.md
 ---
 
 # Project Structure Manifest
@@ -17,6 +21,34 @@ This manifest addresses the ROOT CAUSES of structural chaos:
 2. **Missing Centralization** → Single authoritative manifest
 3. **Exception Chaos** → Explicit exception registry with justifications
 4. **Scope Gaps** → Full project coverage, not isolated rules
+
+---
+
+## Implementation Status
+
+> **This document is PARTIALLY implemented.** See legend below.
+
+| Status | Meaning |
+|--------|---------|
+| ✅ FINALIZED | Structure confirmed, implemented, validated |
+| 🟡 PARTIAL | Structure exists but needs cleanup/alignment |
+| 🔴 TODO | Needs research or implementation |
+| ⚠️ STALE | Documented but no longer accurate - needs update |
+
+### Quick Status by Section
+
+| Section | Status | Notes |
+|---------|--------|-------|
+| Vocabulary (Part 1) | 🟡 PARTIAL | Defined but not enforced via tooling |
+| `.claude/` folder | 🔴 TODO | `agents/` folder needs research per roadmap |
+| `docs/specs/` folder | ✅ FINALIZED | Structure complete and validated |
+| `scripts/validation/` | 🟡 PARTIAL | Exists, needs consolidation |
+| `scripts/core/` | ⚠️ STALE | Contains files that should move |
+| `scripts/debug/` | ✅ FINALIZED | Structure implemented |
+| `src/` folder | ✅ FINALIZED | Standard React structure |
+| `server/` folder | ✅ FINALIZED | Structure implemented |
+| Exception Registry (Part 3) | ⚠️ STALE | Fixed issues still listed |
+| Validation Scripts (Part 4) | 🟡 PARTIAL | Not consolidated as planned |
 
 ---
 
@@ -64,11 +96,11 @@ show-*        → debug-* or audit-*
 
 ## Part 2: Canonical Folder Registry
 
-### Root Level
+### Root Level ✅ FINALIZED
 
 ```
 /
-├── .claude/                 # Claude Code (AI assistant config)
+├── .claude/                 # Claude Code (AI assistant config) - see details below
 ├── .husky/                  # Git hooks
 ├── config/                  # Shared configuration
 ├── docs/                    # All documentation
@@ -86,8 +118,69 @@ show-*        → debug-* or audit-*
 ├── redis/                   # Redis configuration
 ├── test-results/            # Test output (gitignored)
 ├── playwright-report/       # Playwright reports (gitignored)
+├── utils/                   # Backend utility scripts
 └── [config files]           # See allowed list below
 ```
+
+### `.claude/` Directory 🔴 NEEDS RESEARCH
+
+> **Alignment with Roadmap**: See `docs/specs/technical/development-framework/ROADMAP.md` Phase 2
+
+**Current State** (as of 2025-12-02):
+```
+.claude/
+├── commands/           # ✅ Implemented - Prime commands
+│   ├── prime-api.md
+│   ├── prime-auth.md
+│   ├── prime-database.md
+│   ├── prime-framework.md
+│   ├── prime-sdd.md
+│   ├── prime-tac.md
+│   └── prime-ui.md
+├── context.md          # ✅ Implemented
+├── hooks/              # 🟡 PARTIAL - Only PostToolUse exists
+│   └── post-tool-use-validation.js
+├── settings.json       # ✅ Implemented
+├── settings.local.json # ✅ Implemented
+└── skills/             # ✅ Implemented
+    ├── coding-standards.md      # ⚠️ 524 lines - needs split
+    ├── duplication-prevention.md
+    ├── sdd-tac-workflow/
+    │   └── SKILL.md
+    └── security-rules.md
+```
+
+**Target State** (per agent-engineering.md):
+```
+.claude/
+├── agents/                      # 🔴 TODO - Research needed
+│   ├── meta-agent.json          # Agent that creates agents
+│   ├── scout-agent.json         # Domain reconnaissance
+│   ├── qa-agent.json            # Quality assurance
+│   ├── docs-agent.json          # Documentation
+│   └── summary-agent.json       # Session summaries
+├── commands/                    # ✅ Complete
+├── context.md                   # ✅ Complete
+├── hooks/
+│   ├── post-tool-use-validation.js  # ✅ Exists
+│   └── pre-tool-use-constraint.js   # 🔴 TODO (Phase 1.4)
+├── settings.json
+├── settings.local.json
+└── skills/
+    ├── coding-standards/        # 🔴 TODO - Split large file
+    │   ├── typescript.md
+    │   ├── react.md
+    │   └── backend.md
+    ├── duplication-prevention.md
+    ├── project-constraints.md   # 🔴 TODO (Phase 1.5)
+    ├── sdd-tac-workflow/
+    └── security-rules.md
+```
+
+**Research Questions**:
+1. Does Claude CLI support `.claude/agents/` directory? (Need to validate)
+2. What's the JSON schema for agent configuration?
+3. How do agents interact with skills/commands?
 
 ### Allowed Root Files (Exhaustive List)
 
@@ -134,69 +227,121 @@ forbidden:
   - "fix-*.js": "Archive or delete"
 ```
 
-### Scripts Directory (Canonical)
+### Scripts Directory 🟡 PARTIAL
 
+> **Status**: Structure exists but naming/consolidation not complete
+
+**Current State** (as of 2025-12-02):
+```yaml
+scripts/:
+  archive/:        # ✅ FINALIZED - Historical scripts
+    
+  core/:           # ⚠️ STALE - Contains files that should move
+    current_files:
+      - check-documentation.js   # → should be validate-documentation.cjs in validation/
+      - check-integration-patterns.js
+      - check-ports.js           # ✅ OK - infrastructure
+      - check-redundancy.js      # → should move to validation/
+      - delayed-vite.js          # ✅ OK - infrastructure
+      - detect-mock-data.js      # ✅ OK - canonical naming
+      - kill-port.js             # ✅ OK - infrastructure
+      - MANIFEST.json
+      - validate-structure.cjs   # → duplicate, should be in validation/
+    allowed_only:
+      - delayed-vite.js
+      - kill-port.js
+      - check-ports.js
+      - detect-mock-data.js
+      - MANIFEST.json
+      
+  database/:       # 🟡 PARTIAL - Has check-* files that should move to debug/
+    subfolders:
+      migrations/: "SQL migration files - ✅ exists"
+      schema/:     "Schema definitions - ✅ exists"
+    issues:
+      - "50+ check-*.js files should move to scripts/debug/database/"
+      - "Naming inconsistent (check-* vs debug-*)"
+    
+  debug/:          # ✅ FINALIZED - Diagnostic scripts by feature
+    contents: "19 debug scripts for matching/postings/preferences"
+    
+  deployment/:     # ✅ FINALIZED
+    purpose: "*.sh, *.ps1 deployment scripts"
+    
+  validation/:     # 🟡 PARTIAL - Exists but not consolidated
+    current_files:
+      - audit-code-quality.cjs
+      - audit-documentation.cjs
+      - audit-file-organization.cjs   # → should merge into validate-structure
+      - audit-framework.cjs
+      - audit-root-clutter.cjs        # → should merge into validate-structure
+      - check-file-locations.cjs      # → rename to validate-file-locations.cjs
+      - cleanup-duplicates.cjs
+      - deployment-validation.cjs
+      - run-full-audit.cjs
+      - validate-project-structure.cjs # ✅ Main validator
+      - validate-structure.cjs         # ⚠️ Duplicate of above?
+      - validate-theme-compliance.js
+    subfolders:
+      rules/:      "✅ Implemented - structure-rules.cjs, exceptions.cjs, etc."
+      validators/: "✅ Implemented - file-placement.cjs, naming-conventions.cjs, etc."
+      reports/:    "Output reports"
+    target_consolidation:
+      - validate-project-structure.cjs  # Unified validation
+      - validate-code-quality.cjs       # Code quality checks  
+      - detect-mock-data.cjs            # Mock data detection
+      - audit-codebase.cjs              # Full audit orchestrator
+```
+
+**Target State** (per development-framework):
 ```yaml
 scripts/:
   validation/:
     purpose: "Validation scripts that block commits"
-    naming: "validate-*.cjs"
-    contents:
-      - validate-structure.cjs      # Canonical structure validator
-      - validate-file-locations.cjs # File placement rules
-      - validate-theme-compliance.js
-      - deployment-validation.cjs
-      - run-full-audit.cjs          # Orchestrator for audits
-    
-  audit/:
-    purpose: "Audit scripts that generate reports (non-blocking)"
-    naming: "audit-*.cjs"
-    contents:
-      - audit-framework.cjs
-      - audit-code-quality.cjs
-      - audit-documentation.cjs
-      # Merged from separate scripts:
-      # - audit-file-organization.cjs → MERGE INTO validate-structure
-      # - audit-root-clutter.cjs → MERGE INTO validate-structure
-  
-  database/:
-    purpose: "Database operations"
-    subfolders:
-      migrations/: "SQL migration files"
-      schema/: "Schema definitions"
-    scripts: "Data operations (backfill, link, execute)"
-    
-  deployment/:
-    purpose: "Deployment and infrastructure"
-    contents: "*.sh, *.ps1 deployment scripts"
-    
-  debug/:
-    purpose: "Diagnostic scripts organized by feature"
-    subfolders:
-      matching/: "Matching system debug"
-      preferences/: "Preferences debug"
-      database/: "Database diagnostics"
-      postings/: "Postings debug"
-    # NOTE: All check-* from scripts/database/ move here
+    naming: "validate-*.cjs for blocking, audit-*.cjs for reports"
+    target_structure:
+      - validate-project-structure.cjs   # Unified structure validator
+      - validate-code-quality.cjs        # Code quality (file size, duplicates)
+      - detect-mock-data.cjs             # Mock data detection
+      - audit-codebase.cjs               # Full audit orchestrator
+      - deployment-validation.cjs        # Deployment checks
+      lib/:
+        - vocabulary.cjs     # 🔴 TODO - Canonical terms enforcement
+        - structure-rules.cjs # ✅ Exists in rules/
+        - reporters.cjs      # 🔴 TODO - Output formatting
+      rules/:                # ✅ Exists
+      validators/:           # ✅ Exists
     
   core/:
-    purpose: "ONLY core infrastructure"
+    purpose: "ONLY core infrastructure - minimal files"
     allowed:
       - delayed-vite.js
       - kill-port.js
       - check-ports.js
-    forbidden:
-      - validate-*.cjs  # → scripts/validation/
-      - check-redundancy.js  # → scripts/validation/detect-redundancy.cjs
-      - check-documentation.js  # → scripts/validation/validate-documentation.cjs
-      - detect-mock-data.js  # Keep (matches canonical naming)
+      - detect-mock-data.js
+      - MANIFEST.json
+      
+  database/:
+    purpose: "Database operations ONLY - no check-* scripts"
+    subfolders:
+      migrations/: "SQL migration files"
+      schema/: "Schema definitions"
+    scripts: "Data operations (backfill, link, execute, migrate)"
+    
+  debug/:
+    purpose: "Diagnostic scripts organized by feature"
+    subfolders:
+      matching/:     "Matching system debug"
+      preferences/:  "Preferences debug"
+      database/:     "Database diagnostics (moved from scripts/database/check-*)"
+      postings/:     "Postings debug"
     
   archive/:
     purpose: "Historical/deprecated scripts"
     rule: "Only archive, never reference from active code"
 ```
 
-### Source Code (`src/`)
+### Source Code (`src/`) ✅ FINALIZED
 
 ```yaml
 src/:
@@ -215,7 +360,7 @@ src/:
   services/:
     purpose: "Frontend API service layer"
     rule: "ONLY place for frontend services"
-    # NO services/ at root level
+    # NO services/ at root level - ✅ VERIFIED: no root services/ exists
     # NO src/lib/services/
     
   utils/:
@@ -224,13 +369,35 @@ src/:
   types/:
     purpose: "TypeScript type definitions"
     
+  schemas/:
+    purpose: "Zod/validation schemas"
+    
+  constants/:
+    purpose: "Frontend constants"
+    
+  config/:
+    purpose: "Frontend configuration"
+    
   lib/:
     purpose: "Third-party integrations, API clients"
+    current_subfolders:
+      - accessibility/
+      - ai/
+      - auth/
+      - config/
+      - encryption/
+      - monitoring/
+      - performance/
+      - security/
+      - socket/
+      - testing/
+      - theme/
+      - utils/
     forbidden:
       - "*.sql"
       - "*.html"
       - "README.md in empty folders"
-      - "database/ folder with only README"
+      - "database/ folder" # ✅ VERIFIED: orphan deleted
     
   assets/:
     purpose: "Images, fonts, static assets"
@@ -238,15 +405,22 @@ src/:
   test/:
     purpose: "Test utilities, setup, fixtures"
     # Actual tests go in tests/ (root)
+    
+  __tests__/:
+    purpose: "Co-located unit tests"
 ```
 
-### Server Code (`server/`)
+### Server Code (`server/`) ✅ FINALIZED
 
 ```yaml
 server/:
   services/:
     purpose: "Backend business logic"
     rule: "< 300 lines per file"
+    current_files:
+      - chatService.js
+      - FamilyMemberService.js  # ✅ VERIFIED: properly located here
+      - moderationNotification.js
     
   middleware/:
     purpose: "Express middleware"
@@ -261,16 +435,56 @@ server/:
     purpose: "Custom error classes"
 ```
 
-### Documentation (`docs/`)
+### Documentation (`docs/`) ✅ FINALIZED
+
+> **Status**: Structure complete and validated. See `docs/specs/CONSTITUTION.md` for governance.
 
 ```yaml
 docs/:
-  specs/:
-    functional/: "Feature specifications (by module)"
-    technical/: "Technical standards (by domain)"
-    context/: "AI context files (always-on.md)"
-    templates/: "Spec templates"
-    workflows/: "Feature workflow documentation"
+  specs/:                          # ✅ FINALIZED - Complete structure
+    CONSTITUTION.md: "Governance rules for specs"
+    README.md: "Navigation guide"
+    context/:
+      - always-on.md              # AI context (44 lines, optimized)
+      - RESTRUCTURING_COMPLETE.md
+    functional/:                  # Feature specifications by module
+      - admin/
+      - authentication/
+      - dashboard/
+      - directory/
+      - messaging/
+      - moderation/
+      - notifications/
+      - postings/
+      - rating/
+      - README.md
+      - user-management/
+    technical/:                   # Technical standards by domain
+      - architecture/            # This document lives here
+      - coding-standards/
+      - database/
+      - deployment/
+      - development-framework/   # SDD/TAC framework docs
+      - integration/
+      - mobile-version/
+      - README.md
+      - security/
+      - testing/
+      - ui-standards/
+      - validation/
+    templates/:                   # Spec templates
+      - feature-spec.md
+      - implementation-plan.md
+      - README-template.md
+      - README.md
+      - ROADMAP-template.md
+      - scout-report.md
+      - task-breakdown.md
+    workflows/:                   # Feature workflow documentation
+      - notifications/
+      - postings/
+      - rating/
+      - user-management/
     
   diagrams/:
     database/: "ER diagrams, Mermaid visualizations"
@@ -303,19 +517,19 @@ docs/:
 
 ---
 
-## Part 3: Exception Registry
+## Part 3: Exception Registry ⚠️ NEEDS UPDATE
 
-### Registered Exceptions
+### Registered Exceptions (Updated 2025-12-02)
 
-| Exception | Location | Justification | Review Date |
-|-----------|----------|---------------|-------------|
-| `FEATURE_MATRIX.md` | `docs/` | System-generated, StatusDashboard | 2025-12-26 |
-| `generated-status-report.html` | `docs/` | System-generated, StatusDashboard | 2025-12-26 |
-| `dump.rdb` | root | Redis persistence | 2025-12-26 |
-| `services/FamilyMemberService.js` | root | **LEGACY - MUST FIX** | URGENT |
-| `src/lib/database/README.md` | src/lib/database/ | **ORPHAN - DELETE** | URGENT |
-| `playwright.config.ts` | root | Playwright convention | N/A |
-| `vitest.config.ts` | root | Vitest convention | N/A |
+| Exception | Location | Justification | Status | Review Date |
+|-----------|----------|---------------|--------|-------------|
+| `FEATURE_MATRIX.md` | `docs/` | System-generated, StatusDashboard | Active | 2025-12-26 |
+| `generated-status-report.html` | `docs/` | System-generated, StatusDashboard | Active | 2025-12-26 |
+| `dump.rdb` | root | Redis persistence | Active | 2025-12-26 |
+| ~~`services/FamilyMemberService.js`~~ | ~~root~~ | ~~LEGACY~~ | ✅ FIXED | N/A |
+| ~~`src/lib/database/README.md`~~ | ~~src/lib/database/~~ | ~~ORPHAN~~ | ✅ DELETED | N/A |
+| `playwright.config.ts` | root | Playwright convention | Permanent | N/A |
+| `vitest.config.ts` | root | Vitest convention | Permanent | N/A |
 
 ### Exception Request Process
 
@@ -327,23 +541,53 @@ docs/:
 
 ---
 
-## Part 4: Consolidated Validation Script
+## Part 4: Validation Scripts Consolidation 🟡 PARTIAL
 
-### Current State (Fragmented)
+> **Status**: Validation framework exists but consolidation not complete
+
+### Current State (as of 2025-12-02)
 
 ```
-scripts/core/validate-structure.cjs     # 643 lines - spec structure, duplicates
-scripts/core/check-redundancy.js        # 162 lines - 5 functions (3 unrelated)
-scripts/core/check-documentation.js     # ~85 lines
-scripts/core/detect-mock-data.js        # Mock data detection
-scripts/validation/check-file-locations.cjs  # 424 lines - file placement
-scripts/validation/audit-file-organization.cjs  # 145 lines - backup patterns
-scripts/validation/audit-root-clutter.cjs  # 187 lines - root scripts
+scripts/validation/
+├── audit-code-quality.cjs
+├── audit-documentation.cjs
+├── audit-file-organization.cjs     # → Should merge into validate-structure
+├── audit-framework.cjs
+├── audit-root-clutter.cjs          # → Should merge into validate-structure
+├── check-file-locations.cjs        # → Rename to validate-file-locations.cjs
+├── cleanup-duplicates.cjs
+├── deployment-validation.cjs
+├── run-full-audit.cjs              # Orchestrator
+├── validate-project-structure.cjs  # Main validator
+├── validate-structure.cjs          # ⚠️ Duplicate?
+├── validate-theme-compliance.js
+├── rules/
+│   ├── exceptions.cjs              # ✅ Has EXCEPTION_REGISTRY
+│   ├── folder-rules.cjs
+│   ├── module-rules.cjs
+│   └── structure-rules.cjs
+├── validators/
+│   ├── duplicate-helpers.cjs
+│   ├── file-placement.cjs
+│   ├── file-uniqueness.cjs
+│   ├── naming-conventions.cjs
+│   ├── spec-documents.cjs
+│   └── spec-helpers.cjs
+└── reports/
+
+scripts/core/                        # ⚠️ STALE - files should move
+├── check-documentation.js          # → validation/validate-documentation.cjs
+├── check-integration-patterns.js
+├── check-ports.js                  # ✅ OK
+├── check-redundancy.js             # → validation/ or delete (ESLint coverage)
+├── delayed-vite.js                 # ✅ OK
+├── detect-mock-data.js             # ✅ OK
+├── kill-port.js                    # ✅ OK
+├── MANIFEST.json
+└── validate-structure.cjs          # → Already in validation/ - delete this
 ```
 
-**Problem**: 7 scripts with overlapping concerns, synonym naming, scattered locations.
-
-### Target State (Consolidated)
+### Target State (per development-framework roadmap)
 
 ```
 scripts/validation/
@@ -352,8 +596,8 @@ scripts/validation/
 │   ├── Folder structure
 │   ├── Spec structure (technical/functional)
 │   ├── Root clutter
-│   ├── Orphan detection (README in empty folders)
-│   ├── Service location (no root services/)
+│   ├── Orphan detection
+│   ├── Service location
 │   └── Naming convention enforcement
 │
 ├── validate-code-quality.cjs        # Code quality (blocks commit)
@@ -367,27 +611,52 @@ scripts/validation/
 ├── audit-codebase.cjs               # Full audit (non-blocking)
 │   └── Orchestrates all audits, generates manifests
 │
-└── lib/
-    ├── vocabulary.cjs               # Canonical terms enforcement
-    ├── structure-rules.cjs          # Rules from this manifest
-    └── reporters.cjs                # Output formatting
+├── deployment-validation.cjs        # Deployment checks
+│
+├── lib/                             # 🔴 TODO
+│   ├── vocabulary.cjs               # Canonical terms enforcement
+│   ├── reporters.cjs                # Output formatting
+│   └── [moved from rules/]
+│
+├── rules/                           # ✅ EXISTS
+│   ├── exceptions.cjs               # Needs LOCKED_FILES, STOP_TRIGGERS
+│   ├── folder-rules.cjs
+│   ├── module-rules.cjs
+│   └── structure-rules.cjs
+│
+└── validators/                      # ✅ EXISTS
+    ├── constraint-check.cjs         # 🔴 TODO (Phase 1.2)
+    ├── file-placement.cjs
+    ├── file-uniqueness.cjs
+    ├── naming-conventions.cjs
+    └── spec-documents.cjs
 ```
 
-### Migration from check-redundancy.js
+### Migration Actions Needed
 
-| Current Function | Belongs In |
-|-----------------|------------|
-| `checkDuplicateImports()` | `validate-code-quality.cjs` |
-| `checkDuplicateComponents()` | `validate-code-quality.cjs` |
-| `checkUnusedImports()` | ESLint (already has this) - DELETE |
-| `checkFileSizes()` | `validate-code-quality.cjs` |
-| `checkConsoleStatements()` | ESLint (already has this) - DELETE |
+| Current Script | Action | Priority |
+|----------------|--------|----------|
+| `scripts/core/validate-structure.cjs` | DELETE (duplicate) | High |
+| `scripts/core/check-documentation.js` | Move → validation/validate-documentation.cjs | Medium |
+| `scripts/core/check-redundancy.js` | Extract useful → validation/, delete rest | Medium |
+| `scripts/validation/check-file-locations.cjs` | Rename → validate-file-locations.cjs | Low |
+| `scripts/validation/audit-file-organization.cjs` | Merge into validate-structure | Low |
+| `scripts/validation/audit-root-clutter.cjs` | Merge into validate-structure | Low |
 
 ---
 
-## Part 5: Pre-Commit Enforcement
+## Part 5: Pre-Commit Enforcement ⚠️ BYPASSED
 
-### Updated Pre-Commit Hook
+> **Status**: Pre-commit hook exists but is bypassed due to ESLint errors
+
+### Current Pre-Commit State
+
+```bash
+# .husky/pre-commit currently bypassed with --no-verify
+# due to 1358 ESLint errors blocking commits
+```
+
+### Target Pre-Commit Hook
 
 ```bash
 #!/bin/bash
@@ -428,47 +697,47 @@ fi
 echo "✅ All validations passed!"
 ```
 
+### Blocker Resolution Strategy
+
+Per development-framework roadmap: Fix ESLint errors per-module during feature work.
+
 ---
 
-## Part 6: Immediate Actions
+## Part 6: Immediate Actions ⚠️ MOSTLY COMPLETED
 
-### Priority 1: Critical Fixes
+### Priority 1: Critical Fixes ✅ COMPLETED
 
 ```bash
-# 1. Delete orphan README
-git rm src/lib/database/README.md
+# 1. Delete orphan README - ✅ DONE (verified: folder doesn't exist)
+# git rm src/lib/database/README.md
 
-# 2. Move root services/ to correct location
-git mv services/FamilyMemberService.js server/services/FamilyMemberService.js
-# Update import in routes/family-members.js:
-# FROM: import FamilyMemberService from '../services/FamilyMemberService.js';
-# TO:   import FamilyMemberService from '../server/services/FamilyMemberService.js';
+# 2. Move root services/ - ✅ DONE (verified: no root services/)
+# FamilyMemberService.js is already in server/services/
 
-# 3. Add to .gitignore
+# 3. Add to .gitignore - Status unknown, verify
 echo "eslint-output.json" >> .gitignore
 echo "lint-violations.json" >> .gitignore
 echo "nul" >> .gitignore
 ```
 
-### Priority 2: Script Consolidation
+### Priority 2: Script Consolidation 🔴 NOT STARTED
 
 ```bash
+# These actions are still pending:
+
+# Delete duplicate from core/
+git rm scripts/core/validate-structure.cjs
+
 # Rename with canonical vocabulary
-git mv scripts/core/validate-structure.cjs scripts/validation/validate-project-structure.cjs
 git mv scripts/validation/check-file-locations.cjs scripts/validation/validate-file-locations.cjs
 git mv scripts/core/check-documentation.js scripts/validation/validate-documentation.cjs
 
-# Archive redundant scripts (functionality merged)
-git mv scripts/validation/audit-file-organization.cjs scripts/archive/audit-file-organization.cjs
-git mv scripts/validation/audit-root-clutter.cjs scripts/archive/audit-root-clutter.cjs
-
-# Move core/check-redundancy.js functions:
-# - Useful functions → scripts/validation/validate-code-quality.cjs
-# - Duplicate functions (already in ESLint) → DELETE
-git rm scripts/core/check-redundancy.js
+# Archive redundant scripts (after merging functionality)
+git mv scripts/validation/audit-file-organization.cjs scripts/archive/
+git mv scripts/validation/audit-root-clutter.cjs scripts/archive/
 ```
 
-### Priority 3: Vocabulary Enforcement
+### Priority 3: Vocabulary Enforcement 🔴 NOT STARTED
 
 Create `scripts/validation/lib/vocabulary.cjs`:
 ```javascript
@@ -500,49 +769,66 @@ module.exports = { CANONICAL_TERMS };
 
 ## Part 7: Validation Rules Summary
 
+> **Status**: Rules documented, enforcement partial
+
 ### Blocking Rules (Exit Code 1)
 
-| Rule ID | Description | Check |
-|---------|-------------|-------|
-| STRUCT-001 | No services/ at root | `services/*.js` exists |
-| STRUCT-002 | No README in empty folders | `src/lib/database/README.md` with no other files |
-| STRUCT-003 | No SQL in src/ | `src/**/*.sql` |
-| STRUCT-004 | No HTML in src/ (except components) | `src/**/*.html` outside components |
-| STRUCT-005 | No check-* in database/ | `scripts/database/check-*.js` |
-| STRUCT-006 | Validate-* in validation/ | `scripts/core/validate-*` |
-| NAME-001 | No synonym script names | `check-*`, `verify-*` outside archive |
-| NAME-002 | Service location | `services/` at root level |
-| QUAL-001 | File size < 300 lines | Services, components |
-| QUAL-002 | No console in production | `src/**/*.ts`, `server/**/*.js` |
-| MOCK-001 | No mock data in production | `src/pages/`, `src/components/` |
+| Rule ID | Description | Check | Status |
+|---------|-------------|-------|--------|
+| STRUCT-001 | No services/ at root | `services/*.js` exists | ✅ Passing |
+| STRUCT-002 | No README in empty folders | orphan README detection | ✅ Passing |
+| STRUCT-003 | No SQL in src/ | `src/**/*.sql` | ✅ Enforced |
+| STRUCT-004 | No HTML in src/ (except components) | `src/**/*.html` | ✅ Enforced |
+| STRUCT-005 | No check-* in database/ | `scripts/database/check-*.js` | ⚠️ Violations exist |
+| STRUCT-006 | Validate-* in validation/ | `scripts/core/validate-*` | ⚠️ Violations exist |
+| NAME-001 | No synonym script names | `check-*`, `verify-*` | ⚠️ Not enforced |
+| NAME-002 | Service location | `services/` at root level | ✅ Passing |
+| QUAL-001 | File size < 300 lines | Services, components | 🟡 Partial |
+| QUAL-002 | No console in production | `src/**/*.ts`, `server/**/*.js` | 🟡 ESLint rule |
+| MOCK-001 | No mock data in production | `src/pages/`, `src/components/` | ✅ Rule exists |
 
 ### Warning Rules (Exit Code 0, Show Warning)
 
-| Rule ID | Description |
-|---------|-------------|
-| WARN-001 | Missing README in major directories |
-| WARN-002 | Files approaching 300 lines (>250) |
-| WARN-003 | Scripts in archive/ referenced by active code |
-| WARN-004 | Duplicate file names in different locations |
+| Rule ID | Description | Status |
+|---------|-------------|--------|
+| WARN-001 | Missing README in major directories | 🟡 Partial |
+| WARN-002 | Files approaching 300 lines (>250) | 🔴 Not implemented |
+| WARN-003 | Scripts in archive/ referenced by active code | 🔴 Not implemented |
+| WARN-004 | Duplicate file names in different locations | ✅ Implemented |
 
 ---
 
-## Appendix: Full Folder Tree (Target State)
+## Appendix A: Full Folder Tree (Target State)
+
+> **Legend**: ✅ Matches actual | 🟡 Partial | 🔴 Needs work
 
 ```
 SGSGitaAlumni/
-├── .claude/
-│   ├── commands/
-│   ├── hooks/
+├── .claude/                           # 🟡 Missing agents/
+│   ├── agents/                        # 🔴 TODO - needs research
+│   │   ├── meta-agent.json
+│   │   ├── scout-agent.json
+│   │   ├── qa-agent.json
+│   │   └── ...
+│   ├── commands/                      # ✅ Implemented
+│   ├── hooks/                         # 🟡 Missing PreToolUse
+│   │   ├── post-tool-use-validation.js
+│   │   └── pre-tool-use-constraint.js # 🔴 TODO
+│   ├── settings.json
 │   ├── settings.local.json
-│   └── skills/
+│   └── skills/                        # ✅ Implemented
+│       ├── coding-standards.md        # ⚠️ Needs split
+│       ├── duplication-prevention.md
+│       ├── project-constraints.md     # 🔴 TODO
+│       ├── sdd-tac-workflow/
+│       └── security-rules.md
 ├── .husky/
 │   ├── _/
-│   └── pre-commit
-├── config/
+│   └── pre-commit                     # ⚠️ Bypassed
+├── config/                            # ✅ Finalized
 │   ├── constants.js
 │   └── database.js
-├── docs/
+├── docs/                              # ✅ Finalized
 │   ├── archive/
 │   ├── audits/
 │   ├── context-bundles/
@@ -553,52 +839,44 @@ SGSGitaAlumni/
 │   ├── fixes/
 │   ├── lessons-learnt/
 │   ├── reports/
-│   ├── specs/
+│   ├── specs/                         # ✅ FINALIZED
+│   │   ├── CONSTITUTION.md
 │   │   ├── context/
 │   │   ├── functional/
 │   │   ├── technical/
 │   │   ├── templates/
 │   │   └── workflows/
-│   ├── FEATURE_MATRIX.md          # Exception: system-generated
-│   └── generated-status-report.html  # Exception: system-generated
-├── eslint-rules/
-├── middleware/
-├── migrations/
-├── public/
-├── redis/
-├── routes/
-├── scripts/
+│   ├── FEATURE_MATRIX.md              # Exception: system-generated
+│   └── generated-status-report.html   # Exception: system-generated
+├── eslint-rules/                      # ✅ Finalized
+├── middleware/                        # ✅ Finalized
+├── migrations/                        # ✅ Finalized
+├── public/                            # ✅ Finalized
+├── redis/                             # ✅ Finalized
+├── routes/                            # ✅ Finalized
+├── scripts/                           # 🟡 Needs consolidation
 │   ├── archive/
-│   ├── core/                       # Minimal - only infrastructure
-│   │   ├── delayed-vite.js
-│   │   ├── kill-port.js
-│   │   └── check-ports.js
+│   ├── core/                          # ⚠️ Contains files to move
 │   ├── database/
 │   │   ├── migrations/
 │   │   └── schema/
-│   ├── debug/
-│   │   ├── database/
-│   │   ├── matching/
-│   │   ├── postings/
-│   │   └── preferences/
-│   ├── deployment/
-│   └── validation/
-│       ├── lib/
-│       ├── validate-project-structure.cjs
-│       ├── validate-code-quality.cjs
-│       ├── validate-documentation.cjs
-│       ├── detect-mock-data.cjs
-│       └── audit-codebase.cjs
-├── server/
+│   ├── debug/                         # ✅ Finalized
+│   ├── deployment/                    # ✅ Finalized
+│   └── validation/                    # 🟡 Needs consolidation
+│       ├── lib/                       # 🔴 TODO
+│       ├── rules/                     # ✅ Implemented
+│       ├── validators/                # ✅ Implemented
+│       └── reports/
+├── server/                            # ✅ Finalized
 │   ├── errors/
 │   ├── middleware/
 │   ├── routes/
 │   ├── services/
 │   │   ├── chatService.js
-│   │   ├── FamilyMemberService.js  # MOVED from root services/
+│   │   ├── FamilyMemberService.js     # ✅ Properly located
 │   │   └── moderationNotification.js
 │   └── socket/
-├── src/
+├── src/                               # ✅ Finalized
 │   ├── assets/
 │   ├── components/
 │   ├── config/
@@ -606,26 +884,40 @@ SGSGitaAlumni/
 │   ├── contexts/
 │   ├── hooks/
 │   ├── lib/
-│   │   └── api/                   # NOT database/ with orphan README
 │   ├── pages/
 │   ├── schemas/
-│   ├── services/                  # Frontend services ONLY
+│   ├── services/
 │   ├── test/
 │   ├── types/
-│   └── utils/
-├── terraform/
-├── tests/
-│   ├── api/
-│   ├── database/
-│   ├── e2e/
-│   └── integration/
+│   ├── utils/
+│   └── __tests__/
+├── terraform/                         # ✅ Finalized
+├── tests/                             # ✅ Finalized
+├── utils/                             # ✅ Backend utilities
 ├── [allowed root files]
-└── .gitignore                     # Updated with generated files
+└── .gitignore                         # Update with generated files
 ```
+
+---
+
+## Appendix B: Alignment with Development Framework Roadmap
+
+> **Reference**: `docs/specs/technical/development-framework/ROADMAP.md`
+
+| Roadmap Item | Structure Impact | Status |
+|--------------|-----------------|--------|
+| Phase 0: Constraints | `rules/exceptions.cjs` needs LOCKED_FILES | 🔴 TODO |
+| Phase 1.2: constraint-check.cjs | `validators/constraint-check.cjs` | 🔴 TODO |
+| Phase 1.4: PreToolUse hook | `.claude/hooks/pre-tool-use-constraint.js` | 🔴 TODO |
+| Phase 1.5: project-constraints skill | `.claude/skills/project-constraints.md` | 🔴 TODO |
+| Phase 2.1: Create agents directory | `.claude/agents/` | 🔴 NEEDS RESEARCH |
+| Phase 2.2-2.4: Agent implementations | `.claude/agents/*.json` | 🔴 NEEDS RESEARCH |
+| Phase 3.1: Split coding-standards | `.claude/skills/coding-standards/` | 🔴 TODO |
 
 ---
 
 **This manifest is the SINGLE SOURCE OF TRUTH for project structure.**
 
-**Last Updated**: 2025-11-26  
+**Last Updated**: 2025-12-02  
+**Status**: 🟡 PARTIAL - Some structures finalized, others need work  
 **Next Review**: 2025-12-26

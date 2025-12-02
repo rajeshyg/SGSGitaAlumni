@@ -5,7 +5,7 @@
 version: 2.1
 status: active
 last_updated: 2025-11-26
-description: Technical standards and patterns for SGS Gita Alumni development
+description: Technical standards and patterns for Generic Platform development
 ---
 ```
 

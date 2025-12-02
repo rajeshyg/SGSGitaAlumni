@@ -221,6 +221,17 @@ Auto-triggers when working on:
 
 ## Part 5: Hook Implementation
 
+### Why PreToolUse (Not Just PostToolUse)
+
+**Critical Distinction**: PostToolUse can only report AFTER damage occurs. PreToolUse with exit code 2 PREVENTS the action entirely.
+
+| Hook | When It Runs | Exit Code 2 Effect | Use Case |
+|------|--------------|-------------------|----------|
+| **PreToolUse** | BEFORE tool executes | Blocks operation, feeds error to Claude | LOCKED files, STOP triggers |
+| **PostToolUse** | AFTER tool executes | N/A (damage already done) | Validation feedback, logging |
+
+This is the core principle behind deterministic constraint enforcement: constraints as **code that blocks**, not **guidelines Claude might follow**.
+
 ### PreToolUse Hook (TODO - Phase 1.4)
 
 **File**: `.claude/hooks/pre-tool-use-constraint.js`

@@ -7,11 +7,11 @@ applies_to: all
 
 # Architecture Specifications
 
-This directory contains the technical architecture specifications for the SGS Gita Alumni platform. These documents replace the previous monolithic `ARCHITECTURE.md` file with focused, maintainable specification files.
+This directory contains the technical architecture specifications for the Generic Platform. These documents replace the previous monolithic `ARCHITECTURE.md` file with focused, maintainable specification files.
 
 ## Overview
 
-The SGS Gita Alumni platform follows a cloud-ready architecture designed for rapid development and seamless AWS deployment. The system uses React 18 with TypeScript on the frontend, Express.js with MySQL on the backend, and AWS services for production infrastructure.
+The Generic Platform follows a cloud-ready architecture designed for rapid development and seamless AWS deployment. The system uses React 18 with TypeScript on the frontend, Express.js with MySQL on the backend, and AWS services for production infrastructure.
 
 ## Architecture Documents
 

@@ -26,6 +26,11 @@ This framework prevents the top AI-assisted development problems:
 | [constraints-enforcement.md](./constraints-enforcement.md) | LOCKED files, STOP triggers, security | Before modifying critical files |
 | [file-organization.md](./file-organization.md) | Where every file type belongs | Creating new files |
 
+### Observability (HOW WE VALIDATE)
+| Document | Purpose | Read When |
+|----------|---------|-----------|
+| [testing-observability.md](./testing-observability.md) | Continuous validation via session analysis | **After every framework change** |
+
 ### Agent & Context Management
 | Document | Purpose | Read When |
 |----------|---------|-----------|
@@ -91,14 +96,17 @@ Phase 5: Validate (quality gates)
 
 ## Current Status
 
-→ **Vision & detailed progress**: [vision-and-progress.md](./vision-and-progress.md)  
-→ **Component-level status**: [ROADMAP.md](./ROADMAP.md)
+→ **Observability approach**: [testing-observability.md](./testing-observability.md)  
+→ **Implementation status**: [ROADMAP.md](./ROADMAP.md)
 
 | Component | Status |
 |-----------|--------|
 | Documentation | ✅ Complete |
+| **Observability Layer** | 🔴 **IMPLEMENT FIRST** |
 | Phase 0 (Constraints) | 🔴 Not Implemented |
 | Scout-Plan-Build | 🟡 Documented |
 | Agent Engineering | 🟡 Documented |
 | Validation Scripts | ✅ Implemented |
 | Skills/Commands | ✅ Implemented |
+
+**Key insight**: Claude Code already captures the full transcript. We just need a Stop hook to analyze it after each session.

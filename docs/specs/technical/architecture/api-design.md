@@ -10,7 +10,7 @@ enforcement: required
 
 ## Overview
 
-This document establishes the API architecture patterns for the SGS Gita Alumni platform, including RESTful design principles, request/response standards, rate limiting, and validation.
+This document establishes the API architecture patterns for the Generic Platform, including RESTful design principles, request/response standards, rate limiting, and validation.
 
 ## RESTful API Design
 
@@ -26,17 +26,17 @@ This document establishes the API architecture patterns for the SGS Gita Alumni 
 
 | Method | Purpose | Example |
 |--------|---------|---------|
-| GET | Retrieve resources | `GET /api/alumni-members` |
-| POST | Create resource | `POST /api/postings` |
+| GET | Retrieve resources | `GET /api/members` |
+| POST | Create resource | `POST /api/content` |
 | PUT | Update resource | `PUT /api/users/123` |
-| DELETE | Remove resource | `DELETE /api/invitations/456` |
+| DELETE | Remove resource | `DELETE /api/access-requests/456` |
 
 ### Implementation Files
 
 - `/routes/auth.js` - Authentication endpoints
 - `/routes/users.js` - User management
-- `/routes/alumni-members.js` - Alumni member data
-- `/routes/postings.js` - Community postings
+- `/routes/members.js` - Member data
+- `/routes/content_management.js` - Community content
 - `/routes/invitations.js` - Invitation system
 - `/routes/family-members.js` - Family member management
 
@@ -299,24 +299,24 @@ app.use((req, res, next) => {
 | `/:id` | PUT | Update user |
 | `/profile` | GET | Get current user profile |
 
-### Alumni Members (`/api/alumni-members`)
+### Members (`/api/members`)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Search alumni |
-| `/:id` | GET | Get alumni member |
-| `/:id` | PUT | Update alumni |
+| `/` | GET | Search members |
+| `/:id` | GET | Get member |
+| `/:id` | PUT | Update member |
 | `/upload` | POST | Bulk upload |
 
-### Postings (`/api/postings`)
+### Content (`/api/content`)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | List postings |
-| `/` | POST | Create posting |
-| `/:id` | GET | Get posting |
-| `/:id` | PUT | Update posting |
-| `/:id` | DELETE | Delete posting |
+| `/` | GET | List content |
+| `/` | POST | Create content |
+| `/:id` | GET | Get content |
+| `/:id` | PUT | Update content |
+| `/:id` | DELETE | Delete content |
 
 ## Security Considerations
 

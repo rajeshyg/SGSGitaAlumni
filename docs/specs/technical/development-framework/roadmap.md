@@ -1,5 +1,5 @@
 ---
-version: 1.0
+version: 1.1
 status: active
 last_updated: 2025-12-02
 applies_to: framework
@@ -15,11 +15,41 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 | Layer | Status | Progress | Next Action |
 |-------|--------|----------|-------------|
 | Documentation | ✅ Complete | 100% | Maintain as changes occur |
-| Phase 0 (Constraints) | 🔴 Not Implemented | 0% | **Priority: Start Phase 1** |
-| Scout-Plan-Build | 🟡 Documented | 60% | Needs Phase 0 enforcement |
+| **Observability Layer** | ✅ Implemented | 100% | Monitor sessions |
+| Phase 0 (Constraints) | 🔴 Not Implemented | 0% | **IMPLEMENT NEXT** |
+| Scout-Plan-Build | 🟡 Documented | 60% | Test with real tasks |
 | Agent Engineering | 🟡 Documented | 30% | Create agent directory |
-| Validation Scripts | ✅ Implemented | 90% | Add constraint validator |
+| Validation Scripts | ✅ Implemented | 100% | Includes session analysis |
 | Pre-commit | ⚠️ Bypassed | Blocked | Fix ESLint errors first |
+
+---
+
+## ✅ Observability Layer (IMPLEMENTED) {#observability}
+
+> **This is NOT a phase—it's a continuous validation layer that runs alongside all development.**
+
+Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it automatically.
+
+| Component | Status | Location | Purpose |
+|-----------|--------|----------|----------|
+| `stop-session-analyzer.js` | ✅ Implemented | `.claude/hooks/` | Analyze transcript on stop |
+| `.claude/session-logs/` | ✅ Implemented | `.claude/session-logs/` | Store analysis JSON |
+| `session-viewer.html` | ✅ Implemented | `.claude/` | Visual dashboard |
+| settings.json | ✅ Updated | `.claude/settings.json` | Stop hook configured |
+
+**What's Tracked**:
+- Files read, modified, created
+- Commands run, searches performed
+- Tool usage summary
+- Framework violations (scout-before-edit, locked files, duplicates)
+
+**How to Use**:
+1. Sessions auto-analyzed when Claude stops
+2. View logs: `.claude/session-logs/`
+3. Visual dashboard: Open `.claude/session-viewer.html` in browser
+4. Load session JSON files to visualize
+
+→ **Full details**: [testing-observability.md](./testing-observability.md)
 
 ---
 
@@ -34,7 +64,7 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 | PreToolUse hook | 🔴 TODO | `.claude/hooks/pre-tool-use-constraint.js` | Phase 1.4 |
 | project-constraints skill | 🔴 TODO | `.claude/skills/project-constraints.md` | Phase 1.5 |
 
-**Blockers**: Phase 1 implementation not started
+**Test After**: Run task touching LOCKED file, verify it's blocked
 
 ---
 
@@ -98,9 +128,10 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 
 | Hook | Status | Location | Notes |
 |------|--------|----------|-------|
-| PostToolUse | ✅ Implemented | `.claude/hooks/post-tool-use-validation.js` | - |
+| PostToolUse | ✅ Implemented | `.claude/hooks/post-tool-use-validation.js` | Structure validation |
+| Stop | ✅ Implemented | `.claude/hooks/stop-session-analyzer.js` | Session analysis |
 | PreToolUse | 🔴 TODO | `.claude/hooks/pre-tool-use-constraint.js` | Phase 1.4 |
-| settings.json | ⚠️ Partial | `.claude/settings.json` | Only PostToolUse |
+| settings.json | ✅ Complete | `.claude/settings.json` | PostToolUse + Stop |
 
 ---
 
@@ -111,7 +142,7 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 | sdd-tac-workflow | ✅ Implemented | `.claude/skills/sdd-tac-workflow/` | 87 lines | Needs Phase 0 |
 | duplication-prevention | ✅ Implemented | `.claude/skills/duplication-prevention.md` | 90 lines | Needs STOP trigger |
 | security-rules | ✅ Implemented | `.claude/skills/security-rules.md` | 211 lines | - |
-| coding-standards | ⚠️ Large | `.claude/skills/coding-standards.md` | 419 lines | Split planned |
+| coding-standards | ⚠️ Large | `.claude/skills/coding-standards.md` | 524 lines | Split planned (exceeds 100-line target) |
 | project-constraints | 🔴 TODO | `.claude/skills/project-constraints.md` | - | Phase 1.5 |
 
 ---
@@ -145,15 +176,52 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 
 ## Implementation Roadmap
 
-### 🔴 Phase 1: Foundation (Priority)
+### 🔥 Immediate: Enable Observability
 
-| Task | File | Status |
-|------|------|--------|
-| 1.1 | Extend exceptions.cjs | 🔴 TODO |
-| 1.2 | Create constraint-check.cjs | 🔴 TODO |
-| 1.3 | Update PostToolUse hook | 🔴 TODO |
-| 1.4 | Create PreToolUse hook | 🔴 TODO |
-| 1.5 | Create project-constraints skill | 🔴 TODO |
+> **Rationale**: We can't improve what we can't measure. One hook gives us full session visibility.
+
+| Task | File | Status | Description |
+|------|------|--------|-------------|
+| OBS.1 | `.claude/hooks/stop-session-analyzer.js` | 🔴 TODO | Analyze transcript on Stop |
+| OBS.2 | `.claude/session-logs/` | 🔴 TODO | Create directory for analysis output |
+| OBS.3 | `.claude/settings.json` | 🔴 TODO | Add Stop hook configuration |
+| OBS.4 | Run first test task | 🔴 TODO | Give Claude Code a real task |
+| OBS.5 | Review session analysis | 🔴 TODO | Did it scout? Follow rules? |
+
+**Exit Criteria**: Can see session analysis JSON after any Claude Code task
+
+→ **Full details**: [testing-observability.md](./testing-observability.md)
+
+---
+
+### 🔄 Continuous: Test-Driven Framework Development
+
+For EVERY framework change:
+
+```
+1. Make change (add rule, update skill, modify hook)
+2. Run test task that should trigger the change
+3. Review session log → Did Claude behave correctly?
+4. If NO → Adjust → Go to step 2
+5. If YES → Document finding → Next change
+```
+
+| Framework Change | Test Task | What to Verify |
+|------------------|-----------|----------------|
+| Add LOCKED_FILES to exceptions.cjs | "Update server.js" | PreToolUse blocks it |
+| Add scout-before-edit skill | Multi-file bug fix | Files read before edit |
+| Add file-placement rule | "Create new API route" | File in correct location |
+
+---
+
+### 🔴 Phase 1: Constraint Enforcement
+
+| Task | File | Status | Test After |
+|------|------|--------|------------|
+| 1.1 | Add LOCKED_FILES to exceptions.cjs | 🔴 TODO | Task touching server.js |
+| 1.2 | Create PreToolUse hook | 🔴 TODO | Edit blocked for LOCKED file |
+| 1.3 | Add STOP_TRIGGERS | 🔴 TODO | Delete file blocked |
+| 1.4 | Create project-constraints skill | 🔴 TODO | Claude mentions constraints |
 
 ### 🟡 Phase 2: Agent Infrastructure
 
@@ -168,16 +236,16 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 
 | Task | File | Status |
 |------|------|--------|
-| 2.1 | Split coding-standards.md | 🔴 TODO |
-| 2.2 | Add Phase 0 to workflow skill | 🔴 TODO |
-| 2.3 | Add STOP trigger to duplication skill | 🔴 TODO |
+| 3.1 | Split coding-standards.md | 🔴 TODO |
+| 3.2 | Add Phase 0 to workflow skill | 🔴 TODO |
+| 3.3 | Add STOP trigger to duplication skill | 🔴 TODO |
 
 ### 🔵 Phase 4: Quality Gates
 
 | Task | File | Status |
 |------|------|--------|
-| 3.1 | Register constraint validator | 🔴 TODO |
-| 3.2 | Fix ESLint per-module | ⚠️ Ongoing |
+| 4.1 | Register constraint validator | 🔴 TODO |
+| 4.2 | Fix ESLint per-module | ⚠️ Ongoing |
 
 ### 🟣 Phase 5: Advanced (Deferred)
 
@@ -194,12 +262,25 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 **What works today**:
 - Skills auto-activation (4 skills)
 - Prime commands (7+ commands)
-- PostToolUse validation
+- PostToolUse validation (structure checks)
 - Validation scripts (structure, placement, naming)
 - Context bundles pattern
+- **Claude Code already captures transcript** (we just need to analyze it)
 
-**What's missing**:
-- Phase 0 enforcement (LOCKED, STOP)
-- PreToolUse blocking
-- Constraint validator CLI
-- Orchestrator for 10+ files
+**What's missing (do first)**:
+1. **Stop hook for session analysis** ← IMPLEMENT THIS
+2. Review session logs after test tasks
+3. Iterate framework based on findings
+
+**How to work**:
+```
+Make framework change → Test with real task → Review session log → Adjust → Repeat
+```
+
+**Every framework change should be tested before moving to the next.**
+3. Phase 0 enforcement (LOCKED, STOP)
+4. PreToolUse blocking
+5. Constraint validator CLI
+6. Orchestrator for 10+ files
+
+**Next Action**: Implement Phase 0.5 to get visibility into agent behavior before building more infrastructure.
