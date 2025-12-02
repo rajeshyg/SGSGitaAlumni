@@ -1,5 +1,5 @@
 ---
-version: 1.1
+version: 1.2
 status: active
 last_updated: 2025-12-02
 applies_to: framework
@@ -10,14 +10,14 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 
 ---
 
-## Current Status: 🟡 Partially Implemented
+## Current Status: 🟢 Phase 0 Complete
 
 | Layer | Status | Progress | Next Action |
 |-------|--------|----------|-------------|
 | Documentation | ✅ Complete | 100% | Maintain as changes occur |
 | **Observability Layer** | ✅ Implemented | 100% | Monitor sessions |
-| Phase 0 (Constraints) | 🔴 Not Implemented | 0% | **IMPLEMENT NEXT** |
-| Scout-Plan-Build | 🟡 Documented | 60% | Test with real tasks |
+| **Phase 0 (Constraints)** | ✅ Implemented | 100% | Test with real tasks |
+| Scout-Plan-Build | 🟡 Documented | 80% | Test with real tasks |
 | Agent Engineering | 🟡 Documented | 30% | Create agent directory |
 | Validation Scripts | ✅ Implemented | 100% | Includes session analysis |
 | Pre-commit | ⚠️ Bypassed | Blocked | Fix ESLint errors first |
@@ -53,18 +53,19 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 
 ---
 
-## Phase 0: Constraints {#phase-0}
+## ✅ Phase 0: Constraints (IMPLEMENTED) {#phase-0}
 
 | Component | Status | Location | Notes |
 |-----------|--------|----------|-------|
-| `LOCKED_FILES` export | 🔴 TODO | `scripts/validation/rules/exceptions.cjs` | Phase 1.1 |
-| `STOP_TRIGGERS` export | 🔴 TODO | `scripts/validation/rules/exceptions.cjs` | Phase 1.1 |
-| `PORT_CONSTRAINTS` export | 🔴 TODO | `scripts/validation/rules/exceptions.cjs` | Phase 1.1 |
-| `constraint-check.cjs` | 🔴 TODO | `scripts/validation/validators/` | Phase 1.2 |
-| PreToolUse hook | 🔴 TODO | `.claude/hooks/pre-tool-use-constraint.js` | Phase 1.4 |
-| project-constraints skill | 🔴 TODO | `.claude/skills/project-constraints.md` | Phase 1.5 |
+| `LOCKED_FILES` export | ✅ Implemented | `scripts/validation/rules/exceptions.cjs` | 20+ locked file patterns |
+| `STOP_TRIGGERS` export | ✅ Implemented | `scripts/validation/rules/exceptions.cjs` | 10 dangerous operation patterns |
+| `PORT_CONSTRAINTS` export | ✅ Implemented | `scripts/validation/rules/exceptions.cjs` | Reserved, ranges, forbidden |
+| `constraint-check.cjs` | ✅ Implemented | `scripts/validation/validators/` | CLI validator |
+| PreToolUse hook | ✅ Implemented | `.claude/hooks/pre-tool-use-constraint.js` | Blocks locked file edits |
+| project-constraints skill | ✅ Implemented | `.claude/skills/project-constraints.md` | Documents all constraints |
+| sdd-tac-workflow updated | ✅ Updated | `.claude/skills/sdd-tac-workflow/` | Includes Phase 0 check |
 
-**Test After**: Run task touching LOCKED file, verify it's blocked
+**Test**: Run task touching LOCKED file, verify it's blocked
 
 ---
 
@@ -73,7 +74,7 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 | Component | Status | Location | Notes |
 |-----------|--------|----------|-------|
 | Workflow documentation | ✅ Complete | `methodology.md` | - |
-| sdd-tac-workflow skill | ✅ Implemented | `.claude/skills/sdd-tac-workflow/` | Needs Phase 0 |
+| sdd-tac-workflow skill | ✅ Implemented | `.claude/skills/sdd-tac-workflow/` | Includes Phase 0 |
 | Scout phase guidance | ✅ Documented | `methodology.md` | - |
 | Plan phase guidance | ✅ Documented | `methodology.md` | - |
 | Build phase guidance | ✅ Documented | `methodology.md` | - |
@@ -214,14 +215,17 @@ For EVERY framework change:
 
 ---
 
-### 🔴 Phase 1: Constraint Enforcement
+### ✅ Phase 1: Constraint Enforcement (COMPLETE)
 
 | Task | File | Status | Test After |
 |------|------|--------|------------|
-| 1.1 | Add LOCKED_FILES to exceptions.cjs | 🔴 TODO | Task touching server.js |
-| 1.2 | Create PreToolUse hook | 🔴 TODO | Edit blocked for LOCKED file |
-| 1.3 | Add STOP_TRIGGERS | 🔴 TODO | Delete file blocked |
-| 1.4 | Create project-constraints skill | 🔴 TODO | Claude mentions constraints |
+| 1.1 | Add LOCKED_FILES to exceptions.cjs | ✅ Done | Task touching server.js |
+| 1.2 | Create PreToolUse hook | ✅ Done | Edit blocked for LOCKED file |
+| 1.3 | Add STOP_TRIGGERS | ✅ Done | Dangerous commands blocked |
+| 1.4 | Create project-constraints skill | ✅ Done | Claude mentions constraints |
+| 1.5 | Add PORT_CONSTRAINTS | ✅ Done | Port conflicts detected |
+| 1.6 | Create constraint-check.cjs validator | ✅ Done | CLI validation works |
+| 1.7 | Update sdd-tac-workflow with Phase 0 | ✅ Done | Workflow includes constraints |
 
 ### 🟡 Phase 2: Agent Infrastructure
 
@@ -237,7 +241,7 @@ For EVERY framework change:
 | Task | File | Status |
 |------|------|--------|
 | 3.1 | Split coding-standards.md | 🔴 TODO |
-| 3.2 | Add Phase 0 to workflow skill | 🔴 TODO |
+| 3.2 | Add Phase 0 to workflow skill | ✅ Done |
 | 3.3 | Add STOP trigger to duplication skill | 🔴 TODO |
 
 ### 🔵 Phase 4: Quality Gates
