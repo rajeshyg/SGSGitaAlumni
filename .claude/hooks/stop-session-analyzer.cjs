@@ -180,6 +180,17 @@ function processTranscriptEntry(entry, analysis) {
   }
   
   // Also check for assistant messages that contain tool uses (nested format)
+  // Claude Code transcript format: { type: "assistant", message: { role: "assistant", content: [...] } }
+  if (entry.message?.role === 'assistant' && entry.message?.content) {
+    const content = Array.isArray(entry.message.content) ? entry.message.content : [entry.message.content];
+    for (const block of content) {
+      if (block.type === 'tool_use') {
+        processTranscriptEntry(block, analysis);
+      }
+    }
+  }
+
+  // Legacy format support: direct role/content at entry level
   if (entry.role === 'assistant' && entry.content) {
     const content = Array.isArray(entry.content) ? entry.content : [entry.content];
     for (const block of content) {

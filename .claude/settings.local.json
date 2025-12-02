@@ -50,7 +50,9 @@
       "Bash(git fetch:*)",
       "Bash(git pull:*)",
       "Bash(npm run validate-structure:*)",
-      "Bash(cmd /c \"rmdir /s /q playwright-report\")"
+      "Bash(cmd /c \"rmdir /s /q playwright-report\")",
+      "Bash(echo:*)",
+      "Bash(del .claudetemp-test-input.json)"
     ],
     "deny": [],
     "ask": []
