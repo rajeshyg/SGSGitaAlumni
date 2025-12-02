@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session Analyzer Dashboard</title>
+  <style>
+    :root {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --bg-card: #0f3460;
+      --accent: #e94560;
+      --accent-light: #ff6b6b;
+      --text-primary: #eee;
+      --text-secondary: #aaa;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --error: #ef4444;
+      --border: #2d3748;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    h1 {
+      font-size: 1.75rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .logo {
+      font-size: 2rem;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      background: var(--accent-light);
+      transform: translateY(-1px);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .file-input-wrapper {
+      position: relative;
+    }
+    
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    
+    .dashboard {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 20px;
+      min-height: calc(100vh - 120px);
+    }
+    
+    .sidebar {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 16px;
+      overflow-y: auto;
+      max-height: calc(100vh - 140px);
+    }
+    
+    .sidebar h2 {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .session-list {
+      list-style: none;
+    }
+    
+    .session-item {
+      padding: 12px;
+      background: var(--bg-card);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+    
+    .session-item:hover {
+      transform: translateX(4px);
+      border-left-color: var(--accent);
+    }
+    
+    .session-item.active {
+      border-left-color: var(--accent);
+      background: var(--accent);
+    }
+    
+    .session-item.has-violations {
+      border-left-color: var(--warning);
+    }
+    
+    .session-item.has-errors {
+      border-left-color: var(--error);
+    }
+    
+    .session-date {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    
+    .session-stats {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+      font-size: 0.75rem;
+    }
+    
+    .session-stats span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .main-content {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 24px;
+      overflow-y: auto;
+      max-height: calc(100vh - 140px);
+    }
+    
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+    
+    .empty-state .icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .stat-card {
+      background: var(--bg-card);
+      padding: 16px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+    
+    .section {
+      margin-bottom: 24px;
+    }
+    
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .section h3 {
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .badge {
+      background: var(--bg-card);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    
+    .file-list, .command-list, .tool-list {
+      background: var(--bg-primary);
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .file-item, .command-item, .tool-item {
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.85rem;
+      word-break: break-all;
+    }
+    
+    .file-item.created {
+      border-left: 3px solid var(--success);
+    }
+    
+    .file-item.modified {
+      border-left: 3px solid var(--warning);
+    }
+    
+    .file-item.read {
+      border-left: 3px solid var(--accent);
+    }
+    
+    .command-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .command-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    
+    .violations-section {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--error);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .violations-section.warning {
+      background: rgba(251, 191, 36, 0.1);
+      border-color: var(--warning);
+    }
+    
+    .violation-item {
+      padding: 12px;
+      background: var(--bg-card);
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    
+    .violation-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+    
+    .violation-message {
+      margin-top: 8px;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    
+    .violation-recommendation {
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(74, 222, 128, 0.1);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: var(--success);
+    }
+    
+    .compliance-status {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+    
+    .check-item.passed {
+      border-left: 3px solid var(--success);
+    }
+    
+    .check-item.failed {
+      border-left: 3px solid var(--error);
+    }
+    
+    .tool-chart {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .tool-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      padding: 8px 12px;
+      border-radius: 6px;
+      flex: 1;
+      min-width: 150px;
+    }
+    
+    .tool-bar-fill {
+      height: 8px;
+      background: var(--accent);
+      border-radius: 4px;
+      flex: 1;
+    }
+    
+    .tool-bar-label {
+      font-size: 0.8rem;
+      min-width: 80px;
+    }
+    
+    .tool-bar-count {
+      font-weight: 600;
+      color: var(--accent);
+      min-width: 30px;
+      text-align: right;
+    }
+    
+    .json-view {
+      background: var(--bg-primary);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.8rem;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    
+    .json-view pre {
+      margin: 0;
+      white-space: pre-wrap;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    
+    .tab {
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border-radius: 6px 6px 0 0;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    
+    .tab:hover {
+      background: var(--accent);
+    }
+    
+    .tab.active {
+      background: var(--accent);
+    }
+    
+    @media (max-width: 900px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+      
+      .sidebar {
+        max-height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1><span class="logo">📊</span> Session Analyzer Dashboard</h1>
+      <div class="controls">
+        <div class="file-input-wrapper">
+          <button>📂 Load Session Folder</button>
+          <input type="file" id="folderInput" webkitdirectory multiple accept=".json">
+        </div>
+        <div class="file-input-wrapper">
+          <button>📄 Load JSON File</button>
+          <input type="file" id="fileInput" accept=".json" multiple>
+        </div>
+      </div>
+    </header>
+    
+    <div class="dashboard">
+      <aside class="sidebar">
+        <h2>📋 Sessions</h2>
+        <ul class="session-list" id="sessionList">
+          <li class="empty-state" style="padding: 20px;">
+            <span>No sessions loaded</span>
+          </li>
+        </ul>
+      </aside>
+      
+      <main class="main-content" id="mainContent">
+        <div class="empty-state">
+          <div class="icon">🔍</div>
+          <h2>No Session Selected</h2>
+          <p style="margin-top: 8px; max-width: 400px;">
+            Load session logs from <code>.claude/session-logs/</code> to view analysis.
+            Use the buttons above to select files or a folder.
+          </p>
+        </div>
+      </main>
+    </div>
+  </div>
+  
+  <script>
+    // Session data store
+    let sessions = [];
+    let currentSession = null;
+    
+    // DOM elements
+    const sessionList = document.getElementById('sessionList');
+    const mainContent = document.getElementById('mainContent');
+    const folderInput = document.getElementById('folderInput');
+    const fileInput = document.getElementById('fileInput');
+    
+    // Event listeners
+    folderInput.addEventListener('change', handleFolderSelect);
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    async function handleFolderSelect(event) {
+      const files = Array.from(event.target.files).filter(f => f.name.endsWith('.json') && f.name !== 'README.md');
+      await loadFiles(files);
+    }
+    
+    async function handleFileSelect(event) {
+      const files = Array.from(event.target.files);
+      await loadFiles(files);
+    }
+    
+    async function loadFiles(files) {
+      sessions = [];
+      
+      for (const file of files) {
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          if (data.session_id || data.timestamp) {
+            data._filename = file.name;
+            sessions.push(data);
+          }
+        } catch (e) {
+          console.warn(`Failed to parse ${file.name}:`, e);
+        }
+      }
+      
+      // Sort by timestamp descending
+      sessions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      
+      renderSessionList();
+      
+      if (sessions.length > 0) {
+        selectSession(0);
+      }
+    }
+    
+    function renderSessionList() {
+      if (sessions.length === 0) {
+        sessionList.innerHTML = '<li class="empty-state" style="padding: 20px;"><span>No sessions loaded</span></li>';
+        return;
+      }
+      
+      sessionList.innerHTML = sessions.map((s, idx) => {
+        const date = new Date(s.timestamp);
+        const hasViolations = s.framework_violations?.length > 0;
+        const hasErrors = s.framework_violations?.some(v => v.severity === 'error');
+        const filesModified = (s.files_modified?.length || 0) + (s.files_created?.length || 0);
+        
+        let className = 'session-item';
+        if (hasErrors) className += ' has-errors';
+        else if (hasViolations) className += ' has-violations';
+        
+        return `
+          <li class="${className}" onclick="selectSession(${idx})">
+            <div class="session-date">${date.toLocaleDateString()} ${date.toLocaleTimeString()}</div>
+            <div class="session-stats">
+              <span>📁 ${s.files_read?.length || 0} read</span>
+              <span>✏️ ${filesModified} modified</span>
+              <span>🔧 ${s.stats?.total_tool_calls || 0} tools</span>
+            </div>
+            ${hasViolations ? '<div style="margin-top: 4px; font-size: 0.7rem; color: var(--warning);">⚠️ ' + s.framework_violations.length + ' violation(s)</div>' : ''}
+          </li>
+        `;
+      }).join('');
+    }
+    
+    function selectSession(idx) {
+      currentSession = sessions[idx];
+      
+      // Update active state in list
+      document.querySelectorAll('.session-item').forEach((el, i) => {
+        el.classList.toggle('active', i === idx);
+      });
+      
+      renderSessionDetails(currentSession);
+    }
+    
+    function renderSessionDetails(session) {
+      const s = session;
+      const filesModified = s.files_modified?.length || 0;
+      const filesCreated = s.files_created?.length || 0;
+      const filesRead = s.files_read?.length || 0;
+      const commandsRun = s.commands_run?.length || 0;
+      const searchCount = s.searches_performed?.length || 0;
+      const toolCount = s.stats?.total_tool_calls || 0;
+      const violations = s.framework_violations || [];
+      const checks = s.framework_checks || {};
+      
+      let html = `
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-value">${filesRead}</div>
+            <div class="stat-label">Files Read</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${filesModified}</div>
+            <div class="stat-label">Files Modified</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${filesCreated}</div>
+            <div class="stat-label">Files Created</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${commandsRun}</div>
+            <div class="stat-label">Commands</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${searchCount}</div>
+            <div class="stat-label">Searches</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${toolCount}</div>
+            <div class="stat-label">Total Tools</div>
+          </div>
+        </div>
+      `;
+      
+      // Violations section
+      if (violations.length > 0) {
+        const hasError = violations.some(v => v.severity === 'error');
+        html += `
+          <div class="violations-section ${hasError ? '' : 'warning'}">
+            <h3>${hasError ? '🔴' : '🟡'} Framework Violations (${violations.length})</h3>
+            ${violations.map(v => `
+              <div class="violation-item">
+                <div class="violation-header">
+                  ${v.severity === 'error' ? '❌' : '⚠️'} 
+                  <span style="text-transform: uppercase; font-size: 0.8rem;">${v.rule}</span>
+                </div>
+                <div class="violation-message">${v.message}</div>
+                ${v.recommendation ? `<div class="violation-recommendation">💡 ${v.recommendation}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="section">
+            <h3>✅ Framework Compliance</h3>
+            <div class="compliance-status" style="margin-top: 12px;">
+              ${Object.entries(checks).map(([key, check]) => `
+                <div class="check-item ${check.passed ? 'passed' : 'failed'}">
+                  ${check.passed ? '✓' : '✗'} ${key.replace(/_/g, ' ')}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      // Tool usage section
+      if (s.tool_summary && Object.keys(s.tool_summary).length > 0) {
+        const maxCount = Math.max(...Object.values(s.tool_summary));
+        html += `
+          <div class="section">
+            <div class="section-header">
+              <h3>🔧 Tool Usage</h3>
+              <span class="badge">${Object.keys(s.tool_summary).length} types</span>
+            </div>
+            <div class="tool-chart">
+              ${Object.entries(s.tool_summary)
+                .sort((a, b) => b[1] - a[1])
+                .map(([tool, count]) => `
+                  <div class="tool-bar">
+                    <span class="tool-bar-label">${tool}</span>
+                    <div class="tool-bar-fill" style="width: ${(count / maxCount) * 100}%"></div>
+                    <span class="tool-bar-count">${count}</span>
+                  </div>
+                `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      // Files section
+      if (filesRead > 0 || filesModified > 0 || filesCreated > 0) {
+        html += `
+          <div class="section">
+            <div class="section-header">
+              <h3>📁 Files</h3>
+              <span class="badge">${filesRead + filesModified + filesCreated} total</span>
+            </div>
+            <div class="file-list">
+        `;
+        
+        if (s.files_created?.length) {
+          html += s.files_created.map(f => `<div class="file-item created">✨ ${f}</div>`).join('');
+        }
+        if (s.files_modified?.length) {
+          html += s.files_modified.map(f => `<div class="file-item modified">✏️ ${f}</div>`).join('');
+        }
+        if (s.files_read?.length) {
+          html += s.files_read.map(f => `<div class="file-item read">📖 ${f}</div>`).join('');
+        }
+        
+        html += '</div></div>';
+      }
+      
+      // Commands section
+      if (commandsRun > 0) {
+        html += `
+          <div class="section">
+            <div class="section-header">
+              <h3>💻 Commands</h3>
+              <span class="badge">${commandsRun}</span>
+            </div>
+            <div class="command-list">
+              ${s.commands_run.map(c => `
+                <div class="command-item">
+                  <span class="command-text">${typeof c === 'string' ? c : c.command}</span>
+                  ${c.background ? '<span class="badge">bg</span>' : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      // Searches section
+      if (searchCount > 0) {
+        html += `
+          <div class="section">
+            <div class="section-header">
+              <h3>🔍 Searches</h3>
+              <span class="badge">${searchCount}</span>
+            </div>
+            <div class="file-list">
+              ${s.searches_performed.map(search => `
+                <div class="file-item">
+                  <span style="color: var(--text-secondary)">[${search.type}]</span> ${search.query}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      // Raw JSON section
+      html += `
+        <div class="section">
+          <div class="section-header">
+            <h3>📄 Raw JSON</h3>
+            <button onclick="copyJSON()" style="padding: 6px 12px; font-size: 0.8rem;">📋 Copy</button>
+          </div>
+          <div class="json-view">
+            <pre id="jsonContent">${JSON.stringify(session, null, 2)}</pre>
+          </div>
+        </div>
+      `;
+      
+      mainContent.innerHTML = html;
+    }
+    
+    function copyJSON() {
+      const json = document.getElementById('jsonContent').textContent;
+      navigator.clipboard.writeText(json).then(() => {
+        alert('JSON copied to clipboard!');
+      });
+    }
+    
+    // Drag and drop support
+    document.body.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    
+    document.body.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const items = e.dataTransfer.items;
+      const files = [];
+      
+      for (const item of items) {
+        if (item.kind === 'file') {
+          const file = item.getAsFile();
+          if (file.name.endsWith('.json')) {
+            files.push(file);
+          }
+        }
+      }
+      
+      if (files.length > 0) {
+        await loadFiles(files);
+      }
+    });
+  </script>
+</body>
+</html>
