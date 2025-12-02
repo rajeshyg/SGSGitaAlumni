@@ -212,7 +212,7 @@ node scripts/validation/validate-structure.cjs
 
 ### Exceptions Cleaned Up
 - Removed `file-organization.md` exception (should be in subfolder)
-- Removed `PROJECT_STRUCTURE_MANIFEST.md` exception (should be in subfolder)
+- Removed `project-structure-master.md` exception (should be in subfolder)
 - Removed `eslint-output.json` / `lint-violations.json` (gitignored, don't need exceptions)
 
 ---
@@ -240,13 +240,13 @@ Remove-Item src/pages/*.bak
 ### Priority 2: Consolidate File Organization Docs
 Three overlapping files exist:
 - `docs/specs/technical/file-organization.md` (409 lines) - WHERE files go
-- `docs/specs/technical/PROJECT_STRUCTURE_MANIFEST.md` (633 lines) - Full manifest
+- `docs/specs/technical/architecture/project-structure-master.md` (633 lines) - Full manifest
 - `docs/specs/technical/coding-standards/code-size-standards.md` (283 lines) - SIZE limits
 
 **Recommendation**: 
 - Keep `coding-standards/code-size-standards.md` (about file SIZE)
 - Move root `file-organization.md` to `architecture/` (about WHERE files go)
-- Archive or merge `PROJECT_STRUCTURE_MANIFEST.md`
+- Archive or merge `project-structure-master.md`
 
 ### Priority 3: Rename Debug Scripts (86 warnings)
 Scripts in `scripts/debug/` named `check-*` should be `debug-*`:
