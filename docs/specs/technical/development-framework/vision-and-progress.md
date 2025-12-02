@@ -6,9 +6,12 @@ applies_to: framework
 description: Track implementation progress, next steps, and strategic direction
 ---
 
-# SDD/TAC Framework: Vision & Progress
+# SDD/TAC Framework: Vision & Strategic Progress
 
-> **Purpose**: Detailed progress tracking and roadmap. HIGH-LEVEL STATUS only lives in `README.md`
+> **Purpose**: Detailed progress tracking and strategic roadmap.
+> 
+> **See also**: [ROADMAP.md](./ROADMAP.md) for component-level task breakdown  
+> **High-level nav**: [README.md](./README.md)
 
 ---
 

@@ -491,13 +491,21 @@ Every spec folder (`docs/specs/functional/[module]/` or `docs/specs/technical/[c
 | File | Purpose | Validation |
 |------|---------|-----------|
 | `README.md` | High-level navigation, doc index | Required, no frontmatter needed |
-| `vision-and-progress.md` (optional) | Detailed progress tracking, roadmap | If present, requires YAML frontmatter |
+| `ROADMAP.md` (optional) | Detailed progress tracking, roadmap | If present, requires YAML frontmatter |
 | `*.md` spec files | Individual specifications | All require YAML frontmatter |
+
+**Use templates** when creating new spec folders:
+- `README.md` → Copy from [`docs/specs/templates/README-template.md`](../../templates/README-template.md)
+- `ROADMAP.md` → Copy from [`docs/specs/templates/ROADMAP-template.md`](../../templates/ROADMAP-template.md)
 
 **Pattern Example**:
 ```
 docs/specs/technical/database/
 ├── README.md              # Navigation hub (no frontmatter)
+├── ROADMAP.md             # Optional: detailed progress (with frontmatter)
+├── schema.md              # Spec file (with frontmatter)
+└── migrations.md          # Spec file (with frontmatter)
+```
 ├── vision-and-progress.md # Optional: detailed progress (with frontmatter)
 ├── schema.md              # Spec file (with frontmatter)
 └── migrations.md          # Spec file (with frontmatter)
