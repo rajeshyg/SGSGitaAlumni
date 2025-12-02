@@ -27,9 +27,19 @@ Generic schema design patterns and conventions for database architecture, includ
 [PARENT_TABLE] (1) ----< (N) [CHILD_TABLE]
 ```
 
-**Example**: Users to their items
+**Example**: Authors to their posts
 ```
-app_users (1) ----< (N) [ENTITY_NAME]
+authors (1) ----< (N) posts
+```
+
+**Implementation**:
+```sql
+CREATE TABLE authors (id INT PRIMARY KEY, ...);
+CREATE TABLE posts (
+  id CHAR(36) PRIMARY KEY,
+  author_id INT NOT NULL,
+  FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE
+);
 ```
 
 ### Many-to-Many Pattern (with Junction Table)
@@ -38,9 +48,22 @@ app_users (1) ----< (N) [ENTITY_NAME]
 [TABLE_A] (N) >----< (N) [TABLE_B] (via [JUNCTION_TABLE])
 ```
 
-**Example**: Items with multiple tags
+**Example**: Posts with multiple categories
 ```
-[ENTITY_NAME] (N) >----< (N) [TAG_TABLE] (via [ENTITY_TAG_JOIN])
+posts (N) >----< (N) categories (via post_categories)
+```
+
+**Implementation**:
+```sql
+CREATE TABLE posts (...);
+CREATE TABLE categories (...);
+CREATE TABLE post_categories (
+  post_id CHAR(36) NOT NULL,
+  category_id CHAR(36) NOT NULL,
+  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  UNIQUE KEY (post_id, category_id)
+);
 ```
 
 ### One-to-One Pattern
@@ -49,9 +72,18 @@ app_users (1) ----< (N) [ENTITY_NAME]
 [TABLE_A] (1) ---- (1) [TABLE_B]
 ```
 
-**Example**: User preferences
+**Example**: User preferences (one per user)
 ```
-app_users (1) ---- (1) [USER_PREFERENCES]
+users (1) ---- (1) user_preferences
+```
+
+**Implementation**:
+```sql
+CREATE TABLE users (...);
+CREATE TABLE user_preferences (
+  user_id INT UNIQUE NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 ```
 
 ## Primary Key Strategy
@@ -104,49 +136,88 @@ updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
 ## ENUM Types
 
-### Status Pattern (Generic)
-```sql
--- For user/entity status
-ENUM('pending', 'active', 'suspended', 'deactivated')
+### Status Pattern
 
--- For content/workflow status
-ENUM('draft', 'pending_review', 'approved', 'active', 'rejected', 'expired', 'archived')
+**Account/User Status**:
+```sql
+ENUM('pending', 'active', 'suspended', 'deactivated')
+-- pending: Initial state, awaiting verification
+-- active: Fully functional account
+-- suspended: Temporarily blocked
+-- deactivated: Permanently disabled by user
+```
+
+**Content/Workflow Status**:
+```sql
+ENUM('draft', 'pending_review', 'approved', 'active', 'rejected', 'archived')
+-- draft: Created but not submitted
+-- pending_review: Awaiting moderation
+-- approved: Passed review
+-- active: Published/visible
+-- rejected: Failed moderation
+-- archived: Soft-deleted
 ```
 
 ### Type/Classification Pattern
-```sql
--- For entity types
-ENUM('[TYPE_1]', '[TYPE_2]', '[TYPE_3]')
 
--- Example: Conversation types
-ENUM('DIRECT', 'GROUP')
+**For Discriminating Entity Types**:
+```sql
+-- Store type in enum to enable polymorphic queries
+content_type ENUM('article', 'question', 'guide', 'announcement')
+
+-- Keep types generic; specific names vary by application
+[TYPE_FIELD] ENUM('[TYPE_1]', '[TYPE_2]', '[TYPE_3]')
 ```
 
 ### Role/Permission Pattern
+
+**Access Levels**:
 ```sql
--- For user roles or permissions
-ENUM('OWNER', 'ADMIN', 'MEMBER')
+ENUM('full', 'limited', 'view_only', 'read_only')
+-- full: All permissions
+-- limited: Restricted permissions
+-- view_only: Read access only
+-- read_only: Alias for view_only
+```
+
+**Role-Based Access**:
+```sql
+ENUM('owner', 'admin', 'moderator', 'member', 'guest')
 ```
 
 ## JSON Column Patterns
 
+**Array of Foreign Keys**:
 ```sql
--- Array of IDs
-secondary_domain_ids JSON DEFAULT '[]',
-areas_of_interest_ids JSON DEFAULT '[]',
-
--- Metadata object
-media_metadata JSON DEFAULT NULL
+-- Store array of related IDs for flexibility
+related_item_ids JSON DEFAULT '[]',
+-- Example: [36-char-uuid-1, 36-char-uuid-2, ...]
 ```
 
-## Reference Implementation Patterns
+**Flexible Metadata Object**:
+```sql
+-- Store untyped key-value pairs
+metadata JSON DEFAULT NULL,
+-- Example: {"color": "blue", "priority": "high", "tags": ["urgent", "customer"]}
+```
 
-- `server/config/database.js` - Database connection and utilities
-- `routes/[feature-name].js` - Feature-specific table operations
-- `server/services/[FeatureName]Service.js` - Business logic and database interactions
+**Settings/Configuration**:
+```sql
+-- Flexible settings without schema changes
+notification_settings JSON DEFAULT '{}',
+-- Example: {"email_frequency": "daily", "sms_enabled": false}
+```
+
+## Implementation Patterns
+
+**Code locations for patterns**:
+- **Connection layer**: `server/config/database.js` or `db/connection.js`
+- **Query operations**: `routes/[feature].js` (HTTP layer) or queries in `server/services/`
+- **Business logic**: `server/services/[Feature]Service.js` or `business/[feature].js`
 
 ## Feature-Specific Schemas
 
-For detailed table schemas of specific features:
+For detailed, project-specific table schemas:
 - See `docs/specs/functional/[feature-name]/db-schema.md`
-- Use template: `docs/specs/functional/_TEMPLATE_db-schema.md`
+- This technical document provides patterns only
+- Functional specs contain concrete table definitions for your project
