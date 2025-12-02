@@ -14,12 +14,12 @@ Database schema for user accounts, family members, profiles, and invitations.
 
 ## Tables
 
-### app_users
+### authenticated_users
 
 Main user account table.
 
 ```sql
-CREATE TABLE app_users (
+CREATE TABLE authenticated_users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255),
@@ -62,16 +62,16 @@ CREATE TABLE app_users (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  FOREIGN KEY (alumni_member_id) REFERENCES alumni_members(id)
+  FOREIGN KEY (alumni_member_id) REFERENCES members(id)
 );
 ```
 
-### FAMILY_MEMBERS
+### RELATED_ACCOUNTS
 
 Family members under a parent account.
 
 ```sql
-CREATE TABLE FAMILY_MEMBERS (
+CREATE TABLE RELATED_ACCOUNTS (
   id CHAR(36) PRIMARY KEY DEFAULT (UUID()),
   parent_user_id INT NOT NULL,
   first_name VARCHAR(100) NOT NULL,
@@ -86,16 +86,16 @@ CREATE TABLE FAMILY_MEMBERS (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  FOREIGN KEY (parent_user_id) REFERENCES app_users(id) ON DELETE CASCADE
+  FOREIGN KEY (parent_user_id) REFERENCES authenticated_users(id) ON DELETE CASCADE
 );
 ```
 
-### alumni_members
+### members
 
-Alumni profile data (linked to app_users).
+Alumni profile data (linked to authenticated_users).
 
 ```sql
-CREATE TABLE alumni_members (
+CREATE TABLE members (
   id INT AUTO_INCREMENT PRIMARY KEY,
   family_name VARCHAR(100),
   father_name VARCHAR(100),
@@ -126,12 +126,12 @@ CREATE TABLE alumni_members (
 2. `estimated_birth_year` - From graduation year (batch - 22)
 3. Fallback: `YEAR(CURDATE()) - (batch - 22)`
 
-### USER_INVITATIONS
+### ACCESS_REQUESTS
 
 Invitation tokens for user onboarding.
 
 ```sql
-CREATE TABLE USER_INVITATIONS (
+CREATE TABLE ACCESS_REQUESTS (
   id CHAR(36) PRIMARY KEY,
   email VARCHAR(255) NOT NULL,
   user_id INT,
@@ -147,8 +147,8 @@ CREATE TABLE USER_INVITATIONS (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  FOREIGN KEY (user_id) REFERENCES app_users(id),
-  FOREIGN KEY (invited_by) REFERENCES app_users(id)
+  FOREIGN KEY (user_id) REFERENCES authenticated_users(id),
+  FOREIGN KEY (invited_by) REFERENCES authenticated_users(id)
 );
 ```
 
@@ -168,8 +168,8 @@ CREATE TABLE USER_PREFERENCES (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-  FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE,
-  FOREIGN KEY (primary_domain_id) REFERENCES DOMAINS(id)
+  FOREIGN KEY (user_id) REFERENCES authenticated_users(id) ON DELETE CASCADE,
+  FOREIGN KEY (primary_domain_id) REFERENCES HIERARCHICAL_DOMAINS(id)
 );
 ```
 
@@ -183,8 +183,8 @@ SELECT
   am.family_name, am.father_name, am.batch, am.center_name,
   am.result, am.category, am.phone as alumni_phone, am.email as alumni_email,
   am.student_id
-FROM app_users u
-LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
+FROM authenticated_users u
+LEFT JOIN members am ON u.alumni_member_id = am.id
 WHERE u.id = ? AND u.is_active = true;
 ```
 
@@ -194,7 +194,7 @@ WHERE u.id = ? AND u.is_active = true;
 SELECT
   id, first_name, last_name, display_name, current_age,
   relationship, access_level, profile_image_url
-FROM FAMILY_MEMBERS
+FROM RELATED_ACCOUNTS
 WHERE parent_user_id = ? AND is_active = true;
 ```
 
@@ -208,7 +208,7 @@ SELECT
   u.email,
   u.status,
   u.email_verified
-FROM app_users u
+FROM authenticated_users u
 WHERE u.is_active = true
   AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)
 ORDER BY u.last_name, u.first_name
@@ -219,4 +219,4 @@ LIMIT ?;
 
 - `/routes/users.js` - User API endpoints
 - `/routes/family-members.js` - Family member management
-- `/services/FamilyMemberService.js` - Family member business logic
+- `/services/RelatedAccountService.js` - Family member business logic

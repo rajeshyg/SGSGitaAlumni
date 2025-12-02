@@ -17,7 +17,7 @@ Generic schema design patterns and conventions for database architecture, includ
 ## Table Naming Conventions
 
 - **UPPERCASE**: Feature-specific tables (e.g., `ENTITY_NAME`, `FEATURE_DATA`)
-- **snake_case**: System/core tables (e.g., `app_users`, `system_config`)
+- **snake_case**: System/core tables (e.g., `authenticated_users`, `system_config`)
 
 ## Common Table Relationship Patterns
 

@@ -79,7 +79,7 @@ Every hook receives `transcript_path` pointing to a JSONL file with the **full c
 
 ### 1. Stop Hook - Trigger Analysis
 
-**File**: `.claude/hooks/stop-session-analyzer.js`
+**File**: `.claude/hooks/stop-session-analyzer.cjs`
 
 ```javascript
 #!/usr/bin/env node
@@ -235,13 +235,24 @@ main().catch(console.error);
 ```jsonc
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/pre-tool-use-constraint.cjs"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit|NotebookEdit",
         "hooks": [
           {
             "type": "command", 
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use-validation.js\""
+            "command": "node .claude/hooks/post-tool-use-validation.cjs"
           }
         ]
       }
@@ -251,7 +262,7 @@ main().catch(console.error);
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop-session-analyzer.js\""
+            "command": "node .claude/hooks/stop-session-analyzer.cjs"
           }
         ]
       }
@@ -329,8 +340,9 @@ main().catch(console.error);
 ```
 .claude/
 ├── hooks/
-│   ├── post-tool-use-validation.js   # Structure validation on file changes
-│   └── stop-session-analyzer.js      # Session analysis on stop
+│   ├── pre-tool-use-constraint.cjs   # Blocks locked file edits
+│   ├── post-tool-use-validation.cjs  # Structure validation on file changes
+│   └── stop-session-analyzer.cjs     # Session analysis on stop
 ├── session-logs/                      # Session analysis JSON files
 │   ├── README.md                      # Documentation
 │   └── 2025-12-02T10-30-00_abc123.json

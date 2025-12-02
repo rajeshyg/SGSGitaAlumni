@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-tool-use-constraint.js\""
+            "command": "node .claude/hooks/pre-tool-use-constraint.cjs"
           }
         ]
       }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-tool-use-validation.js\""
+            "command": "node .claude/hooks/post-tool-use-validation.cjs"
           }
         ]
       }
@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop-session-analyzer.js\""
+            "command": "node .claude/hooks/stop-session-analyzer.cjs"
           }
         ]
       }

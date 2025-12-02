@@ -232,9 +232,9 @@ Auto-triggers when working on:
 
 This is the core principle behind deterministic constraint enforcement: constraints as **code that blocks**, not **guidelines Claude might follow**.
 
-### PreToolUse Hook (TODO - Phase 1.4)
+### PreToolUse Hook (✅ IMPLEMENTED)
 
-**File**: `.claude/hooks/pre-tool-use-constraint.js`
+**File**: `.claude/hooks/pre-tool-use-constraint.cjs`
 
 ```javascript
 #!/usr/bin/env node
@@ -270,23 +270,23 @@ function handlePreToolUse(event) {
 }
 ```
 
-### settings.json Configuration (TODO - Phase 1.4)
+### settings.json Configuration (✅ IMPLEMENTED)
 
 ```json
 {
   "PreToolUse": [
     {
-      "matcher": { "tools": ["Write", "Edit", "NotebookEdit"] },
+      "matcher": "Write|Edit|MultiEdit|NotebookEdit",
       "hooks": [
-        { "type": "command", "command": "node .claude/hooks/pre-tool-use-constraint.js" }
+        { "type": "command", "command": "node .claude/hooks/pre-tool-use-constraint.cjs" }
       ]
     }
   ],
   "PostToolUse": [
     {
-      "matcher": { "tools": ["Write", "Edit", "NotebookEdit"] },
+      "matcher": "Write|Edit|NotebookEdit",
       "hooks": [
-        { "type": "command", "command": "node .claude/hooks/post-tool-use-validation.js" }
+        { "type": "command", "command": "node .claude/hooks/post-tool-use-validation.cjs" }
       ]
     }
   ]

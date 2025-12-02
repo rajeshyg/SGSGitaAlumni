@@ -457,7 +457,7 @@ After completing the task:
 ## Summary of Generalization
 
 ### Before:
-- Framework examples used specific table names (POSTINGS, alumni_members, users)
+- Framework examples used specific table names (CONTENT, members, authenticated_users)
 - Database schema required connecting to database
 - No mobile UI guidance
 - Domain-specific examples in coding standards

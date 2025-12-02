@@ -32,7 +32,7 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 
 | Component | Status | Location | Purpose |
 |-----------|--------|----------|----------|
-| `stop-session-analyzer.js` | ✅ Implemented | `.claude/hooks/` | Analyze transcript on stop |
+| `stop-session-analyzer.cjs` | ✅ Implemented | `.claude/hooks/` | Analyze transcript on stop |
 | `.claude/session-logs/` | ✅ Implemented | `.claude/session-logs/` | Store analysis JSON |
 | `session-viewer.html` | ✅ Implemented | `.claude/` | Visual dashboard |
 | settings.json | ✅ Updated | `.claude/settings.json` | Stop hook configured |
@@ -61,7 +61,7 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 | `STOP_TRIGGERS` export | ✅ Implemented | `scripts/validation/rules/exceptions.cjs` | 10 dangerous operation patterns |
 | `PORT_CONSTRAINTS` export | ✅ Implemented | `scripts/validation/rules/exceptions.cjs` | Reserved, ranges, forbidden |
 | `constraint-check.cjs` | ✅ Implemented | `scripts/validation/validators/` | CLI validator |
-| PreToolUse hook | ✅ Implemented | `.claude/hooks/pre-tool-use-constraint.js` | Blocks locked file edits |
+| PreToolUse hook | ✅ Implemented | `.claude/hooks/pre-tool-use-constraint.cjs` | Blocks locked file edits |
 | project-constraints skill | ✅ Implemented | `.claude/skills/project-constraints.md` | Documents all constraints |
 | sdd-tac-workflow updated | ✅ Updated | `.claude/skills/sdd-tac-workflow/` | Includes Phase 0 check |
 
@@ -119,7 +119,7 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 | file-uniqueness.cjs | ✅ Implemented | `scripts/validation/validators/` | - |
 | naming-conventions.cjs | ✅ Implemented | `scripts/validation/validators/` | - |
 | spec-documents.cjs | ✅ Implemented | `scripts/validation/validators/` | - |
-| constraint-check.cjs | 🔴 TODO | `scripts/validation/validators/` | Phase 1.2 |
+| constraint-check.cjs | ✅ Implemented | `scripts/validation/validators/` | Phase 0 validator |
 | exceptions.cjs | ✅ Implemented | `scripts/validation/rules/` | Needs LOCKED |
 | structure-rules.cjs | ✅ Implemented | `scripts/validation/rules/` | - |
 
@@ -129,9 +129,9 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 
 | Hook | Status | Location | Notes |
 |------|--------|----------|-------|
-| PostToolUse | ✅ Implemented | `.claude/hooks/post-tool-use-validation.js` | Structure validation |
-| Stop | ✅ Implemented | `.claude/hooks/stop-session-analyzer.js` | Session analysis |
-| PreToolUse | 🔴 TODO | `.claude/hooks/pre-tool-use-constraint.js` | Phase 1.4 |
+| PostToolUse | ✅ Implemented | `.claude/hooks/post-tool-use-validation.cjs` | Structure validation |
+| Stop | ✅ Implemented | `.claude/hooks/stop-session-analyzer.cjs` | Session analysis |
+| PreToolUse | ✅ Implemented | `.claude/hooks/pre-tool-use-constraint.cjs` | Blocks locked files |
 | settings.json | ✅ Complete | `.claude/settings.json` | PostToolUse + Stop |
 
 ---
@@ -183,7 +183,7 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 
 | Task | File | Status | Description |
 |------|------|--------|-------------|
-| OBS.1 | `.claude/hooks/stop-session-analyzer.js` | 🔴 TODO | Analyze transcript on Stop |
+| OBS.1 | `.claude/hooks/stop-session-analyzer.cjs` | ✅ Done | Analyze transcript on Stop |
 | OBS.2 | `.claude/session-logs/` | 🔴 TODO | Create directory for analysis output |
 | OBS.3 | `.claude/settings.json` | 🔴 TODO | Add Stop hook configuration |
 | OBS.4 | Run first test task | 🔴 TODO | Give Claude Code a real task |
