@@ -6,7 +6,7 @@
 const MODULE_DEFINITIONS = {
   modules: ['authentication', 'user-management', 'directory', 'postings', 'messaging', 'dashboard', 'moderation', 'notifications', 'rating', 'admin'],
   functionalSpecFolders: ['admin', 'authentication', 'dashboard', 'directory', 'messaging', 'moderation', 'notifications', 'postings', 'rating', 'user-management'],
-  technicalSpecFolders: ['architecture', 'coding-standards', 'database', 'deployment', 'development-framework', 'integration', 'security', 'testing', 'ui-standards', 'validation'],
+  technicalSpecFolders: ['architecture', 'coding-standards', 'database', 'deployment', 'development-framework', 'integration', 'mobile-version', 'security', 'testing', 'ui-standards', 'validation'],
   modulePatterns: {
     'auth': 'authentication', 'login': 'authentication', 'register': 'authentication', 'otp': 'authentication',
     'chat': 'messaging', 'message': 'messaging', 'post': 'postings', 'posting': 'postings',

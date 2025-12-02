@@ -550,9 +550,9 @@ All other `.md` files must be in a subfolder (e.g., `development-framework/`, `v
 
 ## Related Specs
 
-- [Validation Framework](./validation/README.md) - Enforcement via pre-commit
-- [Code Size Standards](./coding-standards/code-size-standards.md) - File and function size limits
-- [Development Framework](./development-framework/duplication-prevention.md) - Before creating files
+- [Validation Framework](../validation/README.md) - Enforcement via pre-commit
+- [Code Size Standards](../coding-standards/code-size-standards.md) - File and function size limits
+- [Constraints Enforcement](./constraints-enforcement.md) - LOCKED files and project boundaries
 
 ---
 

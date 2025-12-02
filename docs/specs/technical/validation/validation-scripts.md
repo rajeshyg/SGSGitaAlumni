@@ -67,6 +67,7 @@ node scripts/validation/check-file-locations.cjs
 - Generated files not in .gitignore
 
 **Reference**: `docs/specs/technical/file-organization.md`
+**Reference**: `docs/specs/technical/architecture/project-structure-master.md`
 
 ---
 

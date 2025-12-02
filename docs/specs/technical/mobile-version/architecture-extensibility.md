@@ -544,9 +544,9 @@ claude -p "plan [feature] implementation for web and mobile with shared logic"
 
 ## Related Documentation
 
-- [SDD/TAC Methodology](./sdd-tac-methodology.md) - Core workflow
-- [Agent Orchestration](./agent-orchestration.md) - Parallel development
-- [Coding Standards](./coding-standards.md) - Applies to all platforms
+- [SDD/TAC Methodology](../development-framework/methodology.md) - Core workflow
+- [Agent Engineering](../development-framework/agent-engineering.md) - Parallel development patterns
+- [Quality Enforcement](../coding-standards/README.md) - Standards for all platforms
 - [Database Schema](../database/schema-design.md) - Backend patterns
 
 ---

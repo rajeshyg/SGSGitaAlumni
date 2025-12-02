@@ -97,4 +97,5 @@ Reference implementations in `docs/specs/functional/` and `docs/specs/technical/
 
 - [SDD/TAC Methodology](./sdd-tac-methodology.md) - Scout phase enforces this
 - [Coding Standards](./coding-standards.md) - Reuse over duplication
-- [File Organization](./file-organization.md) - Where new files belong
+- [File Organization](../file-organization.md) - Where new files belong
+- [Project Structure Master](../../architecture/project-structure-master.md) - Canonical rules

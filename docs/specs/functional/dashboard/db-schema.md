@@ -191,6 +191,50 @@ GROUP BY action_type;
 
 ---
 
+## Table Relationships
+
+```
+app_users
+├── ACTIVITY_FEED (user_id → id)
+├── USER_ACTIVITY_LOG (user_id → id)
+├── FEED_ENGAGEMENT (user_id → id)
+└── USER_DASHBOARD_SETTINGS (user_id → id)
+
+ACTIVITY_FEED
+├── FEED_ENGAGEMENT (feed_item_id → id)
+└── USER_ACTIVITY_LOG (tracks related activities)
+```
+
+---
+
+## Common Query Patterns
+
+### Pagination
+
+- Use `LIMIT` with `OFFSET` for paginated results
+- Sort by `is_pinned DESC, priority DESC, created_at DESC` for activity feeds
+- Filter by `expires_at IS NULL OR expires_at > NOW()` to exclude expired items
+
+### Performance
+
+- Use composite indexes for common filter combinations (e.g., `user_id, is_read, created_at`)
+- Archive old records (>90 days) to USER_ACTIVITY_LOG_ARCHIVE for historical reporting
+- Cache USER_DASHBOARD_SETTINGS in Redis with 1-hour TTL
+
+---
+
+## Migration Notes
+
+### Initial Setup
+- Create tables in order: app_users → ACTIVITY_FEED → FEED_ENGAGEMENT → USER_ACTIVITY_LOG → USER_DASHBOARD_SETTINGS
+- Ensure foreign key constraints are enabled: `SET FOREIGN_KEY_CHECKS=1;`
+
+### Future Migrations
+- Archive USER_ACTIVITY_LOG records quarterly to maintain performance
+- Review indexes for query patterns after 6 months of data
+
+---
+
 ## Related
 
 - Technical Spec: `docs/specs/technical/database/schema-design.md`

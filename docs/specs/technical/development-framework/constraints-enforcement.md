@@ -1,6 +1,6 @@
 ---
 version: 3.0
-status: not-implemented
+status: pending
 last_updated: 2025-12-02
 applies_to: framework
 description: LOCKED files, STOP triggers, and project boundary enforcement

@@ -11,8 +11,9 @@
  * - Link validity
  * - Stray files, module folder completeness
  * 
- * NOTE: README.md files in spec folders are navigation hubs and do NOT require frontmatter.
- * Only spec content files (*.md other than README.md) require frontmatter.
+ * NOTE: README.md is navigation hub (no frontmatter required).
+ *       ROADMAP.md is optional progress tracker (if present, requires frontmatter).
+ *       Only spec content files require frontmatter.
  */
 
 const fs = require('fs');
@@ -28,7 +29,24 @@ function validateSpecDocument(filePath, relPath, specType) {
   const warnings = [];
   const fileName = path.basename(filePath);
   
+  // Skip navigation file (no frontmatter required)
   if (fileName === 'README.md') return { errors, warnings };
+  
+  // ROADMAP.md is optional but requires frontmatter if present
+  if (fileName === 'ROADMAP.md') {
+    let content;
+    try {
+      content = fs.readFileSync(filePath, 'utf8');
+    } catch (err) {
+      warnings.push(`Cannot read ROADMAP.md: ${err.message}`);
+      return { errors, warnings };
+    }
+    
+    const fmResult = validateFrontmatter(content, specType);
+    errors.push(...fmResult.errors);
+    warnings.push(...fmResult.warnings);
+    return { errors, warnings };
+  }
   
   let content;
   try {

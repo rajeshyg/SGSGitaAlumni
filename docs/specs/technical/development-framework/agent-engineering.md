@@ -1,6 +1,6 @@
 ---
 version: 1.0
-status: documented
+status: implemented
 last_updated: 2025-12-02
 applies_to: framework
 description: Agent creation, configuration, prompt engineering, and meta-agent patterns

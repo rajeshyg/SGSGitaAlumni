@@ -1,15 +1,13 @@
-# Project Structure Manifest
-
-```yaml
 ---
 version: 1.0
 status: proposed
-last_updated: 2025-11-26
+last_updated: 2025-12-02
 applies_to: all
 enforcement: required
 description: Single source of truth for ALL project structure rules - files, folders, naming, and exceptions
 ---
-```
+
+# Project Structure Manifest
 
 ## Executive Summary
 
