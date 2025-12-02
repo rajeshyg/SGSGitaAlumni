@@ -18,6 +18,7 @@ This specification documents the technical approach for creating iOS and Android
 |----------|---------|--------|
 | [technology-research.md](./technology-research.md) | Technology comparison and recommendation | ✅ Complete |
 | [component-migration-matrix.md](./component-migration-matrix.md) | Component-by-component effort analysis | ✅ Complete |
+| [architecture-extensibility.md](./architecture-extensibility.md) | Multi-platform architecture patterns | ✅ Complete |
 | [deployment-strategy.md](./deployment-strategy.md) | iOS/Android deployment approach | 🔲 Pending |
 | [shared-code-architecture.md](./shared-code-architecture.md) | Code sharing patterns | 🔲 Pending |
 
