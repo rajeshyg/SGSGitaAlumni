@@ -143,11 +143,11 @@ function checkStrayFiles(specsDir) {
     }
     
     if (type === 'technical') {
-      // Use exception registry from structure-rules.cjs instead of custom allowed list
-      const stray = typeRootFiles.filter(f => !getException(path.join('docs/specs/technical', f)));
+      const allowed = ['project-structure-master.md'];
+      const stray = typeRootFiles.filter(f => !allowed.includes(f));
       if (stray.length) errors.push(`Stray files at technical/ root: ${stray.join(', ')}`);
-      const known = typeRootFiles.filter(f => getException(path.join('docs/specs/technical', f)));
-      if (known.length) warnings.push(`Files at technical/ root (exception): ${known.join(', ')}`);
+      const known = typeRootFiles.filter(f => allowed.includes(f));
+      if (known.length) warnings.push(`Files at technical/ root (consider moving): ${known.join(', ')}`);
     }
   }
   
