@@ -52,7 +52,8 @@
       "Bash(npm run validate-structure:*)",
       "Bash(cmd /c \"rmdir /s /q playwright-report\")",
       "Bash(echo:*)",
-      "Bash(del .claudetemp-test-input.json)"
+      "Bash(del .claudetemp-test-input.json)",
+      "Bash(cmd /c \"dir /b .claude\\settings*.json\")"
     ],
     "deny": [],
     "ask": []

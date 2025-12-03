@@ -1,116 +1,172 @@
 ---
 name: duplication-prevention
-description: Auto-activate before creating any new files, components, utilities, or services. Ensures AI checks for existing implementations before creating new code to prevent the rampant duplication syndrome.
+description: CRITICAL - Auto-activates before creating ANY new files, components, utilities, services, database tables, or scripts. Prevents the rampant duplication syndrome common with AI coding.
 ---
 
 # Duplication Prevention Skill
 
-**Critical Project Rule**: Before creating ANY new file, you MUST search the codebase for existing similar implementations.
+## ⛔ STOP TRIGGERS
 
-## When This Skill Applies
+If ANY of these are true, **STOP** and search first:
 
-Auto-triggers when you're about to:
-- Create a new file
-- Write a new component
-- Implement a new utility function
-- Build a new service or middleware
-- Add a new route handler
+1. Creating a new file in `src/utils/`, `src/lib/`, `utils/`
+2. Creating a new component in `src/components/`
+3. Creating a new route in `routes/`
+4. Creating a new script in `scripts/`
+5. Creating a new migration in `migrations/`
+6. Writing SQL with `CREATE TABLE` or `ALTER TABLE`
+7. Adding new enum values or constants
+8. Creating anything with "validation", "email", "format", "auth", "user" in the name
 
-## Mandatory Pre-Creation Checklist
+**Before ANY creation: SEARCH FIRST, CREATE SECOND**
 
-Before creating any new file, you MUST:
+---
 
-### 1. Search for Existing Implementations
+## Mandatory Duplication Registry Check
 
-Use one of these approaches:
-- **Grep** for similar functionality: `pattern: "[keyword]"`
-- **Glob** for similar file names: `pattern: "**/*[keyword]*.{js,ts,tsx}"`
-- **Task tool** with `subagent_type=Explore` for broader discovery
+Before creating ANYTHING, check: **`.claude/duplication-registry.json`**
 
-### 2. Check These High-Duplication Areas
+This file contains:
+- All existing database tables and their fields
+- All existing utilities and their exports
+- All existing components
+- All existing API routes
+- All existing enums and constants
 
-**Scripts**: 87+ root-level scripts exist - check `scripts/` directory:
+---
+
+## Pre-Creation Checklist
+
+### For New Files
+
+1. **Search for similar names**:
+   ```
+   Glob: **/*[keyword]*.{js,ts,tsx}
+   ```
+
+2. **Search for similar functionality**:
+   ```
+   Grep: "[function-you-need]"
+   ```
+
+3. **Check the registry**:
+   ```
+   Read .claude/duplication-registry.json
+   ```
+
+### For Database Changes
+
+**⚠️ DATABASE DUPLICATES ARE THE MOST DANGEROUS**
+
+BEFORE any SQL:
+1. Check `duplication-registry.json` → `databases.primary.tables`
+2. Check existing migrations in `migrations/` and `scripts/database/migrations/`
+3. Use `CREATE TABLE IF NOT EXISTS` (never bare CREATE TABLE)
+4. NEVER create a new table for:
+   - User data → Use `APP_USERS`, `ALUMNI_MEMBERS`, `USER_PROFILES`
+   - Invitations → Use `USER_INVITATIONS`, `FAMILY_INVITATIONS`
+   - Family data → Use `FAMILY_MEMBERS`
+   - Messages → Use `MESSAGES`, `CONVERSATIONS`
+   - Postings → Use `POSTINGS`, `POSTING_TAGS`
+
+### For New Components
+
+Check these locations FIRST:
 ```
-scripts/core/          - Core functionality
-scripts/database/      - Database operations
-scripts/validation/    - Validation scripts
-scripts/archive/       - Historical scripts
+src/components/ui/      - Shadcn components (Button, Input, Card, Dialog, etc.)
+src/components/shared/  - Shared components (Header, Footer, Loading)
+src/components/auth/    - Auth components (LoginForm, RegisterForm)
 ```
 
-**Components**: Check for UI component duplicates:
-```
-src/components/        - Shared components
-src/pages/            - Page-specific components
-```
+### For New Utilities
 
-**Services**: Check for service duplicates:
+Check these locations FIRST:
 ```
-server/services/      - Business logic services
-middleware/           - Middleware functions
-routes/               - API route handlers
+src/utils/errorHandling.ts  - validateEmail, formatError, handleApiError
+src/utils/formatters.ts     - formatCurrency, formatPhone, formatName
+src/lib/utils.ts            - cn, formatDate
+utils/database.js           - getPool, query, transaction
+utils/email.js              - sendEmail, sendOTP
 ```
 
-**Utilities**: Check for utility duplicates:
+### For New API Routes
+
+Check `routes/` directory FIRST:
 ```
-src/utils/            - Frontend utilities
-server/utils/         - Backend utilities
+routes/auth.js         - /api/auth/*
+routes/users.js        - /api/users/*
+routes/alumni.js       - /api/alumni/*
+routes/postings.js     - /api/postings/*
+routes/chat.js         - /api/chat/*
+routes/invitations.js  - /api/invitations/*
+routes/family-members.js - /api/family-members/*
 ```
 
-### 3. Review Specs Before Creating
+---
 
-Check specifications first:
-- Functional specs: `docs/specs/functional/[domain]/`
-- Technical specs: `docs/specs/technical/`
-- Existing workflows: `docs/specs/workflows/`
+## Common Duplications to Avoid
 
-These show canonical implementations - don't duplicate them.
+| Want to Create | Already Exists |
+|---------------|----------------|
+| email validation | `src/utils/errorHandling.ts:validateEmail` |
+| user table | `APP_USERS`, `ALUMNI_MEMBERS`, `USER_PROFILES` |
+| auth route | `routes/auth.js` |
+| Button component | `src/components/ui/button.tsx` |
+| Modal/Dialog | `src/components/ui/dialog.tsx` |
+| date formatting | `src/lib/utils.ts:formatDate` |
+| database connection | `utils/database.js:getPool` |
+| invitation system | `USER_INVITATIONS`, `routes/invitations.js` |
+| family management | `FAMILY_MEMBERS`, `routes/family-members.js` |
+| chat messages | `MESSAGES`, `CONVERSATIONS`, `routes/chat.js` |
 
-### 4. Use Existing Patterns
+---
 
-If similar code exists:
-- ✅ **REUSE**: Import and use the existing implementation
-- ✅ **EXTEND**: Add to existing file if cohesive
-- ✅ **REFACTOR**: Extract common logic into shared utility
-- ❌ **DON'T**: Create a new similar file
+## What to Do Instead of Creating New
 
-## Pre-Commit Protection
+1. **REUSE**: Import and use existing function/component
+2. **EXTEND**: Add new functionality to existing file
+3. **REFACTOR**: If existing code is messy, improve it
+4. **COMPOSE**: Combine existing pieces
+
+**Example - WRONG:**
+```
+User: "Create email validation"
+You: *creates src/utils/emailValidator.ts* ❌
+```
+
+**Example - RIGHT:**
+```
+User: "Create email validation"
+You: "Let me check for existing email validation..."
+*Searches codebase*
+*Finds src/utils/errorHandling.ts has validateEmail*
+You: "Found existing validateEmail. I'll use that." ✅
+```
+
+---
+
+## Hook Protection
 
 This project has automated duplication detection:
-- `check-redundancy.js` runs in pre-commit hook
-- Blocks commits with duplicate files
-- Reports copy-paste patterns via `jscpd`
+- **PreToolUse hook** checks for duplication patterns
+- **Database operations** (CREATE TABLE) are BLOCKED if risky
+- **Session analyzer** tracks duplication warnings
+- **Pre-commit** runs jscpd to detect copy-paste
 
-**Your job**: Prevent duplication BEFORE pre-commit fails.
-
-## Example Workflow
-
-**WRONG**:
-```
-User: "Create a new email validation utility"
-You: *creates src/utils/emailValidator.ts*
-Result: Pre-commit fails - src/utils/validation.ts already has email validation
-```
-
-**RIGHT**:
-```
-User: "Create a new email validation utility"
-You: "Let me first check for existing email validation..."
-*Searches codebase using Grep pattern: "email.*valid"*
-You: "Found existing implementation in src/utils/validation.ts:42"
-You: "I'll use the existing validateEmail() function instead of creating a duplicate"
-Result: No duplication, pre-commit passes
-```
-
-## Critical Reminders
-
-1. **Search FIRST, create SECOND**
-2. **87+ scripts exist** - very likely your functionality already exists
-3. **Specs are source of truth** - check them before implementing
-4. **Pre-commit will catch you** - save time by checking upfront
+---
 
 ## Integration with SDD/TAC
 
-This skill enhances the Scout phase:
+This skill is part of **Phase 1: Scout**:
+
+1. **SCOUT**: Search for existing implementations (this skill)
+2. **PLAN**: Decide if new creation is truly needed
+3. **BUILD**: Reuse existing code when possible
+4. **VALIDATE**: Confirm no duplicates were created
+
+---
+
+**Remember**: The best code is code that already exists and works.
 - **Scout phase**: Discover existing implementations (this skill reinforces)
 - **Plan phase**: Decide if new file is truly needed
 - **Build phase**: Reuse existing code when possible
