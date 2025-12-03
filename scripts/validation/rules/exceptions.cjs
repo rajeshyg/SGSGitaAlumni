@@ -17,7 +17,7 @@ const LOCKED_FILES = [
   'docker-compose.yml',
   'Dockerfile',
   'nginx.conf',
-  
+
   // Database configuration
   'config/database.js',
   'migrations/*.sql',
