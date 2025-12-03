@@ -1,9 +1,9 @@
 ---
-version: 3.0
-status: pending
-last_updated: 2025-12-02
+version: 3.1
+status: partial
+last_updated: 2025-12-03
 applies_to: framework
-description: LOCKED files, STOP triggers, and project boundary enforcement
+description: LOCKED files, STOP triggers, duplication prevention, and project boundary enforcement
 ---
 
 # Constraints Enforcement: LOCKED Files, STOP Triggers, Security
@@ -318,18 +318,97 @@ if (filePath.includes('..')) {
 
 ---
 
+## Part 7: Dynamic Duplication Prevention (✅ IMPLEMENTED)
+
+### Overview
+
+Prevents code duplication by dynamically loading patterns from a central registry, eliminating the need for hard-coded pattern lists.
+
+**Implementation**: `.claude/hooks/pre-tool-use-constraint.cjs` (lines 95-202)
+**Registry**: `.claude/duplication-registry.json`
+**Date**: 2025-12-03
+
+### Architecture
+
+```javascript
+// Registry-driven pattern generation at hook startup
+function loadDuplicationPatterns() {
+  const registry = JSON.parse(fs.readFileSync(registryPath));
+
+  // Generate patterns dynamically for:
+  // - Utility exports (frontend + backend)
+  // - Database tables
+  // - UI components
+  // - API routes
+
+  return { contentPatterns, existingPatterns, highRiskPatterns };
+}
+
+const DYNAMIC_PATTERNS = loadDuplicationPatterns();
+```
+
+### Detection Layers
+
+| Layer | Detects | Example Block |
+|-------|---------|---------------|
+| **Content patterns** | Function/export definitions | `export function existingUtil()` |
+| **File-name patterns** | Keywords in paths | Creating `new-email-utils.ts` |
+| **High-risk patterns** | SQL table creation | `CREATE TABLE EXISTING_TABLE` |
+
+### Registry Structure
+
+```json
+{
+  "utilities": {
+    "frontend": {
+      "src/utils/helpers.ts": {
+        "exports": ["helperA", "helperB"],
+        "purpose": "Common helper functions"
+      }
+    }
+  },
+  "databases": {
+    "primary": {
+      "tables": {
+        "TABLE_NAME": { "purpose": "Description" }
+      }
+    }
+  }
+}
+```
+
+### Benefits vs Hard-coded Patterns
+
+| Before | After |
+|--------|-------|
+| 83 lines of hard-coded patterns | 108 lines of generic loader |
+| Update hook code for each new export | Update JSON only |
+| Patterns scattered across 3 constants | Single source of truth |
+
+### Enforcement
+
+| Match Type | Action | Exit Code |
+|------------|--------|-----------|
+| Content pattern (block: true) | 🚫 BLOCKED | 2 |
+| High-risk pattern | ⚠️ WARNED | 0 |
+| File-name pattern | ⚠️ WARNED | 0 |
+
+---
+
 ## Implementation Status
 
 | Component | Status | Phase |
 |-----------|--------|-------|
-| LOCKED_FILES export | 🔴 TODO | 1.1 |
+| LOCKED_FILES export | ✅ Implemented | 1.1 |
 | STOP_TRIGGERS export | 🔴 TODO | 1.1 |
 | PORT_CONSTRAINTS export | 🔴 TODO | 1.1 |
 | constraint-check.cjs | 🔴 TODO | 1.2 |
-| PreToolUse hook | 🔴 TODO | 1.4 |
+| PreToolUse hook (duplication) | ✅ Implemented | 1.4 |
+| PreToolUse hook (full) | 🟡 Partial | 1.4 |
 | PostToolUse integration | 🔴 TODO | 1.3 |
 | project-constraints skill | 🔴 TODO | 1.5 |
 | Security skill | ✅ Implemented | - |
+| Dynamic duplication registry | ✅ Implemented | 1.4 |
 
 ---
 
