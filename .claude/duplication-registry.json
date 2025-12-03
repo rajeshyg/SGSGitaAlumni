@@ -1,0 +1,226 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2025-12-03",
+  "description": "Central registry of existing assets to prevent AI duplication. Claude MUST check this before creating anything.",
+  
+  "databases": {
+    "primary": {
+      "name": "SGSGitaAlumni MySQL",
+      "tables": {
+        "ALUMNI_MEMBERS": {
+          "purpose": "Alumni directory - main alumni profiles",
+          "key_fields": ["member_id", "email", "name", "batch_year"],
+          "do_not_duplicate": ["user profiles", "member data", "alumni info"]
+        },
+        "APP_USERS": {
+          "purpose": "Application user accounts and authentication",
+          "key_fields": ["user_id", "email", "password_hash", "role"],
+          "do_not_duplicate": ["user accounts", "login data", "auth users"]
+        },
+        "USER_PROFILES": {
+          "purpose": "Extended user profile information",
+          "key_fields": ["profile_id", "user_id", "bio", "avatar"],
+          "do_not_duplicate": ["profile info", "user details"]
+        },
+        "USER_INVITATIONS": {
+          "purpose": "Invitation system for new users",
+          "key_fields": ["invitation_id", "inviter_id", "invitee_email", "status"],
+          "do_not_duplicate": ["invites", "invitation tracking"]
+        },
+        "FAMILY_MEMBERS": {
+          "purpose": "Family member relationships and COPPA compliance",
+          "key_fields": ["family_member_id", "parent_user_id", "name", "relationship"],
+          "do_not_duplicate": ["family data", "child accounts", "dependents"]
+        },
+        "FAMILY_INVITATIONS": {
+          "purpose": "Family-specific invitations",
+          "key_fields": ["family_invitation_id", "family_member_id"],
+          "do_not_duplicate": ["family invites"]
+        },
+        "POSTINGS": {
+          "purpose": "User posts, announcements, content",
+          "key_fields": ["posting_id", "author_id", "content", "type"],
+          "do_not_duplicate": ["posts", "announcements", "content items"]
+        },
+        "POSTING_TAGS": {
+          "purpose": "Tags associated with postings",
+          "key_fields": ["posting_id", "tag_id"],
+          "do_not_duplicate": ["post tags", "content tags"]
+        },
+        "TAGS": {
+          "purpose": "Tag definitions and categories",
+          "key_fields": ["tag_id", "name", "category"],
+          "do_not_duplicate": ["tag list", "categories"]
+        },
+        "CONVERSATIONS": {
+          "purpose": "Chat conversations (1:1 and group)",
+          "key_fields": ["conversation_id", "type", "created_by"],
+          "do_not_duplicate": ["chat rooms", "message threads"]
+        },
+        "CONVERSATION_PARTICIPANTS": {
+          "purpose": "Users in each conversation",
+          "key_fields": ["conversation_id", "user_id"],
+          "do_not_duplicate": ["chat members", "participants"]
+        },
+        "MESSAGES": {
+          "purpose": "Chat messages",
+          "key_fields": ["message_id", "conversation_id", "sender_id", "content"],
+          "do_not_duplicate": ["chat messages", "message data"]
+        },
+        "MESSAGE_REACTIONS": {
+          "purpose": "Emoji reactions to messages",
+          "key_fields": ["reaction_id", "message_id", "user_id", "emoji"],
+          "do_not_duplicate": ["reactions", "likes"]
+        },
+        "MESSAGE_READ_RECEIPTS": {
+          "purpose": "Message read tracking",
+          "key_fields": ["message_id", "user_id", "read_at"],
+          "do_not_duplicate": ["read receipts", "seen status"]
+        },
+        "OTP_TOKENS": {
+          "purpose": "One-time password tokens for verification",
+          "key_fields": ["token_id", "user_id", "otp_code", "expires_at"],
+          "do_not_duplicate": ["verification codes", "OTP", "tokens"]
+        },
+        "EMAIL_DELIVERY_LOG": {
+          "purpose": "Email sending history and status",
+          "key_fields": ["log_id", "recipient", "template", "status"],
+          "do_not_duplicate": ["email log", "sent emails"]
+        },
+        "MODERATION_HISTORY": {
+          "purpose": "Content moderation actions and audit",
+          "key_fields": ["moderation_id", "content_type", "action", "moderator_id"],
+          "do_not_duplicate": ["moderation log", "content flags"]
+        },
+        "PARENT_CONSENT_RECORDS": {
+          "purpose": "COPPA parental consent tracking",
+          "key_fields": ["consent_id", "child_id", "parent_id", "consent_type"],
+          "do_not_duplicate": ["consent records", "parental approval"]
+        },
+        "AGE_VERIFICATION_AUDIT": {
+          "purpose": "Age verification audit trail",
+          "key_fields": ["audit_id", "user_id", "verification_method"],
+          "do_not_duplicate": ["age checks", "verification audit"]
+        },
+        "FAMILY_ACCESS_LOG": {
+          "purpose": "Family member access audit",
+          "key_fields": ["log_id", "family_member_id", "action", "timestamp"],
+          "do_not_duplicate": ["access log", "family activity"]
+        },
+        "USER_PREFERENCES": {
+          "purpose": "User settings and preferences",
+          "key_fields": ["user_id", "preference_key", "preference_value"],
+          "do_not_duplicate": ["settings", "user config", "preferences"]
+        },
+        "NOTIFICATION_PREFERENCES": {
+          "purpose": "Notification settings per user",
+          "key_fields": ["user_id", "notification_type", "enabled"],
+          "do_not_duplicate": ["notification settings", "alert preferences"]
+        }
+      }
+    }
+  },
+
+  "utilities": {
+    "frontend": {
+      "src/utils/errorHandling.ts": {
+        "exports": ["validateEmail", "formatError", "handleApiError"],
+        "purpose": "Error handling and basic validation utilities"
+      },
+      "src/lib/utils.ts": {
+        "exports": ["cn", "formatDate"],
+        "purpose": "General utilities (classnames, date formatting)"
+      },
+      "src/utils/formatters.ts": {
+        "exports": ["formatCurrency", "formatPhone", "formatName"],
+        "purpose": "Data formatting utilities"
+      },
+      "src/utils/localStorage.ts": {
+        "exports": ["getItem", "setItem", "removeItem"],
+        "purpose": "Local storage wrapper"
+      }
+    },
+    "backend": {
+      "utils/database.js": {
+        "exports": ["getPool", "query", "transaction"],
+        "purpose": "Database connection and query utilities"
+      },
+      "utils/email.js": {
+        "exports": ["sendEmail", "sendOTP", "sendInvitation"],
+        "purpose": "Email sending utilities"
+      },
+      "utils/validation.js": {
+        "exports": ["validateRequest", "sanitizeInput"],
+        "purpose": "Backend input validation"
+      }
+    }
+  },
+
+  "components": {
+    "ui": {
+      "src/components/ui/": "Shadcn UI components - DO NOT CREATE DUPLICATES",
+      "common_patterns": ["Button", "Input", "Card", "Modal", "Dialog", "Toast", "Alert"]
+    },
+    "shared": {
+      "src/components/shared/": "Shared components across pages",
+      "existing": ["Header", "Footer", "Navigation", "Loading", "ErrorBoundary"]
+    },
+    "auth": {
+      "src/components/auth/": "Authentication-related components",
+      "existing": ["LoginForm", "RegisterForm", "ForgotPassword", "OTPVerification"]
+    }
+  },
+
+  "routes": {
+    "api": {
+      "routes/auth.js": "Authentication endpoints (/api/auth/*)",
+      "routes/users.js": "User management endpoints (/api/users/*)",
+      "routes/alumni.js": "Alumni directory endpoints (/api/alumni/*)",
+      "routes/postings.js": "Postings/content endpoints (/api/postings/*)",
+      "routes/chat.js": "Chat/messaging endpoints (/api/chat/*)",
+      "routes/invitations.js": "Invitation endpoints (/api/invitations/*)",
+      "routes/family-members.js": "Family member endpoints (/api/family-members/*)",
+      "routes/preferences.js": "User preferences endpoints (/api/preferences/*)",
+      "routes/tags.js": "Tag management endpoints (/api/tags/*)",
+      "routes/email.js": "Email operations endpoints (/api/email/*)",
+      "routes/otp.js": "OTP operations endpoints (/api/otp/*)"
+    }
+  },
+
+  "enums": {
+    "userRoles": ["admin", "moderator", "alumni", "family_member", "guest"],
+    "postingTypes": ["announcement", "event", "discussion", "question", "news"],
+    "invitationStatus": ["pending", "accepted", "rejected", "expired"],
+    "moderationActions": ["approve", "reject", "flag", "delete", "warn"],
+    "notificationTypes": ["email", "push", "in_app", "sms"],
+    "consentTypes": ["registration", "data_collection", "communication"]
+  },
+
+  "scripts": {
+    "locations": {
+      "scripts/core/": "Core functionality scripts",
+      "scripts/database/": "Database operations and migrations",
+      "scripts/validation/": "Validation and linting scripts",
+      "scripts/deployment/": "Deployment and build scripts"
+    },
+    "warning": "87+ scripts already exist - search before creating new ones"
+  },
+
+  "configurations": {
+    "build": ["vite.config.js", "tsconfig.json", "postcss.config.js", "tailwind.config.js"],
+    "linting": ["eslint.config.js", ".prettierrc"],
+    "docker": ["Dockerfile", "docker-compose.yml", "nginx.conf"],
+    "testing": ["vitest.config.ts", "playwright.config.ts"]
+  },
+
+  "checkBeforeCreating": {
+    "newFile": "Search for existing files with similar name/purpose",
+    "newComponent": "Check src/components/ for existing UI elements",
+    "newUtility": "Check src/utils/, src/lib/, utils/ for existing functions",
+    "newRoute": "Check routes/ for existing API endpoints",
+    "newTable": "Check this registry's databases.primary.tables",
+    "newMigration": "Check migrations/ and scripts/database/migrations/",
+    "newScript": "Check scripts/ subdirectories for existing functionality",
+    "newEnum": "Check this registry's enums section"
+  }
+}

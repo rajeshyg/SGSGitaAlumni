@@ -22,18 +22,24 @@ const LOCKED_FILES = [
   'config/database.js',
   'migrations/*.sql',
   'migrations/*.cjs',
-  
+
   // Security-critical files
   'middleware/auth.js',
   'middleware/rateLimit.js',
   '.env',
   '.env.*',
-  
+
+  // Validation rules - NEVER allow AI to modify the rulebook
+  'scripts/validation/rules/*.cjs',
+  '.claude/hooks/*.cjs',
+  '.claude/duplication-registry.json',
+  '.claude/skills/duplication-prevention.md',
+
   // Build configuration (change carefully)
   'vite.config.js',
   'tsconfig.json',
   'package.json',
-  
+
   // CI/CD and deployment
   'terraform/*.tf',
   '.github/workflows/*.yml',
