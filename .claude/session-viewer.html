@@ -644,6 +644,7 @@
       const commandsRun = s.commands_run?.length || 0;
       const searchCount = s.searches_performed?.length || 0;
       const toolCount = s.stats?.total_tool_calls || 0;
+      const blockedCount = s.blocked_operations?.length || s.stats?.blocked_count || 0;
       const violations = s.framework_violations || [];
       const checks = s.framework_checks || {};
       
@@ -673,8 +674,71 @@
             <div class="stat-value">${toolCount}</div>
             <div class="stat-label">Total Tools</div>
           </div>
+          ${blockedCount > 0 ? `
+          <div class="stat-card" style="border-color: var(--success); background: rgba(74, 222, 128, 0.1);">
+            <div class="stat-value" style="color: var(--success);">${blockedCount}</div>
+            <div class="stat-label">🛡️ Blocked</div>
+          </div>
+          ` : ''}
+          ${s.duplication_warnings?.length > 0 ? `
+          <div class="stat-card" style="border-color: var(--warning); background: rgba(251, 191, 36, 0.1);">
+            <div class="stat-value" style="color: var(--warning);">${s.duplication_warnings.length}</div>
+            <div class="stat-label">⚠️ Dup Warnings</div>
+          </div>
+          ` : ''}
         </div>
       `;
+      
+      // Blocked operations section (show this BEFORE violations as it's a success story)
+      if (s.blocked_operations?.length > 0) {
+        html += `
+          <div class="section" style="border-left: 4px solid var(--success); background: rgba(74, 222, 128, 0.05);">
+            <div class="section-header">
+              <h3>🛡️ Blocked Operations (Constraints Enforced)</h3>
+              <span class="badge" style="background: var(--success);">${s.blocked_operations.length}</span>
+            </div>
+            <div class="file-list">
+              ${s.blocked_operations.map(b => `
+                <div class="file-item" style="border-color: var(--success);">
+                  <span style="color: var(--success);">✓ BLOCKED:</span> 
+                  <strong>${b.tool}</strong> on <code>${b.file_path?.split(/[/\\]/).pop() || 'unknown'}</code>
+                  <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
+                    Reason: ${b.reason}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="margin-top: 12px; font-size: 0.9rem; color: var(--success);">
+              ✅ These operations were properly blocked by the PreToolUse constraint hook
+            </div>
+          </div>
+        `;
+      }
+      
+      // Duplication warnings section
+      if (s.duplication_warnings?.length > 0) {
+        html += `
+          <div class="section" style="border-left: 4px solid var(--warning); background: rgba(251, 191, 36, 0.05);">
+            <div class="section-header">
+              <h3>⚠️ Duplication Warnings</h3>
+              <span class="badge" style="background: var(--warning);">${s.duplication_warnings.length}</span>
+            </div>
+            <div class="file-list">
+              ${s.duplication_warnings.map(w => `
+                <div class="file-item" style="border-color: var(--warning);">
+                  <strong>${w.file_path?.split(/[/\\]/).pop() || 'unknown'}</strong>
+                  <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px;">
+                    ${w.warning}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div style="margin-top: 12px; font-size: 0.9rem; color: var(--warning);">
+              💡 Check .claude/duplication-registry.json for existing implementations
+            </div>
+          </div>
+        `;
+      }
       
       // Violations section
       if (violations.length > 0) {

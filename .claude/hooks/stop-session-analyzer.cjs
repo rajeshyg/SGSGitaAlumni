@@ -35,7 +35,9 @@ const CONFIG = {
   // Minimum reads before editing multiple files (scout-before-edit rule)
   MIN_SCOUT_READS: 2,
   // Threshold for "multi-file task"
-  MULTI_FILE_THRESHOLD: 3
+  MULTI_FILE_THRESHOLD: 3,
+  // Blocked operations log file
+  BLOCKED_OPS_LOG: '.claude/blocked-operations.jsonl'
 };
 
 async function main() {
@@ -103,6 +105,12 @@ async function analyzeTranscript(transcriptPath, sessionId) {
     commands_run: [],
     searches_performed: [],
     
+    // NEW: Blocked operations tracking
+    blocked_operations: [],
+    
+    // NEW: Duplication warnings (not blocked, but flagged)
+    duplication_warnings: [],
+    
     // Detailed tool tracking
     tool_calls: [],
     tool_summary: {},
@@ -118,6 +126,8 @@ async function analyzeTranscript(transcriptPath, sessionId) {
     // Session stats
     stats: {
       total_tool_calls: 0,
+      blocked_count: 0,
+      duplication_warning_count: 0,
       duration_estimate: null,
       first_tool_timestamp: null,
       last_tool_timestamp: null
@@ -137,11 +147,113 @@ async function analyzeTranscript(transcriptPath, sessionId) {
     }
   }
   
+  // Load blocked operations from PreToolUse hook log
+  loadBlockedOperations(analysis, sessionId);
+  
   // Post-processing: compute stats and check violations
   computeStats(analysis);
   checkFrameworkCompliance(analysis);
   
   return analysis;
+}
+
+/**
+ * Load blocked operations from the PreToolUse hook log
+ */
+function loadBlockedOperations(analysis, sessionId) {
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const blockedLogPath = path.join(projectDir, CONFIG.BLOCKED_OPS_LOG);
+  
+  if (!fs.existsSync(blockedLogPath)) {
+    return;
+  }
+  
+  try {
+    const content = fs.readFileSync(blockedLogPath, 'utf8');
+    const lines = content.split('\n').filter(Boolean);
+    
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line);
+        // Only include blocked ops from this session (if session_id matches or is recent)
+        if (entry.session_id === sessionId || entry.session_id === 'unknown') {
+          analysis.blocked_operations.push(entry);
+          analysis.stats.blocked_count++;
+          
+          // Remove blocked files from files_modified (they weren't actually modified)
+          const blockedPath = entry.file_path;
+          analysis.files_modified = analysis.files_modified.filter(f => 
+            !f.includes(blockedPath) && !blockedPath.includes(path.basename(f))
+          );
+        }
+      } catch (e) {
+        // Skip malformed lines
+      }
+    }
+    
+    // Clean up old blocked operations log after reading
+    // Keep only entries from last hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentEntries = lines.filter(line => {
+      try {
+        const entry = JSON.parse(line);
+        return new Date(entry.timestamp) > oneHourAgo;
+      } catch (e) {
+        return false;
+      }
+    });
+    fs.writeFileSync(blockedLogPath, recentEntries.join('\n') + (recentEntries.length ? '\n' : ''));
+    
+  } catch (e) {
+    // Ignore errors reading blocked log
+  }
+  
+  // Also load duplication warnings
+  loadDuplicationWarnings(analysis, sessionId);
+}
+
+/**
+ * Load duplication warnings from the PreToolUse hook log
+ */
+function loadDuplicationWarnings(analysis, sessionId) {
+  const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const warningsLogPath = path.join(projectDir, '.claude', 'duplication-warnings.jsonl');
+  
+  if (!fs.existsSync(warningsLogPath)) {
+    return;
+  }
+  
+  try {
+    const content = fs.readFileSync(warningsLogPath, 'utf8');
+    const lines = content.split('\n').filter(Boolean);
+    
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line);
+        if (entry.session_id === sessionId || entry.session_id === 'unknown') {
+          analysis.duplication_warnings.push(entry);
+          analysis.stats.duplication_warning_count++;
+        }
+      } catch (e) {
+        // Skip malformed lines
+      }
+    }
+    
+    // Clean up old warnings (keep last hour)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentEntries = lines.filter(line => {
+      try {
+        const entry = JSON.parse(line);
+        return new Date(entry.timestamp) > oneHourAgo;
+      } catch (e) {
+        return false;
+      }
+    });
+    fs.writeFileSync(warningsLogPath, recentEntries.join('\n') + (recentEntries.length ? '\n' : ''));
+    
+  } catch (e) {
+    // Ignore errors
+  }
 }
 
 /**
@@ -326,8 +438,17 @@ function checkFrameworkCompliance(analysis) {
     }
   }
   
-  // Check 2: LOCKED files modified
+  // Check 2: LOCKED files - ONLY flag if actually modified (not blocked)
+  // Skip this check if the operation was blocked (it's in blocked_operations)
+  const blockedFiles = analysis.blocked_operations.map(b => b.file_path);
+  
   for (const file of allModified) {
+    // Skip if this file was blocked (means it wasn't actually modified)
+    const wasBlocked = blockedFiles.some(blocked => 
+      file.includes(blocked) || blocked.includes(path.basename(file))
+    );
+    if (wasBlocked) continue;
+    
     const normalizedFile = file.replace(/\\/g, '/');
     for (const locked of CONFIG.LOCKED_FILES) {
       if (normalizedFile.includes(locked) || normalizedFile.endsWith(locked)) {
@@ -344,6 +465,14 @@ function checkFrameworkCompliance(analysis) {
         break;
       }
     }
+  }
+  
+  // Check 2b: Add positive note if locked files were properly blocked
+  if (analysis.blocked_operations.length > 0) {
+    analysis.framework_checks.locked_files = {
+      passed: true,
+      details: `${analysis.blocked_operations.length} locked file edit(s) were properly blocked`
+    };
   }
   
   // Check 3: Potential duplicate files created
@@ -365,6 +494,25 @@ function checkFrameworkCompliance(analysis) {
       recommendation: 'Check if existing similar files should be reused instead'
     });
   }
+  
+  // Check 3b: Flag if duplication warnings were triggered (but not blocked)
+  if (analysis.duplication_warnings && analysis.duplication_warnings.length > 0) {
+    const warningCount = analysis.duplication_warnings.length;
+    analysis.framework_checks.duplicate_prevention = {
+      passed: false,
+      details: `${warningCount} potential duplication warning(s) detected`
+    };
+    
+    // Add each warning as a violation
+    for (const warning of analysis.duplication_warnings) {
+      analysis.framework_violations.push({
+        rule: 'duplication-warning',
+        severity: 'warning',
+        message: `Potential duplicate: ${path.basename(warning.file_path)} - ${warning.warning}`,
+        recommendation: 'Check .claude/duplication-registry.json for existing implementations'
+      });
+    }
+  }
 }
 
 /**
@@ -382,6 +530,16 @@ function printSummary(analysis, logFile) {
   console.log(`🔍 Searches:       ${analysis.searches_performed.length}`);
   console.log(`🔧 Total Tools:    ${analysis.stats.total_tool_calls}`);
   
+  // Show blocked operations (constraints working!)
+  if (analysis.stats.blocked_count > 0) {
+    console.log(`🛡️  Blocked Ops:    ${analysis.stats.blocked_count} (constraints enforced)`);
+  }
+  
+  // Show duplication warnings
+  if (analysis.stats.duplication_warning_count > 0) {
+    console.log(`⚠️  Dup Warnings:   ${analysis.stats.duplication_warning_count}`);
+  }
+  
   if (analysis.stats.duration_estimate) {
     console.log(`⏱️  Duration:       ~${analysis.stats.duration_estimate}`);
   }
@@ -396,6 +554,23 @@ function printSummary(analysis, logFile) {
     for (const [tool, count] of topTools) {
       console.log(`   ${tool}: ${count}`);
     }
+  }
+  
+  // Show blocked operations details
+  if (analysis.blocked_operations.length > 0) {
+    console.log('\n🛡️  BLOCKED OPERATIONS (Constraints Enforced):');
+    for (const blocked of analysis.blocked_operations) {
+      console.log(`   ✓ ${blocked.tool} on ${path.basename(blocked.file_path)} - ${blocked.reason}`);
+    }
+  }
+  
+  // Show duplication warnings
+  if (analysis.duplication_warnings && analysis.duplication_warnings.length > 0) {
+    console.log('\n⚠️  DUPLICATION WARNINGS:');
+    for (const warning of analysis.duplication_warnings) {
+      console.log(`   ⚠️  ${path.basename(warning.file_path)}: ${warning.warning}`);
+    }
+    console.log('   → Check .claude/duplication-registry.json for existing implementations');
   }
   
   // Framework compliance
