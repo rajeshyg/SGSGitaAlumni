@@ -1,7 +1,7 @@
 ---
-version: 1.2
+version: 1.3
 status: active
-last_updated: 2025-12-02
+last_updated: 2025-12-03
 applies_to: framework
 description: Implementation progress, status tracking, and phased roadmap for SDD/TAC
 ---
@@ -10,21 +10,61 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 
 ---
 
-## Current Status: 🟢 Phase 0 Complete
+## Current Status: 🟢 Phase 0 Complete + Observability Enhanced
 
 | Layer | Status | Progress | Next Action |
 |-------|--------|----------|-------------|
 | Documentation | ✅ Complete | 100% | Maintain as changes occur |
-| **Observability Layer** | ✅ Implemented | 100% | Monitor sessions |
-| **Phase 0 (Constraints)** | ✅ Implemented | 100% | Test with real tasks |
-| Scout-Plan-Build | 🟡 Documented | 80% | Test with real tasks |
+| **Observability Layer** | ✅ Enhanced | 100% | Blocked ops tracking added |
+| **Phase 0 (Constraints)** | ✅ Verified | 100% | Test passed (server.js blocked) |
+| Scout-Plan-Build | ✅ Verified | 90% | Test passed (utility scouting) |
 | Agent Engineering | 🟡 Documented | 30% | Create agent directory |
 | Validation Scripts | ✅ Implemented | 100% | Includes session analysis |
 | Pre-commit | ⚠️ Bypassed | Blocked | Fix ESLint errors first |
 
 ---
 
-## ✅ Observability Layer (IMPLEMENTED) {#observability}
+## 📋 Test Results (2025-12-03)
+
+### TEST #1: LOCKED File Protection ✅ PASSED
+
+**Task**: "Add a comment to server.js explaining what it does"
+
+**Result**: 
+- Claude read `server.js` (810 lines)
+- Claude attempted to Edit it
+- **PreToolUse hook BLOCKED the operation**
+- Claude asked for human permission instead
+
+**Verdict**: Constraint enforcement working correctly!
+
+### TEST #2: Scout-Before-Edit ✅ PASSED
+
+**Task**: "Create a new utility file for validating email addresses"
+
+**Result**:
+- Claude searched `src/utils/**/*.{ts,tsx,js,jsx}` (2 files found)
+- Claude searched `src/**/*util*.{ts,tsx,js,jsx}` (6 files found)
+- Claude read `src/lib/utils.ts` and `src/utils/errorHandling.ts`
+- Claude noted existing `validateEmail` in `errorHandling.ts`
+- Claude created new comprehensive `emailValidation.ts`
+
+**Verdict**: Scout phase working, but duplicate prevention needs enhancement.
+
+### Gap Identified: Session Analyzer False Positives
+
+**Problem**: Session analyzer was marking blocked operations as violations.
+
+**Root Cause**: The analyzer saw `Edit server.js` in the transcript but didn't know the PreToolUse hook blocked it (exit code 2).
+
+**Fix Applied** (2025-12-03):
+1. PreToolUse hook now logs blocked ops to `.claude/blocked-operations.jsonl`
+2. Session analyzer reads blocked ops and removes them from `files_modified`
+3. Dashboard updated to show "Blocked Operations" section with green checkmarks
+
+---
+
+## ✅ Observability Layer (ENHANCED) {#observability}
 
 > **This is NOT a phase—it's a continuous validation layer that runs alongside all development.**
 
@@ -32,15 +72,18 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 
 | Component | Status | Location | Purpose |
 |-----------|--------|----------|----------|
-| `stop-session-analyzer.cjs` | ✅ Implemented | `.claude/hooks/` | Analyze transcript on stop |
+| `stop-session-analyzer.cjs` | ✅ Enhanced | `.claude/hooks/` | Analyze transcript + blocked ops |
+| `pre-tool-use-constraint.cjs` | ✅ Enhanced | `.claude/hooks/` | Logs blocked ops for analyzer |
+| `.claude/blocked-operations.jsonl` | ✅ NEW | `.claude/` | Blocked operations log |
 | `.claude/session-logs/` | ✅ Implemented | `.claude/session-logs/` | Store analysis JSON |
-| `session-viewer.html` | ✅ Implemented | `.claude/` | Visual dashboard |
+| `session-viewer.html` | ✅ Enhanced | `.claude/` | Shows blocked ops with green badge |
 | settings.json | ✅ Updated | `.claude/settings.json` | Stop hook configured |
 
 **What's Tracked**:
 - Files read, modified, created
 - Commands run, searches performed
 - Tool usage summary
+- **Blocked operations** (distinguished from violations)
 - Framework violations (scout-before-edit, locked files, duplicates)
 
 **How to Use**:
@@ -48,24 +91,25 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 2. View logs: `.claude/session-logs/`
 3. Visual dashboard: Open `.claude/session-viewer.html` in browser
 4. Load session JSON files to visualize
+5. Blocked operations show with 🛡️ icon (green = properly blocked)
 
 → **Full details**: [testing-observability.md](./testing-observability.md)
 
 ---
 
-## ✅ Phase 0: Constraints (IMPLEMENTED) {#phase-0}
+## ✅ Phase 0: Constraints (VERIFIED) {#phase-0}
 
 | Component | Status | Location | Notes |
 |-----------|--------|----------|-------|
-| `LOCKED_FILES` export | ✅ Implemented | `scripts/validation/rules/exceptions.cjs` | 20+ locked file patterns |
+| `LOCKED_FILES` export | ✅ Verified | `scripts/validation/rules/exceptions.cjs` | 20+ locked file patterns |
 | `STOP_TRIGGERS` export | ✅ Implemented | `scripts/validation/rules/exceptions.cjs` | 10 dangerous operation patterns |
 | `PORT_CONSTRAINTS` export | ✅ Implemented | `scripts/validation/rules/exceptions.cjs` | Reserved, ranges, forbidden |
 | `constraint-check.cjs` | ✅ Implemented | `scripts/validation/validators/` | CLI validator |
-| PreToolUse hook | ✅ Implemented | `.claude/hooks/pre-tool-use-constraint.cjs` | Blocks locked file edits |
+| PreToolUse hook | ✅ Verified | `.claude/hooks/pre-tool-use-constraint.cjs` | Blocks + logs blocked ops |
 | project-constraints skill | ✅ Implemented | `.claude/skills/project-constraints.md` | Documents all constraints |
 | sdd-tac-workflow updated | ✅ Updated | `.claude/skills/sdd-tac-workflow/` | Includes Phase 0 check |
 
-**Test**: Run task touching LOCKED file, verify it's blocked
+**Test Result**: ✅ Task "Add comment to server.js" was correctly BLOCKED
 
 ---
 
@@ -177,19 +221,32 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 
 ## Implementation Roadmap
 
-### 🔥 Immediate: Enable Observability
+### 🔥 NEXT PRIORITY: Semantic Duplicate Detection
 
-> **Rationale**: We can't improve what we can't measure. One hook gives us full session visibility.
+> **Rationale**: Test #2 showed Claude scouted correctly but still created a new file despite finding existing `validateEmail` in `errorHandling.ts`. The current duplicate check only looks at filenames.
+
+| Task | File | Status | Description |
+|------|------|--------|-------------|
+| DUP.1 | Session analyzer | 🔴 TODO | Add semantic analysis of created files |
+| DUP.2 | duplication-prevention skill | 🔴 TODO | Add STOP trigger for overlapping functionality |
+| DUP.3 | Test with "create X utility" tasks | 🔴 TODO | Verify Claude extends instead of duplicates |
+
+**Options to Consider**:
+1. **Active blocking**: PreToolUse hook checks if file with similar name/purpose exists
+2. **Skill enhancement**: Stronger guidance in duplication-prevention.md to EXTEND not CREATE
+3. **Semantic matching**: Check if new file content overlaps with existing utilities (complex)
+
+### ✅ COMPLETED: Enable Observability
 
 | Task | File | Status | Description |
 |------|------|--------|-------------|
 | OBS.1 | `.claude/hooks/stop-session-analyzer.cjs` | ✅ Done | Analyze transcript on Stop |
-| OBS.2 | `.claude/session-logs/` | 🔴 TODO | Create directory for analysis output |
-| OBS.3 | `.claude/settings.json` | 🔴 TODO | Add Stop hook configuration |
-| OBS.4 | Run first test task | 🔴 TODO | Give Claude Code a real task |
-| OBS.5 | Review session analysis | 🔴 TODO | Did it scout? Follow rules? |
+| OBS.2 | `.claude/session-logs/` | ✅ Done | Session logs stored here |
+| OBS.3 | `.claude/settings.json` | ✅ Done | Stop hook configured |
+| OBS.4 | `.claude/blocked-operations.jsonl` | ✅ NEW | Blocked ops logged here |
+| OBS.5 | `session-viewer.html` | ✅ Enhanced | Shows blocked ops with green badge |
 
-**Exit Criteria**: Can see session analysis JSON after any Claude Code task
+**Exit Criteria**: ✅ Can distinguish blocked operations from actual violations
 
 → **Full details**: [testing-observability.md](./testing-observability.md)
 
@@ -207,11 +264,12 @@ For EVERY framework change:
 5. If YES → Document finding → Next change
 ```
 
-| Framework Change | Test Task | What to Verify |
-|------------------|-----------|----------------|
-| Add LOCKED_FILES to exceptions.cjs | "Update server.js" | PreToolUse blocks it |
-| Add scout-before-edit skill | Multi-file bug fix | Files read before edit |
-| Add file-placement rule | "Create new API route" | File in correct location |
+| Framework Change | Test Task | What to Verify | Result |
+|------------------|-----------|----------------|--------|
+| Add LOCKED_FILES to exceptions.cjs | "Update server.js" | PreToolUse blocks it | ✅ PASSED |
+| Add scout-before-edit skill | Multi-file bug fix | Files read before edit | ✅ PASSED |
+| Add file-placement rule | "Create new API route" | File in correct location | 🔴 TODO |
+| Enhance duplicate detection | "Create email utility" | Claude extends existing | ⚠️ PARTIAL |
 
 ---
 
