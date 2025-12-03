@@ -4,12 +4,7 @@ import Badge from '../ui/badge'
 import { Button } from '../ui/button'
 import {
   Activity,
-  Database,
-  Upload,
-  Download,
-  Settings,
   Users,
-  BarChart3,
   CheckCircle2,
   Clock
 } from 'lucide-react'
@@ -79,39 +74,9 @@ function QuickActions() {
       </CardHeader>
       <CardContent className="space-y-2 p-3 sm:p-6">
         <ActionButton
-          icon={Upload}
-          label="Upload Data"
-          path="/upload"
-          variant="default"
-          showBadge={true}
-          badgeText="New"
-        />
-        <ActionButton
           icon={Users}
           label="Alumni Directory"
           path="/alumni-directory"
-        />
-        <ActionButton
-          icon={BarChart3}
-          label="Reports"
-          path="/reports"
-        />
-        <ActionButton
-          icon={Database}
-          label="Data Files"
-          path="/data-files"
-        />
-        <ActionButton
-          icon={Download}
-          label="Export Data"
-          path="/export"
-          hoverTransform="group-hover:rotate-90"
-        />
-        <ActionButton
-          icon={Settings}
-          label="Settings"
-          path="/settings"
-          hoverTransform="group-hover:rotate-12"
         />
       </CardContent>
     </Card>

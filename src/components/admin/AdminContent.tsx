@@ -1,10 +1,14 @@
+import { lazy, Suspense } from 'react'
 import { DataTableSection } from './DataTableSection'
 import { MainLayout } from './MainLayout'
-import { QualityDashboard } from '../dashboard/QualityDashboard'
 import { InvitationSection } from './InvitationSection'
+import { SessionViewer } from './SessionViewer'
 import { AnalyticsDashboard } from './AnalyticsDashboard'
+import { QualityDashboard } from '../dashboard/QualityDashboard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import type { FileImport } from '../../services/APIService'
+
+const StatusDashboard = lazy(() => import('./StatusDashboard'))
 
 interface APIConfigStatus {
   isConfigured: boolean
@@ -57,26 +61,31 @@ export function AdminContent({
 }: AdminContentProps) {
   return (
     <MainLayout currentProfile={currentProfile} stats={stats}>
-      <div className="space-y-8">
-        {/* AI Quality Orchestration Dashboard */}
-        <QualityDashboard
-          projectId="sgs-gita-alumni"
-          timeRange="30d"
-          onRefresh={() => {}}
-        />
-
-        {/* Main Admin Management Tabs */}
-        <Tabs defaultValue="alumni-hub" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="alumni-hub">Alumni Hub</TabsTrigger>
-            <TabsTrigger value="data-imports">Data Imports</TabsTrigger>
+      <div className="space-y-6">
+        {/* Admin Dashboard Tabs - Core Functions */}
+        <Tabs defaultValue="management" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="management">Management</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="quality">Quality</TabsTrigger>
+            <TabsTrigger value="data-imports">Data Imports</TabsTrigger>
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+            <TabsTrigger value="status">Status</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="alumni-hub" className="space-y-6">
-            {/* Consolidated hub: members + invitations + users */}
+          <TabsContent value="management" className="space-y-6">
+            {/* Alumni members, invitations, and users management */}
             <InvitationSection />
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-6">
+            {/* Invitation analytics, conversion funnel, and trends */}
+            <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="quality" className="space-y-6">
+            {/* Code quality, architecture, security, performance analysis */}
+            <QualityDashboard projectId="main" timeRange="30d" />
           </TabsContent>
 
           <TabsContent value="data-imports" className="space-y-6">
@@ -93,8 +102,16 @@ export function AdminContent({
             />
           </TabsContent>
 
-          <TabsContent value="analytics" className="space-y-6">
-            <AnalyticsDashboard />
+          <TabsContent value="sessions" className="space-y-6">
+            {/* Session analyzer and debugging */}
+            <SessionViewer />
+          </TabsContent>
+
+          <TabsContent value="status" className="space-y-6">
+            {/* Development feature status tracking */}
+            <Suspense fallback={<div className="text-center py-8"><p className="text-muted-foreground">Loading feature status...</p></div>}>
+              <StatusDashboard />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </div>

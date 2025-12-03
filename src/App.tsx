@@ -1,4 +1,3 @@
-import StatusDashboard from './components/admin/StatusDashboard';
 import { Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import ThemeProvider from './lib/theme/provider'
@@ -10,6 +9,7 @@ import { DraggableDebugPanel } from './components/debug/DraggableDebugPanel'
 // Lazy load main page components for better performance
 const AdminPage = lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })))
 const HomePage = lazy(() => import('./pages/HomePage').then(module => ({ default: module.HomePage })))
+const StatusDashboard = lazy(() => import('./components/admin/StatusDashboard').then(module => ({ default: module.default })))
 
 // Lazy load authentication pages
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -23,16 +23,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const ProfileEditPage = lazy(() => import('./pages/ProfileEditPage'))
 const FamilyManagePage = lazy(() => import('./pages/FamilyManagePage'))
 
-// Lazy load placeholder components with loading states
-const UploadPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Upload Data</h1>
-      <p className="text-muted-foreground">Data upload functionality coming soon...</p>
-    </div>
-  )
-}))
-
+// Page components
 const AlumniDirectoryPage = lazy(() => import('./pages/AlumniDirectoryPage'))
 const PreferencesPage = lazy(() => import('./pages/PreferencesPage'))
 const PostingsPage = lazy(() => import('./pages/PostingsPage'))
@@ -41,62 +32,7 @@ const PostingDetailPage = lazy(() => import('./pages/PostingDetailPage'))
 const CreatePostingPage = lazy(() => import('./pages/CreatePostingPage'))
 const EditPostingPage = lazy(() => import('./pages/EditPostingPage'))
 const ModerationQueuePage = lazy(() => import('./pages/moderator/ModerationQueuePage').then(module => ({ default: module.ModerationQueuePage })))
-
-const ReportsPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Reports</h1>
-      <p className="text-muted-foreground">Reports functionality coming soon...</p>
-    </div>
-  )
-}))
-
-const DataFilesPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Data Files</h1>
-      <p className="text-muted-foreground">Data files management coming soon...</p>
-    </div>
-  )
-}))
-
-const ExportPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Export Data</h1>
-      <p className="text-muted-foreground">Export functionality coming soon...</p>
-    </div>
-  )
-}))
-
-const SettingsPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Settings</h1>
-      <p className="text-muted-foreground">Settings functionality coming soon...</p>
-    </div>
-  )
-}))
-
-const ResponsesPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">Notifications</h1>
-      <p className="text-muted-foreground">Notifications coming soon...</p>
-    </div>
-  )
-}))
-
 const ChatPage = lazy(() => import('./pages/ChatPage'))
-
-const UsersPage = lazy(() => Promise.resolve({
-  default: () => (
-    <div className="min-h-screen bg-background p-8">
-      <h1 className="text-2xl font-bold mb-4">User Management</h1>
-      <p className="text-muted-foreground">User management coming soon...</p>
-    </div>
-  )
-}))
 
 const ProfileSelectionPage = lazy(() => import('./pages/ProfileSelectionPage'))
 
@@ -241,13 +177,6 @@ function App() {
                 } />
 
                 {/* Admin routes */}
-                <Route path="/admin/status" element={
-                  <ErrorBoundary level="page">
-                    <AdminRoute>
-                      <StatusDashboard />
-                    </AdminRoute>
-                  </ErrorBoundary>
-                } />
                 <Route path="/admin" element={
                   <ErrorBoundary level="page">
                     <AdminRoute>
@@ -260,6 +189,9 @@ function App() {
                     <AdminRoute>
                       <AdminPage />
                     </AdminRoute>
+                  </ErrorBoundary>
+                } />
+                {/* Development route for feature status tracking */}
                 <Route path="/admin/status" element={
                   <ErrorBoundary level="page">
                     <AdminRoute>
@@ -267,43 +199,13 @@ function App() {
                     </AdminRoute>
                   </ErrorBoundary>
                 } />
-                  </ErrorBoundary>
-                } />
 
-                {/* Data management routes - Admin/Moderator only */}
-                <Route path="/upload" element={
-                  <ErrorBoundary level="page">
-                    <ModeratorRoute>
-                      <UploadPage />
-                    </ModeratorRoute>
-                  </ErrorBoundary>
-                } />
-                <Route path="/data-files" element={
-                  <ErrorBoundary level="page">
-                    <ModeratorRoute>
-                      <DataFilesPage />
-                    </ModeratorRoute>
-                  </ErrorBoundary>
-                } />
-                <Route path="/export" element={
-                  <ErrorBoundary level="page">
-                    <ModeratorRoute>
-                      <ExportPage />
-                    </ModeratorRoute>
-                  </ErrorBoundary>
-                } />
+                {/* Moderation queue */}
                 <Route path="/moderator/queue" element={
                   <ErrorBoundary level="page">
                     <ModeratorRoute>
                       <ModerationQueuePage />
                     </ModeratorRoute>
-                  </ErrorBoundary>
-                } />
-                <Route path="/users" element={
-                  <ErrorBoundary level="page">
-                    <AdminRoute>
-                      <UsersPage />
-                    </AdminRoute>
                   </ErrorBoundary>
                 } />
 
@@ -354,27 +256,6 @@ function App() {
                   <ErrorBoundary level="page">
                     <ProtectedRoute>
                       <PostingDetailPage />
-                    </ProtectedRoute>
-                  </ErrorBoundary>
-                } />
-                <Route path="/reports" element={
-                  <ErrorBoundary level="page">
-                    <ProtectedRoute>
-                      <ReportsPage />
-                    </ProtectedRoute>
-                  </ErrorBoundary>
-                } />
-                <Route path="/settings" element={
-                  <ErrorBoundary level="page">
-                    <ProtectedRoute>
-                      <SettingsPage />
-                    </ProtectedRoute>
-                  </ErrorBoundary>
-                } />
-                <Route path="/responses" element={
-                  <ErrorBoundary level="page">
-                    <ProtectedRoute>
-                      <ResponsesPage />
                     </ProtectedRoute>
                   </ErrorBoundary>
                 } />

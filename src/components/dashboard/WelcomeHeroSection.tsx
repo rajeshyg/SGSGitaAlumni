@@ -1,14 +1,10 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button } from '../ui/button'
 import { Card, CardContent } from '../ui/card'
 import {
   TrendingUp,
   Users,
   CheckCircle2,
-  Database,
-  FileText,
-  Upload
+  Database
 } from 'lucide-react'
 
 interface UserProfile {
@@ -57,20 +53,7 @@ function WelcomeHeader({ profile }: { profile: UserProfile }) {
 }
 
 function ActionButtons() {
-  const navigate = useNavigate()
-
-  return (
-    <div className="flex flex-wrap gap-3">
-      <Button onClick={() => navigate('/upload')} className="flex items-center gap-2">
-        <Upload className="h-4 w-4" />
-        Upload Data
-      </Button>
-      <Button variant="outline" onClick={() => navigate('/reports')}>
-        <FileText className="h-4 w-4 mr-2" />
-        View Reports
-      </Button>
-    </div>
-  )
+  return null
 }
 
 function MetricCard({
