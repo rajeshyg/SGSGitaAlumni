@@ -66,6 +66,12 @@ playwright-report/
 blob-report/
 reports/
 *.txt
+# Session logs and operational/temporary files
+session-logs/
+*.jsonl
+*.log
+*.tmp
+*.rdb
 
 # Generated Reports and Outputs (File Organization Standard)
 *-report.html
