@@ -6,7 +6,10 @@ import {
   Activity,
   Users,
   CheckCircle2,
-  Clock
+  Clock,
+  Database,
+  Upload,
+  BarChart3
 } from 'lucide-react'
 
 interface UserProfile {
