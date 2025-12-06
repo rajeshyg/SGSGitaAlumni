@@ -166,10 +166,27 @@ This skill is part of **Phase 1: Scout**:
 
 ---
 
-**Remember**: The best code is code that already exists and works.
-- **Scout phase**: Discover existing implementations (this skill reinforces)
-- **Plan phase**: Decide if new file is truly needed
-- **Build phase**: Reuse existing code when possible
+## ⛔ MANDATORY: Use AskUserQuestion Tool
+
+When scout finds existing code that COULD serve the purpose, **YOU MUST USE the `AskUserQuestion` TOOL**:
+
+```json
+{
+  "questions": [{
+    "question": "I found [existing-file] which handles [similar-purpose]. How should I proceed?",
+    "header": "Extend vs Create",
+    "options": [
+      {"label": "Extend existing", "description": "Add to [existing-file]"},
+      {"label": "Create new file", "description": "If existing truly doesn't fit"},
+      {"label": "More exploration", "description": "Need to search more first"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
+⚠️ **Text questions like "Would you prefer A or B?" are NOT acceptable.**
+The AskUserQuestion tool ensures decisions are explicit and trackable.
 
 ---
 

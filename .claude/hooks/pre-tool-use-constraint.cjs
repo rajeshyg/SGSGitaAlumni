@@ -234,6 +234,76 @@ function checkForDuplication(filePath, content) {
 }
 
 /**
+ * Check if a file has a valid approval
+ * @param {string} filePath - Path to check
+ * @returns {{ approved: boolean, approval?: object, index?: number }}
+ */
+function checkApproval(filePath) {
+  try {
+    const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const approvalFile = path.join(projectDir, '.claude', 'approvals.json');
+
+    if (!fs.existsSync(approvalFile)) {
+      return { approved: false };
+    }
+
+    const data = JSON.parse(fs.readFileSync(approvalFile, 'utf8'));
+    const approvals = data.approvals || [];
+
+    // Normalize paths for comparison
+    const normalizedTarget = filePath.replace(/\\/g, '/');
+
+    for (let i = 0; i < approvals.length; i++) {
+      const approval = approvals[i];
+      const normalizedApproval = approval.file.replace(/\\/g, '/');
+
+      // Check if paths match (target should end with approval path)
+      if (!normalizedTarget.endsWith(normalizedApproval)) continue;
+
+      // Check expiration
+      const approvedAt = new Date(approval.approved_at);
+      const expiresIn = approval.expires_in_minutes || 5;
+      const expiresAt = new Date(approvedAt.getTime() + expiresIn * 60000);
+
+      if (new Date() > expiresAt) {
+        // Expired, skip
+        continue;
+      }
+
+      // Valid approval found
+      return { approved: true, approval, index: i };
+    }
+
+    return { approved: false };
+  } catch (e) {
+    // On error, no approval
+    return { approved: false };
+  }
+}
+
+/**
+ * Consume a single-use approval
+ * @param {number} index - Index of approval to consume
+ */
+function consumeApproval(index) {
+  try {
+    const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+    const approvalFile = path.join(projectDir, '.claude', 'approvals.json');
+
+    const data = JSON.parse(fs.readFileSync(approvalFile, 'utf8'));
+    const approval = data.approvals[index];
+
+    if (approval && approval.single_use) {
+      // Remove the approval
+      data.approvals.splice(index, 1);
+      fs.writeFileSync(approvalFile, JSON.stringify(data, null, 2));
+    }
+  } catch (e) {
+    // Fail silently
+  }
+}
+
+/**
  * Check if a file path matches locked patterns
  */
 function isFileLocked(filePath) {
@@ -241,7 +311,7 @@ function isFileLocked(filePath) {
     const result = constraintChecker.checkLockedFile(filePath);
     return result.blocked ? result.reason : null;
   }
-  
+
   // Fallback check
   const normalizedPath = filePath.replace(/\\/g, '/');
   for (const locked of LOCKED_FILES_FALLBACK) {
@@ -305,20 +375,46 @@ async function main() {
   if (!filePath) {
     process.exit(0);
   }
-  
+
+  // Skip all checks for docs/ directory (documentation shouldn't trigger duplication warnings)
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  if (normalizedPath.includes('/docs/') || normalizedPath.startsWith('docs/')) {
+    process.exit(0);
+  }
+
   // Check if file is locked
   const lockReason = isFileLocked(filePath);
   if (lockReason) {
-    // Log the blocked operation for session analyzer
-    logBlockedOperation(tool_name, filePath, lockReason, hookData.session_id);
-    
-    // Block the operation
-    const response = {
-      decision: 'block',
-      reason: `🔒 BLOCKED: ${lockReason}\n\nThis file is protected and requires explicit human approval to modify.\nTo proceed, the user must acknowledge this change.`,
-    };
-    console.log(JSON.stringify(response));
-    process.exit(2);
+    // Check if there's a valid approval
+    const approvalCheck = checkApproval(filePath);
+
+    if (approvalCheck.approved) {
+      // Approval found! Consume it if single-use and allow the operation
+      consumeApproval(approvalCheck.index);
+      // Continue to allow the operation (don't block)
+    } else {
+      // No valid approval, block the operation
+      logBlockedOperation(tool_name, filePath, lockReason, hookData.session_id);
+
+      const response = {
+        decision: 'block',
+        reason: `🔒 BLOCKED: ${lockReason}\n\nThis file is protected and requires explicit human approval to modify.\n\n` +
+          `To approve this change, create .claude/approvals.json with:\n` +
+          `{\n` +
+          `  "approvals": [\n` +
+          `    {\n` +
+          `      "file": "${filePath.replace(/\\/g, '/')}",\n` +
+          `      "approved_at": "${new Date().toISOString()}",\n` +
+          `      "expires_in_minutes": 30,\n` +
+          `      "single_use": true,\n` +
+          `      "reason": "Your reason here"\n` +
+          `    }\n` +
+          `  ]\n` +
+          `}`,
+      };
+      console.log(JSON.stringify(response));
+      process.exit(2);
+    }
   }
   
   // Check for potential duplication (only for Write = new files)

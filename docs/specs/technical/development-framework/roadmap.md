@@ -1,7 +1,7 @@
 ---
-version: 1.3
+version: 2.0
 status: active
-last_updated: 2025-12-03
+last_updated: 2025-12-05
 applies_to: framework
 description: Implementation progress, status tracking, and phased roadmap for SDD/TAC
 ---
@@ -10,57 +10,56 @@ description: Implementation progress, status tracking, and phased roadmap for SD
 
 ---
 
-## Current Status: 🟢 Phase 0 Complete + Observability Enhanced
+## Current Status: 🟡 Phase 2.5 - Hub-and-Spoke Architecture Design
 
 | Layer | Status | Progress | Next Action |
 |-------|--------|----------|-------------|
 | Documentation | ✅ Complete | 100% | Maintain as changes occur |
 | **Observability Layer** | ✅ Enhanced | 100% | Blocked ops tracking added |
 | **Phase 0 (Constraints)** | ✅ Verified | 100% | Test passed (server.js blocked) |
-| Scout-Plan-Build | ✅ Verified | 90% | Test passed (utility scouting) |
-| Agent Engineering | 🟡 Documented | 30% | Create agent directory |
+| Scout-Plan-Build | 🟡 Enhanced | 40% | **Skills now MANDATE AskUserQuestion tool** |
+| **Agent Architecture** | 🟡 RESEARCH COMPLETE | 25% | Hub-and-spoke model defined |
+| **Model Selection** | 🔴 TODO | 0% | Opus/Sonnet/Haiku stack configuration |
 | Validation Scripts | ✅ Implemented | 100% | Includes session analysis |
 | Pre-commit | ⚠️ Bypassed | Blocked | Fix ESLint errors first |
 
 ---
 
-## 📋 Test Results (2025-12-03)
+## 📋 Validation Test Results (2025-12-04)
 
-### TEST #1: LOCKED File Protection ✅ PASSED
+> **Full details**: `docs/context-bundles/2025-12-03-framework-validation-tests.md`
 
-**Task**: "Add a comment to server.js explaining what it does"
+| Test | Scout | Found Existing | Stop & Ask | Result |
+|------|-------|----------------|------------|--------|
+| 1. Validation | ✅ | ✅ | ❌ | ⚠️ PARTIAL |
+| 2. Error Handling | ✅ | ❌ | ❌ | ❌ FAIL |
+| 3. Database Schema | ✅ | ⚠️ | ❌ | ❌ FAIL |
+| 4. Component Reuse | ✅ | ✅ | ❌ | ❌ FAIL |
+| 5. API Route | ✅ | ✅ | ✅ | ✅ PASS |
 
-**Result**: 
-- Claude read `server.js` (810 lines)
-- Claude attempted to Edit it
-- **PreToolUse hook BLOCKED the operation**
-- Claude asked for human permission instead
+**Pass Rate**: 1/5 (20%)
 
-**Verdict**: Constraint enforcement working correctly!
+### Critical Finding: Context Bloat
 
-### TEST #2: Scout-Before-Edit ✅ PASSED
+**Test 3** consumed **55 tools, 75.6k tokens, 7.5 minutes** and hit rate limit—proving that skills alone cannot enforce focused scouting. Sub-agents needed for context isolation.
 
-**Task**: "Create a new utility file for validating email addresses"
+### Why Test 5 Passed
 
-**Result**:
-- Claude searched `src/utils/**/*.{ts,tsx,js,jsx}` (2 files found)
-- Claude searched `src/**/*util*.{ts,tsx,js,jsx}` (6 files found)
-- Claude read `src/lib/utils.ts` and `src/utils/errorHandling.ts`
-- Claude noted existing `validateEmail` in `errorHandling.ts`
-- Claude created new comprehensive `emailValidation.ts`
+Only test where `AskUserQuestion` was used. Task clarity ("add filtering to alumni API") made functional alignment obvious. Ambiguous tasks (Tests 1-4) defaulted to "create new" without asking.
 
-**Verdict**: Scout phase working, but duplicate prevention needs enhancement.
+### Root Cause Analysis (Updated 2025-12-05)
 
-### Gap Identified: Session Analyzer False Positives
+**Original hypothesis**: Context bloat requires custom agents for isolation.
 
-**Problem**: Session analyzer was marking blocked operations as violations.
+**Research finding**: 3/4 test failures were **decision-making failures**, not just context issues. Skills said "stop and ask" but provided TEXT TEMPLATES instead of mandating the `AskUserQuestion` TOOL.
 
-**Root Cause**: The analyzer saw `Edit server.js` in the transcript but didn't know the PreToolUse hook blocked it (exit code 2).
+**Solution applied**: Enhanced skills to MANDATE AskUserQuestion tool usage:
+- `sdd-tac-workflow/SKILL.md` - Added MANDATORY section with tool requirement
+- `duplication-prevention.md` - Added tool requirement with JSON example
 
-**Fix Applied** (2025-12-03):
-1. PreToolUse hook now logs blocked ops to `.claude/blocked-operations.jsonl`
-2. Session analyzer reads blocked ops and removes them from `files_modified`
-3. Dashboard updated to show "Blocked Operations" section with green checkmarks
+**Agent infrastructure**: DEFERRED pending re-evaluation. Research showed IndyDevDan's full orchestrator pattern requires SDK development (programmatic agent CRUD), not just `.claude/agents/` markdown files.
+
+> **Reference**: `docs/context-bundles/2025-12-05-agents-research-decision.md`
 
 ---
 
@@ -127,15 +126,97 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 
 ---
 
-## Agent Engineering {#agent-engineering}
+## Hub-and-Spoke Agent Architecture {#hub-and-spoke}
 
-| Component | Status | Location | Notes |
-|-----------|--------|----------|-------|
-| Agent engineering docs | ✅ Complete | `agent-engineering.md` | - |
-| `.claude/agents/` directory | 🔴 TODO | `.claude/agents/` | Create structure |
-| Meta-agent | 🔴 TODO | `.claude/agents/meta-agent.json` | Agent builder |
-| Scout agents (domain) | 🔴 TODO | `.claude/agents/scout-*.json` | Per-domain scouts |
-| QA agent | 🔴 TODO | `.claude/agents/qa-agent.json` | Quality checks |
+> **STATUS**: 🟡 RESEARCH COMPLETE - Architecture defined (2025-12-05)
+> **Key Finding**: Sub-agents NEVER talk to each other. Primary Agent mediates ALL communication.
+
+### Architecture Diagram
+
+```
+                    ┌─────────────────────────────────────┐
+                    │                                     │
+        ┌───────────▼───────────┐                        │
+        │      USER PROMPT      │                        │
+        └───────────┬───────────┘                        │
+                    │                                     │
+                    ▼                                     │
+        ┌───────────────────────┐                        │
+        │   PRIMARY AGENT       │◄───────────────────────┘
+        │   (Orchestrator)      │
+        │                       │
+        │  • Receives user task │
+        │  • Delegates to subs  │
+        │  • Aggregates results │
+        │  • Reports to user    │
+        └───────────┬───────────┘
+                    │
+     ┌──────────────┼──────────────┐
+     │              │              │
+     ▼              ▼              ▼
+┌─────────┐   ┌─────────┐   ┌─────────┐
+│  SCOUT  │   │ BUILDER │   │VALIDATOR│
+│ (Haiku) │   │(Sonnet) │   │ (Haiku) │
+│         │   │         │   │         │
+│ Reports │   │ Reports │   │ Reports │
+│   TO    │   │   TO    │   │   TO    │
+│ Primary │   │ Primary │   │ Primary │
+└────┬────┘   └────┬────┘   └────┬────┘
+     │              │              │
+     └──────────────┴──────────────┘
+                    │
+            ALL REPORT BACK
+            TO PRIMARY ONLY
+```
+
+### Agent Communication Rules
+
+| Component | Talks To | Never Talks To |
+|-----------|----------|----------------|
+| User | Primary Agent only | Sub-agents |
+| Primary Agent | User, All Sub-agents | N/A (hub) |
+| Scout | Primary Agent | Builder, Validator, User |
+| Builder | Primary Agent | Scout, Validator, User |
+| Validator | Primary Agent | Scout, Builder, User |
+
+### Implementation Status
+
+| Component | Status | Location | Purpose |
+|-----------|--------|----------|---------|
+| Architecture research | ✅ Complete | `docs/context-bundles/2025-12-05-agent-architecture-research.md` | Reference |
+| `.claude/agents/` directory | 🔴 TODO | `.claude/agents/` | Agent definitions |
+| **Orchestrator agent** | 🔴 TODO | `.claude/agents/orchestrator.md` | Opus model - coordination |
+| **Scout agent** | 🔴 TODO | `.claude/agents/scout.md` | Haiku model - discovery |
+| **Builder agent** | 🔴 TODO | `.claude/agents/builder.md` | Sonnet model - implementation |
+| **Validator agent** | 🔴 TODO | `.claude/agents/validator.md` | Haiku model - quality checks |
+
+→ **Full details**: [agent-engineering.md](./agent-engineering.md)
+
+---
+
+## Model Selection Strategy {#model-selection}
+
+> **STATUS**: 🔴 TODO - Configuration needed
+> **Key Finding**: Use model "stack" - Opus for orchestration, Sonnet for building, Haiku for discovery
+
+### Model Assignment Matrix
+
+| Agent Role | Model | Cost | Reasoning |
+|------------|-------|------|-----------|
+| **Orchestrator/Primary** | **Opus** | ~$15/1M tokens | Complex coordination, decision-making, synthesis |
+| Scout | Haiku | ~$0.25/1M tokens | Fast discovery, pattern matching, no deep reasoning |
+| Builder | Sonnet | ~$3/1M tokens | Code generation, implementation logic |
+| Validator | Haiku | ~$0.25/1M tokens | Structured validation, checklist verification |
+| Dynamic/Specialized | Haiku or Sonnet | Varies | Task-dependent |
+
+### Cost Optimization
+
+| Approach | Scout | Plan | Build | Total |
+|----------|-------|------|-------|-------|
+| All-Sonnet | $2.00 | $1.50 | $3.00 | **$6.50** |
+| Optimized Stack | $0.20 (Haiku) | $1.50 | $3.00 | **$4.70** (28% savings) |
+
+→ **Full details**: [model-selection.md](./model-selection.md)
 
 ---
 
@@ -143,14 +224,13 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 
 | Component | Status | Location | Notes |
 |-----------|--------|----------|-------|
-| R&D framework docs | ✅ Documented | `sub-agent-patterns.md` | - |
-| Context persistence stack | ✅ Implemented | always-on, skills, commands | - |
-| always-on.md | ✅ Reduced | `docs/specs/context/always-on.md` | 44 lines |
-| Skills directory | ✅ Implemented | `.claude/skills/` | 4 skills |
+| R&D framework docs | ✅ Documented | `sub-agent-patterns.md` | Reference material |
+| Context persistence stack | ✅ Implemented | always-on, skills, commands | Working well |
+| Skills directory | ✅ Implemented | `.claude/skills/` | 4 skills active |
 | Prime commands | ✅ Implemented | `.claude/commands/` | 7+ commands |
-| Sub-agent spawning | 🟡 Documented | - | Use Claude CLI |
-| Git worktrees | 🟡 Documented | `sub-agent-patterns.md` | Not tested |
-| Orchestrator pattern | 🔴 Deferred | - | After Phase 1-3 |
+| Sub-agent spawning | ✅ Available | Task tool | Use built-in Task tool |
+| **Orchestrator pattern** | 🔴 TODO | `.claude/agents/` | **Required - see test results** |
+| Git worktrees | ⏸️ ON HOLD | `sub-agent-patterns.md` | Not needed until 15+ file features |
 
 ---
 
@@ -221,57 +301,9 @@ Claude Code provides `transcript_path` in every hook. Our Stop hook analyzes it 
 
 ## Implementation Roadmap
 
-### 🔥 NEXT PRIORITY: Semantic Duplicate Detection
+### ✅ Phase 0: Observability (COMPLETE)
 
-> **Rationale**: Test #2 showed Claude scouted correctly but still created a new file despite finding existing `validateEmail` in `errorHandling.ts`. The current duplicate check only looks at filenames.
-
-| Task | File | Status | Description |
-|------|------|--------|-------------|
-| DUP.1 | Session analyzer | 🔴 TODO | Add semantic analysis of created files |
-| DUP.2 | duplication-prevention skill | 🔴 TODO | Add STOP trigger for overlapping functionality |
-| DUP.3 | Test with "create X utility" tasks | 🔴 TODO | Verify Claude extends instead of duplicates |
-
-**Options to Consider**:
-1. **Active blocking**: PreToolUse hook checks if file with similar name/purpose exists
-2. **Skill enhancement**: Stronger guidance in duplication-prevention.md to EXTEND not CREATE
-3. **Semantic matching**: Check if new file content overlaps with existing utilities (complex)
-
-### ✅ COMPLETED: Enable Observability
-
-| Task | File | Status | Description |
-|------|------|--------|-------------|
-| OBS.1 | `.claude/hooks/stop-session-analyzer.cjs` | ✅ Done | Analyze transcript on Stop |
-| OBS.2 | `.claude/session-logs/` | ✅ Done | Session logs stored here |
-| OBS.3 | `.claude/settings.json` | ✅ Done | Stop hook configured |
-| OBS.4 | `.claude/blocked-operations.jsonl` | ✅ NEW | Blocked ops logged here |
-| OBS.5 | `session-viewer.html` | ✅ Enhanced | Shows blocked ops with green badge |
-
-**Exit Criteria**: ✅ Can distinguish blocked operations from actual violations
-
-→ **Full details**: [testing-observability.md](./testing-observability.md)
-
----
-
-### 🔄 Continuous: Test-Driven Framework Development
-
-For EVERY framework change:
-
-```
-1. Make change (add rule, update skill, modify hook)
-2. Run test task that should trigger the change
-3. Review session log → Did Claude behave correctly?
-4. If NO → Adjust → Go to step 2
-5. If YES → Document finding → Next change
-```
-
-| Framework Change | Test Task | What to Verify | Result |
-|------------------|-----------|----------------|--------|
-| Add LOCKED_FILES to exceptions.cjs | "Update server.js" | PreToolUse blocks it | ✅ PASSED |
-| Add scout-before-edit skill | Multi-file bug fix | Files read before edit | ✅ PASSED |
-| Add file-placement rule | "Create new API route" | File in correct location | 🔴 TODO |
-| Enhance duplicate detection | "Create email utility" | Claude extends existing | ⚠️ PARTIAL |
-
----
+Observability layer working. Session analysis distinguishes blocked ops from violations.
 
 ### ✅ Phase 1: Constraint Enforcement (COMPLETE)
 
@@ -285,14 +317,37 @@ For EVERY framework change:
 | 1.6 | Create constraint-check.cjs validator | ✅ Done | CLI validation works |
 | 1.7 | Update sdd-tac-workflow with Phase 0 | ✅ Done | Workflow includes constraints |
 
-### 🟡 Phase 2: Agent Infrastructure
+### 🟡 Phase 2: Behavioral Fixes (IN PROGRESS)
 
-| Task | File | Status |
-|------|------|--------|
-| 2.1 | Create `.claude/agents/` directory | 🔴 TODO |
-| 2.2 | Implement meta-agent | 🔴 TODO |
-| 2.3 | Implement scout-agent templates | 🔴 TODO |
-| 2.4 | Implement qa-agent | 🔴 TODO |
+> **Status**: BEHAVIORAL FIXES APPLIED - Pending re-test
+> **Strategy Pivot**: Research showed 3/4 failures were decision-making, not context isolation
+> **Reference**: `docs/context-bundles/2025-12-05-agents-research-decision.md`
+
+| Task | File | Status | Description |
+|------|------|--------|-------------|
+| 2.1 | `sdd-tac-workflow/SKILL.md` | ✅ DONE | Added MANDATORY AskUserQuestion section |
+| 2.2 | `duplication-prevention.md` | ✅ DONE | Added tool requirement with JSON example |
+| 2.3 | Re-run validation tests | 🔴 TODO | Measure improvement after behavioral fixes |
+
+### 🔵 Phase 2.5: Hub-and-Spoke Agent Architecture (NEW)
+
+> **Status**: 🟡 RESEARCH COMPLETE - Ready for implementation
+> **Reference**: `docs/context-bundles/2025-12-05-agent-architecture-research.md`
+
+| Task | File | Status | Description |
+|------|------|--------|-------------|
+| 2.5.1 | Update agent-engineering.md | 🔴 TODO | Add hub-and-spoke architecture, correct model assignments |
+| 2.5.2 | Update model-selection.md | 🔴 TODO | Add Opus orchestrator guidance |
+| 2.5.3 | Create `.claude/agents/orchestrator.md` | 🔴 TODO | Opus model - primary coordination |
+| 2.5.4 | Create `.claude/agents/scout.md` | 🔴 TODO | Haiku model - fast discovery |
+| 2.5.5 | Create `.claude/agents/builder.md` | 🔴 TODO | Sonnet model - implementation |
+| 2.5.6 | Create `.claude/agents/validator.md` | 🔴 TODO | Haiku model - quality checks |
+| 2.5.7 | Implement handoff protocol | 🔴 TODO | Sub-agent → Primary reporting format |
+
+**Key Architecture Decisions**:
+- Sub-agents NEVER talk to each other (hub-and-spoke model)
+- Orchestrator uses Opus (not Sonnet) - needs complex reasoning
+- Use Task tool + configuration, NOT custom SDK
 
 ### 🟢 Phase 3: Skill Improvements
 
@@ -302,47 +357,69 @@ For EVERY framework change:
 | 3.2 | Add Phase 0 to workflow skill | ✅ Done |
 | 3.3 | Add STOP trigger to duplication skill | 🔴 TODO |
 
-### 🔵 Phase 4: Quality Gates
+### 🟣 Phase 4: Dynamic Agent Spawning (NEW)
+
+> **Status**: ⏸️ NOT STARTED - Requires Phase 2.5 validation
+> **Prerequisite**: Hub-and-spoke architecture working
+
+| Task | File | Status | Description |
+|------|------|--------|-------------|
+| 4.1 | Create dynamic agent templates | 🔴 TODO | SchemaScout, ComponentScout, TestWriter |
+| 4.2 | Implement agent lifecycle | 🔴 TODO | Create → Use → Delete pattern |
+| 4.3 | Add CRUD operations | 🔴 TODO | Agent management |
+
+**Dynamic Agent Templates** (spawn on-demand):
+- `SchemaScout` - Database exploration (Haiku)
+- `ComponentScout` - UI pattern discovery (Haiku)
+- `TestWriter` - Test generation (Sonnet)
+- `Refactorer` - Code restructuring (Sonnet)
+- `DocWriter` - Documentation (Haiku)
+
+### 🔘 Phase 5: Quality Gates
 
 | Task | File | Status |
 |------|------|--------|
-| 4.1 | Register constraint validator | 🔴 TODO |
-| 4.2 | Fix ESLint per-module | ⚠️ Ongoing |
+| 5.1 | Register constraint validator | 🔴 TODO |
+| 5.2 | Fix ESLint per-module | ⚠️ Ongoing |
 
-### 🟣 Phase 5: Advanced (Deferred)
+### ⚪ Phase 6: Parallel Execution (DEFERRED)
 
-| Task | Status |
-|------|--------|
-| Test git worktrees with 15-file feature | Deferred |
-| Implement orchestrator pattern | Deferred |
-| Evaluate cc-sdd integration | Deferred |
+> **Status**: ⏸️ DEFERRED - Git worktrees only needed for 15+ file parallel edits
+> **Resume When**: Encounter a REAL 15+ file feature requiring parallel agent work
+> **Prerequisites**: Phases 2.5-4 validated on 10+ real tasks
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Git worktree documentation | ⏸️ DEFERRED | Not needed until 15+ file features |
+| Parallel task distribution | ⏸️ DEFERRED | Requires working hub-and-spoke |
+| Branch merging strategies | ⏸️ DEFERRED | Complex orchestration needed |
 
 ---
 
 ## Quick Reference
 
 **What works today**:
-- Skills auto-activation (4 skills)
+- Phase 0 constraints (LOCKED files, STOP triggers)
+- Observability (session analysis, blocked ops tracking)
+- Skills auto-activation - **NOW WITH MANDATORY AskUserQuestion**
 - Prime commands (7+ commands)
 - PostToolUse validation (structure checks)
-- Validation scripts (structure, placement, naming)
-- Context bundles pattern
-- **Claude Code already captures transcript** (we just need to analyze it)
 
-**What's missing (do first)**:
-1. **Stop hook for session analysis** ← IMPLEMENT THIS
-2. Review session logs after test tasks
-3. Iterate framework based on findings
+**What was fixed** (2025-12-05):
+- Skills now MANDATE `AskUserQuestion` tool (not text templates)
+- `sdd-tac-workflow/SKILL.md` - Added MANDATORY section
+- `duplication-prevention.md` - Added tool requirement with JSON example
+- **Agent architecture research complete** - Hub-and-spoke model defined
 
-**How to work**:
-```
-Make framework change → Test with real task → Review session log → Adjust → Repeat
-```
+**Key Corrections from Research**:
+| Item | Previous (Incorrect) | Corrected |
+|------|---------------------|-----------|
+| Agent communication | Sub-agents could talk to each other | Hub-and-spoke: ALL through Primary |
+| Orchestrator model | Sonnet | **Opus** (complex coordination) |
+| Parallel execution | Part of initial agent rollout | **Deferred** to Phase 6 |
+| SDK strategy | Build custom SDK | **Use Task tool + configuration** |
 
-**Every framework change should be tested before moving to the next.**
-3. Phase 0 enforcement (LOCKED, STOP)
-4. PreToolUse blocking
-5. Constraint validator CLI
-6. Orchestrator for 10+ files
-
-**Next Action**: Implement Phase 0.5 to get visibility into agent behavior before building more infrastructure.
+**Next Actions**:
+1. Re-run validation tests (Phase 2.3)
+2. If pass rate improves: implement hub-and-spoke (Phase 2.5)
+3. If still failing: revisit behavioral approach before agents

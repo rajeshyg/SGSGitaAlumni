@@ -1,12 +1,13 @@
 ---
-version: 3.0
-status: partial
-last_updated: 2025-12-02
+version: 4.0
+status: active
+last_updated: 2025-12-05
 applies_to: framework
-description: R&D framework, context management, and parallel agent execution patterns
+description: Hub-and-spoke context management, R&D framework, and orchestration patterns
+supersedes: archive/2025-12-05-sub-agent-patterns-v3.md
 ---
 
-# Sub-Agent Patterns: R&D Framework and Parallel Execution
+# Sub-Agent Patterns: Hub-and-Spoke Orchestration
 
 ---
 
@@ -17,13 +18,71 @@ description: R&D framework, context management, and parallel agent execution pat
 | Principle | What It Means | Why It Matters |
 |-----------|---------------|----------------|
 | **Reduce** | Minimize static context | Faster responses, lower costs |
-| **Delegate** | Offload work to sub-agents | Separate contexts, true parallelism |
+| **Delegate** | Offload to sub-agents via hub | Isolated contexts, clean handoffs |
 
-This document covers both context management AND orchestration patterns because they are fundamentally connected - you delegate TO manage context.
+**Key Update (2025-12-05)**: Sub-agents communicate ONLY through the Primary Agent (hub-and-spoke model).
 
 ---
 
-## Part 1: Reduce (Context Management)
+## Part 1: Hub-and-Spoke Model
+
+### The Architecture
+
+```
+                         USER
+                           │
+                           ▼
+              ┌────────────────────────┐
+              │    PRIMARY AGENT       │
+              │    (Orchestrator)      │
+              │        OPUS            │
+              │                        │
+              │  • Hub of all comms    │
+              │  • Aggregates results  │
+              │  • Makes decisions     │
+              └────────────┬───────────┘
+                           │
+           ┌───────────────┼───────────────┐
+           │               │               │
+           ▼               ▼               ▼
+      ┌─────────┐    ┌─────────┐    ┌─────────┐
+      │  SCOUT  │    │ BUILDER │    │VALIDATOR│
+      │ (Haiku) │    │(Sonnet) │    │ (Haiku) │
+      │         │    │         │    │         │
+      │ Reports │    │ Reports │    │ Reports │
+      │   TO    │    │   TO    │    │   TO    │
+      │ Primary │    │ Primary │    │ Primary │
+      └─────────┘    └─────────┘    └─────────┘
+           │               │               │
+           └───────────────┴───────────────┘
+                           │
+                  ALL → PRIMARY ONLY
+```
+
+### Communication Rules (CRITICAL)
+
+| From | To | Allowed? |
+|------|-----|----------|
+| User | Primary | ✅ YES |
+| Primary | User | ✅ YES |
+| Primary | Any Sub-agent | ✅ YES |
+| Any Sub-agent | Primary | ✅ YES |
+| Scout | Builder | ❌ **NO** |
+| Builder | Validator | ❌ **NO** |
+| Any Sub-agent | User | ❌ **NO** |
+
+### Why Hub-and-Spoke?
+
+| ❌ Direct Communication | ✅ Hub-and-Spoke |
+|-------------------------|------------------|
+| Context polluted at handoff | Each agent isolated |
+| Hard to debug flow | Clear audit trail |
+| Sub-agents make user decisions | Primary controls UX |
+| 75k tokens by third agent | ~10k per agent max |
+
+---
+
+## Part 2: Reduce (Context Management)
 
 ### The Problem
 
@@ -56,26 +115,16 @@ Layer 4: Context Bundles             ← Session handoff
 ### Layer 1: Always-On Context
 
 **File**: `docs/specs/context/always-on.md`  
-**Target**: ≤50 lines (~100 tokens)  
-**Current**: 44 lines ✅
+**Target**: ≤50 lines (~100 tokens)
 
 Contains ONLY:
 - Tech stack essentials
 - Critical security rules
 - Project conventions that apply to EVERY task
 
-**Example**:
-```markdown
-# Critical Rules
-- SQL: Parameterized queries only [?, ?]
-- DB: Always use try/finally for connection.release()
-- Logging: Never log passwords, JWT, OTP, tokens
-```
-
 ### Layer 2: Skills (Auto-Activate)
 
-**Location**: `.claude/skills/`  
-**Status**: ✅ 4 skills implemented
+**Location**: `.claude/skills/`
 
 | Skill | Triggers When | Tokens |
 |-------|---------------|--------|
@@ -84,16 +133,9 @@ Contains ONLY:
 | `security-rules` | Auth/DB/API code | ~800 |
 | `coding-standards` | Service/component code | ~1.5k |
 
-**How It Works**:
-1. Claude scans skill descriptions (~100 tokens each)
-2. Matches description to current task
-3. Loads relevant skill content
-4. Other skills remain inactive
-
 ### Layer 3: Prime Commands (On-Demand)
 
-**Location**: `.claude/commands/`  
-**Status**: ✅ 7+ commands
+**Location**: `.claude/commands/`
 
 | Command | Loads | Use When |
 |---------|-------|----------|
@@ -104,8 +146,7 @@ Contains ONLY:
 
 ### Layer 4: Context Bundles
 
-**Location**: `docs/context-bundles/`  
-**Purpose**: Session handoff, restore ~70% context
+**Location**: `docs/context-bundles/`
 
 **Template**:
 ```markdown
@@ -128,225 +169,200 @@ Contains ONLY:
 - `file.ts:123` - Description
 ```
 
-### Context Monitoring
-
-```bash
-# Claude CLI: Check current usage
-/context
-
-# At 70% usage
-/compact  # Compress with focus on current task
-```
-
 ---
 
-## Part 2: Delegate (Sub-Agent Patterns)
+## Part 3: Delegate (Sub-Agent Patterns)
 
 ### Why Delegate?
 
-| Single Agent | Multiple Sub-Agents |
-|--------------|---------------------|
-| Context accumulates | Each agent has fresh 200k |
+| Single Agent | Hub-and-Spoke |
+|--------------|---------------|
+| Context accumulates | Each sub-agent has fresh context |
 | Slows down at 70%+ | Full speed throughout |
-| Sequential execution | True parallelism |
-| Can't work on conflicting files | Git worktrees isolate |
+| Sequential execution | Orchestrated parallelism |
+| Single point of failure | Isolated failures |
 
 ### Sub-Agent Types
 
-| Type | Model | Use For | Returns |
-|------|-------|---------|---------|
-| **Scout Agent** | Haiku | Discovery, search | Summary of findings |
-| **Planner Agent** | Sonnet | Strategy design | Implementation plan |
-| **Builder Agent** | Sonnet | Code implementation | Completed files |
-| **Validator Agent** | Sonnet | Quality checks | Pass/fail report |
+| Type | Model | Purpose | Output |
+|------|-------|---------|--------|
+| **Scout** | Haiku | Discovery, search | Summary of findings |
+| **Builder** | Sonnet | Implementation | Completed code |
+| **Validator** | Haiku | Quality checks | Pass/fail report |
 
 ### Invoking Sub-Agents
 
-**Claude CLI**:
-```bash
-# Scout sub-agent
-claude --model haiku -p "scout [feature] and summarize findings"
-
-# Builder sub-agent with specific scope
-claude --model sonnet -p "implement [specific files] per plan"
-```
-
-**Task Tool**:
+**Via Task Tool**:
 ```markdown
 Use Task tool with:
-- subagent_type=Explore for Scout
-- subagent_type=Plan for Planning
-- subagent_type=Build for Implementation
+- For exploration → Scout agent
+- For implementation → Builder agent
+- For validation → Validator agent
 ```
 
-### Context Flow Between Agents
+**Via Claude CLI**:
+```bash
+# Scout with Haiku
+claude --model haiku -p "scout [domain] and report findings to primary"
+
+# Build with Sonnet
+claude --model sonnet -p "implement [feature] per plan and report to primary"
+
+# Validate with Haiku
+claude --model haiku -p "validate [implementation] and report to primary"
+```
+
+### Context Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    ORCHESTRATOR (Main Agent)                │
+│                 ORCHESTRATOR (Opus)                          │
 │                                                             │
-│  Receives task                                              │
+│  1. Receive task from user                                  │
 │       │                                                     │
 │       ▼                                                     │
-│  Spawns Scout Agent ──────────────────┐                    │
-│       │                               │                    │
-│       │ (waits for summary)           ▼                    │
-│       │                      Scout works in separate       │
-│       │                      context, returns summary      │
-│       │◄──────────────────────────────┘                    │
+│  2. Spawn Scout (Haiku)                                     │
+│       │                                                     │
+│       │  Scout works in ISOLATED context                    │
+│       │  Scout returns SUMMARY to Primary                   │
 │       │                                                     │
 │       ▼                                                     │
-│  Spawns Planner Agent ────────────────┐                    │
-│       │                               │                    │
-│       │ (waits for plan)              ▼                    │
-│       │                      Planner reads scout summary,  │
-│       │                      creates plan                  │
-│       │◄──────────────────────────────┘                    │
+│  3. Primary analyzes Scout findings                         │
 │       │                                                     │
 │       ▼                                                     │
-│  Spawns Builder Agents (parallel) ────┐                    │
-│       │                               │                    │
-│       │ (waits for all)    ┌──────────┼──────────┐        │
-│       │                    ▼          ▼          ▼        │
-│       │               Builder 1  Builder 2  Builder 3     │
-│       │               (worktree) (worktree) (worktree)    │
-│       │◄───────────────────┴──────────┴──────────┘        │
+│  4. Spawn Builder (Sonnet) with filtered context            │
+│       │                                                     │
+│       │  Builder works in ISOLATED context                  │
+│       │  Builder returns RESULTS to Primary                 │
 │       │                                                     │
 │       ▼                                                     │
-│  Merges results, runs validation                           │
+│  5. Spawn Validator (Haiku)                                 │
+│       │                                                     │
+│       │  Validator returns REPORT to Primary                │
+│       │                                                     │
+│       ▼                                                     │
+│  6. Primary synthesizes and responds to User                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Part 3: Parallel Execution with Git Worktrees
+## Part 4: Sub-Agent Prompt Templates
 
-### The Problem
+### Scout Agent Prompt Template
 
-Multiple agents can't safely modify the same working directory:
-- File conflicts
-- Race conditions
-- Unpredictable state
+```markdown
+## Task
+Scout the [DOMAIN] for existing patterns.
 
-### The Solution: Git Worktrees
+## Context (from Primary)
+User wants to: [BRIEF SUMMARY]
+Relevant files hint: [OPTIONAL HINTS]
 
-Git worktrees create separate working directories from the same repository:
+## Questions to Answer
+1. What files exist for [DOMAIN]?
+2. What patterns are used?
+3. What dependencies exist?
 
-```bash
-# Create parallel environments
-git worktree add ../project-api feature/api
-git worktree add ../project-ui feature/ui
-git worktree add ../project-db feature/db
+## Output Format
+Report to Primary Agent with:
+- **Files Found**: (path, line count)
+- **Patterns**: (with code examples)
+- **Dependencies**: (internal/external)
+- **Recommendations**: (for implementation)
+
+## Rules
+- Do NOT address the user
+- Report ONLY to Primary Agent
+- Stay within read-only tools
 ```
 
-Each worktree:
-- ✅ Separate file system (no conflicts)
-- ✅ Same git repository
-- ✅ Independent agent context
-- ✅ Truly parallel execution
+### Builder Agent Prompt Template
+
+```markdown
+## Task
+Implement [FEATURE] per the plan.
+
+## Context (from Primary)
+Scout findings: [SUMMARY]
+Plan: [IMPLEMENTATION PLAN]
+Files to modify: [FILE LIST]
+
+## Implementation Requirements
+1. Requirement one
+2. Requirement two
+3. Requirement three
+
+## Output Format
+Report to Primary Agent with:
+- **Files Created**: (path, description)
+- **Files Modified**: (path, changes)
+- **Tests Added**: (if applicable)
+- **Blockers**: (if any)
+
+## Rules
+- Do NOT address the user
+- Report ONLY to Primary Agent
+- Follow existing code patterns
+```
+
+### Validator Agent Prompt Template
+
+```markdown
+## Task
+Validate the implementation of [FEATURE].
+
+## Context (from Primary)
+Files modified: [FILE LIST]
+Expected behavior: [REQUIREMENTS]
+
+## Checks to Perform
+1. Run: npm run lint (relevant files)
+2. Run: npm run test:run (relevant tests)
+3. Check: No anti-patterns (god objects, N+1)
+4. Check: Documentation updated
+
+## Output Format
+Report to Primary Agent with:
+- **Lint**: PASS/FAIL (error count)
+- **Tests**: PASS/FAIL (coverage)
+- **Anti-patterns**: CLEAN/FOUND (list)
+- **Docs**: UPDATED/MISSING
+
+## Rules
+- Do NOT address the user
+- Report ONLY to Primary Agent
+- Be specific about failures
+```
+
+---
+
+## Part 5: Parallel Execution (DEFERRED)
+
+> **Status**: ⏸️ DEFERRED until 15+ file features needed
+> **Reference**: Phase 6 in roadmap.md
 
 ### When to Use Parallel Agents
 
 | File Count | Approach | Agents |
 |------------|----------|--------|
 | 1-2 | Direct build | 1 |
-| 3-10 | Sequential workflow | 1 |
-| 10+ | Parallel build | 3-5 |
+| 3-10 | Sequential hub-and-spoke | 1 orchestrator + sequential subs |
+| 10+ | Parallel hub-and-spoke | 1 orchestrator + parallel subs |
 
-### Parallel Execution Example (15 Files)
+### Git Worktrees (For 15+ Files)
 
-**1. Setup Worktrees**:
+When truly parallel execution is needed:
+
 ```bash
-git worktree add ../project-auth feature/auth
+# Create parallel environments
 git worktree add ../project-api feature/api
 git worktree add ../project-ui feature/ui
+git worktree add ../project-db feature/db
+
+# Each worktree gets a Builder agent
+# All report back to Orchestrator
 ```
-
-**2. Spawn Parallel Agents**:
-```bash
-# Run in parallel (& backgrounds each)
-(cd ../project-auth && claude -p "implement auth per plan, files 1-5" &)
-(cd ../project-api && claude -p "implement API per plan, files 6-10" &)
-(cd ../project-ui && claude -p "implement UI per plan, files 11-15" &)
-wait  # Wait for all to complete
-```
-
-**3. Merge Results**:
-```bash
-git merge feature/auth feature/api feature/ui
-
-# Cleanup
-git worktree remove ../project-auth
-git worktree remove ../project-api
-git worktree remove ../project-ui
-```
-
-### File Dependency Rules
-
-| Dependency | Execution Strategy |
-|------------|-------------------|
-| Independent files (routes, components) | Different agents in parallel |
-| Dependent files (service → consumer) | Same agent, sequential |
-| Shared types/interfaces | Define first, then parallel |
-
-**Example**:
-```
-Independent (parallel):
-├── routes/auth.js        → Agent 1
-├── routes/postings.js    → Agent 2
-└── components/Auth.tsx   → Agent 3
-
-Dependent (same agent, sequential):
-├── services/FooService.ts  → Agent 1 (first)
-└── routes/foo.js           → Agent 1 (depends on service)
-```
-
----
-
-## Part 4: Orchestrator Pattern (10+ Files)
-
-### Complete Orchestration Flow
-
-```
-1. RECEIVE TASK
-   └── Parse complexity (file count, domains)
-
-2. PHASE 0: CONSTRAINTS
-   └── Check LOCKED files, STOP triggers
-   └── Block if violations (exit 2)
-
-3. PHASE 1: SCOUT (Parallel if multi-domain)
-   ├── Spawn Scout Agent: API domain
-   ├── Spawn Scout Agent: UI domain
-   └── Spawn Scout Agent: Database domain
-   └── Aggregate findings into single bundle
-
-4. PHASE 2: PLAN
-   └── Spawn Planner Agent with aggregated findings
-   └── Analyze plan → identify parallelizable batches
-   └── Human reviews plan
-
-5. PHASE 3: BUILD (Parallel)
-   ├── Create worktrees per domain
-   ├── Spawn Builder Agents (parallel)
-   └── Monitor progress, detect conflicts
-
-6. PHASE 4: MERGE & VALIDATE
-   └── Merge worktrees
-   └── Run validation pipeline
-   └── Report results
-```
-
-### Orchestrator Responsibilities
-
-| Responsibility | How |
-|----------------|-----|
-| Task parsing | Count files, identify domains |
-| Constraint enforcement | Call Phase 0 checks |
-| Agent spawning | Claude CLI or Task tool |
-| Context bundling | File-based handoff |
-| Conflict detection | Monitor worktree diffs |
-| Result aggregation | Merge and validate |
 
 ---
 
@@ -354,24 +370,19 @@ Dependent (same agent, sequential):
 
 | Component | Status | Notes |
 |-----------|--------|-------|
-| Always-on.md | ✅ Implemented | 44 lines |
-| Skills auto-activation | ✅ Implemented | 4 skills |
-| Prime commands | ✅ Implemented | 7+ commands |
-| Context bundles | ✅ Pattern defined | `docs/context-bundles/` |
-| Scout sub-agents | 🟡 Documented | Use Task tool or Claude CLI |
-| Planner sub-agents | 🟡 Documented | Use Task tool or Claude CLI |
-| Git worktrees | 🟡 Documented | Not tested in practice |
-| Orchestrator pattern | 🔴 Not implemented | Deferred until Phase 1-3 complete |
+| Context persistence stack | ✅ Implemented | always-on, skills, commands |
+| Hub-and-spoke architecture | ✅ Documented | Ready for implementation |
+| Scout prompt template | ✅ Documented | Above |
+| Builder prompt template | ✅ Documented | Above |
+| Validator prompt template | ✅ Documented | Above |
+| Agent definitions | 🔴 TODO | `.claude/agents/` |
+| Parallel execution | ⏸️ DEFERRED | Phase 6 |
 
 ---
 
-## Tool Compatibility
+## References
 
-| Feature | Claude CLI | VS Code + Copilot | Other |
-|---------|------------|-------------------|-------|
-| /context monitoring | ✅ | ❌ | ❌ |
-| Sub-agent spawning | ✅ | ⚠️ Limited | ❌ |
-| Git worktrees | ✅ | ✅ | ✅ |
-| Context bundles | ✅ | ✅ Manual | ✅ Manual |
-
-**For non-Claude CLI**: Use context bundles manually and run sub-agent patterns via separate terminal sessions.
+- **Agent Engineering**: [agent-engineering.md](./agent-engineering.md)
+- **Model Selection**: [model-selection.md](./model-selection.md)
+- **Architecture Research**: `docs/context-bundles/2025-12-05-agent-architecture-research.md`
+- **Archived Version**: `archive/2025-12-05-sub-agent-patterns-v3.md`

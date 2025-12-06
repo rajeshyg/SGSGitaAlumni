@@ -1,46 +1,108 @@
 ---
-version: 2.0
+version: 3.0
 status: active
-last_updated: 2025-12-02
+last_updated: 2025-12-05
 applies_to: framework
-description: Decision matrix for choosing Haiku vs Sonnet AI models
+description: Model stack strategy for hub-and-spoke agent architecture (Opus/Sonnet/Haiku)
 ---
 
-# Model Selection Guide: Haiku vs Sonnet
+# Model Selection Guide: Opus, Sonnet, Haiku Stack
 
 ---
 
 ## Overview
 
-Choosing the right model for each task saves **28% on typical workflows** and **10x on discovery tasks**.
+The **model stack** strategy optimizes cost and quality by assigning the right model to each agent role.
 
 | Model Class | Examples | Cost (Claude) | Use For |
 |-------------|----------|---------------|---------|
-| **Lightweight** | Haiku, GPT-3.5 | ~$0.25/1M tokens | Discovery, search, docs |
-| **Standard** | Sonnet, GPT-4 | ~$3.00/1M tokens | Design, complex logic |
-| **Advanced** | Opus, GPT-4 Turbo | ~$15/1M tokens | Orchestration (rare) |
+| **Lightweight** | Haiku | ~$0.25/1M tokens | Discovery, validation, docs |
+| **Standard** | Sonnet | ~$3.00/1M tokens | Implementation, design |
+| **Advanced** | **Opus** | ~$15/1M tokens | **Orchestration (REQUIRED)** |
+
+> **Update 2025-12-05**: Research confirmed Opus is REQUIRED for orchestrator role - complex coordination needs Opus-level reasoning.
+
+---
+
+## Agent-Specific Model Assignment
+
+### Hub-and-Spoke Architecture
+
+| Agent | Model | Cost | Why This Model |
+|-------|-------|------|----------------|
+| **Orchestrator** | **Opus** | ~$15/1M | Complex coordination, synthesis, decision-making |
+| Scout | Haiku | ~$0.25/1M | Fast discovery, pattern matching |
+| Builder | Sonnet | ~$3/1M | Code generation, implementation |
+| Validator | Haiku | ~$0.25/1M | Structured validation, checklist verification |
+
+### Why Opus for Orchestrator?
+
+The Orchestrator needs to:
+1. **Understand** complex, ambiguous user requests
+2. **Break down** tasks into sub-agent assignments
+3. **Decide** which agent to spawn and when
+4. **Synthesize** results from multiple agents
+5. **Judge** quality and completeness
+
+> "Haiku is not a good planner for deep thinking or complex tasks" - IndyDevDan
+
+Sonnet handles implementation well but lacks the **meta-reasoning** needed for orchestration.
 
 ---
 
 ## The Golden Rule
 
 ```
-Information retrieval, discovery, simple patterns → LIGHTWEIGHT (Haiku)
-Design decisions, complex logic, multi-file → STANDARD (Sonnet)
+Orchestration, complex decisions    → OPUS (Advanced)
+Implementation, design decisions    → SONNET (Standard)
+Discovery, validation, simple tasks → HAIKU (Lightweight)
 ```
 
 ---
 
 ## Phase-Specific Recommendations
 
-| Phase | Model | Cost | Rationale |
-|-------|-------|------|-----------|
-| **Phase 0**: Constraints | Any | - | Just loading/checking |
-| **Phase 1**: Scout | Lightweight | ~$0.02 | Pure discovery |
-| **Phase 2**: Plan | Standard | ~$1.50 | Architectural reasoning |
-| **Phase 3**: Build | Standard | ~$3.00 | Multi-file implementation |
-| **Phase 4**: Validate | Standard | ~$1.00 | Deep analysis |
-| **Orchestrate** (10+ files) | Standard/Advanced | ~$3-5 | Complex coordination |
+| Phase | Agent | Model | Cost | Rationale |
+|-------|-------|-------|------|-----------|
+| **Phase 0**: Constraints | Any | Any | - | Just loading/checking |
+| **Phase 1**: Scout | Scout | Haiku | ~$0.02 | Pure discovery |
+| **Phase 2**: Plan | Orchestrator | Opus | ~$2.00 | Architectural reasoning |
+| **Phase 3**: Build | Builder | Sonnet | ~$3.00 | Multi-file implementation |
+| **Phase 4**: Validate | Validator | Haiku | ~$0.20 | Checklist verification |
+| **Orchestrate** | Orchestrator | **Opus** | ~$5.00 | Complex multi-agent coordination |
+
+---
+
+## Cost Comparison
+
+### All-Sonnet Approach (Old)
+```
+Scout:       $2.00 (Sonnet - overkill)
+Plan:        $1.50 (Sonnet)
+Build:       $3.00 (Sonnet)
+Validate:    $1.00 (Sonnet - overkill)
+────────────────────
+Total:       $7.50
+```
+
+### Optimized Stack (New)
+```
+Scout:       $0.20 (Haiku)     ← 10x cheaper
+Plan:        $2.00 (Opus)      ← Better reasoning
+Build:       $3.00 (Sonnet)
+Validate:    $0.20 (Haiku)     ← 5x cheaper
+────────────────────
+Total:       $5.40 (28% savings + better quality)
+```
+
+### Cost Per Agent Role
+
+| Role | Model | Input Cost | Output Cost | Typical Task Cost |
+|------|-------|------------|-------------|-------------------|
+| Scout | Haiku | $0.25/1M | $1.25/1M | ~$0.02-0.20 |
+| Orchestrator | Opus | $15/1M | $75/1M | ~$2.00-5.00 |
+| Builder | Sonnet | $3/1M | $15/1M | ~$3.00-4.00 |
+| Validator | Haiku | $0.25/1M | $1.25/1M | ~$0.02-0.20 |
 
 ---
 
@@ -49,38 +111,18 @@ Design decisions, complex logic, multi-file → STANDARD (Sonnet)
 ```
 START
   ↓
-Is this pure information retrieval?
-  ├─ YES → Lightweight
+Is this orchestration/coordination?
+  ├─ YES → OPUS (Orchestrator)
   └─ NO ↓
-Is output < 500 lines of documentation?
-  ├─ YES → Lightweight
+Is this code implementation?
+  ├─ YES → SONNET (Builder)
   └─ NO ↓
-Does it require design decisions?
-  ├─ YES → Standard
+Is this discovery/search?
+  ├─ YES → HAIKU (Scout)
   └─ NO ↓
-Is it straightforward CRUD?
-  ├─ YES → Lightweight
-  └─ NO → Standard
-```
-
----
-
-## Cost Comparison
-
-**All-Standard Approach**:
-```
-Scout:  $2.00
-Plan:   $1.50
-Build:  $3.00
-Total:  $6.50
-```
-
-**Optimized Approach**:
-```
-Scout:  $0.20 (Lightweight) ← 10x cheaper
-Plan:   $1.50 (Standard)
-Build:  $3.00 (Standard)
-Total:  $4.70 (28% savings)
+Is this validation/verification?
+  ├─ YES → HAIKU (Validator)
+  └─ NO → SONNET (default)
 ```
 
 ---
@@ -89,11 +131,14 @@ Total:  $4.70 (28% savings)
 
 ### Claude CLI
 ```bash
-# Scout with Haiku
+# Scout with Haiku (explicit model)
 claude --model haiku -p "scout the [feature] system"
 
-# Build with Sonnet (default)
-claude -p "implement the plan for [feature]"
+# Build with Sonnet (explicit model)
+claude --model sonnet -p "implement the plan for [feature]"
+
+# Orchestrate with Opus (for complex multi-agent tasks)
+claude --model opus -p "coordinate implementation of [feature]"
 ```
 
 ### VS Code + GitHub Copilot
@@ -103,42 +148,102 @@ claude -p "implement the plan for [feature]"
 
 ### Claude.ai Web
 - Select model from dropdown
-- Haiku for searches, Sonnet for implementation
+- Haiku for searches
+- Sonnet for implementation
+- Opus for complex planning
 
 ---
 
 ## Quick Reference
 
-| Task | Model | Cost |
-|------|-------|------|
-| File discovery | Lightweight | ~$0.02 |
-| Code search | Lightweight | ~$0.02 |
-| Documentation (<500 lines) | Lightweight | ~$0.02 |
-| Simple CRUD | Lightweight | ~$0.02 |
-| Architecture decisions | Standard | ~$1-2 |
-| Complex refactoring | Standard | ~$3-4 |
-| Debugging | Standard | ~$2-3 |
-| Multi-agent orchestration | Standard/Advanced | ~$3-5 |
+| Task | Agent | Model | Cost |
+|------|-------|-------|------|
+| File discovery | Scout | Haiku | ~$0.02 |
+| Code search | Scout | Haiku | ~$0.02 |
+| Documentation | Scout | Haiku | ~$0.02 |
+| Simple CRUD | Builder | Sonnet | ~$1.00 |
+| Architecture decisions | Orchestrator | Opus | ~$2.00 |
+| Complex refactoring | Builder | Sonnet | ~$3-4 |
+| Debugging | Builder | Sonnet | ~$2-3 |
+| Quality checks | Validator | Haiku | ~$0.20 |
+| Multi-agent orchestration | Orchestrator | **Opus** | ~$5.00 |
 
 ---
 
 ## Model Capabilities
 
-### Lightweight (Haiku)
+### Haiku (Lightweight)
 ✅ Fast, cheap, great for discovery  
-❌ Limited reasoning, misses subtle patterns
+✅ Excellent at pattern matching and search  
+❌ Limited reasoning, misses subtle patterns  
+❌ Not suitable for complex decisions
 
-### Standard (Sonnet)
+**Best For**: Scout, Validator, DocWriter
+
+### Sonnet (Standard)
 ✅ Deep reasoning, consistent, multi-file  
-❌ 10x more expensive, slower
+✅ Excellent code generation  
+❌ 10x more expensive than Haiku  
+❌ Slower than Haiku
+
+**Best For**: Builder, TestWriter, Refactorer
+
+### Opus (Advanced)
+✅ Complex reasoning, synthesis  
+✅ Multi-step planning and coordination  
+✅ Handles ambiguous requests well  
+❌ 60x more expensive than Haiku  
+❌ Slowest model
+
+**Best For**: Orchestrator (REQUIRED)
 
 ---
 
 ## When in Doubt
 
-1. "Find/read/discover?" → Haiku
-2. "Think/design/decide?" → Sonnet
-3. "Scout phase?" → Haiku
-4. "Plan/Build phase?" → Sonnet
+1. "Coordinate/orchestrate/decide?" → **Opus**
+2. "Implement/build/create?" → **Sonnet**
+3. "Find/read/discover/validate?" → **Haiku**
+4. "Scout phase?" → **Haiku**
+5. "Plan phase?" → **Opus**
+6. "Build phase?" → **Sonnet**
+7. "Validate phase?" → **Haiku**
 
-**Default to Sonnet if uncertain** - better to overspend than under-reason.
+**For orchestration**: ALWAYS use Opus - the cost is justified by better decision-making.
+
+---
+
+## Configuration
+
+### Recommended settings.json
+
+```json
+{
+  "agents": {
+    "orchestrator": { 
+      "model": "opus",
+      "role": "Coordination, synthesis, decision-making"
+    },
+    "scout": { 
+      "model": "haiku", 
+      "role": "Fast discovery, pattern matching"
+    },
+    "builder": { 
+      "model": "sonnet", 
+      "role": "Code generation, implementation"
+    },
+    "validator": { 
+      "model": "haiku", 
+      "role": "Structured validation"
+    }
+  }
+}
+```
+
+---
+
+## References
+
+- **Agent Engineering**: [agent-engineering.md](./agent-engineering.md)
+- **Architecture Research**: `docs/context-bundles/2025-12-05-agent-architecture-research.md`
+- **IndyDevDan Model Stack**: `docs/archive/root-docs/IndyDevDan_TAC/Introduction to Claude Haiku 4.5 and Sonnet 4.5.txt`

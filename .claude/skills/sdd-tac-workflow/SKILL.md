@@ -80,6 +80,47 @@ Key patterns: [list patterns found]
 Dependencies: [list dependencies]
 ```
 
+**Scout Output Checklist** (MUST answer before proceeding to Plan):
+```
+- [ ] What EXISTING files handle similar functionality?
+- [ ] Can requirement be met by EXTENDING existing vs CREATING new?
+- [ ] If creating new: why doesn't existing code fit?
+```
+
+**Decision Point**: If scout finds functional overlap, STOP and ask user whether to extend or create (see duplication-prevention skill).
+
+## ⛔ MANDATORY: Use AskUserQuestion Tool
+
+When Scout phase finds existing patterns OR you're about to create new files:
+
+**YOU MUST USE THE `AskUserQuestion` TOOL** with these exact options:
+1. "Extend [existing file/pattern]" - Use this when scout found similar functionality
+2. "Create new [proposed file]" - Only if extending truly doesn't fit
+3. "More exploration needed" - If unsure
+
+⚠️ **Text questions are NOT sufficient.** The AskUserQuestion tool creates accountability.
+
+**When to trigger this**:
+- AFTER Scout phase completes
+- BEFORE Plan phase begins
+- BEFORE creating ANY new file (component, utility, route, schema)
+
+**Example usage**:
+```json
+{
+  "questions": [{
+    "question": "Scout found InputValidator.ts handles validation. How should I proceed?",
+    "header": "Extend vs Create",
+    "options": [
+      {"label": "Extend InputValidator", "description": "Add new validation to existing file"},
+      {"label": "Create new file", "description": "If InputValidator doesn't fit purpose"},
+      {"label": "More exploration", "description": "Need to check other patterns first"}
+    ],
+    "multiSelect": false
+  }]
+}
+```
+
 ### Plan Phase (Design)
 **Purpose**: Design implementation before writing code
 **Input**: Scout findings + feature specs

@@ -1,335 +1,365 @@
 ---
-version: 1.0
-status: implemented
-last_updated: 2025-12-02
+version: 2.0
+status: active
+last_updated: 2025-12-05
 applies_to: framework
-description: Agent creation, configuration, prompt engineering, and meta-agent patterns
+description: Hub-and-spoke agent architecture, model selection, and orchestration patterns
+supersedes: archive/2025-12-05-agent-engineering-v1.md
 ---
 
-# Agent Engineering: Configuration, Prompts, and Meta-Agents
+# Agent Engineering: Hub-and-Spoke Architecture
 
 ---
 
 ## Overview
 
-This document covers how to **create and configure AI agents** for the SDD/TAC framework, including:
+This document defines the **hub-and-spoke** agent architecture for the SDD/TAC framework.
 
-- Agent configuration structure (`.claude/agents/`)
-- Prompt engineering patterns (Input → Workflow → Output)
-- Meta-agent concept (agents that build agents)
-- Integration with existing skills and commands
+**Key Principle**: Sub-agents NEVER talk to each other. The Primary Agent (Orchestrator) mediates ALL communication.
 
-**Prerequisite Reading**: [sub-agent-patterns.md](./sub-agent-patterns.md) for context management
+**Reference**: `docs/context-bundles/2025-12-05-agent-architecture-research.md`
 
 ---
 
-## Core Concepts
+## Hub-and-Spoke Architecture
 
-### Agent Information Flow
+### The Model
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    AGENT INTERACTION LOOP                     │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  1. User Prompt ──► Primary Agent                            │
-│                          │                                   │
-│  2. Primary Agent ──► Delegates to Sub-Agent                 │
-│                          │                                   │
-│  3. Sub-Agent ──► Executes in ISOLATED context               │
-│                          │                                   │
-│  4. Sub-Agent ──► Reports back to Primary Agent              │
-│                          │                                   │
-│  5. Primary Agent ──► Responds to User                       │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+                    ┌─────────────────────────────────────┐
+                    │                                     │
+        ┌───────────▼───────────┐                        │
+        │      USER PROMPT      │                        │
+        └───────────┬───────────┘                        │
+                    │                                     │
+                    ▼                                     │
+        ┌───────────────────────┐                        │
+        │   PRIMARY AGENT       │◄───────────────────────┘
+        │   (Orchestrator)      │
+        │      OPUS MODEL       │
+        │                       │
+        │  • Receives user task │
+        │  • Delegates to subs  │
+        │  • Aggregates results │
+        │  • Reports to user    │
+        └───────────┬───────────┘
+                    │
+     ┌──────────────┼──────────────┐
+     │              │              │
+     ▼              ▼              ▼
+┌─────────┐   ┌─────────┐   ┌─────────┐
+│  SCOUT  │   │ BUILDER │   │VALIDATOR│
+│ (Haiku) │   │(Sonnet) │   │ (Haiku) │
+│         │   │         │   │         │
+│ Reports │   │ Reports │   │ Reports │
+│   TO    │   │   TO    │   │   TO    │
+│ Primary │   │ Primary │   │ Primary │
+└────┬────┘   └────┬────┘   └────┬────┘
+     │              │              │
+     └──────────────┴──────────────┘
+                    │
+            ALL REPORT BACK
+            TO PRIMARY ONLY
 ```
 
-> **Critical Insight**: Sub-agents do NOT talk to users. They report to the Primary Agent. All prompts should instruct "report back to primary agent" not "tell the user."
+### Communication Rules
 
-### Agent vs Skill vs Command
+| Component | Talks To | NEVER Talks To |
+|-----------|----------|----------------|
+| User | Primary Agent only | Sub-agents directly |
+| Primary Agent | User, All Sub-agents | N/A (it's the hub) |
+| Scout | Primary Agent only | Builder, Validator, User |
+| Builder | Primary Agent only | Scout, Validator, User |
+| Validator | Primary Agent only | Scout, Builder, User |
 
-| Concept | Location | Purpose | Context |
-|---------|----------|---------|---------|
-| **Agent** | `.claude/agents/` | Autonomous task execution | Fresh, isolated window |
-| **Skill** | `.claude/skills/` | Auto-activated expertise | Same context, triggered |
-| **Command** | `.claude/commands/` | On-demand context loading | Same context, manual |
+### Why Hub-and-Spoke?
+
+| ❌ Wrong (Direct Communication) | ✅ Correct (Hub-and-Spoke) |
+|--------------------------------|---------------------------|
+| Scout → Builder → Validator → User | Scout → Primary → Builder → Primary → Validator → Primary → User |
+| Context polluted at each handoff | Each agent has isolated context |
+| Harder to debug | Clear audit trail |
+| Agents accumulate irrelevant context | Primary synthesizes and filters |
 
 ---
 
-## Agent Configuration Structure
+## Agent Definitions
+
+### Pre-defined Agents (Always Available)
+
+| Agent | Model | Cost | Purpose | Location |
+|-------|-------|------|---------|----------|
+| **Orchestrator** | Opus | ~$15/1M | Coordination, decision-making | `.claude/agents/orchestrator.md` |
+| **Scout** | Haiku | ~$0.25/1M | Fast discovery, pattern matching | `.claude/agents/scout.md` |
+| **Builder** | Sonnet | ~$3/1M | Code implementation | `.claude/agents/builder.md` |
+| **Validator** | Haiku | ~$0.25/1M | Quality checks | `.claude/agents/validator.md` |
+
+### Dynamic Agents (Spawned On-Demand)
+
+| Agent | Model | Purpose | When Spawned |
+|-------|-------|---------|--------------|
+| SchemaScout | Haiku | Database exploration | DB-heavy tasks |
+| ComponentScout | Haiku | UI pattern discovery | UI-heavy tasks |
+| TestWriter | Sonnet | Test generation | When tests needed |
+| Refactorer | Sonnet | Code restructuring | Refactoring tasks |
+| DocWriter | Haiku | Documentation | Doc-specific tasks |
+
+---
+
+## Model Selection Strategy
+
+### The Golden Rule
+
+```
+Orchestrator (complex decisions)  → OPUS
+Information retrieval, discovery  → HAIKU
+Design decisions, implementation  → SONNET
+```
+
+### Model Assignment Matrix
+
+| Agent Role | Model | Cost | Reasoning |
+|------------|-------|------|-----------|
+| **Orchestrator/Primary** | **Opus** | ~$15/1M tokens | Complex coordination, decision-making, synthesis |
+| Scout | Haiku | ~$0.25/1M tokens | Fast discovery, pattern matching, no deep reasoning |
+| Builder | Sonnet | ~$3/1M tokens | Code generation, implementation logic |
+| Validator | Haiku | ~$0.25/1M tokens | Structured validation, checklist verification |
+
+### Why Opus for Orchestrator?
+
+The Orchestrator needs to:
+1. Understand complex user requests
+2. Break down into sub-tasks intelligently
+3. Decide which agent to spawn
+4. Synthesize results from multiple agents
+5. Make judgment calls on quality
+
+This requires **Opus-level reasoning**, not Sonnet.
+
+### Cost Comparison
+
+| Approach | Scout | Plan | Build | Total |
+|----------|-------|------|-------|-------|
+| All-Sonnet | $2.00 | $1.50 | $3.00 | **$6.50** |
+| Optimized Stack | $0.20 (Haiku) | $1.50 | $3.00 | **$4.70** (28% savings) |
+
+---
+
+## Agent Configuration Schema
 
 ### Directory Layout
 
 ```
 .claude/
 ├── agents/
-│   ├── meta-agent.json         # Agent that creates other agents
-│   ├── scout-agent.json        # Domain-specific reconnaissance
-│   ├── qa-agent.json           # Quality assurance
-│   ├── docs-agent.json         # Documentation generation
-│   └── summary-agent.json      # Session summary/reporting
-├── skills/                     # Existing skills
-├── commands/                   # Existing commands
-└── settings.json               # Hook configuration
+│   ├── orchestrator.md    # Primary agent (Opus)
+│   ├── scout.md           # Discovery agent (Haiku)
+│   ├── builder.md         # Implementation agent (Sonnet)
+│   └── validator.md       # Quality agent (Haiku)
+├── skills/                # Behavioral rules (existing)
+├── commands/              # On-demand context (existing)
+└── settings.json          # Hook configuration
 ```
 
-### Agent Configuration Schema
+### Agent Definition Template
 
-```json
-{
-  "name": "scout-agent",
-  "description": "Use this agent when you need to discover existing patterns, files, or architecture in a specific domain (auth, database, API, UI). Proactively call this agent for any task affecting 3+ files.",
-  "tools": ["read_file", "grep_search", "semantic_search", "list_dir"],
-  "color": "blue",
-  "systemPrompt": "You are a reconnaissance specialist. Your job is to discover existing code patterns and report findings to the Primary Agent.\n\n## Input\n- Domain to scout (auth, database, API, UI)\n- Specific questions to answer\n\n## Workflow\n1. Search for relevant files using grep_search\n2. Read key files to understand patterns\n3. Document existing conventions\n4. Identify dependencies and integrations\n\n## Output\nReport to the Primary Agent with:\n- Files discovered (with line counts)\n- Patterns identified (with examples)\n- Dependencies mapped\n- Recommendations for implementation"
-}
+```markdown
+---
+name: agent-name
+model: haiku|sonnet|opus
+description: When to invoke this agent
+tools: [list of allowed tools]
+---
+
+# Agent Name
+
+## Purpose
+What this agent does.
+
+## Input
+What it receives from the Primary Agent:
+- Task description
+- Context summary (NOT raw files)
+- Specific questions to answer
+
+## Workflow
+1. Step one
+2. Step two
+3. Step three
+
+## Output
+Report to the Primary Agent with:
+- Summary of findings
+- Files discovered/modified
+- Recommendations
+- Blockers (if any)
+
+## Rules
+- NEVER address the user directly
+- Always report back to Primary Agent
+- Stay within tool permissions
 ```
 
-### Configuration Fields
+---
 
-| Field | Purpose | Best Practice |
-|-------|---------|---------------|
-| `name` | Unique identifier | kebab-case, descriptive |
-| `description` | **CRITICAL**: When to call this agent | Be explicit: "Use when...", "Proactively call for..." |
-| `tools` | Whitelist of allowed tools | Limit for security (e.g., read-only agent) |
-| `color` | Terminal output distinction | Visual debugging aid |
-| `systemPrompt` | Agent behavior rules | Use Input/Workflow/Output structure |
+## Interaction Loop
+
+### Complete Flow
+
+```
+1. USER PROMPT
+   └── User sends request to Primary Agent
+
+2. PRIMARY AGENT (Orchestrator)
+   ├── Parse complexity (file count, domains)
+   ├── Check Phase 0 constraints
+   └── Decide: Single agent or multiple?
+
+3. DELEGATION (if needed)
+   ├── Spawn Scout Agent → wait for summary
+   ├── Synthesize findings
+   ├── Spawn Builder Agent → wait for completion
+   └── Spawn Validator Agent → wait for report
+
+4. AGGREGATION
+   └── Primary Agent combines all reports
+
+5. USER RESPONSE
+   └── Primary Agent responds to User
+```
+
+### Critical Insight
+
+> **When writing prompts for Sub Agents, you are NOT talking to the user; you are instructing the Sub Agent on how to report back to the Primary Agent.**
+
+```markdown
+❌ WRONG (in sub-agent prompt):
+"Hey user, I found these files for you!"
+
+✅ CORRECT (in sub-agent prompt):
+"Report to the Primary Agent with a concise summary of discovered files."
+```
 
 ---
 
 ## Prompt Engineering Patterns
 
-### Level 1: Ad-Hoc Prompt (Simple Tasks)
+### Level 1: Simple Task (No Sub-Agents)
 
 ```
 Create a function that validates email format.
 ```
+→ Primary Agent handles directly
 
-### Level 2: Workflow Prompt (Multi-Step Tasks)
+### Level 2: Discovery Task (Scout Agent)
 
-```markdown
-## Purpose
-Create email validation utility with comprehensive rules.
+```
+User Request: "Add filtering to alumni API"
 
-## Workflow
-1. Check `src/utils/` for existing validation utilities
-2. Create `email-validator.ts` with:
-   - RFC 5322 compliant regex
-   - Domain validation
-   - Common typo detection
-3. Add unit tests in `src/utils/__tests__/`
-4. Export from `src/utils/index.ts`
+Primary Agent spawns Scout with:
+---
+## Task
+Scout the alumni API domain for existing patterns.
 
-## Report
-- Files created/modified
-- Test coverage
-- Edge cases handled
+## Questions
+1. What route handles alumni listing?
+2. Are there existing filter implementations?
+3. What query parameters are supported?
+
+## Output
+Report back with:
+- Files found (with line numbers)
+- Existing patterns (with code examples)
+- Recommended approach
+---
 ```
 
-### Level 3: Control Flow Prompt (Conditional Logic)
+### Level 3: Implementation Task (Scout → Builder)
 
-```markdown
-## Purpose
-Add validation to posting creation with conditional rules.
-
-## Workflow
-1. Read `src/schemas/posting.ts` for existing schema
-2. IF schema uses Zod:
-   - Extend existing schema with new fields
-   ELSE IF schema uses Yup:
-   - Create equivalent Yup validation
-   ELSE:
-   - STOP: Report unknown schema library
-3. Add validation for:
-   - Title (5-200 chars)
-   - Content (10-5000 chars)
-   - Expiry date (future only)
-4. IF `src/components/PostingForm.tsx` exists:
-   - Integrate validation with form
-   ELSE:
-   - Create validation hook only
-
-## Report
-- Schema library found
-- Changes made
-- Integration status
 ```
+1. Primary → Scout: "Discover auth patterns"
+   Scout → Primary: "Found JWT in middleware/auth.js, patterns X, Y, Z"
 
-### Level 4: Delegation Prompt (Sub-Agent Orchestration)
+2. Primary analyzes findings, creates plan
 
-```markdown
-## Purpose
-Implement new notification system across frontend and backend.
+3. Primary → Builder: "Implement feature per plan"
+   Builder → Primary: "Created files A, B, C with coverage"
 
-## Workflow
-1. DELEGATE to scout-agent:
-   - Prompt: "Scout notification patterns in backend routes and frontend components"
-   - Wait for findings
-2. Based on scout report, create implementation plan
-3. DELEGATE to parallel agents:
-   - Agent 1: Backend notification routes
-   - Agent 2: Frontend notification components
-   - Agent 3: Database schema changes
-4. Aggregate results
-5. DELEGATE to qa-agent:
-   - Prompt: "Verify notification system integration"
+4. Primary → Validator: "Verify implementation"
+   Validator → Primary: "Tests pass, no anti-patterns"
 
-## Report
-- Scout findings summary
-- Implementation completed per agent
-- QA results
-- Integration issues (if any)
+5. Primary → User: "Feature complete, summary..."
 ```
 
 ---
 
-## Meta-Agent Concept
+## Agent vs Skill vs Command
 
-The **Meta-Agent** creates other agents based on requirements.
+| Concept | Location | Purpose | Context |
+|---------|----------|---------|---------|
+| **Agent** | `.claude/agents/` | Autonomous task execution | **Fresh, isolated window** |
+| **Skill** | `.claude/skills/` | Auto-activated expertise | Same context, triggered |
+| **Command** | `.claude/commands/` | On-demand context loading | Same context, manual |
 
-### Meta-Agent Configuration
-
-```json
-{
-  "name": "meta-agent",
-  "description": "Use this agent when you need to create a new specialized agent. Provide the problem to solve, not the technology to use.",
-  "tools": ["read_file", "create_file", "list_dir"],
-  "systemPrompt": "You are an agent architect. You create specialized agents following the project's agent patterns.\n\n## Input\n- Problem to solve (NOT technology)\n- Required capabilities\n- Security constraints\n\n## Workflow\n1. Read existing agents in .claude/agents/\n2. Read project patterns from docs/specs/technical/development-framework/agent-engineering.md\n3. Design agent configuration:\n   - Descriptive name\n   - Clear description (CRITICAL: when to call)\n   - Minimal tool permissions\n   - Input/Workflow/Output system prompt\n4. Create agent file in .claude/agents/\n\n## Output\nReport to Primary Agent:\n- Agent file created\n- Description summary\n- Tools granted\n- Usage example"
-}
-```
-
-### Meta-Agent Usage Pattern
-
-```
-❌ WRONG: "I want to use 11Labs, what can I build?"
-✅ RIGHT: "I lose track of long builds. I need audio notification when complete."
-
-Problem → Solution → Technology
-```
-
----
-
-## Common Pitfalls
-
-### Pitfall 1: Writing User-Facing Prompts
-
-```
-❌ WRONG (in systemPrompt):
-"Hey user, I found these files for you!"
-
-✅ RIGHT (in systemPrompt):
-"Report to the Primary Agent with a concise summary of discovered files."
-```
-
-### Pitfall 2: Overlapping Descriptions
-
-If multiple agents have similar descriptions, the Primary Agent gets confused about which to call.
-
-```
-❌ WRONG:
-Agent A: "Use for code quality"
-Agent B: "Use for checking code"
-
-✅ RIGHT:
-Agent A: "Use for static analysis (ESLint, TypeScript errors)"
-Agent B: "Use for runtime testing (unit tests, integration tests)"
-```
-
-### Pitfall 3: Too Many Tools
-
-```
-❌ WRONG:
-"tools": ["*"]  // Full access
-
-✅ RIGHT:
-"tools": ["read_file", "grep_search"]  // Read-only scout
-```
-
----
-
-## Integration with Existing Infrastructure
-
-### Skills vs Agents Decision
+### When to Use Each
 
 | Scenario | Use |
 |----------|-----|
-| Same context, auto-triggered | **Skill** |
+| Same context, auto-triggered by keyword | **Skill** |
+| On-demand context loading | **Command** |
 | Isolated context, complex task | **Agent** |
 | Parallel execution needed | **Agent** |
 | Security-isolated operation | **Agent** (limited tools) |
 
-### Agent-Skill Interaction
+---
 
-Agents CAN use skills by:
-1. Reading skill content as context
-2. Following skill patterns in their work
+## Implementation Status
 
-```markdown
-## systemPrompt (agent)
-Before implementing, read and follow patterns from:
-- .claude/skills/coding-standards.md
-- .claude/skills/security-rules.md
-```
-
-### Agent-Command Integration
-
-Commands can invoke agents:
-
-```markdown
-# /prime-feature (command)
-
-## Workflow
-1. Load feature context
-2. DELEGATE to scout-agent for reconnaissance
-3. Return findings for planning
-```
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Architecture research | ✅ Complete | Hub-and-spoke defined |
+| Model selection guide | ✅ Documented | Opus/Sonnet/Haiku |
+| `.claude/agents/` directory | 🔴 TODO | Create directory |
+| Orchestrator definition | 🔴 TODO | `.claude/agents/orchestrator.md` |
+| Scout definition | 🔴 TODO | `.claude/agents/scout.md` |
+| Builder definition | 🔴 TODO | `.claude/agents/builder.md` |
+| Validator definition | 🔴 TODO | `.claude/agents/validator.md` |
+| Handoff protocol | 🔴 TODO | Sub-agent → Primary format |
+| Dynamic agent spawning | ⏸️ DEFERRED | Phase 4 |
 
 ---
 
-## Agent Templates
+## SDK vs Task Tool Decision
 
-### Read-Only Scout Agent
+### Recommendation: Use Task Tool + Configuration
 
-```json
-{
-  "name": "scout-[domain]",
-  "description": "Scout [domain] patterns. Use before any [domain] implementation.",
-  "tools": ["read_file", "grep_search", "list_dir"],
-  "systemPrompt": "## Purpose\nDiscover existing [domain] patterns.\n\n## Workflow\n1. Search for [domain] files\n2. Read key implementations\n3. Document patterns\n\n## Output\n- Files: (list with sizes)\n- Patterns: (with code examples)\n- Recommendations: (for implementation)"
-}
-```
+| Approach | Portability | Maintenance | Recommended? |
+|----------|-------------|-------------|--------------|
+| Task tool + markdown | ✅ High | ✅ Low | **YES** |
+| Custom SDK | ❌ Low | ❌ High | NO |
 
-### QA Agent
+### Why NOT Custom SDK
 
-```json
-{
-  "name": "qa-agent",
-  "description": "Run quality checks after implementation. Use after any feature build.",
-  "tools": ["run_in_terminal", "read_file", "grep_search"],
-  "systemPrompt": "## Purpose\nVerify implementation quality.\n\n## Workflow\n1. Run: npm run lint (file)\n2. Run: npm run test:run (related tests)\n3. Check for anti-patterns (god objects, N+1)\n4. Verify documentation updated\n\n## Output\n- Lint: PASS/FAIL (count)\n- Tests: PASS/FAIL (coverage)\n- Anti-patterns: CLEAN/FOUND (list)\n- Docs: UPDATED/MISSING"
-}
-```
+- Tightly coupled to specific LLM
+- High rewrite cost when switching tools
+- Agent definitions in markdown are portable
+- Task tool provides sub-agent spawning natively
 
----
+### What IS Portable
 
-## Implementation Roadmap
-
-| Phase | Task | Status |
-|-------|------|--------|
-| 1 | Create `.claude/agents/` directory | 🔴 TODO |
-| 2 | Implement meta-agent | 🔴 TODO |
-| 3 | Implement scout-agent (auth, db, api, ui) | 🔴 TODO |
-| 4 | Implement qa-agent | 🔴 TODO |
-| 5 | Document agent usage in skills | 🔴 TODO |
-| 6 | Test orchestration with 10+ file feature | 🔴 TODO |
+| Layer | Portability |
+|-------|-------------|
+| Agent definitions (markdown) | ✅ High - role descriptions work across LLMs |
+| Prompt engineering (skills) | ✅ High - works with minor adjustments |
+| Orchestration patterns | ✅ High - Scout → Build is universal |
+| Task tool invocation | 🟡 Medium - API changes, pattern stays |
+| Custom SDK code | ❌ Low - requires rewrite |
 
 ---
 
 ## References
 
-- **Sub-Agent Patterns**: [sub-agent-patterns.md](./sub-agent-patterns.md)
-- **IndyDevDan TAC Concepts**: `docs/archive/root-docs/IndyDevDan_TAC/`
-- **Agentic Prompt Engineering**: `docs/archive/root-docs/IndyDevDan_TAC/Agentic Prompt Engineering.txt`
-- **Existing Skills**: `.claude/skills/`
-- **Existing Commands**: `.claude/commands/`
+- **Architecture Research**: `docs/context-bundles/2025-12-05-agent-architecture-research.md`
+- **Model Selection Guide**: [model-selection.md](./model-selection.md)
+- **Archived Version**: `archive/2025-12-05-agent-engineering-v1.md`
+- **IndyDevDan TAC Documentation**: `docs/archive/root-docs/IndyDevDan_TAC/`
