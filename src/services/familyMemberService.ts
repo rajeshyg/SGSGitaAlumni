@@ -176,6 +176,19 @@ export async function checkConsentRenewal(id: string): Promise<{ needsRenewal: b
 }
 
 /**
+ * Update birth date for a family member
+ * Used when birth_date is NULL and age verification is needed
+ * Recalculates COPPA access fields based on calculated age
+ */
+export async function updateBirthDate(id: string, birthDate: string): Promise<FamilyMember> {
+  const response = await apiClient.post(`/api/family-members/${id}/birth-date`, { birthDate });
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as FamilyMember;
+  }
+  return response as FamilyMember;
+}
+
+/**
  * Get access logs for all family members
  */
 export async function getAccessLogs(limit: number = 50): Promise<AccessLog[]> {
