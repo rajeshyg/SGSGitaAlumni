@@ -180,6 +180,52 @@ router.post('/:id/consent/revoke', authenticateToken, asyncHandler(async (req, r
 }));
 
 /**
+ * POST /api/family-members/:id/birth-date
+ * Update birth date and recalculate COPPA access fields
+ * Used when birth_date is NULL and age verification is needed
+ */
+router.post('/:id/birth-date', authenticateToken, asyncHandler(async (req, res) => {
+  const { birthDate } = req.body;
+
+  if (!birthDate) {
+    throw ValidationError.missingField('birthDate');
+  }
+
+  // Validate date format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(birthDate)) {
+    throw ValidationError.invalidField('birthDate', 'Birth date must be in YYYY-MM-DD format');
+  }
+
+  // Validate it's a valid date
+  const parsedDate = new Date(birthDate);
+  if (isNaN(parsedDate.getTime())) {
+    throw ValidationError.invalidField('birthDate', 'Invalid date');
+  }
+
+  // Validate reasonable range (not in future, not more than 120 years ago)
+  const today = new Date();
+  const minDate = new Date();
+  minDate.setFullYear(minDate.getFullYear() - 120);
+
+  if (parsedDate > today) {
+    throw ValidationError.invalidField('birthDate', 'Birth date cannot be in the future');
+  }
+
+  if (parsedDate < minDate) {
+    throw ValidationError.invalidField('birthDate', 'Birth date is too far in the past');
+  }
+
+  const member = await FamilyMemberService.updateBirthDate(
+    req.params.id,
+    req.user.id,
+    birthDate
+  );
+
+  res.json({ success: true, data: member });
+}));
+
+/**
  * GET /api/family-members/:id/consent/check
  * Check if consent renewal is needed
  */

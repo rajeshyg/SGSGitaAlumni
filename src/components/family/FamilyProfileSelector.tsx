@@ -4,6 +4,7 @@ import { getFamilyMembers, switchProfile, type FamilyMember } from '../../servic
 import { useAuth } from '../../contexts/AuthContext';
 import { Plus } from 'lucide-react';
 import ParentConsentModal from './ParentConsentModal';
+import AddFamilyMemberModal from './AddFamilyMemberModal';
 
 interface FamilyProfileSelectorProps {
   onProfileSelected?: (member: FamilyMember) => void;
@@ -29,6 +30,9 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
+  // Age verification modal state
+  const [showAgeVerificationModal, setShowAgeVerificationModal] = useState(false);
+  const [pendingAgeVerificationMember, setPendingAgeVerificationMember] = useState<FamilyMember | null>(null);
 
   useEffect(() => {
     console.log('[FamilyProfileSelector] Component mounted, loading family members...');
@@ -53,6 +57,14 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
   };
 
   const handleProfileClick = async (member: FamilyMember) => {
+    // Check if birth_date is NULL - needs age verification first
+    if (!member.birth_date) {
+      console.log('[FamilyProfileSelector] Birth date is NULL, showing age verification modal');
+      setPendingAgeVerificationMember(member);
+      setShowAgeVerificationModal(true);
+      return;
+    }
+
     // Check access restrictions
     if (!member.can_access_platform) {
       if (member.access_level === 'blocked') {
@@ -113,6 +125,46 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
       console.error('Error auto-switching after consent:', err);
       // Don't show alert - consent was successful, just switch failed
       // User can manually click the profile again
+    }
+  };
+
+  const handleAgeVerificationCompleted = async (updatedMember: FamilyMember) => {
+    console.log('[FamilyProfileSelector] ✅ Age verification completed for:', updatedMember.display_name);
+    setShowAgeVerificationModal(false);
+    setPendingAgeVerificationMember(null);
+
+    // Reload family members to get updated data
+    await loadFamilyMembers();
+
+    // Check the result of age verification
+    if (updatedMember.access_level === 'blocked') {
+      alert('This profile cannot access the platform (under 14 years old per COPPA requirements)');
+      return;
+    }
+
+    if (updatedMember.status === 'pending_consent') {
+      // Age 14-17: Show parent consent modal
+      console.log('[FamilyProfileSelector] Age 14-17 detected, showing consent modal');
+      setSelectedMember(updatedMember);
+      setShowConsentModal(true);
+      return;
+    }
+
+    // Age 18+: Proceed directly to profile switch
+    if (updatedMember.can_access_platform) {
+      try {
+        console.log('[FamilyProfileSelector] 🔄 Auto-switching after age verification...');
+        await switchProfile(updatedMember.id);
+        await refreshToken();
+
+        if (onProfileSelected) {
+          onProfileSelected(updatedMember);
+        } else {
+          navigate('/dashboard');
+        }
+      } catch (err) {
+        console.error('Error auto-switching after age verification:', err);
+      }
     }
   };
 
@@ -264,6 +316,17 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
         }}
         member={selectedMember}
         onConsentGranted={handleConsentGranted}
+      />
+
+      {/* Age Verification Modal (reuses AddFamilyMemberModal in edit mode) */}
+      <AddFamilyMemberModal
+        isOpen={showAgeVerificationModal}
+        onClose={() => {
+          setShowAgeVerificationModal(false);
+          setPendingAgeVerificationMember(null);
+        }}
+        editMember={pendingAgeVerificationMember}
+        onBirthDateUpdated={handleAgeVerificationCompleted}
       />
     </div>
   );

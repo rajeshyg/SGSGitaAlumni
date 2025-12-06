@@ -65,6 +65,67 @@ export class AlumniDataIntegrationService {
   }
 
   /**
+   * Fetch ALL alumni records for an email (for family onboarding)
+   * Multiple family members (parent + children) often share the same email address
+   */
+  async fetchAllAlumniMembersByEmail(email: string): Promise<AlumniProfile[]> {
+    try {
+      const connection = await this.pool.getConnection();
+
+      // Fetch ALL alumni members with this email (not just one)
+      // This enables family onboarding where multiple family members share an email
+      const query = `
+        SELECT am.*,
+               am.birth_date,
+               am.estimated_birth_year,
+               CASE 
+                 WHEN am.birth_date IS NOT NULL THEN TIMESTAMPDIFF(YEAR, am.birth_date, CURDATE())
+                 WHEN am.estimated_birth_year IS NOT NULL THEN YEAR(CURDATE()) - am.estimated_birth_year
+                 WHEN am.batch IS NOT NULL THEN YEAR(CURDATE()) - (am.batch - 22)
+                 ELSE NULL
+               END as estimated_age
+        FROM alumni_members am
+        WHERE am.email = ? AND am.email IS NOT NULL AND am.email != ''
+        ORDER BY am.first_name ASC
+      `;
+
+      const [rows] = await connection.execute(query, [email]);
+      connection.release();
+
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return [];
+      }
+
+      return rows.map((alumni: any) => {
+        const validation = this.validateAlumniDataCompleteness(alumni);
+        return {
+          id: alumni.id,
+          studentId: alumni.student_id,
+          firstName: alumni.first_name,
+          lastName: alumni.last_name,
+          email: alumni.email,
+          phone: alumni.phone,
+          graduationYear: alumni.batch || alumni.graduation_year,
+          degree: alumni.degree || alumni.result,
+          program: alumni.program || alumni.center_name,
+          address: alumni.address,
+          birthDate: alumni.birth_date ? alumni.birth_date.toISOString().split('T')[0] : null,
+          estimatedBirthYear: alumni.estimated_birth_year || (alumni.batch ? alumni.batch - 22 : null),
+          estimatedAge: alumni.estimated_age,
+          isCompleteProfile: validation.isComplete,
+          missingFields: validation.missingFields,
+          canAutoPopulate: validation.canAutoPopulate,
+          requiresParentConsent: validation.requiresParentConsent
+        };
+      });
+
+    } catch (error) {
+      console.error('Error fetching all alumni members by email:', error);
+      throw new Error('Failed to fetch alumni data');
+    }
+  }
+
+  /**
    * Fetch alumni data for invitation acceptance
    */
   async fetchAlumniDataForInvitation(email: string): Promise<AlumniProfile | null> {

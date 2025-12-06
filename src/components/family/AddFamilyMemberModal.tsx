@@ -1,26 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { createFamilyMember, type CreateFamilyMemberRequest } from '../../services/familyMemberService';
+import { createFamilyMember, updateBirthDate, type CreateFamilyMemberRequest, type FamilyMember } from '../../services/familyMemberService';
 
 interface AddFamilyMemberModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMemberAdded?: () => void;
+  /** For edit mode: pass the member to edit (only birth date can be updated) */
+  editMember?: FamilyMember | null;
+  /** Called when birth date is updated in edit mode */
+  onBirthDateUpdated?: (updatedMember: FamilyMember) => void;
 }
 
 /**
- * Modal for adding a new family member
- * 
+ * Modal for adding a new family member OR editing birth date
+ *
  * Features:
- * - Collects name, birthdate, relationship
+ * - Collects name, birthdate, relationship (add mode)
+ * - Collects birth date only (edit mode when editMember is provided)
  * - Auto-calculates age and access level
  * - Shows COPPA messaging for different age groups
  */
 const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
   isOpen,
   onClose,
-  onMemberAdded
+  onMemberAdded,
+  editMember,
+  onBirthDateUpdated
 }) => {
+  const isEditMode = !!editMember;
   const [formData, setFormData] = useState<CreateFamilyMemberRequest>({
     firstName: '',
     lastName: '',
@@ -31,6 +39,34 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [calculatedAge, setCalculatedAge] = useState<number | null>(null);
+
+  // Populate form when in edit mode
+  useEffect(() => {
+    if (editMember && isOpen) {
+      setFormData({
+        firstName: editMember.first_name,
+        lastName: editMember.last_name,
+        displayName: editMember.display_name,
+        birthDate: editMember.birth_date || '',
+        relationship: editMember.relationship === 'self' ? 'child' : editMember.relationship
+      });
+      // Calculate age if birth date exists
+      if (editMember.birth_date) {
+        setCalculatedAge(calculateAge(editMember.birth_date));
+      }
+    } else if (!isOpen) {
+      // Reset form when modal closes
+      setFormData({
+        firstName: '',
+        lastName: '',
+        displayName: '',
+        birthDate: '',
+        relationship: 'child'
+      });
+      setCalculatedAge(null);
+      setError(null);
+    }
+  }, [editMember, isOpen]);
 
   const calculateAge = (birthDate: string): number | null => {
     if (!birthDate) return null;
@@ -91,18 +127,46 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Edit mode: only update birth date
+    if (isEditMode && editMember) {
+      if (!formData.birthDate) {
+        setError('Birth date is required');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const updatedMember = await updateBirthDate(editMember.id, formData.birthDate);
+
+        if (onBirthDateUpdated) {
+          onBirthDateUpdated(updatedMember);
+        }
+
+        onClose();
+      } catch (err) {
+        setError('Failed to update birth date');
+        console.error('Error updating birth date:', err);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Add mode: create new member
     if (!formData.firstName || !formData.lastName) {
       setError('First name and last name are required');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       await createFamilyMember(formData);
-      
+
       // Reset form
       setFormData({
         firstName: '',
@@ -112,11 +176,11 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
         relationship: 'child'
       });
       setCalculatedAge(null);
-      
+
       if (onMemberAdded) {
         onMemberAdded();
       }
-      
+
       onClose();
     } catch (err) {
       setError('Failed to add family member');
@@ -135,7 +199,9 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-bold text-[--foreground]">Add Family Member</h2>
+          <h2 className="text-2xl font-bold text-[--foreground]">
+            {isEditMode ? 'Age Verification Required' : 'Add Family Member'}
+          </h2>
           <button
             onClick={onClose}
             className="text-[--muted-foreground] hover:text-[--foreground] transition-colors"
@@ -154,77 +220,100 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
             </div>
           )}
 
-          {/* First Name */}
-          <div>
-            <label htmlFor="firstName" className="block text-sm font-medium text-[--muted-foreground] mb-1">
-              First Name *
-            </label>
-            <input
-              type="text"
-              id="firstName"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleInputChange}
-              required
-              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
-            />
-          </div>
+          {/* Edit Mode: Show member info card */}
+          {isEditMode && editMember && (
+            <div className="bg-[--muted] rounded-lg p-4 flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xl font-bold">
+                  {editMember.first_name.charAt(0).toUpperCase()}
+                  {editMember.last_name.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <p className="font-semibold text-[--foreground]">{editMember.display_name}</p>
+                <p className="text-sm text-[--muted-foreground]">
+                  Please provide your birth date to verify your age
+                </p>
+              </div>
+            </div>
+          )}
 
-          {/* Last Name */}
-          <div>
-            <label htmlFor="lastName" className="block text-sm font-medium text-[--muted-foreground] mb-1">
-              Last Name *
-            </label>
-            <input
-              type="text"
-              id="lastName"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleInputChange}
-              required
-              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
-            />
-          </div>
+          {/* Add Mode: Name fields */}
+          {!isEditMode && (
+            <>
+              {/* First Name */}
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-[--muted-foreground] mb-1">
+                  First Name *
+                </label>
+                <input
+                  type="text"
+                  id="firstName"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
+                />
+              </div>
 
-          {/* Display Name */}
-          <div>
-            <label htmlFor="displayName" className="block text-sm font-medium text-[--muted-foreground] mb-1">
-              Display Name
-            </label>
-            <input
-              type="text"
-              id="displayName"
-              name="displayName"
-              value={formData.displayName}
-              onChange={handleInputChange}
-              placeholder="Auto-generated from first & last name"
-              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
-            />
-          </div>
+              {/* Last Name */}
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-[--muted-foreground] mb-1">
+                  Last Name *
+                </label>
+                <input
+                  type="text"
+                  id="lastName"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
+                />
+              </div>
 
-          {/* Relationship */}
-          <div>
-            <label htmlFor="relationship" className="block text-sm font-medium text-[--muted-foreground] mb-1">
-              Relationship
-            </label>
-            <select
-              id="relationship"
-              name="relationship"
-              value={formData.relationship}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
-            >
-              <option value="child">Child</option>
-              <option value="spouse">Spouse</option>
-              <option value="sibling">Sibling</option>
-              <option value="guardian">Guardian</option>
-            </select>
-          </div>
+              {/* Display Name */}
+              <div>
+                <label htmlFor="displayName" className="block text-sm font-medium text-[--muted-foreground] mb-1">
+                  Display Name
+                </label>
+                <input
+                  type="text"
+                  id="displayName"
+                  name="displayName"
+                  value={formData.displayName}
+                  onChange={handleInputChange}
+                  placeholder="Auto-generated from first & last name"
+                  className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
+                />
+              </div>
 
-          {/* Birth Date */}
+              {/* Relationship */}
+              <div>
+                <label htmlFor="relationship" className="block text-sm font-medium text-[--muted-foreground] mb-1">
+                  Relationship
+                </label>
+                <select
+                  id="relationship"
+                  name="relationship"
+                  value={formData.relationship}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
+                >
+                  <option value="child">Child</option>
+                  <option value="spouse">Spouse</option>
+                  <option value="sibling">Sibling</option>
+                  <option value="guardian">Guardian</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Birth Date - always shown */}
           <div>
             <label htmlFor="birthDate" className="block text-sm font-medium text-[--muted-foreground] mb-1">
-              Birth Date
+              Birth Date {isEditMode ? '*' : ''}
             </label>
             <input
               type="date"
@@ -233,6 +322,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
               value={formData.birthDate}
               onChange={handleInputChange}
               max={new Date().toISOString().split('T')[0]}
+              required={isEditMode}
               className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
             />
             {ageMessage && (
@@ -262,10 +352,13 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (isEditMode && !formData.birthDate)}
               className="px-4 py-2 bg-[--primary] text-[--primary-foreground] rounded-md hover:bg-[--primary]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Adding...' : 'Add Member'}
+              {loading
+                ? (isEditMode ? 'Verifying...' : 'Adding...')
+                : (isEditMode ? 'Verify Age' : 'Add Member')
+              }
             </button>
           </div>
         </form>

@@ -49,6 +49,7 @@ class FamilyMemberService {
   
   /**
    * Get a specific family member by ID
+   * Returns all profile fields including extended fields from schema consolidation
    */
   async getFamilyMember(familyMemberId, parentUserId = null) {
     const query = parentUserId
@@ -66,7 +67,41 @@ class FamilyMemberService {
   }
   
   /**
+   * Get a family member with full profile data for API responses
+   * Formats JSON fields and includes alumni integration status
+   */
+  async getFamilyMemberProfile(familyMemberId, parentUserId = null) {
+    const member = await this.getFamilyMember(familyMemberId, parentUserId);
+    
+    if (!member) {
+      return null;
+    }
+    
+    // Parse JSON fields if stored as strings
+    const profile = {
+      ...member,
+      social_links: member.social_links 
+        ? (typeof member.social_links === 'string' ? JSON.parse(member.social_links) : member.social_links)
+        : null,
+      user_additions: member.user_additions
+        ? (typeof member.user_additions === 'string' ? JSON.parse(member.user_additions) : member.user_additions)
+        : null,
+      alumni_data_snapshot: member.alumni_data_snapshot
+        ? (typeof member.alumni_data_snapshot === 'string' ? JSON.parse(member.alumni_data_snapshot) : member.alumni_data_snapshot)
+        : null,
+      // Derived flags
+      is_alumni_linked: !!member.alumni_member_id,
+      has_extended_profile: !!(member.graduation_year || member.program)
+    };
+    
+    return profile;
+  }
+  
+  /**
    * Create a new family member
+   * 
+   * After schema consolidation (v2.0), this method supports extended profile fields
+   * that were previously stored in user_profiles.
    */
   async createFamilyMember(parentUserId, memberData) {
     const {
@@ -75,7 +110,16 @@ class FamilyMemberService {
       displayName,
       birthDate,
       relationship = 'child',
-      profileImageUrl = null
+      profileImageUrl = null,
+      // Extended profile fields (added in schema consolidation v2.0)
+      bio = null,
+      phone = null,
+      graduationYear = null,
+      program = null,
+      socialLinks = null,
+      alumniDataSnapshot = null,
+      userAdditions = null,
+      alumniMemberId = null
     } = memberData;
     
     // Calculate age if birthDate provided
@@ -104,9 +148,15 @@ class FamilyMemberService {
       }
     }
     
+    // Serialize JSON fields
+    const socialLinksJson = socialLinks ? JSON.stringify(socialLinks) : null;
+    const alumniDataSnapshotJson = alumniDataSnapshot ? JSON.stringify(alumniDataSnapshot) : null;
+    const userAdditionsJson = userAdditions ? JSON.stringify(userAdditions) : null;
+    
     const [result] = await db.execute(
       `INSERT INTO FAMILY_MEMBERS (
         parent_user_id,
+        alumni_member_id,
         first_name,
         last_name,
         display_name,
@@ -118,10 +168,18 @@ class FamilyMemberService {
         access_level,
         relationship,
         profile_image_url,
+        bio,
+        phone,
+        graduation_year,
+        program,
+        social_links,
+        alumni_data_snapshot,
+        user_additions,
         status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         parentUserId,
+        alumniMemberId,
         firstName,
         lastName,
         displayName || `${firstName} ${lastName}`,
@@ -133,6 +191,13 @@ class FamilyMemberService {
         accessLevel,
         relationship,
         profileImageUrl,
+        bio,
+        phone,
+        graduationYear,
+        program,
+        socialLinksJson,
+        alumniDataSnapshotJson,
+        userAdditionsJson,
         requiresConsent ? 'pending_consent' : (canAccess ? 'active' : 'blocked')
       ]
     );
@@ -356,7 +421,64 @@ class FamilyMemberService {
   }
   
   /**
+   * Update birth date and recalculate COPPA access fields
+   * Used when birth_date is NULL and verification is needed
+   */
+  async updateBirthDate(familyMemberId, parentUserId, birthDate) {
+    const member = await this.getFamilyMember(familyMemberId, parentUserId);
+
+    if (!member) {
+      throw new Error('Family member not found');
+    }
+
+    // Calculate age from birth date
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+
+    // COPPA-based access calculation
+    let canAccess = false;
+    let requiresConsent = false;
+    let accessLevel = 'blocked';
+    let status = 'blocked';
+
+    if (age >= 18) {
+      canAccess = true;
+      accessLevel = 'full';
+      status = 'active';
+    } else if (age >= 14) {
+      requiresConsent = true;
+      accessLevel = 'supervised';
+      status = 'pending_consent';
+    }
+    // else: age < 14, remains blocked
+
+    await db.execute(
+      `UPDATE FAMILY_MEMBERS
+       SET birth_date = ?,
+           age_at_registration = ?,
+           current_age = ?,
+           can_access_platform = ?,
+           requires_parent_consent = ?,
+           access_level = ?,
+           status = ?
+       WHERE id = ? AND parent_user_id = ?`,
+      [birthDate, age, age, canAccess, requiresConsent, accessLevel, status,
+       familyMemberId, parentUserId]
+    );
+
+    return await this.getFamilyMember(familyMemberId);
+  }
+
+  /**
    * Update family member profile
+   * 
+   * After schema consolidation (v2.0), FAMILY_MEMBERS is the primary profile table
+   * and includes extended profile fields (graduation_year, program, etc.)
    */
   async updateFamilyMember(familyMemberId, parentUserId, updates) {
     const member = await this.getFamilyMember(familyMemberId, parentUserId);
@@ -365,12 +487,21 @@ class FamilyMemberService {
       throw new Error('Family member not found');
     }
     
+    // Extended fields list after schema consolidation v2.0
+    // FAMILY_MEMBERS now serves as the primary profile table
     const allowedFields = [
       'first_name',
       'last_name',
       'display_name',
       'profile_image_url',
-      'bio'
+      'bio',
+      // Extended profile fields (added in consolidation)
+      'graduation_year',
+      'program',
+      'phone',
+      'social_links',
+      'user_additions',
+      'alumni_data_snapshot'
     ];
     
     const updateFields = [];
