@@ -128,7 +128,7 @@ AFTER:  Add simple lint/type-check call, no separate agent needed
 
 **Current Roadmap**: Phase 2 plans to create `meta-agent.json`, `scout-agent.json`, `qa-agent.json`
 
-**Recommendation**: **REMOVE FROM ROADMAP**
+**Recommendation**: **MARK AS ON HOLD** ✅ IMPLEMENTED
 
 **Why**:
 1. Your existing skills already provide agent-like behavior
@@ -150,7 +150,7 @@ AFTER:  Add simple lint/type-check call, no separate agent needed
 
 **Current Roadmap**: Detailed worktree documentation for 10+ file parallel execution
 
-**Recommendation**: **DEFER until you have a real 10+ file feature**
+**Recommendation**: **MARK AS ON HOLD** ✅ IMPLEMENTED
 
 **Why**:
 1. You haven't tested Scout-Plan-Build on 3-10 file features extensively
@@ -170,32 +170,34 @@ AFTER:  Add simple lint/type-check call, no separate agent needed
 ### Current Roadmap (3 Agent Phases)
 ```
 Phase 1: Constraint Enforcement ✅ COMPLETE
-Phase 2: Agent Infrastructure   ❌ REMOVE
-Phase 3: Skill Improvements     🟡 SIMPLIFY
-Phase 4: Parallel Orchestration ❌ DEFER
+Phase 2: Agent Infrastructure   ⏸️ ON HOLD (implemented)
+Phase 3: Skill Improvements     🟡 SIMPLIFY (in progress)
+Phase 4: Parallel Orchestration ⏸️ ON HOLD (implemented)
 ```
 
-### Proposed Roadmap (2 Focused Phases)
+### Implemented Roadmap (2 Focused Phases)
 
 ```
 Phase 1: Constraint Enforcement ✅ COMPLETE (verified)
 
-Phase 2: Scout Enhancement (NEW)
-├── Semantic duplicate detection in skill
-├── "Extend vs Create" prompt in duplication-prevention.md  
-├── Test with 5 real tasks touching 3+ files
+Phase 2: Scout Enhancement (IN PROGRESS)
+├── ✅ Semantic duplicate detection added to duplication-prevention.md
+├── ✅ "Extend vs Create" checklist added to SDD/TAC workflow
+├── 🔴 TODO: Test with 5 real tasks touching 3+ files
 └── SUCCESS CRITERIA: Zero unnecessary file creation
 
-Phase 3: Validation Hardening
+Phase 3: Validation Hardening (NEXT)
 ├── PostToolUse runs lint on modified files
 ├── Soft failure thresholds (warn, don't always block)
 └── SUCCESS CRITERIA: All modified files pass lint
 
-DEFERRED (until real need):
-├── .claude/agents/ directory
-├── Git worktree parallelism
-├── Meta-agent patterns
-└── Orchestrator pattern
+ON HOLD (until validated need):
+├── ⏸️ .claude/agents/ directory (Phase 2)
+├── ⏸️ Git worktree parallelism (Phase 5)
+├── ⏸️ Meta-agent patterns (Phase 2)
+└── ⏸️ Orchestrator pattern (Phase 5)
+
+Resume conditions documented in roadmap.md with references to this analysis.
 ```
 
 ---
@@ -238,51 +240,54 @@ After scouting, MUST answer:
 
 ## 💡 Key Decision Points for You
 
-### Decision 1: Remove Agent Infrastructure Phase?
+### Decision 1: Remove Agent Infrastructure Phase? ✅ DECIDED
 - **YES** = Trust skills + Task tool (simpler, research-aligned)
 - **NO** = Build agent configs (more infrastructure, higher risk)
-- **RECOMMENDATION**: YES - defer until proven need
+- **DECISION**: Marked as ON HOLD with resume conditions in roadmap.md
 
-### Decision 2: When to Test Git Worktrees?
+### Decision 2: When to Test Git Worktrees? ✅ DECIDED
 - **Now** = High setup cost, unclear benefit
 - **When 15+ file feature arrives** = Just-in-time learning
-- **RECOMMENDATION**: Defer
+- **DECISION**: Marked as ON HOLD (Phase 5) until real 15+ file feature
 
-### Decision 3: Lint in PostToolUse Hook?
+### Decision 3: Lint in PostToolUse Hook? ⏳ DEFERRED
 - **YES** = Deterministic validation, small scope
 - **NO** = Keep current behavior
-- **RECOMMENDATION**: YES - low risk, high value
+- **STATUS**: Approved but not yet implemented (Phase 3)
 
 ---
 
-## Summary: What Changes?
+## Summary: What Changed?
 
-| Item | Current Plan | Proposed Change | Rationale |
-|------|--------------|-----------------|-----------|
-| Agent directory | Build in Phase 2 | **REMOVE** | Task tool suffices |
-| Meta-agent | Build | **REMOVE** | Over-engineering |
-| Duplicate detection | Filename only | **ENHANCE skill** | Research-validated gap |
-| Git worktrees | Document fully | **DEFER** | Unproven need |
-| PostToolUse lint | None | **ADD** | Simple validation |
-| Scout skill | Exists | **ENHANCE checklist** | Prevent functional overlap |
+| Item | Previous Plan | Actual Change | Status |
+|------|---------------|---------------|--------|
+| Agent directory | Build in Phase 2 | **MARKED ON HOLD** | ✅ roadmap.md updated |
+| Meta-agent | Build | **MARKED ON HOLD** | ✅ roadmap.md updated |
+| Duplicate detection | Filename only | **ENHANCED skill** | ✅ duplication-prevention.md |
+| Git worktrees | Document fully | **MARKED ON HOLD** | ✅ roadmap.md Phase 5 |
+| PostToolUse lint | None | **PLANNED** | ⏳ Phase 3 (next) |
+| Scout skill | Exists | **ENHANCED checklist** | ✅ sdd-tac-workflow/SKILL.md |
+| Orchestrator pattern | Planned | **MARKED ON HOLD** | ✅ roadmap.md Phase 5 |
 
-**Net Result**: 
-- Remove 1 phase from roadmap
-- Defer 1 phase until proven need
-- Enhance 2 existing skills
-- Add 1 simple hook enhancement
+**Net Result**:
+- ✅ Marked 2 phases as ON HOLD with resume conditions
+- ✅ Enhanced 2 existing skills with semantic overlap detection
+- ⏳ Planned 1 simple hook enhancement (Phase 3)
+- 📋 Updated roadmap.md with clear rationale for ON HOLD status
 
 This aligns with research: "Successful frameworks are defined more by what they avoid than what they include."
 
 ---
 
-## Next Steps (For Your Approval)
+## Next Steps
 
-1. [ ] Review this analysis
-2. [ ] Approve/modify roadmap changes
-3. [ ] I'll update `roadmap.md` with revised phases
-4. [ ] I'll enhance `duplication-prevention.md` with semantic checks
-5. [ ] Test with 3 real tasks before declaring Phase 2 complete
+1. [x] Review this analysis (APPROVED with ON HOLD approach)
+2. [x] Approve/modify roadmap changes (APPROVED - mark as ON HOLD, not remove)
+3. [x] Update `roadmap.md` with revised phases (COMPLETED)
+4. [x] Enhance `duplication-prevention.md` with semantic checks (COMPLETED)
+5. [x] Update `sdd-tac-workflow` Scout phase checklist (COMPLETED)
+6. [ ] Test enhanced framework with 5 real tasks touching 3+ files (Phase 2 completion criteria)
+7. [ ] Implement PostToolUse lint validation (Phase 3)
 
 ---
 
