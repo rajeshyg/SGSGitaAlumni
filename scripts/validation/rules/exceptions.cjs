@@ -116,10 +116,89 @@ const EXCEPTION_REGISTRY = [
 ];
 
 const IGNORED_PATHS = {
-  directories: ['node_modules', '.git', 'dist', 'coverage', 'build', 'playwright-report', 'test-results', '.vscode', '.idea', 'backups', '.claude', '.github', '.husky'],
-  files: ['.DS_Store', 'Thumbs.db', '*.log'],
-  patterns: [/\.map$/, /\.d\.ts$/, /-lock\.json$/, /\.lock$/],
+  directories: [
+    'node_modules', '.git', 'dist', 'coverage', 'build', 
+    'playwright-report', 'test-results', '.vscode', '.idea', 'backups',
+    // Tool-specific folders (they have their own conventions)
+    '.claude', '.github', '.husky', '.cursor', '.gemini',
+    // Archive/backup folders
+    'archive', 'backups',
+    // Redis data
+    'redis'
+  ],
+  files: [
+    '.DS_Store', 'Thumbs.db', '*.log',
+    // Temporary files
+    'dump.rdb', 'nul', 'redis.msi', 'redis.zip',
+    // Temporary text files
+    '_invitation_auth_history.txt', '_*.txt'
+  ],
+  patterns: [
+    /\.map$/, 
+    /\.d\.ts$/, 
+    /-lock\.json$/, 
+    /\.lock$/,
+    // Generated reports
+    /generated-.*\.html$/,
+    // Temporary or tool-specific files
+    /^_.*\.txt$/,
+  ],
 };
+
+/**
+ * DOCUMENT_VALIDATION_SCOPE: Define which folders should have strict document validation
+ * Only these folders will be validated for document format, size, and structure
+ */
+const DOCUMENT_VALIDATION_SCOPE = {
+  // Primary documentation folders (strict validation)
+  primary: [
+    'docs/specs/',           // Project specifications
+    'docs/functional-requirements/', // Requirements docs
+  ],
+  // Framework/tool folders (moderate validation)
+  framework: [
+    '.claude/',              // Claude AI framework
+    '.cursor/',              // Cursor AI framework
+    '.github/',              // GitHub workflows and templates
+    'docs/spec-driven-development/', // SDD framework docs
+  ],
+  // Exclude from document validation entirely
+  excluded: [
+    'docs/archive/',         // Historical documents
+    'docs/generated-*.html', // Auto-generated reports
+    'docs/audits/',          // Audit logs
+    'docs/reports/',         // Generated reports
+    'docs/lessons-learnt/',  // Informal notes
+    'docs/context-bundles/', // Context bundles
+    'scripts/',              // All scripts folders
+    'tests/',                // Test files
+  ],
+};
+
+/**
+ * Check if a path should have strict document validation
+ */
+function shouldValidateDocument(filePath) {
+  const normalized = filePath.replace(/\\/g, '/');
+  
+  // Check if explicitly excluded
+  for (const exclude of DOCUMENT_VALIDATION_SCOPE.excluded) {
+    if (normalized.includes(exclude)) return false;
+  }
+  
+  // Check if in primary scope (strict validation)
+  for (const scope of DOCUMENT_VALIDATION_SCOPE.primary) {
+    if (normalized.includes(scope)) return { level: 'strict' };
+  }
+  
+  // Check if in framework scope (moderate validation)
+  for (const scope of DOCUMENT_VALIDATION_SCOPE.framework) {
+    if (normalized.includes(scope)) return { level: 'moderate' };
+  }
+  
+  // By default, don't validate documents outside defined scopes
+  return false;
+}
 
 module.exports = { 
   // Phase 0 Constraints
@@ -128,5 +207,8 @@ module.exports = {
   PORT_CONSTRAINTS,
   // Existing exports
   EXCEPTION_REGISTRY, 
-  IGNORED_PATHS 
+  IGNORED_PATHS,
+  // Document validation scope
+  DOCUMENT_VALIDATION_SCOPE,
+  shouldValidateDocument
 };

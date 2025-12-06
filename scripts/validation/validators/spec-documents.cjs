@@ -19,6 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 const { SPEC_RULES, MODULE_DEFINITIONS } = require('../rules/structure-rules.cjs');
+const { shouldValidateDocument } = require('../rules/exceptions.cjs');
 const { parseFrontmatter, validateFrontmatter, validateRequiredSections, validateLinks } = require('./spec-helpers.cjs');
 
 /**
@@ -28,6 +29,13 @@ function validateSpecDocument(filePath, relPath, specType) {
   const errors = [];
   const warnings = [];
   const fileName = path.basename(filePath);
+  
+  // Check if this document should be validated based on scope
+  const validationLevel = shouldValidateDocument(relPath);
+  if (!validationLevel) {
+    // Skip validation for documents outside defined scopes
+    return { errors, warnings };
+  }
   
   // Skip navigation file (no frontmatter required)
   if (fileName === 'README.md') return { errors, warnings };

@@ -83,10 +83,14 @@ function getModuleForFile(fileName) {
 // =============================================================================
 // EXPORTS
 // =============================================================================
+// Re-export document validation scope for convenience
+const { shouldValidateDocument } = require('./exceptions.cjs');
+
 module.exports = {
   FOLDER_RULES, MODULE_DEFINITIONS, DUPLICATE_RULES, SPEC_RULES,
   CANONICAL_VOCABULARY, EXCEPTION_REGISTRY, IGNORED_PATHS,
   getFolderRule, getException, shouldIgnore, getCanonicalTerm, getModuleForFile,
+  shouldValidateDocument,
 };
 
 // =============================================================================
