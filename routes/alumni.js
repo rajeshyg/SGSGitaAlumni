@@ -237,6 +237,125 @@ export const getAlumniDirectory = async (req, res) => {
   }
 };
 
+// Filter alumni by graduation year and/or department
+export const filterAlumniByYearAndDepartment = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const { year, department, limit = 100, offset = 0 } = req.query;
+
+    // Validate inputs
+    if (!year && !department) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least one filter parameter (year or department) is required'
+      });
+    }
+
+    const limitNum = Math.min(1000, Math.max(1, parseInt(limit) || 100));
+    const offsetNum = Math.max(0, parseInt(offset) || 0);
+
+    console.log('API: Filtering alumni by year and department:', { year, department, limit: limitNum, offset: offsetNum });
+
+    // Build WHERE clause
+    const whereClauses = [];
+    const queryParams = [];
+
+    if (year) {
+      whereClauses.push('am.batch = ?');
+      queryParams.push(parseInt(year));
+    }
+
+    if (department && department.trim()) {
+      whereClauses.push('am.center_name = ?');
+      queryParams.push(department.trim());
+    }
+
+    const whereClause = whereClauses.length > 0
+      ? `WHERE ${whereClauses.join(' AND ')}`
+      : '';
+
+    // Get total count for pagination
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM alumni_members am
+      ${whereClause}
+    `;
+    const [countRows] = await connection.execute(countQuery, queryParams);
+    const total = countRows[0].total;
+
+    // Get filtered data
+    const dataQuery = `
+      SELECT
+        am.id,
+        am.student_id,
+        am.first_name,
+        am.last_name,
+        am.email,
+        am.phone,
+        am.batch as graduation_year,
+        am.result as degree,
+        am.center_name as department,
+        am.created_at,
+        am.updated_at
+      FROM alumni_members am
+      ${whereClause}
+      ORDER BY am.last_name ASC, am.first_name ASC
+      LIMIT ${limitNum} OFFSET ${offsetNum}
+    `;
+    const [dataRows] = await connection.execute(dataQuery, queryParams);
+
+    // Transform data to match frontend types
+    const alumni = dataRows.map(row => ({
+      id: row.id,
+      studentId: row.student_id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      displayName: `${row.first_name} ${row.last_name}`.trim(),
+      email: row.email,
+      phone: row.phone || null,
+      graduationYear: row.graduation_year,
+      degree: row.degree,
+      department: row.department,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(total / limitNum);
+    const currentPage = Math.floor(offsetNum / limitNum) + 1;
+
+    res.json({
+      success: true,
+      data: alumni,
+      pagination: {
+        total,
+        limit: limitNum,
+        offset: offsetNum,
+        page: currentPage,
+        totalPages,
+        hasNext: offsetNum + limitNum < total,
+        hasPrev: offsetNum > 0
+      },
+      filters: {
+        appliedFilters: {
+          year: year || null,
+          department: department || null
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error filtering alumni by year and department:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to filter alumni',
+      message: error.message
+    });
+  } finally {
+    connection.release();
+  }
+};
+
 // Helper function to extract location from address
 function extractLocation(address) {
   if (!address) return null;
@@ -260,7 +379,7 @@ export const getAlumniMember = async (req, res) => {
     const query = `
       SELECT
         id, student_id, first_name, last_name, email, phone,
-        batch as graduation_year, result as degree, center_name as department, address,
+        batch as graduation_year, result as degree, center_name as department,
         created_at, updated_at
       FROM alumni_members
       WHERE id = ?
@@ -283,7 +402,6 @@ export const getAlumniMember = async (req, res) => {
       graduationYear: member.graduation_year,
       degree: member.degree,
       department: member.department,
-      address: member.address,
       createdAt: member.created_at,
       updatedAt: member.updated_at
     });
@@ -309,7 +427,7 @@ export const updateAlumniMember = async (req, res) => {
     const updateFields = [];
     const updateValues = [];
 
-    const editableFields = ['first_name', 'last_name', 'email', 'phone', 'address'];
+    const editableFields = ['first_name', 'last_name', 'email', 'phone'];
 
     editableFields.forEach(field => {
       if (updates[field] !== undefined) {
@@ -339,7 +457,7 @@ export const updateAlumniMember = async (req, res) => {
 
     // Get updated member
     const [updatedRows] = await connection.execute(
-      'SELECT id, student_id, first_name, last_name, email, phone, batch as graduation_year, result as degree, center_name as department, address, created_at, updated_at FROM alumni_members WHERE id = ?',
+      'SELECT id, student_id, first_name, last_name, email, phone, batch as graduation_year, result as degree, center_name as department, created_at, updated_at FROM alumni_members WHERE id = ?',
       [id]
     );
 
@@ -354,7 +472,6 @@ export const updateAlumniMember = async (req, res) => {
       graduationYear: member.graduation_year,
       degree: member.degree,
       department: member.department,
-      address: member.address,
       createdAt: member.created_at,
       updatedAt: member.updated_at
     });

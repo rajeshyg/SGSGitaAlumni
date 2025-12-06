@@ -47,9 +47,26 @@ export const AdditionalInfoForm: React.FC<AdditionalInfoFormProps> = ({
       newErrors.email = 'Please enter a valid email address';
     }
 
-    // Validate phone format
-    if (formData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(formData.phone.replace(/[\s\-\(\)]/g, ''))) {
-      newErrors.phone = 'Please enter a valid phone number';
+    // Validate phone format - supports US and international formats
+    if (formData.phone) {
+      const trimmedPhone = formData.phone.trim();
+      const digitsAndPlus = trimmedPhone.replace(/[\s\-\(\)]/g, '');
+
+      // Check for valid characters
+      if (!/^[\d\s\-\(\)+]+$/.test(trimmedPhone)) {
+        newErrors.phone = 'Phone number contains invalid characters';
+      } else if (digitsAndPlus.length === 0) {
+        newErrors.phone = 'Phone number must contain at least one digit';
+      } else {
+        // US format: (555) 123-4567, 555-123-4567, etc.
+        const usPattern = /^(\+?1)?[\s.-]?\(?([0-9]{3})\)?[\s.-]?([0-9]{3})[\s.-]?([0-9]{4})$/;
+        // International format: +[1-9][1-14 more digits]
+        const intlPattern = /^\+?[1-9]\d{1,14}$/;
+
+        if (!usPattern.test(trimmedPhone) && !intlPattern.test(digitsAndPlus)) {
+          newErrors.phone = 'Please enter a valid phone number like (555) 123-4567 or +1 555 123 4567';
+        }
+      }
     }
 
     setErrors(newErrors);

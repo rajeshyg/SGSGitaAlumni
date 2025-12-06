@@ -951,7 +951,8 @@ export const resendInvitation = asyncHandler(async (req, res) => {
     const expiresInDays = 7; // Default expiry
     const newExpiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
 
-    const newHmacToken = hmacTokenService.generateToken({
+    // Use the helper function to ensure correct payload format
+    const newHmacToken = generateHMACInvitationToken({
       id: invitation.id,
       email: invitation.email,
       invitationType: invitation.invitation_type || 'alumni',

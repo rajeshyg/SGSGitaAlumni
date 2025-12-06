@@ -126,6 +126,10 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
   const [columnPinning, setColumnPinning] = React.useState<ColumnPinningState>({})
   const [globalFilter, setGlobalFilter] = React.useState('')
   const [editingCell, setEditingCell] = React.useState<EditingCell | null>(null)
+  const [paginationState, setPaginationState] = React.useState({
+    pageIndex: 0,
+    pageSize: pageSize,
+  })
 
   // Use external row selection if provided, otherwise use internal
   const rowSelection = externalRowSelection !== undefined ? externalRowSelection : internalRowSelection
@@ -165,6 +169,7 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
     onColumnSizingChange: setColumnSizing,
     onColumnPinningChange: setColumnPinning,
     onGlobalFilterChange: setGlobalFilter,
+    onPaginationChange: setPaginationState,
     enableRowSelection: selection.enabled,
     enableColumnResizing: resizing.enabled,
     columnResizeMode: 'onChange',
@@ -177,10 +182,7 @@ export function TanStackAdvancedTable<T extends Record<string, unknown>>({
       columnSizing,
       columnPinning,
       globalFilter,
-      pagination: pagination ? {
-        pageIndex: 0,
-        pageSize: pageSize,
-      } : undefined,
+      pagination: pagination ? paginationState : undefined,
     },
     initialState: {
       pagination: pagination ? {

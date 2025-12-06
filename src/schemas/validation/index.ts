@@ -34,11 +34,36 @@ export const DateSchema = z
   .datetime('Invalid datetime format')
   .or(z.date());
 
+/**
+ * Phone number schema with enhanced validation
+ * Supports US format (XXX-XXX-XXXX) and international formats (E.164)
+ * Examples: (555) 123-4567, 555-123-4567, 5551234567, +1 555 123 4567, +44 20 7946 0958
+ */
 export const PhoneSchema = z
   .string()
   .refine(
-    (val) => val === '' || /^\+?[1-9]\d{1,14}$/.test(val),
-    'Invalid phone number format'
+    (val) => {
+      if (val === '') return true; // Allow empty (optional field)
+
+      const trimmed = val.trim();
+
+      // Check for valid characters
+      if (!/^[\d\s\-\(\)+]+$/.test(trimmed)) return false;
+
+      const digitsAndPlus = trimmed.replace(/[\s\-\(\)]/g, '');
+      if (digitsAndPlus.length === 0) return false;
+
+      // US format pattern: (555) 123-4567, 555-123-4567, etc.
+      const usPattern = /^(\+?1)?[\s.-]?\(?([0-9]{3})\)?[\s.-]?([0-9]{3})[\s.-]?([0-9]{4})$/;
+      if (usPattern.test(trimmed)) return true;
+
+      // International format (E.164): +[1-9][1-14 more digits]
+      const intlPattern = /^\+?[1-9]\d{1,14}$/;
+      if (intlPattern.test(digitsAndPlus)) return true;
+
+      return false;
+    },
+    'Invalid phone number format. Use (555) 123-4567 or +1 555 123 4567 or international format'
   )
   .optional();
 

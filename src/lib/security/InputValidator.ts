@@ -48,8 +48,8 @@ export class InputValidator {
       message: 'Name must contain only letters, spaces, hyphens, and apostrophes'
     },
     phone: {
-      pattern: /^\+?[\d\s\-\(\)]+$/,
-      message: 'Invalid phone number format'
+      pattern: /^[\d\s\-\(\)+]+$/,
+      message: 'Invalid phone number format. Use (555) 123-4567 or +1 555 123 4567 for US, or +[country code] for international'
     }
   };
 
