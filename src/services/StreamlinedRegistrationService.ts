@@ -514,8 +514,10 @@ export class StreamlinedRegistrationService {
         };
       }
 
-      // Create user account
+      // Create user account FIRST (required for FK constraints)
       const userId = uuidv4();
+      console.log(`📝 Step 1: Creating app_users record for ${userId} with email ${invitation.email}`);
+      
       const insertUserQuery = `
         INSERT INTO app_users (
           id, email, alumni_member_id, first_name, last_name,
@@ -524,17 +526,23 @@ export class StreamlinedRegistrationService {
         ) VALUES (?, ?, ?, ?, ?, ?, 'active', 1, NOW(), NOW(), NOW())
       `;
 
-      await connection.execute(insertUserQuery, [
-        userId,
-        invitation.email,
-        alumniProfile?.id || null,
-        mergedData.firstName,
-        mergedData.lastName,
-        mergedData.phone || null
-      ]);
+      try {
+        await connection.execute(insertUserQuery, [
+          userId,
+          invitation.email,
+          alumniProfile?.id || null,
+          mergedData.firstName,
+          mergedData.lastName,
+          mergedData.phone || null
+        ]);
+        console.log(`✅ app_users record created successfully`);
+      } catch (userInsertError: any) {
+        console.error(`❌ FAILED to create app_users record:`, userInsertError);
+        throw new Error(`Failed to create user account: ${userInsertError?.message || 'Unknown error'}`);
+      }
 
-      // Create default user preferences
-      console.log(`📋 Creating default preferences for new user ${userId}...`);
+      // Create default user preferences (depends on app_users FK)
+      console.log(`📋 Step 2: Creating default preferences for new user ${userId}...`);
       await this.createDefaultUserPreferences(connection, userId);
 
       // Update invitation status

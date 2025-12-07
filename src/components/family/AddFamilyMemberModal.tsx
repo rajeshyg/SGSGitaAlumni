@@ -34,7 +34,9 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
     lastName: '',
     displayName: '',
     birthDate: '',
-    relationship: 'child'
+    relationship: 'child',
+    currentCenter: '',
+    profileImageUrl: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,12 +45,21 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
   // Populate form when in edit mode
   useEffect(() => {
     if (editMember && isOpen) {
+      // Extract year from birth_date if it exists
+      let birthYear = '';
+      if (editMember.birth_date) {
+        const date = new Date(editMember.birth_date);
+        birthYear = date.getFullYear().toString();
+      }
+
       setFormData({
         firstName: editMember.first_name,
         lastName: editMember.last_name,
         displayName: editMember.display_name,
-        birthDate: editMember.birth_date || '',
-        relationship: editMember.relationship === 'self' ? 'child' : editMember.relationship
+        birthDate: birthYear,
+        relationship: editMember.relationship === 'self' ? 'child' : editMember.relationship,
+        currentCenter: editMember.current_center || '',
+        profileImageUrl: editMember.profile_image_url || ''
       });
       // Calculate age if birth date exists
       if (editMember.birth_date) {
@@ -61,26 +72,47 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
         lastName: '',
         displayName: '',
         birthDate: '',
-        relationship: 'child'
+        relationship: 'child',
+        currentCenter: '',
+        profileImageUrl: ''
       });
       setCalculatedAge(null);
       setError(null);
     }
   }, [editMember, isOpen]);
 
-  const calculateAge = (birthDate: string): number | null => {
-    if (!birthDate) return null;
+  const calculateAge = (birthDateOrYear: string): number | null => {
+    if (!birthDateOrYear) return null;
     
     const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+    let birthYear: number;
+
+    // Check if input is just a year (4 digits)
+    if (/^\d{4}$/.test(birthDateOrYear)) {
+      birthYear = parseInt(birthDateOrYear, 10);
+      // Assume Jan 1st for year-only input
+      let age = today.getFullYear() - birthYear;
+      // No month adjustment needed if we assume Jan 1st and today is after Jan 1st (which it is)
+      // But to be safe/consistent with backend:
+      const monthDiff = today.getMonth() - 0;
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < 1)) {
+        age--;
+      }
+      return age;
+    } else {
+      // Full date string
+      const birth = new Date(birthDateOrYear);
+      if (isNaN(birth.getTime())) return null;
+      
+      birthYear = birth.getFullYear();
+      let age = today.getFullYear() - birthYear;
+      const monthDiff = today.getMonth() - birth.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
     }
-    
-    return age;
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -128,7 +160,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Edit mode: only update birth date
+    // Edit mode: update birth date and optional profile fields
     if (isEditMode && editMember) {
       if (!formData.birthDate) {
         setError('Birth date is required');
@@ -139,7 +171,10 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
       setError(null);
 
       try {
-        const updatedMember = await updateBirthDate(editMember.id, formData.birthDate);
+        const updatedMember = await updateBirthDate(editMember.id, formData.birthDate, {
+          currentCenter: formData.currentCenter,
+          profileImageUrl: formData.profileImageUrl
+        });
 
         if (onBirthDateUpdated) {
           onBirthDateUpdated(updatedMember);
@@ -147,8 +182,8 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
 
         onClose();
       } catch (err) {
-        setError('Failed to update birth date');
-        console.error('Error updating birth date:', err);
+        setError('Failed to update profile');
+        console.error('Error updating profile:', err);
       } finally {
         setLoading(false);
       }
@@ -310,18 +345,20 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
             </>
           )}
 
-          {/* Birth Date - always shown */}
+          {/* Birth Year - always shown */}
           <div>
             <label htmlFor="birthDate" className="block text-sm font-medium text-[--muted-foreground] mb-1">
-              Birth Date {isEditMode ? '*' : ''}
+              Year of Birth {isEditMode ? '*' : ''}
             </label>
             <input
-              type="date"
+              type="number"
               id="birthDate"
               name="birthDate"
               value={formData.birthDate}
               onChange={handleInputChange}
-              max={new Date().toISOString().split('T')[0]}
+              placeholder="YYYY"
+              min="1900"
+              max={new Date().getFullYear()}
               required={isEditMode}
               className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
             />
@@ -330,6 +367,37 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
                 {ageMessage.text}
               </p>
             )}
+          </div>
+
+          {/* Additional Fields - Always shown to encourage completion */}
+          <div>
+            <label htmlFor="currentCenter" className="block text-sm font-medium text-[--muted-foreground] mb-1">
+              Current Center
+            </label>
+            <input
+              type="text"
+              id="currentCenter"
+              name="currentCenter"
+              value={formData.currentCenter || ''}
+              onChange={handleInputChange}
+              placeholder="e.g. Dallas, TX"
+              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="profileImageUrl" className="block text-sm font-medium text-[--muted-foreground] mb-1">
+              Profile Image URL
+            </label>
+            <input
+              type="url"
+              id="profileImageUrl"
+              name="profileImageUrl"
+              value={formData.profileImageUrl || ''}
+              onChange={handleInputChange}
+              placeholder="https://example.com/image.jpg"
+              className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
+            />
           </div>
 
           {/* COPPA Notice */}

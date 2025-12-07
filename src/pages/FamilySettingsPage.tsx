@@ -175,7 +175,7 @@ const FamilySettingsPage: React.FC = () => {
                         {member.display_name}
                         {member.is_primary_contact && (
                           <span className="ml-2 text-xs bg-primary text-primary-foreground px-2 py-1 rounded">
-                            Parent
+                            Primary Member
                           </span>
                         )}
                       </h3>

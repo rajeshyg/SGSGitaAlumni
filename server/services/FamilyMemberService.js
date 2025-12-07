@@ -36,6 +36,7 @@ class FamilyMemberService {
         relationship,
         is_primary_contact,
         profile_image_url,
+        current_center,
         status,
         last_login_at
       FROM FAMILY_MEMBERS
@@ -111,6 +112,7 @@ class FamilyMemberService {
       birthDate,
       relationship = 'child',
       profileImageUrl = null,
+      currentCenter = null,
       // Extended profile fields (added in schema consolidation v2.0)
       bio = null,
       phone = null,
@@ -122,15 +124,21 @@ class FamilyMemberService {
       alumniMemberId = null
     } = memberData;
     
+    // Handle YOB only input (convert YYYY to YYYY-01-01)
+    let finalBirthDate = birthDate;
+    if (birthDate && /^\d{4}$/.test(String(birthDate))) {
+      finalBirthDate = `${birthDate}-01-01`;
+    }
+
     // Calculate age if birthDate provided
     let age = null;
     let canAccess = false;
     let requiresConsent = false;
     let accessLevel = 'blocked';
     
-    if (birthDate) {
+    if (finalBirthDate) {
       const today = new Date();
-      const birth = new Date(birthDate);
+      const birth = new Date(finalBirthDate);
       age = today.getFullYear() - birth.getFullYear();
       const monthDiff = today.getMonth() - birth.getMonth();
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
@@ -168,6 +176,7 @@ class FamilyMemberService {
         access_level,
         relationship,
         profile_image_url,
+        current_center,
         bio,
         phone,
         graduation_year,
@@ -176,14 +185,14 @@ class FamilyMemberService {
         alumni_data_snapshot,
         user_additions,
         status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         parentUserId,
         alumniMemberId,
         firstName,
         lastName,
         displayName || `${firstName} ${lastName}`,
-        birthDate,
+        finalBirthDate,
         age,
         age,
         canAccess,
@@ -191,6 +200,7 @@ class FamilyMemberService {
         accessLevel,
         relationship,
         profileImageUrl,
+        currentCenter,
         bio,
         phone,
         graduationYear,
@@ -431,9 +441,15 @@ class FamilyMemberService {
       throw new Error('Family member not found');
     }
 
+    // Handle YOB only input (convert YYYY to YYYY-01-01)
+    let finalBirthDate = birthDate;
+    if (birthDate && /^\d{4}$/.test(String(birthDate))) {
+      finalBirthDate = `${birthDate}-01-01`;
+    }
+
     // Calculate age from birth date
     const today = new Date();
-    const birth = new Date(birthDate);
+    const birth = new Date(finalBirthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
@@ -467,7 +483,7 @@ class FamilyMemberService {
            access_level = ?,
            status = ?
        WHERE id = ? AND parent_user_id = ?`,
-      [birthDate, age, age, canAccess, requiresConsent, accessLevel, status,
+      [finalBirthDate, age, age, canAccess, requiresConsent, accessLevel, status,
        familyMemberId, parentUserId]
     );
 
@@ -494,6 +510,7 @@ class FamilyMemberService {
       'last_name',
       'display_name',
       'profile_image_url',
+      'current_center',
       'bio',
       // Extended profile fields (added in consolidation)
       'graduation_year',

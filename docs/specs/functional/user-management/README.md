@@ -39,7 +39,22 @@ See [Database Schema](./db-schema.md) for schema details.
 
 ## Key User Flows
 
+### Registration with Alumni Data
+1. **Accept Invitation** → Validate HMAC token → Fetch alumni records by email
+2. **Create app_users** → Insert user account record
+3. **Create User Preferences** → Insert default preferences (depends on app_users FK)
+4. **Create Primary Family Member** → Insert self profile from alumni data
+5. **Create Additional Family Members** → Insert all other alumni with same email (birth_date=NULL, requires age verification)
+6. **Update Invitation** → Mark as accepted
+7. **Send Welcome Email** → Profile summary with family members
+
+### Profile Management
 1. **Profile Update**: Dashboard → Settings → Edit fields → Save → Validation → Success
 2. **Photo Upload**: Profile → Upload photo → Crop/resize → Save → Display
 3. **Add Family Member**: Settings → Family → Add member → Age verification → Consent flow
 4. **Profile Switching**: Login → Select profile → JWT updated with family member context
+
+### Family Member Onboarding
+1. **Auto-Import from Alumni Data**: During registration, ALL alumni records with same email are added as family members
+2. **Age Verification Required**: Non-primary members have birth_date=NULL, requiring YOB input before access
+3. **Manual Import**: Future feature (low priority) - UI button to import new alumni graduates with same email

@@ -183,22 +183,31 @@ router.post('/:id/consent/revoke', authenticateToken, asyncHandler(async (req, r
  * POST /api/family-members/:id/birth-date
  * Update birth date and recalculate COPPA access fields
  * Used when birth_date is NULL and age verification is needed
+ * Also accepts optional profile updates (currentCenter, profileImageUrl)
  */
 router.post('/:id/birth-date', authenticateToken, asyncHandler(async (req, res) => {
-  const { birthDate } = req.body;
+  const { birthDate, currentCenter, profileImageUrl } = req.body;
 
   if (!birthDate) {
     throw ValidationError.missingField('birthDate');
   }
 
-  // Validate date format (YYYY-MM-DD)
+  // Validate date format (YYYY-MM-DD or YYYY)
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(birthDate)) {
-    throw ValidationError.invalidField('birthDate', 'Birth date must be in YYYY-MM-DD format');
+  const yearRegex = /^\d{4}$/;
+  
+  if (!dateRegex.test(birthDate) && !yearRegex.test(birthDate)) {
+    throw ValidationError.invalidField('birthDate', 'Birth date must be in YYYY-MM-DD or YYYY format');
   }
 
-  // Validate it's a valid date
-  const parsedDate = new Date(birthDate);
+  // Validate it's a valid date (if full date) or year
+  let parsedDate;
+  if (yearRegex.test(birthDate)) {
+    parsedDate = new Date(parseInt(birthDate), 0, 1);
+  } else {
+    parsedDate = new Date(birthDate);
+  }
+
   if (isNaN(parsedDate.getTime())) {
     throw ValidationError.invalidField('birthDate', 'Invalid date');
   }
@@ -214,6 +223,15 @@ router.post('/:id/birth-date', authenticateToken, asyncHandler(async (req, res) 
 
   if (parsedDate < minDate) {
     throw ValidationError.invalidField('birthDate', 'Birth date is too far in the past');
+  }
+
+  // If additional profile fields are provided, update them first
+  if (currentCenter || profileImageUrl) {
+    await FamilyMemberService.updateFamilyMember(
+      req.params.id,
+      req.user.id,
+      { currentCenter, profileImageUrl }
+    );
   }
 
   const member = await FamilyMemberService.updateBirthDate(

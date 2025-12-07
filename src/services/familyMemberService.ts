@@ -24,6 +24,7 @@ export interface FamilyMember {
   relationship: 'self' | 'child' | 'spouse' | 'sibling' | 'guardian';
   is_primary_contact: boolean;
   profile_image_url?: string;
+  current_center?: string;
   bio?: string;
   status: 'active' | 'inactive' | 'suspended' | 'pending_consent';
   created_at: string;
@@ -38,6 +39,7 @@ export interface CreateFamilyMemberRequest extends Record<string, unknown> {
   birthDate?: string;
   relationship?: 'child' | 'spouse' | 'sibling' | 'guardian';
   profileImageUrl?: string;
+  currentCenter?: string;
 }
 
 export interface UpdateFamilyMemberRequest extends Record<string, unknown> {
@@ -45,6 +47,7 @@ export interface UpdateFamilyMemberRequest extends Record<string, unknown> {
   lastName?: string;
   displayName?: string;
   profileImageUrl?: string;
+  currentCenter?: string;
   bio?: string;
 }
 
@@ -179,9 +182,17 @@ export async function checkConsentRenewal(id: string): Promise<{ needsRenewal: b
  * Update birth date for a family member
  * Used when birth_date is NULL and age verification is needed
  * Recalculates COPPA access fields based on calculated age
+ * Can also update currentCenter and profileImageUrl
  */
-export async function updateBirthDate(id: string, birthDate: string): Promise<FamilyMember> {
-  const response = await apiClient.post(`/api/family-members/${id}/birth-date`, { birthDate });
+export async function updateBirthDate(
+  id: string, 
+  birthDate: string,
+  additionalData?: { currentCenter?: string; profileImageUrl?: string }
+): Promise<FamilyMember> {
+  const response = await apiClient.post(`/api/family-members/${id}/birth-date`, { 
+    birthDate,
+    ...additionalData
+  });
   if (response && typeof response === 'object' && 'data' in response) {
     return response.data as FamilyMember;
   }

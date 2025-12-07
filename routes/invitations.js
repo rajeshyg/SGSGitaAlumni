@@ -943,10 +943,6 @@ export const resendInvitation = asyncHandler(async (req, res) => {
       throw ValidationError.invalidData('Cannot resend accepted invitation');
     }
 
-    if (new Date() > new Date(invitation.expires_at)) {
-      throw ValidationError.invalidData('Cannot resend expired invitation');
-    }
-
     // Generate a NEW HMAC token for the resent invitation
     const expiresInDays = 7; // Default expiry
     const newExpiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
