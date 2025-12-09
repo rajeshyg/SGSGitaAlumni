@@ -441,8 +441,8 @@ export class InvitationService implements InvitationServiceInterface {
         );
       }
 
-      // Perform age verification
-      const ageVerification = await this.ageVerificationService.verifyAge(childProfile.birthDate);
+      // Perform age verification using year of birth
+      const ageVerification = await this.ageVerificationService.verifyAge(childProfile.yearOfBirth);
 
       if (!ageVerification.isValid) {
         throw new InvitationError(

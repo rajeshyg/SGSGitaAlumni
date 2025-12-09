@@ -18,15 +18,8 @@ export const getUserInvitationHistory = async (req, res) => {
     const { userId } = req.params;
 
     const query = `
-      SELECT
-        ui.*,
-        u.first_name,
-        u.last_name,
-        u.email as user_email,
-        u.graduation_year,
-        u.program
+      SELECT ui.*
       FROM USER_INVITATIONS ui
-      LEFT JOIN app_users u ON ui.user_id = u.id
       WHERE ui.user_id = ?
       ORDER BY ui.created_at DESC
     `;
@@ -56,13 +49,7 @@ export const getUserInvitationHistory = async (req, res) => {
       lastResentAt: row.last_resent_at,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-      user: {
-        firstName: row.first_name,
-        lastName: row.last_name,
-        email: row.user_email,
-        graduationYear: row.graduation_year,
-        program: row.program
-      }
+      user: null
     }));
 
     res.json({ invitations });

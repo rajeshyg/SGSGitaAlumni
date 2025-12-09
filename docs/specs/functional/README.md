@@ -1,44 +1,55 @@
 ---
-version: "2.0"
+version: "3.0"
 status: active
-last_updated: 2025-11-23
-description: Functional specifications describing user-facing features and workflows
+last_updated: 2025-12-07
+description: Functional specifications organized by user journey features
 ---
 
 # Functional Specifications
 
-This directory contains functional specifications organized by feature module. Each module has a README overview and detailed sub-feature documents.
+This directory contains functional specifications organized by user journey. Each feature area has a README overview and detailed sub-feature documents.
 
 ## Structure
 
-| Module | Sub-Features | Status | E2E Tests |
-|--------|--------------|--------|-----------|
-| [authentication/](./authentication/) | 6 | Implemented | `tests/e2e/auth.spec.ts` |
-| [user-management/](./user-management/) | 5 | Implemented | `tests/e2e/dashboard.spec.ts` |
-| [directory/](./directory/) | 3 | Implemented | `tests/e2e/dashboard.spec.ts` |
-| [postings/](./postings/) | 6 | Implemented | `tests/e2e/posting.spec.ts` |
-| [messaging/](./messaging/) | 4 | Implemented | `tests/e2e/chat.spec.ts` |
-| [dashboard/](./dashboard/) | 4 | Implemented | `tests/e2e/dashboard.spec.ts` |
-| [moderation/](./moderation/) | 4 | Implemented | Pending |
-| [admin/](./admin/) | 6 | Implemented | Pending |
-| [notifications/](./notifications/) | 3 | Pending | Pending |
-| [rating/](./rating/) | 2 | Pending | Pending |
+### Core User Journey Features
+
+| Feature | Sub-Features | Status | Purpose |
+|---------|--------------|--------|---------|
+| [Invitation & Access Control](./invitation-access-control/) | 5 | Active | Admin invitation system, token validation |
+| [Registration & Onboarding](./registration-onboarding/) | 8 | Active | Account creation, alumni selection, COPPA compliance |
+| [Authentication & Identity](./authentication-identity/) | 6 | In Progress | Login, session management, profile switching |
+
+### Legacy Modules (Deprecated)
+
+These modules are being archived as part of the refactoring:
+
+| Module | Status | Alternative |
+|--------|--------|-------------|
+| [authentication/](./authentication/) | Deprecated | [Authentication & Identity](./authentication-identity/) |
+| [user-management/](./user-management/) | Deprecated | [Registration & Onboarding](./registration-onboarding/) |
+| [admin/](./admin/) | Deprecated | [Platform Features](./platform-features/) |
 
 ## Quick Navigation
 
-### Core Features
-- **Authentication**: [Login](./authentication/login.md) • [Registration](./authentication/registration.md) • [OTP](./authentication/otp-verification.md)
-- **User Management**: [Profile](./user-management/profile-management.md) • [Family Members](./user-management/family-member-management.md) • [Settings](./user-management/account-settings.md)
-- **Directory**: [Search](./directory/alumni-search.md) • [Filtering](./directory/filtering-sorting.md) • [Domains](./directory/domain-taxonomy.md)
+### User Onboarding (Phases 1-2)
+- **[Invitation & Access Control](./invitation-access-control/README.md)**: 
+  [Generation](./invitation-access-control/invitation-generation.md) • 
+  [Acceptance](./invitation-access-control/invitation-acceptance.md) • 
+  [Tracking](./invitation-access-control/invitation-tracking.md)
+- **[Registration & Onboarding](./registration-onboarding/README.md)**: 
+  [Registration](./registration-onboarding/registration.md) • 
+  [Alumni Discovery](./registration-onboarding/alumni-discovery.md) • 
+  [Profile Selection](./registration-onboarding/profile-selection.md) • 
+  [Age Verification](./registration-onboarding/age-verification.md)
 
-### Content & Communication
-- **Postings**: [Create](./postings/create-posting.md) • [View](./postings/view-postings.md) • [Tags](./postings/tagging-system.md)
-- **Messaging**: [Direct Messages](./messaging/direct-messaging.md) • [Group Chats](./messaging/group-chats.md)
-- **Dashboard**: [Personal Feed](./dashboard/personal-feed.md) • [Activity](./dashboard/activity-tracking.md)
+### User Authentication (Phase 3)
+- **[Authentication & Identity](./authentication-identity/README.md)**:
+  [Login](./authentication-identity/login.md) •
+  [Session Management](./authentication-identity/session-management.md) •
+  [Profile Switching](./authentication-identity/profile-switching.md)
 
-### Administration
-- **Admin**: [Users](./admin/user-management.md) • [Invitations](./admin/invitation-management.md) • [Analytics](./admin/analytics.md)
-- **Moderation**: [Content Review](./moderation/content-review.md) • [Queue](./moderation/moderation-queue.md)
+### Platform Features (Phase 4)
+- **[Platform Features](./platform-features/README.md)**: Directory • Postings • Messaging • Dashboard • Admin • Moderation
 
 ## Document Format
 

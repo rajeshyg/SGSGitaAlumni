@@ -24,7 +24,7 @@ export function InvitationSection() {
   // Data stores
   const [members, setMembers] = useState<AlumniMember[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [familyInvitations, setFamilyInvitations] = useState<Invitation[]>([]);
+  // NOTE: Family invitations removed - using new onboarding flow
   const [users, setUsers] = useState<AppUser[]>([]);
   const [allActiveOtps, setAllActiveOtps] = useState<Array<{email: string; code: string; tokenType: string; expiresAt: string}>>([]);
 
@@ -128,9 +128,9 @@ export function InvitationSection() {
     setLoading(true);
     setError(null);
     try {
+      // NOTE: Family invitations removed - using new onboarding flow
       const promises = [
         APIService.getInvitations({ page: 1, pageSize: 200 }),
-        APIService.getFamilyInvitations ? APIService.getFamilyInvitations({ page: 1, pageSize: 200 }) : Promise.resolve([]),
         APIService.searchAppUsers(''),
         fetchAllActiveOtps() // Load all active OTPs for testing panel
       ];
@@ -143,15 +143,13 @@ export function InvitationSection() {
       const results = await Promise.all(promises);
 
       if (hasSearchedMembers) {
-        const [membersData, invitationsData, familyInvData, usersData] = results as [any[], any[], any[], any[]];
+        const [membersData, invitationsData, usersData] = results as [any[], any[], any[]];
         setMembers(membersData || []);
         setInvitations(invitationsData || []);
-        setFamilyInvitations(familyInvData || []);
         setUsers(usersData || []);
       } else {
-        const [invitationsData, familyInvData, usersData] = results as [any[], any[], any[]];
+        const [invitationsData, usersData] = results as [any[], any[]];
         setInvitations(invitationsData || []);
-        setFamilyInvitations(familyInvData || []);
         setUsers(usersData || []);
         // Keep members as empty array
       }
@@ -454,12 +452,9 @@ export function InvitationSection() {
     setLoading(true);
     setError(null);
     try {
-      const [invitationsData, familyInvData] = await Promise.all([
-        APIService.getInvitations({ page: 1, pageSize: 200 }),
-        APIService.getFamilyInvitations ? APIService.getFamilyInvitations({ page: 1, pageSize: 200 }) : Promise.resolve([])
-      ]);
+      const invitationsData = await APIService.getInvitations({ page: 1, pageSize: 200 });
       setInvitations(invitationsData || []);
-      setFamilyInvitations(familyInvData || []);
+      // NOTE: Family invitations removed - using new onboarding flow
     } catch (err) {
       setError('Failed to load invitations');
     } finally {
@@ -657,7 +652,7 @@ export function InvitationSection() {
                 <div className="flex items-center gap-4">
                   <h3 className="text-lg font-medium">Invitations</h3>
                   <Badge variant="outline" className="text-xs">
-                    {invitations.length} Individual • {familyInvitations.length} Family
+                    {invitations.length} Invitations
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2">
@@ -847,6 +842,17 @@ export function InvitationSection() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 ml-2">
+                                {inv.status === 'pending' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => copyToClipboard(generateInvitationUrl(inv.invitationToken), 'Invitation URL')}
+                                    className="h-7 px-2 text-xs"
+                                    title="Copy Invitation Link"
+                                  >
+                                    <Link className="h-3 w-3" />
+                                  </Button>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="ghost"
@@ -879,67 +885,7 @@ export function InvitationSection() {
                     );
                   })()}
                 </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Family Invitations
-                  </h4>
-                  {familyInvitations.length === 0 ? (
-                    <div className="text-sm text-muted-foreground p-4 border border-dashed rounded">
-                      No family invitations yet.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {familyInvitations.map((inv: any) => (
-                        <Card key={inv.id} className="p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-medium text-sm truncate">{inv.parentEmail}</span>
-                                <Badge
-                                  variant="outline"
-                                  className={`text-xs ${
-                                    inv.status === 'pending' ? 'border-yellow-300 text-yellow-700' :
-                                    inv.status === 'completed' ? 'border-green-300 text-green-700' :
-                                    'border-gray-300 text-gray-600'
-                                  }`}
-                                >
-                                  {inv.status}
-                                </Badge>
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Children: {inv.childrenProfiles?.length || 0}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 ml-2">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => resendInvitation(inv.id)}
-                                disabled={loading || inv.status === 'completed'}
-                                className="h-7 px-2 text-xs"
-                                title={inv.status === 'completed' ? 'Cannot resend completed family invitation' : 'Resend family invitation'}
-                              >
-                                Resend
-                              </Button>
-                              {inv.status !== 'completed' && (
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => revokeInvitation(inv.id)}
-                                  className="h-7 px-2 text-xs text-destructive hover:text-destructive/80"
-                                >
-                                  Revoke
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {/* NOTE: Family Invitations section removed - using new onboarding flow */}
               </div>
             </TabsContent>
 
@@ -962,11 +908,46 @@ export function InvitationSection() {
                 {users.length === 0 && !loading ? (
                   <div className="text-sm text-muted-foreground">No app users found.</div>
                 ) : (
-                  users.map((u: any) => (
+                  users.map((u: any) => {
+                    const activeOtp = allActiveOtps.find(otp => otp.email === u.email);
+                    const isOtpExpired = activeOtp ? new Date(activeOtp.expiresAt) < new Date() : true;
+
+                    return (
                     <AdminListItem
                       key={u.id}
-                      title={<>{u.firstName || ''} {u.lastName || ''}</>}
-                      subtitle={<>{u.email} • {u.status}</>}
+                      title={
+                        <div className="flex items-center gap-2">
+                          <span>{u.firstName || ''} {u.lastName || ''}</span>
+                          {activeOtp && !isOtpExpired && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] h-5 px-1">
+                              OTP Active
+                            </Badge>
+                          )}
+                        </div>
+                      }
+                      subtitle={
+                        <div className="flex flex-col gap-1">
+                          <span>{u.email} • {u.status}</span>
+                          {activeOtp && !isOtpExpired && (
+                            <div className="flex items-center gap-2 text-xs mt-1">
+                              <span className="text-muted-foreground">Active OTP:</span>
+                              <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">{activeOtp.code}</code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyToClipboard(activeOtp.code, 'OTP')}
+                                className="h-5 w-5 p-0"
+                                title="Copy OTP"
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                              <span className="text-[10px] text-muted-foreground">
+                                Expires: {new Date(activeOtp.expiresAt).toLocaleTimeString()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      }
                       actions={
                         editingUserId === u.id ? (
                           <>
@@ -986,7 +967,8 @@ export function InvitationSection() {
                         </div>
                       )}
                     </AdminListItem>
-                  ))
+                  );
+                  })
                 )}
               </div>
             </TabsContent>

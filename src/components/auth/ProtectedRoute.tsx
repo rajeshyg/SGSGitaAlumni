@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth, useAuthSafe } from '../../contexts/AuthContext';
 
 // ============================================================================
 // PROTECTED ROUTE TYPES
@@ -23,8 +23,28 @@ export function ProtectedRoute({
   fallback,
   redirectTo = '/login'
 }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, user, hasRole, hasAnyRole } = useAuth();
+  // Use safe version to avoid throwing during navigation transitions
+  // This allows graceful handling when context is temporarily unavailable
+  const authContext = useAuthSafe();
   const location = useLocation();
+  
+  // If auth context is not available (during transition), show loading
+  if (!authContext) {
+    console.warn('🔐 ProtectedRoute: Auth context not available, showing loading state');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Initializing...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const { isAuthenticated, isLoading, user, hasRole, hasAnyRole } = authContext;
+  const isOnboardingPath = location.pathname.startsWith('/onboarding')
+    || location.pathname.startsWith('/profile-completion')
+    || location.pathname.startsWith('/family-setup');
 
   console.log('🔐 ProtectedRoute: Check - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'user:', user, 'requiredRole:', requiredRole);
 
@@ -50,6 +70,12 @@ export function ProtectedRoute({
   if (!isAuthenticated) {
     // Redirect to login with the current location
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
+  }
+
+  // Enforce profile selection/onboarding before accessing protected content
+  // If there is no active profileId yet, send the user to the unified onboarding hub
+  if (!user?.profileId && !isOnboardingPath) {
+    return <Navigate to="/onboarding" state={{ from: location }} replace />;
   }
 
   // ============================================================================
@@ -137,8 +163,18 @@ export interface PublicRouteProps {
 }
 
 export function PublicRoute({ children, redirectTo = '/dashboard' }: PublicRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  // Use safe version to avoid throwing during navigation transitions
+  const authContext = useAuthSafe();
   const location = useLocation();
+
+  // If auth context is not available (during transition), render children
+  // Public routes should be accessible even if context is initializing
+  if (!authContext) {
+    console.warn('🔄 PublicRoute: Auth context not available, rendering children');
+    return <>{children}</>;
+  }
+  
+  const { isAuthenticated, isLoading, user } = authContext;
 
   // ============================================================================
   // LOADING STATE
@@ -171,9 +207,12 @@ export function PublicRoute({ children, redirectTo = '/dashboard' }: PublicRoute
     // Use 'from' only if it's a valid protected route, otherwise use default redirectTo
     const destination = from && !isFromPublicRoute ? from : redirectTo;
 
-    console.log('🔄 PublicRoute: Redirecting authenticated user from', location.pathname, 'to', destination);
+    // If the user has no active profile, force them to onboarding regardless of destination
+    const finalDestination = !user?.profileId ? '/onboarding' : destination;
 
-    return <Navigate to={destination} replace />;
+    console.log('🔄 PublicRoute: Redirecting authenticated user from', location.pathname, 'to', finalDestination);
+
+    return <Navigate to={finalDestination} replace />;
   }
 
   // ============================================================================

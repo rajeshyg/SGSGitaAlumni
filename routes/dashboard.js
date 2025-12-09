@@ -317,14 +317,14 @@ export const getMemberDashboard = async (req, res) => {
 			return res.status(500).json({ success: false, error: 'Dashboard service not available' });
 		}
 
-		const requestedIdRaw = req.query.userId ?? req.user?.id;
-		const requestedUserId = Number(requestedIdRaw);
+		const requestedIdRaw = req.query.userId ?? req.session?.accountId ?? req.user?.id;
+		const requestedAccountId = requestedIdRaw ? String(requestedIdRaw).trim() : '';
 
-		if (!requestedUserId || Number.isNaN(requestedUserId)) {
+		if (!requestedAccountId) {
 			return res.status(400).json({ success: false, error: 'Invalid user identifier' });
 		}
 
-		if (req.user?.role !== 'admin' && Number(req.user?.id) !== requestedUserId) {
+		if (req.user?.role !== 'admin' && req.user?.id && String(req.user.id) !== requestedAccountId) {
 			return res.status(403).json({ success: false, error: 'Access denied' });
 		}
 
@@ -333,31 +333,32 @@ export const getMemberDashboard = async (req, res) => {
 		try {
 			const [userRows] = await connection.execute(`
 				SELECT
-					u.id,
-					u.email,
-					COALESCE(fm.first_name, u.first_name) as first_name,
-					COALESCE(fm.last_name, u.last_name) as last_name,
-					u.current_position,
-					u.company,
-					u.location,
-					u.linkedin_url,
-					u.profile_image_url,
-					u.bio,
-					u.last_login_at,
-					u.created_at,
-					u.is_active,
-					u.status,
-				u.alumni_member_id,
-				u.is_family_account,
-				u.family_account_type,
-				u.primary_family_member_id,
-				am.batch AS graduation_year,
-				am.center_name AS department
-			FROM app_users u
-			LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
-			LEFT JOIN FAMILY_MEMBERS fm ON u.primary_family_member_id = fm.id
-			WHERE u.id = ?
-		`, [requestedUserId]);			if (!userRows || userRows.length === 0) {
+					a.id,
+					a.email,
+					a.last_login_at,
+					a.created_at,
+					a.status,
+					up.id AS user_profile_id,
+					up.relationship,
+					up.access_level,
+					up.alumni_member_id,
+					am.first_name,
+					am.last_name,
+					am.profile_image_url,
+					am.batch AS graduation_year,
+					am.center_name AS department,
+					NULL AS current_position,
+					NULL AS company,
+					NULL AS location,
+					NULL AS linkedin_url,
+					NULL AS bio
+				FROM accounts a
+				LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+				LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
+				WHERE a.id = ?
+			`, [requestedAccountId]);
+
+			if (!userRows || userRows.length === 0) {
 				return res.status(404).json({ success: false, error: 'User not found' });
 			}
 
@@ -374,7 +375,7 @@ export const getMemberDashboard = async (req, res) => {
 					interface_settings
 				FROM USER_PREFERENCES
 				WHERE user_id = ?
-			`, [requestedUserId]);
+			`, [requestedAccountId]);
 
 			let preferences = null;
 			let matchingDomainIds = [];
@@ -410,17 +411,17 @@ export const getMemberDashboard = async (req, res) => {
 					? domainDetailsMap.get(String(prefRow.primary_domain_id)) || null
 					: null;
 
-						const secondaryDomains = secondaryIds
-							.map((id) => normalizeDomain(domainDetailsMap.get(String(id))))
-							.filter(Boolean);
+				const secondaryDomains = secondaryIds
+					.map((id) => normalizeDomain(domainDetailsMap.get(String(id))))
+					.filter(Boolean);
 
-						const areasOfInterest = interestIds
-							.map((id) => normalizeDomain(domainDetailsMap.get(String(id))))
-							.filter(Boolean);
+				const areasOfInterest = interestIds
+					.map((id) => normalizeDomain(domainDetailsMap.get(String(id))))
+					.filter(Boolean);
 
 				preferences = {
 					id: prefRow.id,
-							primaryDomain: normalizeDomain(primaryDomain),
+					primaryDomain: normalizeDomain(primaryDomain),
 					secondaryDomains,
 					areasOfInterest,
 					preferenceType: prefRow.preference_type,
@@ -431,8 +432,8 @@ export const getMemberDashboard = async (req, res) => {
 
 			const [[networkRow]] = await connection.query(`
 				SELECT COUNT(*) AS count
-				FROM app_users
-				WHERE is_active = TRUE
+				FROM accounts
+				WHERE status = 'active'
 			`);
 			const networkSize = Math.max(0, Number(networkRow?.count || 0) - 1);
 
@@ -450,14 +451,14 @@ export const getMemberDashboard = async (req, res) => {
 				WHERE status = 'pending'
 					AND expires_at > NOW()
 					AND (user_id = ? OR email = ?)
-			`, [requestedUserId, userRow.email]);
+			`, [requestedAccountId, userRow.email]);
 			const pendingInvitations = Number(pendingInvitesRow?.count || 0);
 
 			const [[sentInvitesRow]] = await connection.query(`
 				SELECT COUNT(*) AS count
 				FROM USER_INVITATIONS
 				WHERE invited_by = ?
-			`, [requestedUserId]);
+			`, [requestedAccountId]);
 			const sentInvitationsCount = Number(sentInvitesRow?.count || 0);
 
 			let matchedOpportunities = [];
@@ -535,8 +536,6 @@ export const getMemberDashboard = async (req, res) => {
 				createdAt: row.created_at
 			}));
 
-			// ActivityTimeline should show activity items (connections, events, achievements)
-			// NOT postings - postings are shown in PersonalizedPosts and DashboardFeed
 			const [activityRows] = await connection.query(`
 				SELECT id, item_type, title, content, author_name, created_at
 				FROM ACTIVITY_FEED
@@ -544,7 +543,7 @@ export const getMemberDashboard = async (req, res) => {
 				AND item_type IN ('connection', 'event', 'achievement')
 				ORDER BY created_at DESC
 				LIMIT 6
-			`, [requestedUserId]);
+			`, [requestedAccountId]);
 
 			const recentActivity = activityRows.map((row) => ({
 				id: row.id,
@@ -557,28 +556,29 @@ export const getMemberDashboard = async (req, res) => {
 
 			const [recommendedRows] = await connection.query(`
 				SELECT
-					u.id,
-					u.first_name,
-					u.last_name,
-					u.current_position,
-					u.company,
-					u.location,
-					u.profile_image_url,
-					u.last_login_at,
+					a.id,
+					am.first_name,
+					am.last_name,
+					NULL AS current_position,
+					NULL AS company,
+					NULL AS location,
+					am.profile_image_url,
+					a.last_login_at,
 					am.batch AS graduation_year,
 					am.center_name AS department,
 					pref.primary_domain_id
-				FROM app_users u
-				LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
-				LEFT JOIN USER_PREFERENCES pref ON pref.user_id = u.id
-				WHERE u.id != ? AND u.is_active = TRUE
+				FROM accounts a
+				LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+				LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
+				LEFT JOIN USER_PREFERENCES pref ON pref.user_id = a.id
+				WHERE a.id != ? AND a.status = 'active'
 				ORDER BY
 					(CASE WHEN am.batch IS NOT NULL AND am.batch = ? THEN 1 ELSE 0 END) DESC,
 					(CASE WHEN pref.primary_domain_id IS NOT NULL AND ? IS NOT NULL AND pref.primary_domain_id = ? THEN 1 ELSE 0 END) DESC,
-					u.last_login_at DESC
+					a.last_login_at DESC
 				LIMIT 6
 			`, [
-				requestedUserId,
+				requestedAccountId,
 				userRow.graduation_year || null,
 				preferences?.primaryDomain?.id || null,
 				preferences?.primaryDomain?.id || null
@@ -603,7 +603,7 @@ export const getMemberDashboard = async (req, res) => {
 				WHERE (user_id = ? OR email = ?)
 				ORDER BY sent_at DESC
 				LIMIT 3
-			`, [requestedUserId, userRow.email]);
+			`, [requestedAccountId, userRow.email]);
 			const recentInvitations = recentInvitationsRows;
 
 			const profileCompletion = calculateProfileCompletion(userRow, preferences);
@@ -642,10 +642,10 @@ export const getMemberDashboard = async (req, res) => {
 
 			const domainFocus = preferences
 				? {
-						primary: preferences.primaryDomain || null,
-						secondary: preferences.secondaryDomains || [],
-						interests: preferences.areasOfInterest || []
-					}
+					primary: preferences.primaryDomain || null,
+					secondary: preferences.secondaryDomains || [],
+					interests: preferences.areasOfInterest || []
+				}
 				: null;
 
 			res.json({

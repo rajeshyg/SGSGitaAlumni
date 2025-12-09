@@ -64,10 +64,17 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({
         </span>
       );
     }
-    if (member.is_primary_contact) {
+    if (member.relationship === 'parent') {
       return (
         <span className="px-2 py-1 text-xs font-medium bg-[var(--primary-bg)] text-[var(--primary-text)] rounded">
           Parent
+        </span>
+      );
+    }
+    if (member.relationship === 'child') {
+      return (
+        <span className="px-2 py-1 text-xs font-medium bg-[var(--secondary-bg)] text-[var(--secondary-text)] rounded">
+          Child
         </span>
       );
     }
@@ -139,8 +146,8 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({
             </div>
           )}
 
-          {/* Actions */}
-          {showActions && !member.is_primary_contact && (
+          {/* Actions - show for child profiles */}
+          {showActions && member.relationship === 'child' && (
             <div className="mt-4 flex items-center gap-2">
               {/* Edit Button */}
               {onEdit && (

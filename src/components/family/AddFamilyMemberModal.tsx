@@ -1,23 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { createFamilyMember, updateBirthDate, type CreateFamilyMemberRequest, type FamilyMember } from '../../services/familyMemberService';
+import { apiClient } from '../../lib/api';
+import type { UserProfile } from '../../types/accounts';
+
+// Types for profile creation (simplified for new schema)
+interface CreateProfileRequest {
+  firstName: string;
+  lastName: string;
+  displayName?: string;
+  yearOfBirth: string;
+  relationship: 'parent' | 'child';
+  currentCenter?: string;
+  profileImageUrl?: string;
+}
 
 interface AddFamilyMemberModalProps {
   isOpen: boolean;
   onClose: () => void;
   onMemberAdded?: () => void;
-  /** For edit mode: pass the member to edit (only birth date can be updated) */
-  editMember?: FamilyMember | null;
-  /** Called when birth date is updated in edit mode */
-  onBirthDateUpdated?: (updatedMember: FamilyMember) => void;
+  /** For edit mode: pass the profile to edit (only yearOfBirth can be updated) */
+  editMember?: UserProfile | null;
+  /** Called when yearOfBirth is updated in edit mode */
+  onBirthDateUpdated?: (updatedMember: UserProfile) => void;
 }
 
 /**
- * Modal for adding a new family member OR editing birth date
+ * Modal for adding a new family member OR editing year of birth
  *
  * Features:
- * - Collects name, birthdate, relationship (add mode)
- * - Collects birth date only (edit mode when editMember is provided)
+ * - Collects name, year of birth, relationship (add mode)
+ * - Collects year of birth only (edit mode when editMember is provided)
  * - Auto-calculates age and access level
  * - Shows COPPA messaging for different age groups
  */
@@ -29,11 +41,11 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
   onBirthDateUpdated
 }) => {
   const isEditMode = !!editMember;
-  const [formData, setFormData] = useState<CreateFamilyMemberRequest>({
+  const [formData, setFormData] = useState<CreateProfileRequest>({
     firstName: '',
     lastName: '',
     displayName: '',
-    birthDate: '',
+    yearOfBirth: '',
     relationship: 'child',
     currentCenter: '',
     profileImageUrl: ''
@@ -45,25 +57,21 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
   // Populate form when in edit mode
   useEffect(() => {
     if (editMember && isOpen) {
-      // Extract year from birth_date if it exists
-      let birthYear = '';
-      if (editMember.birth_date) {
-        const date = new Date(editMember.birth_date);
-        birthYear = date.getFullYear().toString();
-      }
+      // Use yearOfBirth directly (INT per new schema)
+      const birthYear = editMember.yearOfBirth?.toString() || '';
 
       setFormData({
-        firstName: editMember.first_name,
-        lastName: editMember.last_name,
-        displayName: editMember.display_name,
-        birthDate: birthYear,
-        relationship: editMember.relationship === 'self' ? 'child' : editMember.relationship,
-        currentCenter: editMember.current_center || '',
-        profileImageUrl: editMember.profile_image_url || ''
+        firstName: editMember.firstName || '',
+        lastName: editMember.lastName || '',
+        displayName: editMember.displayName || '',
+        yearOfBirth: birthYear,
+        relationship: editMember.relationship,
+        currentCenter: '',
+        profileImageUrl: ''
       });
-      // Calculate age if birth date exists
-      if (editMember.birth_date) {
-        setCalculatedAge(calculateAge(editMember.birth_date));
+      // Calculate age if year of birth exists
+      if (editMember.yearOfBirth) {
+        setCalculatedAge(calculateAge(birthYear));
       }
     } else if (!isOpen) {
       // Reset form when modal closes
@@ -71,7 +79,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
         firstName: '',
         lastName: '',
         displayName: '',
-        birthDate: '',
+        yearOfBirth: '',
         relationship: 'child',
         currentCenter: '',
         profileImageUrl: ''
@@ -129,8 +137,8 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
       }));
     }
     
-    // Calculate age when birthdate changes
-    if (name === 'birthDate') {
+    // Calculate age when year of birth changes
+    if (name === 'yearOfBirth') {
       const age = calculateAge(value);
       setCalculatedAge(age);
     }
@@ -160,10 +168,10 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Edit mode: update birth date and optional profile fields
+    // Edit mode: update year of birth and optional profile fields
     if (isEditMode && editMember) {
-      if (!formData.birthDate) {
-        setError('Birth date is required');
+      if (!formData.yearOfBirth) {
+        setError('Year of birth is required');
         return;
       }
 
@@ -171,10 +179,13 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
       setError(null);
 
       try {
-        const updatedMember = await updateBirthDate(editMember.id, formData.birthDate, {
-          currentCenter: formData.currentCenter,
-          profileImageUrl: formData.profileImageUrl
-        });
+        // Use API client to update year of birth via onboarding endpoint
+        const response = await apiClient.post('/api/onboarding/collect-yob', {
+          alumniMemberId: editMember.alumniMemberId,
+          yearOfBirth: parseInt(formData.yearOfBirth, 10)
+        }) as { data?: UserProfile };
+        
+        const updatedMember = response?.data || editMember;
 
         if (onBirthDateUpdated) {
           onBirthDateUpdated(updatedMember);
@@ -200,14 +211,20 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
     setError(null);
 
     try {
-      await createFamilyMember(formData);
+      // Create profile via onboarding flow (profile selection)
+      // Note: In the new schema, profiles are created through onboarding, not directly
+      // This is kept for backward compatibility but should redirect to onboarding
+      await apiClient.post('/api/family-members', {
+        ...formData,
+        yearOfBirth: formData.yearOfBirth ? parseInt(formData.yearOfBirth, 10) : undefined
+      });
 
       // Reset form
       setFormData({
         firstName: '',
         lastName: '',
         displayName: '',
-        birthDate: '',
+        yearOfBirth: '',
         relationship: 'child'
       });
       setCalculatedAge(null);
@@ -260,14 +277,14 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
             <div className="bg-[--muted] rounded-lg p-4 flex items-center gap-4">
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-xl font-bold">
-                  {editMember.first_name.charAt(0).toUpperCase()}
-                  {editMember.last_name.charAt(0).toUpperCase()}
+                  {(editMember.firstName || '').charAt(0).toUpperCase()}
+                  {(editMember.lastName || '').charAt(0).toUpperCase()}
                 </span>
               </div>
               <div>
-                <p className="font-semibold text-[--foreground]">{editMember.display_name}</p>
+                <p className="font-semibold text-[--foreground]">{editMember.displayName || `${editMember.firstName} ${editMember.lastName}`}</p>
                 <p className="text-sm text-[--muted-foreground]">
-                  Please provide your birth date to verify your age
+                  Please provide your year of birth to verify your age
                 </p>
               </div>
             </div>
@@ -337,24 +354,22 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
                   className="w-full px-3 py-2 border border-[--border] rounded-md focus:outline-none focus:ring-2 focus:ring-[--ring]"
                 >
                   <option value="child">Child</option>
-                  <option value="spouse">Spouse</option>
-                  <option value="sibling">Sibling</option>
-                  <option value="guardian">Guardian</option>
+                  <option value="parent">Parent</option>
                 </select>
               </div>
             </>
           )}
 
-          {/* Birth Year - always shown */}
+          {/* Year of Birth - always shown */}
           <div>
-            <label htmlFor="birthDate" className="block text-sm font-medium text-[--muted-foreground] mb-1">
+            <label htmlFor="yearOfBirth" className="block text-sm font-medium text-[--muted-foreground] mb-1">
               Year of Birth {isEditMode ? '*' : ''}
             </label>
             <input
               type="number"
-              id="birthDate"
-              name="birthDate"
-              value={formData.birthDate}
+              id="yearOfBirth"
+              name="yearOfBirth"
+              value={formData.yearOfBirth}
               onChange={handleInputChange}
               placeholder="YYYY"
               min="1900"
@@ -420,7 +435,7 @@ const AddFamilyMemberModal: React.FC<AddFamilyMemberModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading || (isEditMode && !formData.birthDate)}
+              disabled={loading || (isEditMode && !formData.yearOfBirth)}
               className="px-4 py-2 bg-[--primary] text-[--primary-foreground] rounded-md hover:bg-[--primary]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading

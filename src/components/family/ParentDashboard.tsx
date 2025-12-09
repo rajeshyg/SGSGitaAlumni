@@ -122,12 +122,12 @@ export const ParentDashboard: React.FC = () => {
     setSelectedMember(null);
   };
 
-  // Get members requiring attention
+  // Get members requiring attention - child profiles needing consent
   const getMembersNeedingConsent = () => {
     return members.filter(m => 
       m.requires_parent_consent && 
       !m.parent_consent_given && 
-      !m.is_primary_contact
+      m.relationship === 'child'
     );
   };
 

@@ -2,7 +2,8 @@
 // FAMILY SETUP PAGE
 // ============================================================================
 // Initial family setup page after registration (hybrid approach)
-// Shows auto-created family member and allows adding additional members
+// Shows auto-created profiles and allows adding additional members
+// UPDATED: Uses user_profiles instead of FAMILY_MEMBERS
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -10,7 +11,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../co
 import { Button } from '../components/ui/button';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Users, CheckCircle, Plus, ArrowRight } from 'lucide-react';
-import { getFamilyMembers, type FamilyMember } from '../services/familyMemberService';
+import { getProfiles } from '../services/familyMemberService';
+import type { UserProfile } from '../types/accounts';
+
+// Alias for backward compatibility
+type FamilyMember = UserProfile & {
+  display_name?: string;
+  current_age?: number;
+};
 
 interface FamilySetupPageProps {
   // No props needed - uses location state
@@ -22,7 +30,7 @@ interface LocationState {
     email: string;
     firstName: string;
     lastName: string;
-    primaryFamilyMemberId?: string;
+    profileId?: string;
   };
   message?: string;
 }
@@ -50,13 +58,19 @@ export const FamilySetupPage: React.FC<FamilySetupPageProps> = () => {
       setIsLoading(true);
       setError(null);
 
-      const members = await getFamilyMembers();
+      // getProfiles returns UserProfile[], map to FamilyMember format for backward compat
+      const profiles = await getProfiles();
+      const members = profiles.map(p => ({
+        ...p,
+        display_name: p.displayName || `${p.firstName} ${p.lastName}`,
+        current_age: p.yearOfBirth ? new Date().getFullYear() - p.yearOfBirth : undefined
+      })) as FamilyMember[];
       setFamilyMembers(members);
 
-      console.log('[FamilySetupPage] Loaded family members:', members);
+      console.log('[FamilySetupPage] Loaded profiles:', members);
     } catch (err) {
-      console.error('[FamilySetupPage] Error loading family members:', err);
-      setError('Failed to load family members');
+      console.error('[FamilySetupPage] Error loading profiles:', err);
+      setError('Failed to load profiles');
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +117,8 @@ export const FamilySetupPage: React.FC<FamilySetupPageProps> = () => {
   const renderInitialMember = () => {
     if (familyMembers.length === 0) return null;
 
-    const primaryMember = familyMembers.find(m => m.relationship === 'self') || familyMembers[0];
+    // Updated: Use 'parent' relationship instead of 'self'
+    const primaryMember = familyMembers.find(m => m.relationship === 'parent') || familyMembers[0];
 
     return (
       <div className="bg-[--success-bg] border border-[--success-border] rounded-lg p-4">

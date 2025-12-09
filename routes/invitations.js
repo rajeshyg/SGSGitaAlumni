@@ -43,14 +43,17 @@ export const getAllInvitations = asyncHandler(async (req, res) => {
     // Get paginated regular invitations
     const pageSizeNum = parseInt(pageSize) || 20;
     const offsetNum = (parseInt(page) - 1) * pageSizeNum;
+    // MIGRATED: accounts table doesn't have first_name/last_name - join with user_profiles + alumni_members
     const dataQuery = `
       SELECT
         ui.*,
-        u.first_name,
-        u.last_name,
-        u.email as user_email
+        COALESCE(am.first_name, 'Unknown') as first_name,
+        COALESCE(am.last_name, '') as last_name,
+        a.email as user_email
       FROM USER_INVITATIONS ui
-      LEFT JOIN app_users u ON ui.user_id = u.id
+      LEFT JOIN accounts a ON ui.user_id COLLATE utf8mb4_unicode_ci = a.id COLLATE utf8mb4_unicode_ci
+      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       ${whereClause}
       ORDER BY ui.created_at DESC
       LIMIT ${pageSizeNum} OFFSET ${offsetNum}
@@ -127,295 +130,12 @@ export const getAllInvitations = asyncHandler(async (req, res) => {
   }
 });
 
-// Get family invitations with pagination
-export const getFamilyInvitations = asyncHandler(async (req, res) => {
-  const { page = 1, pageSize = 50, status } = req.query;
-
-  // Use database
-  const connection = await pool.getConnection();
-  try {
-    console.log('API: Fetching family invitations for admin management:', { page, pageSize, status });
-
-    // Build WHERE clause
-    let whereClause = '';
-    const queryParams = [];
-
-    if (status) {
-      whereClause = 'WHERE status = ?';
-      queryParams.push(status);
-    }
-
-    // Get total count
-    const countQuery = `SELECT COUNT(*) as total FROM FAMILY_INVITATIONS ${whereClause}`;
-    const [countResult] = await connection.execute(countQuery, queryParams);
-    const total = countResult[0].total;
-
-    // Get paginated data
-    const pageSizeNum = parseInt(pageSize) || 20;
-    const offsetNum = (parseInt(page) - 1) * pageSizeNum;
-    const dataQuery = `
-      SELECT * FROM FAMILY_INVITATIONS
-      ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT ${pageSizeNum} OFFSET ${offsetNum}
-    `;
-
-    const [rows] = await connection.execute(dataQuery, queryParams);
-
-    // Transform data to match expected format
-    const invitations = rows.map(row => {
-    let childrenProfiles = [];
-    try {
-      // Handle different formats of children_profiles data
-      if (row.children_profiles && row.children_profiles !== '[object Object]' && typeof row.children_profiles === 'string' && row.children_profiles.trim() !== '') {
-        if (typeof row.children_profiles === 'string') {
-          // Skip if it's clearly malformed
-          if (row.children_profiles === '[object Object]' || row.children_profiles.trim() === '') {
-            childrenProfiles = [];
-          } else {
-            // Try to parse as JSON first
-            try {
-              childrenProfiles = JSON.parse(row.children_profiles);
-            } catch (parseError) {
-              // If JSON parsing fails, try to fix common formatting issues
-              try {
-                const fixedJson = row.children_profiles.replace(/'/g, '"');
-                childrenProfiles = JSON.parse(fixedJson);
-              } catch (secondParseError) {
-                // If all parsing attempts fail, log and use empty array
-                console.warn('Failed to parse children_profiles for invitation:', row.id, 'Data:', row.children_profiles.substring(0, 100));
-                childrenProfiles = [];
-              }
-            }
-          }
-        } else {
-          childrenProfiles = row.children_profiles;
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to parse children_profiles for invitation:', row.id, error);
-      childrenProfiles = [];
-    }
-
-    return {
-      id: row.id,
-      parentEmail: row.parent_email,
-      childrenProfiles: childrenProfiles,
-      invitationToken: row.invitation_token,
-      status: row.status,
-      sentAt: row.sent_at,
-      expiresAt: row.expires_at,
-      invitedBy: row.invited_by,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    };
-  });
-
-    res.json({
-      success: true,
-      data: invitations,
-      total,
-      page: parseInt(page),
-      pageSize: parseInt(pageSize),
-      totalPages: Math.ceil(total / parseInt(pageSize))
-    });
-  } finally {
-    connection.release();
-  }
-});
-
-// Create family invitation
-export const createFamilyInvitation = asyncHandler(async (req, res) => {
-  const connection = await pool.getConnection();
-  try {
-    const { parentEmail, childrenData, invitedBy, expiresInDays = 7 } = req.body;
-
-  // Generate HMAC token for family invitation
-  const familyInvitationId = generateUUID();
-  const hmacToken = generateHMACInvitationToken({
-    id: familyInvitationId,
-    email: parentEmail,
-    invitationType: 'family_member',
-    expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
-  });
-
-  // Extract token components for database storage
-  // The token is base64url encoded JSON with {payload, signature}
-  let tokenPayload = '';
-  let tokenSignature = '';
-  try {
-    const tokenData = JSON.parse(Buffer.from(hmacToken, 'base64url').toString());
-    tokenPayload = JSON.stringify(tokenData.payload) || '';
-    tokenSignature = tokenData.signature || '';
-  } catch (error) {
-    console.error('Error parsing HMAC token:', error);
-    tokenPayload = '';
-    tokenSignature = '';
-  }
-
-  const familyInvitation = {
-    id: familyInvitationId,
-    parentEmail,
-    childrenProfiles: JSON.stringify(childrenData),
-    invitationToken: hmacToken, // Store full HMAC token
-    status: 'pending',
-    sentAt: new Date(),
-    expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000),
-    invitedBy,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    // HMAC token fields
-    tokenPayload: tokenPayload,
-    tokenSignature: tokenSignature,
-    tokenFormat: 'hmac'
-  };
-
-  const query = `
-    INSERT INTO FAMILY_INVITATIONS (
-      id, parent_email, children_profiles, invitation_token, status,
-      sent_at, expires_at, invited_by, created_at, updated_at, token_payload, token_signature, token_format
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-    await connection.execute(query, [
-      familyInvitation.id,
-      familyInvitation.parentEmail,
-      familyInvitation.childrenProfiles,
-      familyInvitation.invitationToken,
-      familyInvitation.status,
-      familyInvitation.sentAt,
-      familyInvitation.expiresAt,
-      familyInvitation.invitedBy,
-      familyInvitation.createdAt,
-      familyInvitation.updatedAt,
-      familyInvitation.tokenPayload,
-      familyInvitation.tokenSignature,
-      familyInvitation.tokenFormat
-    ]);
-
-    res.status(201).json({
-      success: true,
-      data: familyInvitation
-    });
-  } finally {
-    connection.release();
-  }
-});
-
-// Validate family invitation token
-export const validateFamilyInvitation = asyncHandler(async (req, res) => {
-  const connection = await pool.getConnection();
-  try {
-    const { token } = req.params;
-
-    // FIX 2: Validate HMAC signature first
-    console.log('[HMAC_VALIDATION] Validating family invitation token signature');
-    const hmacValidation = hmacTokenService.validateToken(token);
-
-    if (!hmacValidation.isValid) {
-      console.warn('[HMAC_VALIDATION] Invalid token signature:', hmacValidation.error);
-      return res.status(401).json({
-        error: 'Invalid invitation token',
-        reason: hmacValidation.error,
-        familyInvitation: null
-      });
-    }
-
-    // Check token expiration from payload
-    const payload = hmacValidation.payload;
-    if (payload.expiresAt < Date.now()) {
-      console.warn('[HMAC_VALIDATION] Token expired:', new Date(payload.expiresAt));
-      return res.status(401).json({
-        error: 'Invitation token has expired',
-        familyInvitation: null
-      });
-    }
-
-    // Verify token exists in database and matches payload
-    const query = `
-      SELECT * FROM FAMILY_INVITATIONS
-      WHERE invitation_token = ?
-        AND status IN ('pending', 'partially_accepted')
-        AND expires_at > NOW()
-    `;
-
-    const [rows] = await connection.execute(query, [token]);
-
-    if (rows.length === 0) {
-      console.warn('[HMAC_VALIDATION] Token not found in database or already used');
-      return res.json({ familyInvitation: null });
-    }
-
-    // Verify payload email matches database record
-    const row = rows[0];
-    if (payload.email !== row.parent_email) {
-      console.error('[HMAC_VALIDATION] Email mismatch - possible token forgery attempt');
-      return res.status(401).json({
-        error: 'Invalid invitation token',
-        reason: 'Token data mismatch',
-        familyInvitation: null
-      });
-    }
-
-    console.log('[HMAC_VALIDATION] Token validated successfully');
-
-    const familyInvitation = {
-      id: row.id,
-      parentEmail: row.parent_email,
-      childrenProfiles: JSON.parse(row.children_profiles || '[]'),
-      invitationToken: row.invitation_token,
-      status: row.status,
-      sentAt: row.sent_at,
-      expiresAt: row.expires_at,
-      invitedBy: row.invited_by,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
-    };
-
-    res.json({ familyInvitation });
-  } finally {
-    connection.release();
-  }
-});
-
-// Accept family invitation profile
-export const acceptFamilyInvitationProfile = asyncHandler(async (req, res) => {
-  const connection = await pool.getConnection();
-  try {
-    const { id } = req.params;
-    const { profileId, acceptedBy } = req.body;
-
-    // Get current family invitation
-    const [rows] = await connection.execute('SELECT * FROM FAMILY_INVITATIONS WHERE id = ?', [id]);
-    if (rows.length === 0) {
-      throw ResourceError.notFound('Family invitation', id);
-    }
-
-    const row = rows[0];
-    const childrenProfiles = JSON.parse(row.children_profiles || '[]');
-
-    // Update the specific profile as accepted
-    const updatedProfiles = childrenProfiles.map(profile =>
-      profile.id === profileId
-        ? { ...profile, isAccepted: true, acceptedAt: new Date() }
-        : profile
-    );
-
-    // Check if all profiles are now accepted
-    const allAccepted = updatedProfiles.every(profile => profile.isAccepted);
-    const newStatus = allAccepted ? 'completed' : 'partially_accepted';
-
-    // Update the invitation
-    await connection.execute(
-      'UPDATE FAMILY_INVITATIONS SET children_profiles = ?, status = ?, updated_at = NOW() WHERE id = ?',
-      [JSON.stringify(updatedProfiles), newStatus, id]
-    );
-
-    res.json({ success: true, status: newStatus });
-  } finally {
-    connection.release();
-  }
-});
+// DEPRECATED: Family invitation functions removed in Phase 3
+// Replaced by new onboarding flow with explicit profile selection
+// - getFamilyInvitations
+// - createFamilyInvitation  
+// - validateFamilyInvitation
+// - acceptFamilyInvitationProfile
 
 // Create invitation (supports both email and userId based invitations)
 export const createInvitation = asyncHandler(async (req, res) => {
@@ -438,8 +158,7 @@ export const createInvitation = asyncHandler(async (req, res) => {
     // If userId is provided, get the email from the user record
     if (userId) {
       const [userRows] = await connection.execute(
-        'SELECT email FROM app_users WHERE id = ? AND is_active = true',
-        [userId]
+        'SELECT email FROM accounts WHERE id = ? AND status = ?',[userId,'active']
       );
 
       if (userRows.length === 0) {
@@ -453,8 +172,7 @@ export const createInvitation = asyncHandler(async (req, res) => {
     // Check if user already exists (for email-based invitations)
     if (email && !userId) {
       const [existingUserRows] = await connection.execute(
-        'SELECT id FROM app_users WHERE email = ? AND is_active = true',
-        [email]
+        'SELECT id FROM accounts WHERE email = ? AND status = ?',[email,'active']
       );
 
       if (existingUserRows.length > 0) {
@@ -596,8 +314,7 @@ export const createBulkInvitations = asyncHandler(async (req, res) => {
       // If userId is provided, get the email from the user record
       if (userId) {
         const [userRows] = await connection.execute(
-          'SELECT email FROM app_users WHERE id = ? AND is_active = true',
-          [userId]
+          'SELECT email FROM accounts WHERE id = ? AND status = ?',[userId,'active']
         );
 
         if (userRows.length === 0) {
@@ -710,105 +427,113 @@ export const createBulkInvitations = asyncHandler(async (req, res) => {
   }
 });
 
-// Validate invitation token (streamlined version)
+// Validate invitation token and return alumni matches with COPPA status
 export const validateInvitation = asyncHandler(async (req, res) => {
-  // Prevent caching of invitation validation responses
-  res.set({
-    'Cache-Control': 'no-cache, no-store, must-revalidate, proxy-revalidate, private',
-    'Pragma': 'no-cache',
-    'Expires': '0',
-    'ETag': false,
-    'Last-Modified': new Date().toUTCString()
-  });
-
   const { token } = req.params;
-  console.log('VALIDATE_INVITATION: Starting streamlined validation for token:', token);
 
-  // FIX 2: VALIDATE HMAC SIGNATURE FIRST
-  const hmacValidation = hmacTokenService.validateToken(token);
+  const connection = await pool.getConnection();
+  try {
+    // First try to find by invitation_token (HMAC signed token)
+    let [invitations] = await connection.execute(
+      `SELECT id, email, status, expires_at
+       FROM USER_INVITATIONS
+       WHERE invitation_token = ? AND status = 'pending' AND expires_at > NOW()`,
+      [token]
+    );
 
-  if (!hmacValidation.isValid) {
-    console.warn('VALIDATE_INVITATION: Invalid HMAC signature:', hmacValidation.error);
-    return res.json({
-      isValid: false,
-      invitation: null,
-      alumniProfile: null,
-      requiresUserInput: false,
-      suggestedFields: [],
-      canOneClickJoin: false,
-      errorType: 'INVALID_TOKEN',
-      errorMessage: 'Invalid or tampered invitation token'
-    });
-  }
-
-  console.log('VALIDATE_INVITATION: HMAC signature valid, proceeding with service validation');
-
-  // Import services dynamically to avoid circular dependencies
-  const { AlumniDataIntegrationService } = await import('../src/services/AlumniDataIntegrationService.js');
-  const { StreamlinedRegistrationService } = await import('../src/services/StreamlinedRegistrationService.js');
-  const { EmailService } = await import('../src/services/EmailService.js');
-
-  // Initialize services
-  const alumniService = new AlumniDataIntegrationService(pool);
-  const registrationService = new StreamlinedRegistrationService(pool, alumniService);
-
-  console.log('VALIDATE_INVITATION: Services initialized, calling validation...');
-
-  // Use the streamlined validation service
-  const validation = await registrationService.validateInvitationWithAlumniData(token);
-
-  console.log('VALIDATE_INVITATION: Validation result:', {
-    isValid: validation.isValid,
-    errorType: validation.errorType,
-    hasAlumniProfile: !!validation.alumniProfile
-  });
-
-  if (!validation.isValid) {
-    return res.json({
-      isValid: false,
-      invitation: null,
-      alumniProfile: null,
-      requiresUserInput: false,
-      suggestedFields: [],
-      canOneClickJoin: false,
-      errorType: validation.errorType,
-      errorMessage: validation.errorMessage
-    });
-  }
-
-  // Prepare registration data
-  const registrationData = await registrationService.prepareRegistrationData(token);
-
-  const responseData = {
-    isValid: true,
-    invitation: {
-      id: validation.invitation.id,
-      email: validation.invitation.email,
-      invitationToken: validation.invitation.invitation_token,
-      invitedBy: validation.invitation.invited_by,
-      invitationType: validation.invitation.invitation_type,
-      alumniMemberId: validation.invitation.alumni_member_id,
-      completionStatus: validation.invitation.completion_status,
-      status: validation.invitation.status,
-      sentAt: validation.invitation.sent_at,
-      expiresAt: validation.invitation.expires_at,
-      createdAt: validation.invitation.created_at,
-      updatedAt: validation.invitation.updated_at
-    },
-    alumniProfile: validation.alumniProfile,
-    requiresUserInput: validation.requiresUserInput,
-    suggestedFields: validation.suggestedFields,
-    canOneClickJoin: validation.canOneClickJoin,
-    registrationData: {
-      requiredFields: registrationData.requiredFields,
-      optionalFields: registrationData.optionalFields,
-      estimatedCompletionTime: registrationData.estimatedCompletionTime
+    // If not found by token, try by id (UUID) for backward compatibility
+    if (invitations.length === 0) {
+      [invitations] = await connection.execute(
+        `SELECT id, email, status, expires_at
+         FROM USER_INVITATIONS
+         WHERE id = ? AND status = 'pending' AND expires_at > NOW()`,
+        [token]
+      );
     }
-  };
 
-  console.log('VALIDATE_INVITATION: Sending streamlined response');
-  res.json(responseData);
+    if (invitations.length === 0) {
+      return res.status(400).json({ error: 'Invalid or expired invitation' });
+    }
+
+    const invitation = invitations[0];
+
+    // Fetch matching alumni
+    const [alumni] = await connection.execute(
+      `SELECT id, first_name, last_name, batch, center_name, year_of_birth, email,
+              CASE 
+                WHEN year_of_birth IS NOT NULL THEN YEAR(CURDATE()) - year_of_birth
+                ELSE NULL
+              END as age
+       FROM alumni_members 
+       WHERE email = ?`,
+      [invitation.email]
+    );
+
+    // Get the primary alumni profile (first match)
+    const primaryAlumni = alumni.length > 0 ? alumni[0] : null;
+    const age = primaryAlumni?.age;
+    const coppaStatus = getCoppaStatus(age);
+    
+    // Map alumni to the expected format
+    const alumniWithCoppa = alumni.map(a => ({
+      id: a.id,
+      firstName: a.first_name,
+      lastName: a.last_name,
+      batch: a.batch,
+      centerName: a.center_name,
+      yearOfBirth: a.year_of_birth,
+      age: a.age,
+      coppaStatus: getCoppaStatus(a.age),
+      canCreateProfile: a.age === null || a.age >= 14
+    }));
+
+    // Build response matching frontend InvitationValidationResponse interface
+    res.json({
+      isValid: true,
+      valid: true, // backward compatibility
+      invitation: {
+        id: invitation.id,
+        email: invitation.email,
+        expiresAt: invitation.expires_at,
+        status: invitation.status
+      },
+      alumniProfile: primaryAlumni ? {
+        id: primaryAlumni.id,
+        firstName: primaryAlumni.first_name,
+        lastName: primaryAlumni.last_name,
+        email: primaryAlumni.email,
+        batch: primaryAlumni.batch,
+        centerName: primaryAlumni.center_name,
+        yearOfBirth: primaryAlumni.year_of_birth,
+        age: primaryAlumni.age,
+        // Note: current_position, company, location are on user_profiles, not alumni_members
+        currentPosition: null,
+        company: null,
+        location: null,
+        requiresParentConsent: coppaStatus === 'requires_consent',
+        isBlocked: coppaStatus === 'blocked'
+      } : null,
+      alumni: alumniWithCoppa,
+      requiresUserInput: !primaryAlumni,
+      suggestedFields: !primaryAlumni ? ['firstName', 'lastName', 'yearOfBirth'] : [],
+      canOneClickJoin: !!primaryAlumni && coppaStatus === 'full_access',
+      registrationData: {
+        requiredFields: ['password'],
+        optionalFields: ['profileImage'],
+        estimatedCompletionTime: 60
+      }
+    });
+  } finally {
+    connection.release();
+  }
 });
+
+function getCoppaStatus(age) {
+  if (age === null) return 'unknown';
+  if (age < 14) return 'blocked';
+  if (age < 18) return 'requires_consent';
+  return 'full_access';
+}
 
 // Update invitation status
 export const updateInvitation = asyncHandler(async (req, res) => {

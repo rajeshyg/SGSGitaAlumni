@@ -7,13 +7,19 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MemberDashboard } from '../components/dashboard/MemberDashboard';
 import { LoadingSpinner } from '../components/ui/loading-spinner';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthSafe } from '../contexts/AuthContext';
 
 const DashboardPage: React.FC = () => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  // Use safe version to avoid throwing during navigation transitions
+  const authContext = useAuthSafe();
   const navigate = useNavigate();
 
-  console.log('[DashboardPage] Render - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'user:', user);
+  // Handle missing context during transitions
+  const user = authContext?.user ?? null;
+  const isAuthenticated = authContext?.isAuthenticated ?? false;
+  const isLoading = authContext?.isLoading ?? true;
+
+  console.log('[DashboardPage] Render - isLoading:', isLoading, 'isAuthenticated:', isAuthenticated, 'user:', user, 'contextAvailable:', !!authContext);
 
   const isAdmin = user?.role?.toLowerCase() === 'admin';
   const hasValidUser = Boolean(user?.id && user?.email);

@@ -1,212 +1,167 @@
 /**
- * Family Members API Service
+ * User Profiles API Service
  * 
- * Client-side service for interacting with family member endpoints
+ * MIGRATED: Updated from family members to user_profiles schema
+ * Client-side service for interacting with user profile endpoints
  */
 
 import { apiClient } from '../lib/api';
+import type { UserProfile } from '../types/accounts';
 
-export interface FamilyMember {
-  id: string;
-  parent_user_id: number;
-  alumni_member_id?: number;
-  first_name: string;
-  last_name: string;
-  display_name: string;
-  birth_date?: string;
+// ============================================================================
+// TYPE EXPORTS (For backward compatibility)
+// ============================================================================
+
+/**
+ * @deprecated Use UserProfile from '../types/accounts' instead
+ * FamilyMember is now an alias for UserProfile with additional computed fields
+ */
+export interface FamilyMember extends UserProfile {
+  // Computed fields for backward compatibility
+  display_name?: string;
+  first_name?: string;
+  last_name?: string;
   current_age?: number;
-  can_access_platform: boolean;
-  requires_parent_consent: boolean;
-  parent_consent_given: boolean;
-  parent_consent_date?: string;
-  consent_renewal_required?: boolean;
-  access_level: 'full' | 'supervised' | 'blocked';
-  relationship: 'self' | 'child' | 'spouse' | 'sibling' | 'guardian';
-  is_primary_contact: boolean;
+  birth_date?: string;
   profile_image_url?: string;
   current_center?: string;
-  bio?: string;
-  status: 'active' | 'inactive' | 'suspended' | 'pending_consent';
-  created_at: string;
-  updated_at: string;
-  last_login_at?: string;
+  is_primary_contact?: boolean;
+  consent_renewal_required?: boolean;
+  requires_parent_consent?: boolean;
+  parent_consent_given?: boolean;
 }
 
-export interface CreateFamilyMemberRequest extends Record<string, unknown> {
+/**
+ * @deprecated Use proper API params instead
+ */
+export interface ConsentData {
+  childProfileId: string;
+  verificationMethod?: 'id_verification' | 'credit_card' | 'other';
+}
+
+/**
+ * @deprecated Use proper API params instead
+ */
+export interface CreateFamilyMemberRequest {
   firstName: string;
   lastName: string;
   displayName?: string;
-  birthDate?: string;
-  relationship?: 'child' | 'spouse' | 'sibling' | 'guardian';
-  profileImageUrl?: string;
+  yearOfBirth?: string;
+  relationship?: 'parent' | 'child';
   currentCenter?: string;
-}
-
-export interface UpdateFamilyMemberRequest extends Record<string, unknown> {
-  firstName?: string;
-  lastName?: string;
-  displayName?: string;
   profileImageUrl?: string;
-  currentCenter?: string;
-  bio?: string;
 }
 
-export interface ConsentData {
-  digitalSignature: string | null;
-  termsAccepted: boolean;
-  termsVersion: string;
-}
+// ============================================================================
+// API FUNCTIONS
+// ============================================================================
 
-export interface AccessLog {
-  id: string;
-  family_member_id: string;
-  parent_user_id: number;
-  action: string;
-  access_type: 'login' | 'profile_switch' | 'logout';
-  accessed_at: string;
-  access_timestamp: string;
-  ip_address?: string;
-  user_agent?: string;
-  details?: string;
-  first_name: string;
-  last_name: string;
-  display_name: string;
+/**
+ * Get all user profiles for the authenticated account
+ */
+export async function getProfiles(): Promise<UserProfile[]> {
+  const response = await apiClient.get('/api/family-members');
+  // Backend returns { success: true, data: profiles }
+  if (response && typeof response === 'object' && 'data' in response) {
+    return response.data as UserProfile[];
+  }
+  return response as UserProfile[];
 }
 
 /**
- * Get all family members for the authenticated user
+ * @deprecated Use getProfiles instead
  */
 export async function getFamilyMembers(): Promise<FamilyMember[]> {
-  const response = await apiClient.get('/api/family-members');
-  // Backend returns { success: true, data: members }
-  // apiClient.get returns the full response, so we need response.data or response itself
-  if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as FamilyMember[];
-  }
-  // If response is already the array
-  return response as FamilyMember[];
+  const profiles = await getProfiles();
+  // Map to FamilyMember format for backward compatibility
+  return profiles.map(p => ({
+    ...p,
+    display_name: p.displayName || `${p.firstName || ''} ${p.lastName || ''}`.trim(),
+    first_name: p.firstName,
+    last_name: p.lastName,
+    current_age: p.yearOfBirth ? new Date().getFullYear() - p.yearOfBirth : undefined,
+    is_primary_contact: p.relationship === 'parent',
+    consent_renewal_required: p.consentExpiresAt ? new Date(p.consentExpiresAt) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : false,
+    requires_parent_consent: p.requiresConsent,
+    parent_consent_given: p.parentConsentGiven
+  }));
 }
 
 /**
- * Get a specific family member by ID
+ * Get a specific user profile by ID
  */
-export async function getFamilyMember(id: string): Promise<FamilyMember> {
+export async function getProfile(id: string): Promise<UserProfile> {
   const response = await apiClient.get(`/api/family-members/${id}`);
-  // Backend returns { success: true, data: member }
   if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as FamilyMember;
+    return response.data as UserProfile;
   }
-  return response as FamilyMember;
+  return response as UserProfile;
 }
 
 /**
- * Create a new family member
+ * Switch to a different user profile (session-based, no DB persistence)
  */
-export async function createFamilyMember(data: CreateFamilyMemberRequest): Promise<FamilyMember> {
-  const response = await apiClient.post('/api/family-members', data);
-  // Backend returns { success: true, data: member }
+export async function switchProfile(profileId: string): Promise<{ success: boolean; activeProfile: UserProfile; token?: string; refreshToken?: string }> {
+  const response = await apiClient.post(`/api/family-members/${profileId}/switch`, {});
   if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as FamilyMember;
+    return response.data as { success: boolean; activeProfile: UserProfile; token?: string; refreshToken?: string };
   }
-  return response as FamilyMember;
-}
-
-/**
- * Update a family member
- */
-export async function updateFamilyMember(id: string, data: UpdateFamilyMemberRequest): Promise<FamilyMember> {
-  const response = await apiClient.put(`/api/family-members/${id}`, data);
-  // Backend returns { success: true, data: member }
-  if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as FamilyMember;
-  }
-  return response as FamilyMember;
-}
-
-/**
- * Delete a family member
- */
-export async function deleteFamilyMember(id: string): Promise<void> {
-  await apiClient.delete(`/api/family-members/${id}`);
-}
-
-/**
- * Switch to a different family member profile
- */
-export async function switchProfile(id: string): Promise<FamilyMember> {
-  const response = await apiClient.post(`/api/family-members/${id}/switch`, {});
-  // Backend returns { success: true, data: member }
-  if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as FamilyMember;
-  }
-  return response as FamilyMember;
+  return response as { success: boolean; activeProfile: UserProfile; token?: string; refreshToken?: string };
 }
 
 /**
  * Grant parent consent for a minor (14-17)
  */
-export async function grantConsent(id: string, consentData?: ConsentData): Promise<FamilyMember> {
-  const response = await apiClient.post(`/api/family-members/${id}/consent/grant`, consentData || {});
-  // Backend returns { success: true, data: member }
+export async function grantConsent(childProfileId: string): Promise<{ success: boolean; expiresAt: string }> {
+  const response = await apiClient.post('/api/onboarding/grant-consent', { childProfileId });
   if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as FamilyMember;
+    return response.data as { success: boolean; expiresAt: string };
   }
-  return response as FamilyMember;
+  return response as { success: boolean; expiresAt: string };
 }
 
 /**
  * Revoke parent consent
  */
-export async function revokeConsent(id: string, reason?: string): Promise<FamilyMember> {
-  const response = await apiClient.post(`/api/family-members/${id}/consent/revoke`, { reason });
-  // Backend returns { success: true, data: member }
+export async function revokeConsent(childProfileId: string, reason?: string): Promise<{ success: boolean }> {
+  const response = await apiClient.post(`/api/family-members/${childProfileId}/consent/revoke`, { reason });
   if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as FamilyMember;
+    return response.data as { success: boolean };
   }
-  return response as FamilyMember;
+  return response as { success: boolean };
+}
+
+// ============================================================================
+// DEPRECATED STUBS (For backward compatibility - will be removed)
+// ============================================================================
+
+/**
+ * @deprecated Access logs feature removed - returns empty array
+ */
+export interface AccessLog {
+  id: string;
+  profileId: string;
+  action: string;
+  timestamp: string;
+  ipAddress?: string;
 }
 
 /**
- * Check if consent renewal is needed
+ * @deprecated Access logs feature removed - returns empty array
  */
-export async function checkConsentRenewal(id: string): Promise<{ needsRenewal: boolean; lastCheck?: string }> {
-  const response = await apiClient.get(`/api/family-members/${id}/consent/check`);
-  // Backend returns { success: true, data: { needsRenewal, lastCheck } }
-  if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as { needsRenewal: boolean; lastCheck?: string };
-  }
-  return response as { needsRenewal: boolean; lastCheck?: string };
+export async function getAccessLogs(): Promise<AccessLog[]> {
+  console.warn('[familyMemberService] getAccessLogs is deprecated and returns empty array');
+  return [];
 }
 
 /**
- * Update birth date for a family member
- * Used when birth_date is NULL and age verification is needed
- * Recalculates COPPA access fields based on calculated age
- * Can also update currentCenter and profileImageUrl
+ * @deprecated Profile deletion should go through proper onboarding flow
  */
-export async function updateBirthDate(
-  id: string, 
-  birthDate: string,
-  additionalData?: { currentCenter?: string; profileImageUrl?: string }
-): Promise<FamilyMember> {
-  const response = await apiClient.post(`/api/family-members/${id}/birth-date`, { 
-    birthDate,
-    ...additionalData
-  });
-  if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as FamilyMember;
+export async function deleteFamilyMember(profileId: string): Promise<{ success: boolean }> {
+  console.warn('[familyMemberService] deleteFamilyMember is deprecated');
+  const response = await apiClient.delete(`/api/family-members/${profileId}`);
+  if (response && typeof response === 'object' && 'success' in response) {
+    return response as { success: boolean };
   }
-  return response as FamilyMember;
-}
-
-/**
- * Get access logs for all family members
- */
-export async function getAccessLogs(limit: number = 50): Promise<AccessLog[]> {
-  const response = await apiClient.get(`/api/family-members/logs/access?limit=${limit}`);
-  // Backend returns { success: true, data: logs }
-  if (response && typeof response === 'object' && 'data' in response) {
-    return response.data as AccessLog[];
-  }
-  return response as AccessLog[];
+  return { success: true };
 }

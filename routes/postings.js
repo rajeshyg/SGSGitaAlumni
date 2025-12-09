@@ -82,9 +82,9 @@ router.get('/', asyncHandler(async (req, res) => {
       p.published_at,
       p.created_at,
       p.updated_at,
-      u.first_name as author_first_name,
-      u.last_name as author_last_name,
-      u.email as author_email,
+      am.first_name as author_first_name,
+      am.last_name as author_last_name,
+      a.email as author_email,
       (
         SELECT JSON_ARRAYAGG(
           JSON_OBJECT('id', d.id, 'name', d.name, 'icon', d.icon, 'color_code', d.color_code)
@@ -102,7 +102,9 @@ router.get('/', asyncHandler(async (req, res) => {
         WHERE pt.posting_id = p.id
       ) as tags
     FROM POSTINGS p
-    LEFT JOIN app_users u ON p.author_id = u.id
+    LEFT JOIN accounts a ON p.author_id = a.id
+    LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+    LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
     LEFT JOIN POSTING_CATEGORIES pc ON p.category_id = pc.id
   `;
 
@@ -431,14 +433,15 @@ router.get('/my/:userId', authenticateToken, asyncHandler(async (req, res) => {
 router.get('/:id', asyncHandler(async (req, res) => {
   const { id } = req.params;
 
+  // MIGRATED: accounts table doesn't have first_name/last_name - use alumni_members via user_profiles
   const [postings] = await pool.query(`
     SELECT
       p.*,
       pc.name as category_name,
       pc.description as category_description,
-      u.first_name as author_first_name,
-      u.last_name as author_last_name,
-      u.email as author_email,
+      COALESCE(am.first_name, 'Unknown') as author_first_name,
+      COALESCE(am.last_name, '') as author_last_name,
+      a.email as author_email,
       (
         SELECT JSON_ARRAYAGG(
           JSON_OBJECT('id', d.id, 'name', d.name, 'description', d.description,
@@ -465,7 +468,9 @@ router.get('/:id', asyncHandler(async (req, res) => {
         WHERE pa.posting_id = p.id
       ) as attachments
     FROM POSTINGS p
-    LEFT JOIN app_users u ON p.author_id = u.id
+    LEFT JOIN accounts a ON p.author_id = a.id
+    LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+    LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
     LEFT JOIN POSTING_CATEGORIES pc ON p.category_id = pc.id
     WHERE p.id = ?
   `, [id]).catch(err => {
@@ -992,9 +997,9 @@ router.get('/matched/:userId', asyncHandler(async (req, res) => {
         p.published_at,
         p.created_at,
         p.updated_at,
-        u.first_name as author_first_name,
-        u.last_name as author_last_name,
-        u.email as author_email,
+        COALESCE(am.first_name, 'Unknown') as author_first_name,
+        COALESCE(am.last_name, '') as author_last_name,
+        a.email as author_email,
         (
           SELECT JSON_ARRAYAGG(
             JSON_OBJECT('id', d.id, 'name', d.name, 'icon', d.icon, 'color_code', d.color_code, 'domain_level', d.domain_level)
@@ -1012,7 +1017,9 @@ router.get('/matched/:userId', asyncHandler(async (req, res) => {
           WHERE pt.posting_id = p.id
         ) as tags
       FROM POSTINGS p
-      LEFT JOIN app_users u ON p.author_id = u.id
+      LEFT JOIN accounts a ON p.author_id = a.id
+      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       LEFT JOIN POSTING_CATEGORIES pc ON p.category_id = pc.id
       INNER JOIN POSTING_DOMAINS pd ON p.id = pd.posting_id
     `;
@@ -1291,11 +1298,13 @@ router.post('/:id/comment', authenticateToken, asyncHandler(async (req, res) => 
     throw ServerError.database('fetch comment count');
   });
 
-  // Get user info for the response
+  // Get user info for the response (via accounts + user_profiles + alumni_members)
   const [users] = await pool.query(`
-    SELECT first_name, last_name
-    FROM app_users
-    WHERE id = ?
+    SELECT am.first_name, am.last_name
+    FROM accounts a
+    LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+    LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
+    WHERE a.id = ?
   `, [userId]).catch(err => {
     throw ServerError.database('fetch user info');
   });
@@ -1329,10 +1338,12 @@ router.get('/:id/comments', asyncHandler(async (req, res) => {
       pc.user_id,
       pc.comment_text,
       pc.created_at,
-      u.first_name,
-      u.last_name
+      am.first_name,
+      am.last_name
     FROM POSTING_COMMENTS pc
-    LEFT JOIN app_users u ON pc.user_id = u.id
+    LEFT JOIN accounts a ON pc.user_id = a.id
+    LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+    LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
     WHERE pc.posting_id = ?
     ORDER BY pc.created_at DESC
     LIMIT ? OFFSET ?

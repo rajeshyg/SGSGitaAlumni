@@ -2,9 +2,12 @@
  * AGE-BASED ACCESS CONTROL MIDDLEWARE
  *
  * COPPA-compliant middleware for controlling platform access based on:
- * - User age (calculated from birth_date)
+ * - User age (calculated from year_of_birth in alumni_members)
  * - Parental consent status
  * - Access level (full, supervised, blocked)
+ *
+ * MIGRATED: Uses accounts + user_profiles + alumni_members schema
+ * (replaced legacy primary_family_member_id + FAMILY_MEMBERS references)
  *
  * Usage:
  *   router.get('/protected-route', authenticateToken, requirePlatformAccess(), handler);
@@ -16,27 +19,43 @@ import { logger } from '../utils/logger.js';
 import { AuthError } from '../server/errors/ApiError.js';
 
 /**
- * Get family member details for the authenticated user
+ * Get active profile details for the authenticated user
+ * MIGRATED: Uses user_profiles + alumni_members instead of FAMILY_MEMBERS
  * @param {Object} user - req.user from authenticateToken
- * @returns {Object|null} Family member record or null
+ * @returns {Object|null} Profile record or null if no profile is selected
  */
-async function getFamilyMemberForUser(user) {
-  // Check if user has a primary family member
-  if (!user.primary_family_member_id) {
-    // Not a family account - allow access
+async function getActiveProfileForUser(user) {
+  // Check if user has an active profile set
+  if (!user.profileId && !user.active_profile_id) {
+    // No active profile selected - return null
     return null;
   }
 
-  const [members] = await db.execute(
-    `SELECT id, parent_user_id, current_age, can_access_platform,
-            requires_parent_consent, parent_consent_given, access_level,
-            first_name, last_name, birth_date
-     FROM FAMILY_MEMBERS
-     WHERE id = ?`,
-    [user.primary_family_member_id]
+  const profileId = user.profileId || user.active_profile_id;
+
+  // MIGRATED: Query user_profiles + alumni_members
+  const [profiles] = await db.execute(
+    `SELECT up.id, up.account_id, up.relationship, up.access_level, up.status,
+            up.requires_consent, up.parent_consent_given,
+            am.first_name, am.last_name, am.year_of_birth
+     FROM user_profiles up
+     JOIN alumni_members am ON up.alumni_member_id = am.id
+     WHERE up.id = ?`,
+    [profileId]
   );
 
-  return members[0] || null;
+  const profile = profiles[0];
+  if (!profile) return null;
+
+  // Calculate current age from year_of_birth
+  const currentYear = new Date().getFullYear();
+  const currentAge = profile.year_of_birth ? currentYear - profile.year_of_birth : null;
+
+  return {
+    ...profile,
+    current_age: currentAge,
+    can_access_platform: profile.status === 'active' && profile.access_level !== 'blocked'
+  };
 }
 
 /**
@@ -53,28 +72,29 @@ async function getFamilyMemberForUser(user) {
 export function requirePlatformAccess() {
   return async (req, res, next) => {
     try {
-      const familyMember = await getFamilyMemberForUser(req.user);
+      // MIGRATED: Uses getActiveProfileForUser instead of getFamilyMemberForUser
+      const activeProfile = await getActiveProfileForUser(req.user);
 
-      // If not a family account, allow access
-      if (!familyMember) {
+      // If no active profile, allow access (account-level access)
+      if (!activeProfile) {
         return next();
       }
 
-      // Check if family member can access the platform
-      if (!familyMember.can_access_platform) {
+      // Check if profile can access the platform
+      if (!activeProfile.can_access_platform) {
         logger.security('Platform access denied - no access permission', {
           userId: req.user.id,
-          familyMemberId: familyMember.id,
-          age: familyMember.current_age,
-          accessLevel: familyMember.access_level
+          profileId: activeProfile.id,
+          age: activeProfile.current_age,
+          accessLevel: activeProfile.access_level
         });
 
         // Determine specific reason for blocking
-        if (familyMember.current_age < 14) {
+        if (activeProfile.current_age < 14) {
           throw AuthError.forbidden(
             'Platform access is restricted to users 14 years and older (COPPA compliance). Please contact your parent or guardian.'
           );
-        } else if (familyMember.requires_parent_consent && !familyMember.parent_consent_given) {
+        } else if (activeProfile.requires_consent && !activeProfile.parent_consent_given) {
           throw AuthError.forbidden(
             'Parental consent is required for platform access. Please ask your parent or guardian to grant consent.'
           );
@@ -85,8 +105,10 @@ export function requirePlatformAccess() {
         }
       }
 
-      // Attach family member to request for downstream use
-      req.familyMember = familyMember;
+      // Attach active profile to request for downstream use
+      req.activeProfile = activeProfile;
+      // @deprecated: Keep familyMember for backward compatibility
+      req.familyMember = activeProfile;
       next();
     } catch (error) {
       logger.error('Error in requirePlatformAccess middleware', error);
@@ -106,26 +128,28 @@ export function requirePlatformAccess() {
 export function requireSupervisedAccess() {
   return async (req, res, next) => {
     try {
-      const familyMember = await getFamilyMemberForUser(req.user);
+      // MIGRATED: Uses getActiveProfileForUser instead of getFamilyMemberForUser
+      const activeProfile = await getActiveProfileForUser(req.user);
 
-      // If not a family account, allow access
-      if (!familyMember) {
+      // If no active profile, allow access
+      if (!activeProfile) {
         return next();
       }
 
       // Check if user requires parental consent (14-17 age group)
-      if (!familyMember.requires_parent_consent) {
+      if (!activeProfile.requires_consent) {
         // User is 18+ (full access) - allow
-        req.familyMember = familyMember;
+        req.activeProfile = activeProfile;
+        req.familyMember = activeProfile; // @deprecated
         return next();
       }
 
       // User is 14-17 - check for parental consent
-      if (!familyMember.parent_consent_given) {
+      if (!activeProfile.parent_consent_given) {
         logger.security('Supervised access denied - no parental consent', {
           userId: req.user.id,
-          familyMemberId: familyMember.id,
-          age: familyMember.current_age
+          profileId: activeProfile.id,
+          age: activeProfile.current_age
         });
 
         throw AuthError.forbidden(
@@ -134,10 +158,10 @@ export function requireSupervisedAccess() {
       }
 
       // Check if access level is supervised or full
-      if (familyMember.access_level === 'blocked') {
+      if (activeProfile.access_level === 'blocked') {
         logger.security('Supervised access denied - account blocked', {
           userId: req.user.id,
-          familyMemberId: familyMember.id
+          profileId: activeProfile.id
         });
 
         throw AuthError.forbidden(
@@ -145,8 +169,9 @@ export function requireSupervisedAccess() {
         );
       }
 
-      // Attach family member to request
-      req.familyMember = familyMember;
+      // Attach active profile to request
+      req.activeProfile = activeProfile;
+      req.familyMember = activeProfile; // @deprecated
       next();
     } catch (error) {
       logger.error('Error in requireSupervisedAccess middleware', error);
@@ -166,25 +191,27 @@ export function requireSupervisedAccess() {
 export function requireParentConsent() {
   return async (req, res, next) => {
     try {
-      const familyMember = await getFamilyMemberForUser(req.user);
+      // MIGRATED: Uses getActiveProfileForUser instead of getFamilyMemberForUser
+      const activeProfile = await getActiveProfileForUser(req.user);
 
-      // If not a family account, allow access
-      if (!familyMember) {
+      // If no active profile, allow access
+      if (!activeProfile) {
         return next();
       }
 
       // If user doesn't require consent (18+), allow access
-      if (!familyMember.requires_parent_consent) {
-        req.familyMember = familyMember;
+      if (!activeProfile.requires_consent) {
+        req.activeProfile = activeProfile;
+        req.familyMember = activeProfile; // @deprecated
         return next();
       }
 
       // User requires consent - verify it's been given
-      if (!familyMember.parent_consent_given) {
+      if (!activeProfile.parent_consent_given) {
         logger.security('Parent consent required but not given', {
           userId: req.user.id,
-          familyMemberId: familyMember.id,
-          age: familyMember.current_age
+          profileId: activeProfile.id,
+          age: activeProfile.current_age
         });
 
         throw AuthError.forbidden(
@@ -192,26 +219,25 @@ export function requireParentConsent() {
         );
       }
 
-      // Verify consent hasn't expired (annual renewal)
+      // MIGRATED: Verify consent hasn't expired (annual renewal)
       const [consentRecords] = await db.execute(
-        `SELECT id, expires_at, is_active
+        `SELECT id, consent_expiry_date, status
          FROM PARENT_CONSENT_RECORDS
-         WHERE family_member_id = ?
-           AND consent_given = TRUE
-           AND is_active = TRUE
+         WHERE child_profile_id = ?
+           AND status = 'active'
          ORDER BY created_at DESC
          LIMIT 1`,
-        [familyMember.id]
+        [activeProfile.id]
       );
 
       if (consentRecords.length > 0) {
         const consent = consentRecords[0];
-        if (new Date(consent.expires_at) < new Date()) {
+        if (new Date(consent.consent_expiry_date) < new Date()) {
           logger.security('Parent consent expired', {
             userId: req.user.id,
-            familyMemberId: familyMember.id,
+            profileId: activeProfile.id,
             consentId: consent.id,
-            expiredAt: consent.expires_at
+            expiredAt: consent.consent_expiry_date
           });
 
           throw AuthError.forbidden(
@@ -220,8 +246,9 @@ export function requireParentConsent() {
         }
       }
 
-      // Attach family member to request
-      req.familyMember = familyMember;
+      // Attach active profile to request
+      req.activeProfile = activeProfile;
+      req.familyMember = activeProfile; // @deprecated
       next();
     } catch (error) {
       logger.error('Error in requireParentConsent middleware', error);
@@ -246,10 +273,11 @@ export function checkAccessLevel(level) {
 
   return async (req, res, next) => {
     try {
-      const familyMember = await getFamilyMemberForUser(req.user);
+      // MIGRATED: Uses getActiveProfileForUser instead of getFamilyMemberForUser
+      const activeProfile = await getActiveProfileForUser(req.user);
 
-      // If not a family account, treat as 'full' access
-      if (!familyMember) {
+      // If no active profile, treat as 'full' access
+      if (!activeProfile) {
         if (level === 'full' || level === 'supervised') {
           return next();
         } else {
@@ -257,28 +285,30 @@ export function checkAccessLevel(level) {
         }
       }
 
-      // Check if family member has the required access level
-      if (familyMember.access_level !== level) {
+      // Check if profile has the required access level
+      if (activeProfile.access_level !== level) {
         // Allow 'full' access users to access 'supervised' features
-        if (level === 'supervised' && familyMember.access_level === 'full') {
-          req.familyMember = familyMember;
+        if (level === 'supervised' && activeProfile.access_level === 'full') {
+          req.activeProfile = activeProfile;
+          req.familyMember = activeProfile; // @deprecated
           return next();
         }
 
         logger.security('Access level check failed', {
           userId: req.user.id,
-          familyMemberId: familyMember.id,
+          profileId: activeProfile.id,
           requiredLevel: level,
-          actualLevel: familyMember.access_level
+          actualLevel: activeProfile.access_level
         });
 
         throw AuthError.forbidden(
-          `This feature requires ${level} access level. Your current access level is: ${familyMember.access_level}`
+          `This feature requires ${level} access level. Your current access level is: ${activeProfile.access_level}`
         );
       }
 
-      // Attach family member to request
-      req.familyMember = familyMember;
+      // Attach active profile to request
+      req.activeProfile = activeProfile;
+      req.familyMember = activeProfile; // @deprecated
       next();
     } catch (error) {
       logger.error('Error in checkAccessLevel middleware', error);
@@ -288,49 +318,55 @@ export function checkAccessLevel(level) {
 }
 
 /**
- * MIDDLEWARE: Ensure family member context
- * Populates req.familyMember if user is part of a family account
- * Does NOT block access - only attaches family member data
+ * MIDDLEWARE: Ensure profile context
+ * Populates req.activeProfile if user has an active profile
+ * Does NOT block access - only attaches profile data
  *
- * Use this when you need family member data but don't want to block access
+ * Use this when you need profile data but don't want to block access
  *
  * @returns {Function} Express middleware function
  */
-export function requireFamilyMemberContext() {
+export function requireProfileContext() {
   return async (req, res, next) => {
     try {
-      const familyMember = await getFamilyMemberForUser(req.user);
-      req.familyMember = familyMember;
+      // MIGRATED: Uses getActiveProfileForUser instead of getFamilyMemberForUser
+      const activeProfile = await getActiveProfileForUser(req.user);
+      req.activeProfile = activeProfile;
+      req.familyMember = activeProfile; // @deprecated
       next();
     } catch (error) {
-      logger.error('Error in requireFamilyMemberContext middleware', error);
+      logger.error('Error in requireProfileContext middleware', error);
       next(error);
     }
   };
 }
 
+// @deprecated - kept for backward compatibility
+export const requireFamilyMemberContext = requireProfileContext;
+
 /**
  * Helper function to log age verification audit trail
  * Call this from middleware to create audit records
+ * MIGRATED: Uses profile_id instead of family_member_id, year_of_birth instead of birth_date
  *
- * @param {String} familyMemberId - Family member ID
+ * @param {String} profileId - Profile ID
  * @param {Number} age - Current age
- * @param {Date} birthDate - Birth date
+ * @param {Number} yearOfBirth - Year of birth
  * @param {String} actionTaken - Action taken (enum value)
  * @param {String} context - Check context (enum value)
  * @param {Object} req - Express request object
  */
-export async function logAgeVerificationAudit(familyMemberId, age, birthDate, actionTaken, context, req) {
+export async function logAgeVerificationAudit(profileId, age, yearOfBirth, actionTaken, context, req) {
   try {
     await db.execute(
       `INSERT INTO AGE_VERIFICATION_AUDIT (
-        id, family_member_id, age_at_check, birth_date,
+        id, profile_id, age_at_check, year_of_birth,
         action_taken, check_context, ip_address, user_agent, endpoint
       ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        familyMemberId,
+        profileId,
         age,
-        birthDate,
+        yearOfBirth,
         actionTaken,
         context,
         req.ip || 'unknown',

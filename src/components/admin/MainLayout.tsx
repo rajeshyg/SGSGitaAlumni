@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { DashboardHeader } from '../dashboard/DashboardHeader'
 import { WelcomeHeroSection } from '../dashboard/WelcomeHeroSection'
@@ -33,6 +34,11 @@ export function MainLayout({
   children
 }: MainLayoutProps) {
   const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSwitchProfile = () => {
+    navigate('/onboarding');
+  };
 
   const handleLogout = async () => {
     try {
@@ -50,7 +56,8 @@ export function MainLayout({
       <DashboardHeader
         currentProfile={currentProfile}
         stats={stats}
-        onSwitchProfile={() => {}}
+        isFamilyAccount={true}
+        onSwitchProfile={handleSwitchProfile}
         onLogout={handleLogout}
       />
 

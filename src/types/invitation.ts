@@ -113,7 +113,7 @@ export interface ChildProfile {
   graduationYear: number;
   program: string;
   relationship: string;
-  birthDate: Date;
+  yearOfBirth: number;  // UPDATED: YOB instead of birthDate
   isEligible: boolean;
   requiresParentConsent: boolean;
   isAccepted?: boolean;
@@ -140,7 +140,7 @@ export interface ProfileSelection {
 export interface AgeVerification {
   id: string;
   userId: string;
-  birthDate: Date;
+  yearOfBirth: number;  // UPDATED: YOB instead of birthDate
   ageAtRegistration: number;
   requiresParentConsent: boolean;
   parentConsentCollected: boolean;
@@ -206,7 +206,7 @@ export interface InvitationValidation {
 export interface UserRegistrationData {
   firstName: string;
   lastName: string;
-  birthDate: Date;
+  yearOfBirth: number;  // UPDATED: YOB instead of birthDate
   graduationYear: number;
   program: string;
   currentPosition?: string;
@@ -318,7 +318,7 @@ export interface FamilyInvitationServiceInterface {
 }
 
 export interface AgeVerificationServiceInterface {
-  verifyAge(birthDate: Date): Promise<AgeVerificationResult>;
+  verifyAge(yearOfBirth: number): Promise<AgeVerificationResult>;  // UPDATED: YOB instead of birthDate
   requiresParentConsent(age: number): boolean;
   collectParentConsent(parentEmail: string, childData: UserRegistrationData): Promise<ParentConsentRecord>;
   validateParentConsent(consentToken: string): Promise<boolean>;

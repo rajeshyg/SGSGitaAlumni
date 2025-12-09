@@ -51,7 +51,6 @@ import {
   logout,
   refresh,
   registerFromInvitation,
-  registerFromFamilyInvitation,
   requestPasswordReset,
   validatePasswordResetToken,
   resetPassword,
@@ -61,10 +60,6 @@ import {
 
 import {
   getAllInvitations,
-  getFamilyInvitations,
-  createFamilyInvitation,
-  validateFamilyInvitation,
-  acceptFamilyInvitationProfile,
   createInvitation,
   createBulkInvitations,
   validateInvitation,
@@ -73,6 +68,8 @@ import {
   revokeInvitation,
   setInvitationsPool
 } from './routes/invitations.js';
+
+import onboardingRouter, { setOnboardingPool } from './routes/onboarding.js';
 
 import {
   searchAlumniMembers,
@@ -217,6 +214,7 @@ const pool = getPool();
 setAuthPool(pool);
 setAuthMiddlewarePool(pool);
 setInvitationsPool(pool);
+setOnboardingPool(pool);
 setAlumniPool(pool);
 setUsersPool(pool);
 setAnalyticsPool(pool);
@@ -254,7 +252,6 @@ app.post('/api/auth/register-from-invitation', registrationRateLimit, validateRe
   }
   next();
 }, registerFromInvitation);
-app.post('/api/auth/register-from-family-invitation', registrationRateLimit, validateRequest({ body: RegisterFromInvitationSchema }), registerFromFamilyInvitation);
 
 // Password reset routes
 app.post('/api/auth/request-password-reset', apiRateLimit, validateRequest({ body: { email: 'email' } }), requestPasswordReset);
@@ -266,10 +263,6 @@ app.post('/api/auth/reset-password', apiRateLimit, validateRequest({ body: { tok
 // ============================================================================
 
 app.get('/api/invitations', getAllInvitations);
-app.get('/api/invitations/family', getFamilyInvitations);
-app.post('/api/invitations/family', invitationRateLimit, validateRequest({ body: InvitationCreateSchema }), createFamilyInvitation);
-app.get('/api/invitations/family/validate/:token', apiRateLimit, validateFamilyInvitation);
-app.patch('/api/invitations/family/:id/accept-profile', validateRequest({ body: InvitationAcceptSchema }), acceptFamilyInvitationProfile);
 app.post('/api/invitations', invitationRateLimit, validateRequest({ body: InvitationCreateSchema }), createInvitation);
 app.post('/api/invitations/bulk', invitationRateLimit, createBulkInvitations);
 app.get('/api/invitations/validate/:token', apiRateLimit, (req, res, next) => {
@@ -281,6 +274,12 @@ app.get('/api/invitations/validate/:token', apiRateLimit, (req, res, next) => {
 app.patch('/api/invitations/:id', invitationRateLimit, updateInvitation);
 app.post('/api/invitations/:id/resend', invitationRateLimit, resendInvitation);
 app.put('/api/invitations/:id/revoke', invitationRateLimit, revokeInvitation);
+
+// ============================================================================
+// ONBOARDING ROUTES (Profile Selection & COPPA Compliance)
+// ============================================================================
+
+app.use('/api/onboarding', onboardingRouter);
 
 // ============================================================================
 // ALUMNI MEMBERS ROUTES

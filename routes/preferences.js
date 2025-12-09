@@ -787,9 +787,9 @@ export const getAccountSettings = async (req, res) => {
         email_verified_at,
         last_login_at,
         created_at,
-        two_factor_enabled,
-        last_password_change
-      FROM app_users
+        requires_otp,
+        status
+      FROM accounts
       WHERE id = ?
     `, [userId]);
 
@@ -807,8 +807,8 @@ export const getAccountSettings = async (req, res) => {
       email_verified_at: users[0].email_verified_at || null,
       last_login_at: users[0].last_login_at || null,
       created_at: users[0].created_at,
-      two_factor_enabled: users[0].two_factor_enabled || false,
-      last_password_change: users[0].last_password_change || null
+      requires_otp: users[0].requires_otp || false,
+      status: users[0].status || 'pending'
     };
 
     res.json({

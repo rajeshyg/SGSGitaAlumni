@@ -1,5 +1,20 @@
 import mysql from 'mysql2/promise';
 
+/**
+ * Alumni Data Integration Service
+ * 
+ * UPDATED (Phase 3):
+ * - Removed `estimated_birth_year` (old COPPA column)
+ * - Use `year_of_birth` (INT year only) for COPPA compliance
+ * - Age calculated as: YEAR(CURDATE()) - year_of_birth (conservative: assumes Dec 31)
+ * 
+ * OLD DESIGN (DELETED):
+ * - Used estimated_birth_year
+ * - Used batch - 22 fallback estimation
+ * 
+ * See docs/specs/refactoring-plans/03-api-refactoring-plan.md Step 5.2
+ */
+
 export interface AlumniProfile {
   id: number;
   studentId: string;
@@ -11,9 +26,8 @@ export interface AlumniProfile {
   degree?: string;
   program: string;
   address?: string;
-  birthDate?: string | null;
-  estimatedBirthYear?: number | null;
-  estimatedAge?: number;
+  yearOfBirth?: number | null;  // CHANGED: year only (INT)
+  age?: number;                  // CHANGED: calculated field (YEAR(NOW()) - year_of_birth)
   isCompleteProfile: boolean;
   missingFields: string[];
   canAutoPopulate: boolean;
@@ -23,7 +37,7 @@ export interface AlumniProfile {
 export interface ValidationResult {
   isComplete: boolean;
   missingFields: string[];
-  estimatedAge?: number;
+  age?: number;
   requiresParentConsent: boolean;
   canAutoPopulate: boolean;
 }
@@ -67,6 +81,8 @@ export class AlumniDataIntegrationService {
   /**
    * Fetch ALL alumni records for an email (for family onboarding)
    * Multiple family members (parent + children) often share the same email address
+   * 
+   * CHANGED: Uses year_of_birth instead of estimated_birth_year
    */
   async fetchAllAlumniMembersByEmail(email: string): Promise<AlumniProfile[]> {
     try {
@@ -74,16 +90,14 @@ export class AlumniDataIntegrationService {
 
       // Fetch ALL alumni members with this email (not just one)
       // This enables family onboarding where multiple family members share an email
+      // CHANGED: Select year_of_birth instead of estimated_birth_year
       const query = `
         SELECT am.*,
-               am.birth_date,
-               am.estimated_birth_year,
+               am.year_of_birth,
                CASE 
-                 WHEN am.birth_date IS NOT NULL THEN TIMESTAMPDIFF(YEAR, am.birth_date, CURDATE())
-                 WHEN am.estimated_birth_year IS NOT NULL THEN YEAR(CURDATE()) - am.estimated_birth_year
-                 WHEN am.batch IS NOT NULL THEN YEAR(CURDATE()) - (am.batch - 22)
+                 WHEN am.year_of_birth IS NOT NULL THEN YEAR(CURDATE()) - am.year_of_birth
                  ELSE NULL
-               END as estimated_age
+               END as age
         FROM alumni_members am
         WHERE am.email = ? AND am.email IS NOT NULL AND am.email != ''
         ORDER BY am.first_name ASC
@@ -109,9 +123,8 @@ export class AlumniDataIntegrationService {
           degree: alumni.degree || alumni.result,
           program: alumni.program || alumni.center_name,
           address: alumni.address,
-          birthDate: alumni.birth_date ? alumni.birth_date.toISOString().split('T')[0] : null,
-          estimatedBirthYear: alumni.estimated_birth_year || (alumni.batch ? alumni.batch - 22 : null),
-          estimatedAge: alumni.estimated_age,
+          yearOfBirth: alumni.year_of_birth || null,  // CHANGED
+          age: alumni.age,                             // CHANGED
           isCompleteProfile: validation.isComplete,
           missingFields: validation.missingFields,
           canAutoPopulate: validation.canAutoPopulate,
@@ -127,23 +140,21 @@ export class AlumniDataIntegrationService {
 
   /**
    * Fetch alumni data for invitation acceptance
+   * CHANGED: Uses year_of_birth instead of estimated_birth_year
    */
   async fetchAlumniDataForInvitation(email: string): Promise<AlumniProfile | null> {
     try {
       const connection = await this.pool.getConnection();
 
-      // Include birth_date and estimated_birth_year for COPPA age calculation
-      // Priority: actual birth_date > estimated_birth_year > graduation_year-based estimate
+      // Include year_of_birth for COPPA age calculation
+      // CHANGED: Select year_of_birth only
       const query = `
         SELECT am.*,
-               am.birth_date,
-               am.estimated_birth_year,
+               am.year_of_birth,
                CASE 
-                 WHEN am.birth_date IS NOT NULL THEN TIMESTAMPDIFF(YEAR, am.birth_date, CURDATE())
-                 WHEN am.estimated_birth_year IS NOT NULL THEN YEAR(CURDATE()) - am.estimated_birth_year
-                 WHEN am.batch IS NOT NULL THEN YEAR(CURDATE()) - (am.batch - 22)
+                 WHEN am.year_of_birth IS NOT NULL THEN YEAR(CURDATE()) - am.year_of_birth
                  ELSE NULL
-               END as estimated_age
+               END as age
         FROM alumni_members am
         WHERE am.email = ? AND am.email IS NOT NULL AND am.email != ''
         LIMIT 1
@@ -170,9 +181,8 @@ export class AlumniDataIntegrationService {
         degree: alumni.degree || alumni.result,
         program: alumni.program || alumni.center_name,
         address: alumni.address,
-        birthDate: alumni.birth_date ? alumni.birth_date.toISOString().split('T')[0] : null,
-        estimatedBirthYear: alumni.estimated_birth_year || (alumni.batch ? alumni.batch - 22 : null),
-        estimatedAge: alumni.estimated_age,
+        yearOfBirth: alumni.year_of_birth || null,  // CHANGED
+        age: alumni.age,                             // CHANGED
         isCompleteProfile: validation.isComplete,
         missingFields: validation.missingFields,
         canAutoPopulate: validation.canAutoPopulate,
@@ -200,14 +210,14 @@ export class AlumniDataIntegrationService {
     }
 
     const isComplete = missingFields.length === 0;
-    const estimatedAge = alumniData.estimated_age;
-    const requiresParentConsent = estimatedAge !== null && estimatedAge < 18;
+    const age = alumniData.age;
+    const requiresParentConsent = age !== null && age < 18;
     const canAutoPopulate = isComplete && !requiresParentConsent;
 
     return {
       isComplete,
       missingFields,
-      estimatedAge,
+      age,
       requiresParentConsent,
       canAutoPopulate
     };

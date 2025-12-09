@@ -15,6 +15,7 @@ const StatusDashboard = lazy(() => import('./components/admin/StatusDashboard').
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const InvitationAcceptancePage = lazy(() => import('./pages/InvitationAcceptancePage'))
 const OTPVerificationPage = lazy(() => import('./pages/OTPVerificationPage'))
+const OnboardingPage = lazy(() => import('./pages/onboarding/OnboardingPage').then(module => ({ default: module.OnboardingPage })))
 const ProfileCompletionPage = lazy(() => import('./pages/ProfileCompletionPage'))
 const FamilySetupPage = lazy(() => import('./pages/FamilySetupPage'))
 const FamilyProfileSelectionPage = lazy(() => import('./pages/FamilyProfileSelectionPage'))
@@ -98,6 +99,12 @@ function App() {
                 <Route path="/verify-otp/:email?" element={
                   <ErrorBoundary level="page">
                     <OTPVerificationPage />
+                  </ErrorBoundary>
+                } />
+                {/* Onboarding - NEW: Profile selection flow after invitation acceptance */}
+                <Route path="/onboarding" element={
+                  <ErrorBoundary level="page">
+                    <OnboardingPage />
                   </ErrorBoundary>
                 } />
                 {/* Profile Completion - NOT wrapped in PublicRoute because it's part of registration flow */}

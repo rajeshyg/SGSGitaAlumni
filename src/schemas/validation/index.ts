@@ -105,6 +105,8 @@ export const RegisterSchema = z.object({
 
 export const RegisterFromInvitationSchema = z.object({
   invitationToken: z.string().min(1, 'Invitation token required'),
+  // Password must flow through validation so it is not stripped before the route handler
+  password: PasswordSchema.optional(),
   additionalData: z.record(z.any()).optional()
 });
 
@@ -127,7 +129,7 @@ export const InvitationCreateSchema = z.object({
   inviteeEmail: EmailSchema,
   inviteeFirstName: z.string().min(1).max(100),
   inviteeLastName: z.string().min(1).max(100),
-  relationship: z.enum(['SELF', 'CHILD', 'SIBLING', 'SPOUSE', 'PARENT', 'OTHER']),
+  relationship: z.enum(['PARENT', 'CHILD']),  // UPDATED: Only parent/child per new schema
   isParentInvitation: z.boolean().optional(),
   parentConsentRequired: z.boolean().optional(),
   expiresInDays: z.number().int().min(1).max(365).default(30).optional()
@@ -138,33 +140,41 @@ export const InvitationAcceptSchema = z.object({
 });
 
 // ============================================
-// FAMILY MEMBER SCHEMAS
+// USER PROFILE SCHEMAS (Replaces FAMILY_MEMBER)
 // ============================================
 
-export const FamilyMemberCreateSchema = z.object({
+export const UserProfileCreateSchema = z.object({
   firstName: z.string().min(1, 'First name required').max(100, 'First name too long'),
   lastName: z.string().min(1, 'Last name required').max(100, 'Last name too long'),
   displayName: z.string().max(100, 'Display name too long').optional(),
-  birthDate: z.string().optional(), // ISO date string or null
-  relationship: z.enum(['SELF', 'CHILD', 'SIBLING', 'SPOUSE', 'PARENT', 'OTHER']).optional(),
+  yearOfBirth: z.number().int().min(1900).max(new Date().getFullYear()).optional(),  // UPDATED: YOB instead of birthDate
+  relationship: z.enum(['PARENT', 'CHILD']).optional(),  // UPDATED: Only parent/child
   profileImageUrl: z.string().url('Invalid profile image URL').optional()
 });
 
-export const FamilyMemberUpdateSchema = z.object({
+export const UserProfileUpdateSchema = z.object({
   firstName: z.string().min(1).max(100).optional(),
   lastName: z.string().min(1).max(100).optional(),
   displayName: z.string().max(100).optional(),
-  birthDate: z.string().optional(),
-  relationship: z.enum(['SELF', 'CHILD', 'SIBLING', 'SPOUSE', 'PARENT', 'OTHER']).optional(),
+  yearOfBirth: z.number().int().min(1900).max(new Date().getFullYear()).optional(),  // UPDATED: YOB instead of birthDate
+  relationship: z.enum(['PARENT', 'CHILD']).optional(),  // UPDATED: Only parent/child
   profileImageUrl: z.string().url().optional()
 });
 
-export const FamilyMemberConsentSchema = z.object({
+// @deprecated - Use UserProfileCreateSchema instead
+export const FamilyMemberCreateSchema = UserProfileCreateSchema;
+// @deprecated - Use UserProfileUpdateSchema instead
+export const FamilyMemberUpdateSchema = UserProfileUpdateSchema;
+
+export const ParentConsentSchema = z.object({
   consentGiven: z.boolean(),
   consentDate: DateSchema,
   parentEmail: EmailSchema.optional(),
   expiresAt: DateSchema.optional()
 });
+
+// @deprecated - Use ParentConsentSchema instead
+export const FamilyMemberConsentSchema = ParentConsentSchema;
 
 // ============================================
 // POSTING SCHEMAS

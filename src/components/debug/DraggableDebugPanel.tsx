@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth, StorageUtils } from '../../contexts/AuthContext';
+import { useAuthSafe, StorageUtils } from '../../contexts/AuthContext';
 import { logger } from '../../utils/logger';
 import { chatClient } from '../../lib/socket/chatClient';
 import {
@@ -48,11 +48,16 @@ export const DraggableDebugPanel: React.FC = () => {
   // Only show in development mode
   const isDevelopment = import.meta.env.DEV;
 
+  // IMPORTANT: Hooks must be called unconditionally before any returns
+  // Use safe version to avoid throwing during navigation transitions
+  const auth = useAuthSafe();
+  const user = auth?.user ?? null;
+  const isAuthenticated = auth?.isAuthenticated ?? false;
+  const isLoading = auth?.isLoading ?? true;
+
   if (!isDevelopment) {
     return null;
   }
-
-  const { user, isAuthenticated, isLoading } = useAuth();
   const panelRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
 

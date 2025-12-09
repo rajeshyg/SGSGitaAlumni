@@ -23,14 +23,16 @@ export const searchAlumniMembers = async (req, res) => {
     const limitNum = Math.max(1, Math.min(1000, parseInt(limit) || 50));
     const searchTerm = `%${q}%`;
     
+    // MIGRATED: app_users -> accounts + user_profiles
     const searchQuery = `
       SELECT
         am.id, am.student_id, am.first_name, am.last_name, am.email, am.phone,
         am.batch as graduation_year, am.result as degree, am.center_name as department,
         ot.otp_code as otp_code, ot.expires_at as otp_expires_at
       FROM alumni_members am
-      LEFT JOIN app_users au ON au.alumni_member_id = am.id
-      LEFT JOIN OTP_TOKENS ot ON ot.user_id = au.id AND ot.is_used = false AND ot.expires_at > NOW()
+      LEFT JOIN user_profiles up ON up.alumni_member_id = am.id
+      LEFT JOIN accounts a ON a.id = up.account_id
+      LEFT JOIN OTP_TOKENS ot ON ot.user_id = a.id AND ot.is_used = false AND ot.expires_at > NOW()
       WHERE am.first_name LIKE ? OR am.last_name LIKE ? OR am.email LIKE ? OR am.student_id LIKE ?
       ORDER BY am.last_name, am.first_name
       LIMIT ${limitNum}
@@ -497,9 +499,9 @@ export const sendInvitationToAlumni = async (req, res) => {
 
     console.log('API: Sending invitation to alumni member:', id);
 
-    // Get alumni member details including birth_date and batch for age calculation
+    // Get alumni member details including year_of_birth for COPPA age calculation
     const [memberRows] = await connection.execute(
-      `SELECT first_name, last_name, email, birth_date, batch, estimated_birth_year 
+      `SELECT first_name, last_name, email, year_of_birth, batch 
        FROM alumni_members WHERE id = ?`,
       [id]
     );
@@ -540,19 +542,16 @@ export const sendInvitationToAlumni = async (req, res) => {
       expiresAt: new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
     });
 
-    // Build invitation data with birth_date for COPPA age calculation
-    // Priority: actual birth_date > estimated from batch (graduation year - 22)
+    // Build invitation data with year_of_birth for COPPA age calculation
     const invitationDataObj = {
       alumniMemberId: id,
       firstName: member.first_name,
       lastName: member.last_name,
       invitationType,
-      // Include birth_date if available (admin-populated)
-      birthDate: member.birth_date ? member.birth_date.toISOString().split('T')[0] : null,
+      // year_of_birth if available (admin-populated)
+      yearOfBirth: member.year_of_birth || null,
       // Include batch (graduation year) for fallback age estimation
-      graduationYear: member.batch || null,
-      // Include estimated birth year for additional fallback
-      estimatedBirthYear: member.estimated_birth_year || null
+      graduationYear: member.batch || null
     };
 
     // Create invitation

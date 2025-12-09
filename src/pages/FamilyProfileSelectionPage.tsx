@@ -108,7 +108,7 @@ const useFamilyInvitation = (token: string | undefined) => {
         const userData: UserRegistrationData = {
           firstName: profile.firstName,
           lastName: profile.lastName,
-          birthDate: profile.birthDate,
+          yearOfBirth: profile.yearOfBirth,  // UPDATED: YOB instead of birthDate
           graduationYear: profile.graduationYear,
           program: profile.program
         };

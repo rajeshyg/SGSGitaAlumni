@@ -115,6 +115,7 @@ export interface AuthContextType extends AuthState {
   hasRole: (role: string) => boolean;
   hasAnyRole: (roles: string[]) => boolean;
   getErrorSuggestion: () => string | null;
+  updateTokensAfterProfileSwitch: (token: string, refreshToken: string, activeProfile: any) => void;
 }
 
 // ============================================================================
@@ -160,13 +161,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // eslint-disable-next-line no-console
         console.log('[AuthContext] Login response user:', response.user, 'role:', response.user.role);
         console.log('[AuthContext] User role type:', typeof response.user.role, 'Value:', JSON.stringify(response.user.role));
-        console.log('[AuthContext] 🔍 FAMILY ACCOUNT DEBUG:');
-        console.log('  - is_family_account:', response.user.is_family_account);
-        console.log('  - family_account_type:', response.user.family_account_type);
-        console.log('  - primary_family_member_id:', response.user.primary_family_member_id);
-        console.log('  - Type of is_family_account:', typeof response.user.is_family_account);
-        console.log('  - is_family_account === 1:', response.user.is_family_account === 1);
-        console.log('  - is_family_account === true:', response.user.is_family_account === true);
+        console.log('[AuthContext] 🔍 PROFILE DEBUG:');
+        console.log('  - profileId:', response.user.profileId);
+        console.log('  - relationship:', response.user.relationship);
+        console.log('  - accessLevel:', response.user.accessLevel);
       }
 
       // Store tokens securely using StorageUtils for mobile compatibility
@@ -310,8 +308,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       console.log('[AuthContext.refreshToken] 🔍 Updated user data:', {
         name: `${user.firstName} ${user.lastName}`,
-        is_family_account: user.is_family_account,
-        primary_family_member_id: user.primary_family_member_id
+        profileId: user.profileId,
+        relationship: user.relationship
       });
       
       // Update profile in storage
@@ -345,6 +343,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // If refresh fails, logout user
       await logout();
       throw error;
+    }
+  };
+
+  const updateTokensAfterProfileSwitch = (token: string, refreshToken: string, activeProfile: any): void => {
+    // Store new tokens
+    StorageUtils.setItem('authToken', token);
+    StorageUtils.setItem('refreshToken', refreshToken);
+    
+    // Initialize API client with new tokens
+    apiClient.initializeAuth(token, refreshToken);
+
+    // Reconnect chat socket
+    chatClient.disconnect();
+    chatClient.connect(token).catch(error => {
+      console.error('[AuthContext] Failed to reconnect chat socket after profile switch:', error);
+    });
+
+    // Update user state
+    if (authState.user) {
+      const updatedUser = {
+        ...authState.user,
+        profileId: activeProfile.id,
+        firstName: activeProfile.firstName,
+        lastName: activeProfile.lastName,
+        relationship: activeProfile.relationship,
+        accessLevel: activeProfile.accessLevel,
+        batch: activeProfile.batch,
+        centerName: activeProfile.centerName,
+        yearOfBirth: activeProfile.yearOfBirth
+      };
+
+      setAuthState(prev => ({
+        ...prev,
+        user: updatedUser
+      }));
+
+      // Update localStorage 'currentProfile'
+      const profile = {
+        id: typeof updatedUser.id === 'string' ? parseInt(updatedUser.id) || 1 : updatedUser.id,
+        name: getUserDisplayName(updatedUser),
+        role: updatedUser.role,
+        avatar: updatedUser.profileImageUrl || null,
+        preferences: {
+          professionalStatus: updatedUser.role === 'admin' ? 'Administrator' :
+                             updatedUser.role === 'moderator' ? 'Moderator' : 'Member'
+        }
+      };
+      StorageUtils.setItem('currentProfile', JSON.stringify(profile));
     }
   };
 
@@ -499,7 +545,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearError,
     hasRole,
     hasAnyRole,
-    getErrorSuggestion
+    getErrorSuggestion,
+    updateTokensAfterProfileSwitch
   };
 
   return (
@@ -513,14 +560,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
 // AUTHENTICATION HOOK
 // ============================================================================
 
+/**
+ * Main authentication hook - throws if used outside AuthProvider.
+ * Use this in components that MUST have auth context.
+ */
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // Enhanced error with debugging info
+    const errorMsg = 'useAuth must be used within an AuthProvider. ' +
+      'This error often occurs during navigation when components render before context is ready. ' +
+      'Check that AuthProvider wraps your Router and all route components.';
+    console.error('[AuthContext] Context not found. Component stack may help identify the issue.');
+    throw new Error(errorMsg);
   }
   
   return context;
+}
+
+/**
+ * Safe version of useAuth that returns null instead of throwing.
+ * Use this in components that should gracefully handle missing context
+ * (e.g., debug panels, error boundaries, components that render during transitions).
+ */
+export function useAuthSafe(): AuthContextType | null {
+  return useContext(AuthContext);
 }
 
 // ============================================================================

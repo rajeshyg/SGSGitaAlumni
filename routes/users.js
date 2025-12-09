@@ -28,37 +28,74 @@ export const updateUser = async (req, res) => {
       normalizedUpdates[snakeKey] = updates[key];
     });
 
-    // Build dynamic update query for users table
-    const userUpdateFields = [];
-    const userUpdateValues = [];
+    // Build dynamic update query for accounts/alumni_members tables
+    // MIGRATED: app_users → accounts + alumni_members via user_profiles
+    const accountUpdateFields = [];
+    const accountUpdateValues = [];
+    const alumniUpdateFields = [];
+    const alumniUpdateValues = [];
 
-    // Editable user fields
-    const editableUserFields = [
-      'first_name', 'last_name', 'email', 'birth_date', 'graduation_year',
-      'program', 'current_position', 'bio', 'linkedin_url', 'company',
-      'location', 'age_verified', 'parent_consent_required', 'parent_consent_given',
-      'requires_otp'
+    // Account editable fields (stored in accounts table)
+    const editableAccountFields = [
+      'email'
     ];
 
-    editableUserFields.forEach(field => {
+    // Alumni editable fields (stored in alumni_members via user_profiles)
+    const editableAlumniFields = [
+      'first_name', 'last_name', 'year_of_birth', 'batch', 'center_name',
+      'current_center', 'profile_image_url', 'phone'
+    ];
+
+    editableAccountFields.forEach(field => {
       if (normalizedUpdates[field] !== undefined) {
-        userUpdateFields.push(`${field} = ?`);
-        userUpdateValues.push(normalizedUpdates[field]);
+        accountUpdateFields.push(`${field} = ?`);
+        accountUpdateValues.push(normalizedUpdates[field]);
       }
     });
 
-    // Update user record if there are changes
-    if (userUpdateFields.length > 0) {
-      userUpdateFields.push('updated_at = NOW()');
+    editableAlumniFields.forEach(field => {
+      if (normalizedUpdates[field] !== undefined) {
+        alumniUpdateFields.push(`${field} = ?`);
+        alumniUpdateValues.push(normalizedUpdates[field]);
+      }
+    });
 
-      const userQuery = `
-        UPDATE app_users
-        SET ${userUpdateFields.join(', ')}
+    // Get the alumni_member_id through user_profiles for this account
+    const [profileRows] = await connection.execute(`
+      SELECT up.alumni_member_id 
+      FROM user_profiles up 
+      WHERE up.account_id = ? AND up.relationship = 'parent'
+      LIMIT 1
+    `, [id]);
+
+    const alumniMemberId = profileRows.length > 0 ? profileRows[0].alumni_member_id : null;
+
+    // Update account record if there are changes
+    if (accountUpdateFields.length > 0) {
+      accountUpdateFields.push('updated_at = NOW()');
+
+      const accountQuery = `
+        UPDATE accounts
+        SET ${accountUpdateFields.join(', ')}
         WHERE id = ?
       `;
 
-      userUpdateValues.push(id);
-      await connection.execute(userQuery, userUpdateValues);
+      accountUpdateValues.push(id);
+      await connection.execute(accountQuery, accountUpdateValues);
+    }
+
+    // Update alumni_members if there are alumni field changes and we have an alumni_member_id
+    if (alumniUpdateFields.length > 0 && alumniMemberId) {
+      alumniUpdateFields.push('updated_at = NOW()');
+
+      const alumniQuery = `
+        UPDATE alumni_members
+        SET ${alumniUpdateFields.join(', ')}
+        WHERE id = ?
+      `;
+
+      alumniUpdateValues.push(alumniMemberId);
+      await connection.execute(alumniQuery, alumniUpdateValues);
     }
 
     // Update alumni_profiles if profile data is provided
@@ -86,7 +123,7 @@ export const updateUser = async (req, res) => {
         }
       });
 
-      if (profileUpdateFields.length > 0) {
+      if (profileUpdateFields.length > 0 && alumniMemberId) {
         profileUpdateFields.push('updated_at = NOW()');
 
         const profileQuery = `
@@ -95,21 +132,45 @@ export const updateUser = async (req, res) => {
           WHERE id = ?
         `;
 
-        profileUpdateValues.push(id);
+        profileUpdateValues.push(alumniMemberId);
         await connection.execute(profileQuery, profileUpdateValues);
       }
     }
 
-    // Get updated user data
+    // Get updated user data - MIGRATED: app_users → accounts + user_profiles
     const [userRows] = await connection.execute(`
       SELECT
-        u.*,
-        am.family_name, am.father_name, am.batch, am.center_name,
-        am.result, am.category, am.phone as alumni_phone, am.email as alumni_email,
-        am.student_id
-      FROM app_users u
-      LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
-      WHERE u.id = ? AND u.is_active = true
+        a.id,
+        a.email,
+        a.status,
+        a.role,
+        a.created_at,
+        a.updated_at,
+        am.first_name,
+        am.last_name,
+        am.year_of_birth,
+        am.batch,
+        am.center_name,
+        NULL as current_position,
+        NULL as company,
+        NULL as location,
+        am.bio,
+        am.linkedin_url,
+        am.profile_image_url,
+        am.family_name, 
+        am.father_name,
+        am.result, 
+        am.category, 
+        am.phone as alumni_phone, 
+        am.email as alumni_email,
+        am.student_id,
+        up.access_level,
+        up.requires_consent,
+        up.parent_consent_given
+      FROM accounts a
+      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
+      WHERE a.id = ? AND a.status = 'active'
     `, [id]);
 
     if (userRows.length === 0) {
@@ -117,23 +178,24 @@ export const updateUser = async (req, res) => {
     }
 
     const user = userRows[0];
+    // MIGRATED: Updated response to match new schema (no birth_date, using year_of_birth)
     const userResponse = {
       id: user.id,
       firstName: user.first_name,
       lastName: user.last_name,
       email: user.email,
-      birthDate: user.birth_date,
-      graduationYear: user.graduation_year,
-      program: user.program,
+      yearOfBirth: user.year_of_birth,
+      graduationYear: user.batch,
+      program: user.center_name,
       currentPosition: user.current_position,
       bio: user.bio,
       linkedinUrl: user.linkedin_url,
       company: user.company,
       location: user.location,
-      ageVerified: user.age_verified,
-      parentConsentRequired: user.parent_consent_required,
+      profileImageUrl: user.profile_image_url,
+      accessLevel: user.access_level,
+      parentConsentRequired: user.requires_consent,
       parentConsentGiven: user.parent_consent_given,
-      requiresOtp: user.requires_otp,
       alumniProfile: {
         familyName: user.family_name,
         fatherName: user.father_name,
@@ -166,9 +228,13 @@ export const sendInvitationToUser = async (req, res) => {
     const { invitationType = 'profile_completion', expiresInDays = 7 } = req.body;
     const invitedBy = req.user.id;
 
-    // Get user details
+    // Get user details - MIGRATED: app_users → accounts + user_profiles
     const [userRows] = await connection.execute(
-      'SELECT email, first_name, last_name FROM app_users WHERE id = ? AND is_active = true',
+      `SELECT a.email, am.first_name, am.last_name 
+       FROM accounts a 
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
+       WHERE a.id = ? AND a.status = 'active'`,
       [id]
     );
 
@@ -288,17 +354,17 @@ export const searchUsers = async (req, res) => {
     const [testRows] = await connection.execute('SELECT 1 as test_value');
     console.log('✅ API: Database test query result:', testRows);
 
-    // Test if app_users table exists and is accessible
-    console.log('📊 API: Testing app_users table access...');
-    const [tableTest] = await connection.execute('SELECT COUNT(*) as count FROM app_users LIMIT 1');
-    console.log('📈 API: App users table test result:', tableTest);
+    // Test if accounts table exists and is accessible - MIGRATED: app_users → accounts
+    console.log('📊 API: Testing accounts table access...');
+    const [tableTest] = await connection.execute('SELECT COUNT(*) as count FROM accounts LIMIT 1');
+    console.log('📈 API: Accounts table test result:', tableTest);
 
-    // Build search query - only use app_users table
-    let whereClause = 'WHERE u.is_active = true';
+    // Build search query - MIGRATED: app_users → accounts + user_profiles + alumni_members
+    let whereClause = "WHERE a.status = 'active'";
     const queryParams = [];
 
     if (q && q.trim()) {
-      whereClause += ' AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.email LIKE ?)';
+      whereClause += ' AND (am.first_name LIKE ? OR am.last_name LIKE ? OR a.email LIKE ?)';
       const trimmedQ = q.trim();
       queryParams.push(`%${trimmedQ}%`, `%${trimmedQ}%`, `%${trimmedQ}%`);
       console.log('🔎 API: Search query added for:', trimmedQ);
@@ -307,20 +373,21 @@ export const searchUsers = async (req, res) => {
     const limitNum = parseInt(limit) || 50;
     const searchQuery = `
       SELECT
-        u.id,
-        COALESCE(u.first_name, 'Unknown') as firstName,
-        COALESCE(u.last_name, 'Unknown') as lastName,
-        u.email,
-        u.status,
-        u.email_verified,
-        u.current_position,
-        u.company,
-        u.location,
-        u.created_at,
-        CASE WHEN (u.first_name IS NOT NULL AND u.last_name IS NOT NULL) THEN 1 ELSE 0 END as isProfileComplete
-      FROM app_users u
+        a.id,
+        COALESCE(am.first_name, 'Unknown') as firstName,
+        COALESCE(am.last_name, 'Unknown') as lastName,
+        a.email,
+        a.status,
+        NULL as current_position,
+        NULL as company,
+        NULL as location,
+        a.created_at,
+        CASE WHEN (am.first_name IS NOT NULL AND am.last_name IS NOT NULL) THEN 1 ELSE 0 END as isProfileComplete
+      FROM accounts a
+      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       ${whereClause}
-      ORDER BY COALESCE(u.last_name, 'Unknown'), COALESCE(u.first_name, 'Unknown')
+      ORDER BY COALESCE(am.last_name, 'Unknown'), COALESCE(am.first_name, 'Unknown')
       LIMIT ${limitNum}
     `;
 
@@ -340,7 +407,7 @@ export const searchUsers = async (req, res) => {
       emailVerified: !!row.email_verified,
       graduationYear: row.graduation_year,
       program: row.program,
-      currentPosition: row.current_position,
+      currentPosition: row.current_position, // NULL until profile fields are added
       company: row.company,
       location: row.location,
       profileImageUrl: null, // Not available in current schema
@@ -380,7 +447,7 @@ export const searchUsers = async (req, res) => {
   }
 };
 
-// Get user profile details for invitation
+// Get user profile details for invitation - MIGRATED: app_users → accounts + user_profiles
 export const getUserProfile = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -390,26 +457,23 @@ export const getUserProfile = async (req, res) => {
 
     const query = `
       SELECT
-        u.id,
-        u.email,
-        u.first_name,
-        u.last_name,
-        u.role,
-        u.status,
-        u.is_active,
-        u.birth_date,
-        u.phone,
-        u.profile_image_url,
-        u.bio,
-        u.linkedin_url,
-        u.current_position,
-        u.company,
-        u.location,
-        u.email_verified,
-        u.email_verified_at,
-        u.last_login_at,
-        u.created_at,
-        u.updated_at,
+        a.id,
+        a.email,
+        a.role,
+        a.status,
+        a.last_login_at,
+        a.created_at,
+        a.updated_at,
+        am.first_name,
+        am.last_name,
+        am.year_of_birth,
+        am.phone,
+        am.profile_image_url,
+        am.bio,
+        am.linkedin_url,
+        NULL as current_position,
+        NULL as company,
+        NULL as location,
         am.family_name,
         am.father_name,
         am.batch as graduation_year,
@@ -419,17 +483,21 @@ export const getUserProfile = async (req, res) => {
         am.phone as alumni_phone,
         am.email as alumni_email,
         am.student_id,
-        am.status as alumni_status
-      FROM app_users u
-      LEFT JOIN alumni_members am ON u.alumni_member_id = am.id
-      WHERE u.id = ? AND u.is_active = true
+        am.status as alumni_status,
+        up.access_level,
+        up.requires_consent,
+        up.parent_consent_given
+      FROM accounts a
+      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
+      WHERE a.id = ? AND a.status = 'active'
     `;
 
     const [rows] = await connection.execute(query, [id]);
 
     console.log('[API] Query result rows:', rows.length);
     if (rows.length > 0) {
-      console.log('[API] User data found:', { id: rows[0].id, email: rows[0].email, is_active: rows[0].is_active });
+      console.log('[API] User data found:', { id: rows[0].id, email: rows[0].email, status: rows[0].status });
     }
 
     if (rows.length === 0) {
@@ -439,7 +507,7 @@ export const getUserProfile = async (req, res) => {
 
     const row = rows[0];
 
-    // Build comprehensive user profile with proper fallbacks
+    // Build comprehensive user profile with proper fallbacks - MIGRATED: no birth_date
     const userProfile = {
       id: row.id,
       firstName: row.first_name || row.father_name || 'Unknown',
@@ -447,7 +515,7 @@ export const getUserProfile = async (req, res) => {
       email: row.email,
       role: row.role,
       status: row.status,
-      birthDate: row.birth_date,
+      yearOfBirth: row.year_of_birth,
       phone: row.phone || row.alumni_phone,
       profileImageUrl: row.profile_image_url,
       bio: row.bio,
@@ -491,30 +559,42 @@ export const getUserProfile = async (req, res) => {
 };
 
 // Get current user profile (basic User object for AuthContext)
+// MIGRATED: app_users → accounts + user_profiles
 export const getCurrentUserProfile = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const userId = req.user.id;
+    // Use the active profile from the session (populated by auth middleware from JWT)
+    // Fallback to parent profile logic only if no active profile is set (shouldn't happen with valid tokens)
+    const activeProfileId = req.session?.activeProfileId;
 
-    // Get basic user info (same format as login response)
+    // Get basic user info via accounts + user_profiles
+    // JOIN on the specific active profile ID
     const query = `
       SELECT
-        u.id,
-        u.email,
-        u.first_name,
-        u.last_name,
-        u.role,
-        u.is_active,
-        u.created_at,
-        u.last_login_at,
-        u.is_family_account,
-        u.family_account_type,
-        u.primary_family_member_id
-      FROM app_users u
-      WHERE u.id = ? AND u.is_active = true
+        a.id,
+        a.email,
+        a.role,
+        a.status,
+        a.created_at,
+        a.last_login_at,
+        am.first_name,
+        am.last_name,
+        am.profile_image_url,
+        am.year_of_birth,
+        up.id as profile_id,
+        up.relationship,
+        up.access_level
+      FROM accounts a
+      LEFT JOIN user_profiles up ON up.id = ? AND up.account_id = a.id
+      LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
+      WHERE a.id = ? AND a.status = 'active'
     `;
 
-    const [rows] = await connection.execute(query, [userId]);
+    // If for some reason activeProfileId is missing, we might need a fallback query, 
+    // but middleware guarantees activeProfileId is set if profiles exist.
+    // If it's null/undefined, the LEFT JOIN will just return nulls for profile fields, which is handled.
+    const [rows] = await connection.execute(query, [activeProfileId, userId]);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -522,60 +602,26 @@ export const getCurrentUserProfile = async (req, res) => {
 
     const row = rows[0];
 
-    // Return basic User object matching AuthContext expectations
+    // Return User object matching AuthContext expectations
+    // MIGRATED: No more is_family_account/primary_family_member_id, using user_profiles + accounts
     const user = {
       id: row.id,
       email: row.email,
       firstName: row.first_name || 'Unknown',
       lastName: row.last_name || 'Unknown',
       role: row.role,
-      isActive: row.is_active,
+      isActive: row.status === 'active',
       createdAt: row.created_at,
       lastLoginAt: row.last_login_at,
-      is_family_account: row.is_family_account,
-      family_account_type: row.family_account_type,
-      primary_family_member_id: row.primary_family_member_id
+      profileImageUrl: row.profile_image_url,
+      // New schema fields
+      activeProfileId: row.profile_id,
+      relationship: row.relationship,
+      accessLevel: row.access_level,
+      yearOfBirth: row.year_of_birth,
+      // Add profileId alias for frontend compatibility
+      profileId: row.profile_id
     };
-
-    // 🆕 If user has an active family member profile, merge that data
-    if (row.primary_family_member_id) {
-      console.log('[getCurrentUserProfile] 👨‍👩‍👧‍👦 Family account detected, fetching active family member:', row.primary_family_member_id);
-      
-      const [memberRows] = await connection.execute(
-        `SELECT 
-          id, first_name, last_name, display_name, current_age, 
-          relationship, access_level, profile_image_url
-         FROM FAMILY_MEMBERS 
-         WHERE id = ? AND parent_user_id = ?`,
-        [row.primary_family_member_id, userId]
-      );
-
-      if (memberRows.length > 0) {
-        const member = memberRows[0];
-        console.log('[getCurrentUserProfile] ✅ Found active family member:', {
-          id: member.id,
-          name: `${member.first_name} ${member.last_name}`,
-          relationship: member.relationship
-        });
-
-        // Override user name with family member name
-        user.firstName = member.first_name;
-        user.lastName = member.last_name;
-        user.displayName = member.display_name;
-        user.currentAge = member.current_age;
-        user.relationship = member.relationship;
-        user.accessLevel = member.access_level;
-        user.profileImageUrl = member.profile_image_url;
-        
-        console.log('[getCurrentUserProfile] 🎭 User data merged with family member:', {
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role
-        });
-      } else {
-        console.warn('[getCurrentUserProfile] ⚠️ primary_family_member_id set but member not found:', row.primary_family_member_id);
-      }
-    }
 
     res.json(user);
   } catch (error) {

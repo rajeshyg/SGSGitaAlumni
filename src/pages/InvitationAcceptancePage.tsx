@@ -58,6 +58,7 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [accountExists, setAccountExists] = useState(false);
 
   // Ref to prevent duplicate API calls (especially in React StrictMode during development)
   const hasValidated = useRef(false);
@@ -161,14 +162,14 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
       let missingFields: string[] = [];
 
       if (response.user.needsProfileCompletion) {
-        // User needs to complete profile (missing birthdate or other critical data)
+        // User needs to complete profile (missing year of birth or other critical data)
         redirectTo = '/profile-completion';
-        missingFields = ['birthDate']; // Primary missing field
+        missingFields = ['yearOfBirth']; // Primary missing field (UPDATED: YOB instead of birthDate)
         console.log('[InvitationAcceptancePage] User needs profile completion, will redirect to:', redirectTo);
       } else {
-        // User has complete data, redirect to family setup (hybrid approach)
-        redirectTo = '/family-setup';
-        console.log('[InvitationAcceptancePage] User profile complete, will redirect to family setup');
+        // User has complete data, redirect to onboarding (profile selection)
+        redirectTo = '/onboarding';
+        console.log('[InvitationAcceptancePage] User profile complete, will redirect to onboarding');
       }
 
       // Redirect to OTP verification page
@@ -207,7 +208,16 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
         errorMessage = err;
       }
       
-      setError(errorMessage);
+      // Check if account already exists - offer to login instead
+      const accountExistsPattern = /account.*already.*exists|email.*already.*registered/i;
+      if (accountExistsPattern.test(errorMessage)) {
+        const email = validation?.invitation?.email || '';
+        setError(`An account with this email already exists. Please log in instead.`);
+        // Store flag to show login button
+        setAccountExists(true);
+      } else {
+        setError(errorMessage);
+      }
     } finally {
       setIsJoining(false);
     }
@@ -384,12 +394,33 @@ export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> =
   return (
     <div className="min-h-screen bg-[--muted] flex items-center justify-center p-4">
       {error && !validation?.errorType && (
-        <Alert className="mb-4 max-w-2xl mx-auto">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        <Card className="mb-4 max-w-2xl mx-auto">
+          <CardContent className="pt-6">
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+            {accountExists && (
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={() => navigate('/login', { state: { email: validation?.invitation?.email } })}
+                  className="w-full"
+                >
+                  Go to Login
+                </Button>
+                <Button
+                  onClick={() => navigate('/')}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Return to Home
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      {validation?.isValid ? renderJoinForm() : renderInvalidInvitation()}
+      {!error && (validation?.isValid ? renderJoinForm() : renderInvalidInvitation())}
     </div>
   );
 };

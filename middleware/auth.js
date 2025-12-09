@@ -54,57 +54,89 @@ export const authenticateToken = async (req, res, next) => {
 
       logger.debug('JWT verified successfully');
 
+      let connection;
       try {
-        // Verify user still exists and is active
-        const connection = await pool.getConnection();
-        const [rows] = await connection.execute(
-          'SELECT id, email, role, is_active FROM app_users WHERE id = ? AND is_active = true',
-          [decoded.userId]
+        // Verify account still exists and is active
+        connection = await pool.getConnection();
+        const [accounts] = await connection.execute(
+          'SELECT id, email, role, status FROM accounts WHERE id = ? AND status = ?',
+          [decoded.accountId, 'active']
         );
-        connection.release();
 
-        if (rows.length === 0) {
-          logger.debug('Auth failed: user not found or inactive');
-          return res.status(401).json({ error: 'User not found or inactive' });
+        if (accounts.length === 0) {
+          logger.debug('Auth failed: account not found or inactive');
+          return res.status(401).json({ error: 'Account not found or inactive' });
         }
 
-        // Attach user with family member context from JWT
-        req.user = {
-          ...rows[0],
-          activeFamilyMemberId: decoded.activeFamilyMemberId || null,
-          isFamilyAccount: decoded.isFamilyAccount || false
-        };
+        const account = accounts[0];
 
-        // If family member context exists in JWT, load family member details
-        if (req.user.activeFamilyMemberId) {
-          try {
-            const [familyMembers] = await connection.execute(
-              `SELECT id, parent_user_id, first_name, last_name, display_name,
-                      current_age, can_access_platform, requires_parent_consent,
-                      parent_consent_given, access_level
-               FROM FAMILY_MEMBERS
-               WHERE id = ? AND parent_user_id = ?`,
-              [req.user.activeFamilyMemberId, req.user.id]
-            );
+        // Load user profiles for this account
+        // Allow active and pending_consent profiles (so users can switch to children needing consent)
+        const [profiles] = await connection.execute(
+          `SELECT id, alumni_member_id, relationship, parent_profile_id, access_level, status
+           FROM user_profiles
+           WHERE account_id = ? AND status IN ('active', 'pending_consent')
+           ORDER BY relationship DESC, created_at ASC`,
+          [account.id]
+        );
 
-            if (familyMembers.length > 0) {
-              req.familyMember = familyMembers[0];
-              logger.debug('Family member context loaded', {
-                familyMemberId: req.familyMember.id,
-                accessLevel: req.familyMember.access_level
-              });
-            }
-          } catch (fmError) {
-            // Don't fail auth if family member lookup fails - just log it
-            logger.error('Failed to load family member context', fmError);
+        // Determine active profile
+        let activeProfileId = decoded.activeProfileId;
+        
+        // If activeProfileId from token doesn't exist in DB, use first profile
+        if (activeProfileId && !profiles.some(p => p.id === activeProfileId)) {
+          activeProfileId = profiles.length > 0 ? profiles[0].id : null;
+        } else if (!activeProfileId && profiles.length > 0) {
+          // If no activeProfileId in token, use first profile
+          activeProfileId = profiles[0].id;
+        }
+
+        // Load active profile details if available
+        let activeProfile = null;
+        if (activeProfileId) {
+          const [profileDetails] = await connection.execute(
+            `SELECT id, alumni_member_id, relationship, parent_profile_id, access_level, 
+                    requires_consent, parent_consent_given, consent_expiry_date
+             FROM user_profiles
+             WHERE id = ? AND account_id = ?`,
+            [activeProfileId, account.id]
+          );
+
+          if (profileDetails.length > 0) {
+            activeProfile = profileDetails[0];
+            logger.debug('Active profile loaded', { profileId: activeProfileId, accessLevel: activeProfile.access_level });
           }
         }
 
-        logger.debug('Authentication successful');
+        // Attach account and profile info to request
+        req.session = {
+          accountId: account.id,
+          email: account.email,
+          role: account.role,
+          profiles: profiles.map(p => ({
+            id: p.id,
+            alumniMemberId: p.alumni_member_id,
+            relationship: p.relationship,
+            accessLevel: p.access_level
+          })),
+          activeProfileId,
+          activeProfile
+        };
+
+        // Attach legacy user object for backward compatibility
+        req.user = {
+          id: account.id,
+          email: account.email,
+          role: account.role
+        };
+
+        logger.debug('Authentication successful', { accountId: account.id, profileCount: profiles.length });
         next();
       } catch (dbError) {
         logger.error('Auth middleware database error', dbError);
         return res.status(500).json({ error: 'Authentication database error' });
+      } finally {
+        if (connection) connection.release();
       }
     });
   } catch (error) {

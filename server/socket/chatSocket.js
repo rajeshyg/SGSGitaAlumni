@@ -14,17 +14,32 @@ import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
 
 // JWT Configuration
-// SECURITY FIX: Fail fast if JWT_SECRET not set in production
-if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
-}
+// SECURITY FIX: Lazy initialization to ensure dotenv has loaded
+// ES modules hoist imports, so top-level code runs BEFORE dotenv.config()
+// Using a getter function ensures we read env vars at runtime, not parse time
+let _jwtSecret = null;
 
-const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development'
-  ? 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION'
-  : null);
+function getJwtSecret() {
+  if (_jwtSecret === null) {
+    // Fail fast if JWT_SECRET not set in production
+    if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: JWT_SECRET environment variable must be set in production');
+    }
 
-if (!JWT_SECRET) {
-  throw new Error('FATAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.');
+    _jwtSecret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development'
+      ? 'dev-only-secret-DO-NOT-USE-IN-PRODUCTION'
+      : null);
+
+    if (!_jwtSecret) {
+      throw new Error('FATAL: JWT_SECRET not configured. Set JWT_SECRET environment variable.');
+    }
+    
+    console.log('[Chat Socket] JWT_SECRET initialized:', {
+      source: process.env.JWT_SECRET ? 'environment variable' : 'development fallback',
+      preview: _jwtSecret.substring(0, 15) + '...'
+    });
+  }
+  return _jwtSecret;
 }
 
 // Store active socket connections
@@ -56,25 +71,27 @@ export function initializeChatSocket(httpServer) {
     }
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      socket.userId = decoded.userId;
+      const jwtSecret = getJwtSecret();
+      const decoded = jwt.verify(token, jwtSecret);
+      // Support both old (userId) and new (accountId) token formats
+      socket.userId = decoded.userId || decoded.accountId;
       socket.email = decoded.email;
       console.log('[Chat Socket] ✅ Token verified successfully:', {
-        userId: decoded.userId,
+        userId: socket.userId,
         email: decoded.email,
         exp: decoded.exp ? new Date(decoded.exp * 1000).toISOString() : 'no expiry',
         iat: decoded.iat ? new Date(decoded.iat * 1000).toISOString() : 'no issued time'
       });
       next();
     } catch (error) {
+      const jwtSecret = getJwtSecret();
       console.error('[Chat Socket] ❌ JWT verification failed:', {
         errorName: error.name,
         errorMessage: error.message,
         tokenPreview: token ? `${token.substring(0, 20)}...${token.substring(token.length - 20)}` : 'no token',
         tokenLength: token?.length,
-        JWT_SECRET_defined: !!JWT_SECRET,
         JWT_SECRET_source: process.env.JWT_SECRET ? 'process.env.JWT_SECRET' : 'development fallback',
-        JWT_SECRET_preview: JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'undefined',
+        JWT_SECRET_preview: jwtSecret ? `${jwtSecret.substring(0, 15)}...` : 'undefined',
         timestamp: new Date().toISOString()
       });
       next(new Error(`Authentication error: ${error.name} - ${error.message}`));

@@ -24,7 +24,7 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
   showAddButton = true
 }) => {
   const navigate = useNavigate();
-  const { refreshToken } = useAuth(); // Get refreshToken to update auth context
+  const { refreshToken, updateTokensAfterProfileSwitch } = useAuth(); // Get refreshToken to update auth context
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,14 +83,19 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
     try {
       console.log('[FamilyProfileSelector] 🔄 Switching to profile:', member.display_name);
 
-      // Switch profile on backend (updates primary_family_member_id)
-      await switchProfile(member.id);
+      // Switch profile on backend (session-based, no DB persistence)
+      const result = await switchProfile(member.id);
       console.log('[FamilyProfileSelector] ✅ Backend switch successful');
 
-      // 🆕 CRITICAL: Refresh the auth context to get updated user data with family member info
-      console.log('[FamilyProfileSelector] 🔄 Refreshing auth context...');
-      await refreshToken();
-      console.log('[FamilyProfileSelector] ✅ Auth context refreshed with new family member data');
+      if (result.token && result.refreshToken) {
+        updateTokensAfterProfileSwitch(result.token, result.refreshToken, result.activeProfile);
+        console.log('[FamilyProfileSelector] ✅ Auth context updated with new tokens');
+      } else {
+        // 🆕 CRITICAL: Refresh the auth context to get updated user data with profile info
+        console.log('[FamilyProfileSelector] 🔄 Refreshing auth context...');
+        await refreshToken();
+        console.log('[FamilyProfileSelector] ✅ Auth context refreshed with new profile data');
+      }
 
       if (onProfileSelected) {
         onProfileSelected(member);
@@ -113,8 +118,13 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
     // Auto-switch to the newly consented profile
     try {
       console.log('[FamilyProfileSelector] 🔄 Auto-switching to consented profile...');
-      await switchProfile(updatedMember.id);
-      await refreshToken();
+      const result = await switchProfile(updatedMember.id);
+      
+      if (result.token && result.refreshToken) {
+        updateTokensAfterProfileSwitch(result.token, result.refreshToken, result.activeProfile);
+      } else {
+        await refreshToken();
+      }
 
       if (onProfileSelected) {
         onProfileSelected(updatedMember);
@@ -154,8 +164,13 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
     if (updatedMember.can_access_platform) {
       try {
         console.log('[FamilyProfileSelector] 🔄 Auto-switching after age verification...');
-        await switchProfile(updatedMember.id);
-        await refreshToken();
+        const result = await switchProfile(updatedMember.id);
+        
+        if (result.token && result.refreshToken) {
+          updateTokensAfterProfileSwitch(result.token, result.refreshToken, result.activeProfile);
+        } else {
+          await refreshToken();
+        }
 
         if (onProfileSelected) {
           onProfileSelected(updatedMember);
@@ -247,10 +262,15 @@ const FamilyProfileSelector: React.FC<FamilyProfileSelectorProps> = ({
                   ${getAccessLevelColor(member.access_level)}
                 `} title={`Access: ${member.access_level}`} />
 
-                {/* Primary Contact Badge */}
-                {member.is_primary_contact && (
+                {/* Relationship Badge */}
+                {member.relationship === 'parent' && (
                   <div className="absolute bottom-1 left-1 bg-primary text-primary-foreground text-xs px-2 py-1 rounded">
                     Parent
+                  </div>
+                )}
+                {member.relationship === 'child' && (
+                  <div className="absolute bottom-1 left-1 bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded">
+                    Child
                   </div>
                 )}
               </div>

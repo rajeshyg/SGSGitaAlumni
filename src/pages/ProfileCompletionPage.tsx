@@ -39,15 +39,15 @@ export const ProfileCompletionPage: React.FC<ProfileCompletionPageProps> = () =>
 
   const apiService = APIService;
 
-  // State management
-  const [birthDate, setBirthDate] = useState('');
+  // State management - UPDATED: Using yearOfBirth instead of full birthDate
+  const [yearOfBirth, setYearOfBirth] = useState('');
   const [phone, setPhone] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Derived state
-  const missingFields = state?.missingFields || ['birthDate'];
-  const needsBirthDate = missingFields.includes('birthDate');
+  const missingFields = state?.missingFields || ['yearOfBirth'];
+  const needsYearOfBirth = missingFields.includes('yearOfBirth') || missingFields.includes('birthDate');
   const needsPhone = missingFields.includes('phone');
 
   useEffect(() => {
@@ -67,8 +67,8 @@ export const ProfileCompletionPage: React.FC<ProfileCompletionPageProps> = () =>
     setError(null);
 
     // Validate required fields
-    if (needsBirthDate && !birthDate) {
-      setError('Birth date is required to continue');
+    if (needsYearOfBirth && !yearOfBirth) {
+      setError('Year of birth is required to continue');
       return;
     }
 
@@ -77,19 +77,19 @@ export const ProfileCompletionPage: React.FC<ProfileCompletionPageProps> = () =>
       return;
     }
 
-    // Validate birth date format and age
-    if (needsBirthDate) {
-      const birthDateObj = new Date(birthDate);
-      const today = new Date();
-      const age = today.getFullYear() - birthDateObj.getFullYear();
+    // Validate year of birth format and age
+    if (needsYearOfBirth) {
+      const year = parseInt(yearOfBirth, 10);
+      const currentYear = new Date().getFullYear();
+      const age = currentYear - year;
 
-      if (isNaN(birthDateObj.getTime())) {
-        setError('Please enter a valid birth date');
+      if (isNaN(year) || year < 1900 || year > currentYear) {
+        setError('Please enter a valid year of birth');
         return;
       }
 
       if (age < 0 || age > 120) {
-        setError('Please enter a valid birth date');
+        setError('Please enter a valid year of birth');
         return;
       }
     }
@@ -99,22 +99,22 @@ export const ProfileCompletionPage: React.FC<ProfileCompletionPageProps> = () =>
 
       // Update user profile with missing data
       const updateData: {
-        birthDate?: string;
+        yearOfBirth?: number;
         phone?: string;
-        familyMemberId?: string;
+        profileId?: string;
       } = {};
 
-      if (needsBirthDate) {
-        updateData.birthDate = birthDate;
+      if (needsYearOfBirth) {
+        updateData.yearOfBirth = parseInt(yearOfBirth, 10);
       }
 
       if (needsPhone) {
         updateData.phone = phone;
       }
 
-      // Include family member ID to update FAMILY_MEMBERS record
-      if (state.user.primaryFamilyMemberId) {
-        updateData.familyMemberId = state.user.primaryFamilyMemberId;
+      // Include profile ID to update user_profiles record
+      if (state.user.profileId) {
+        updateData.profileId = state.user.profileId;
       }
 
       console.log('[ProfileCompletionPage] Updating profile with data:', updateData);
@@ -123,8 +123,8 @@ export const ProfileCompletionPage: React.FC<ProfileCompletionPageProps> = () =>
 
       console.log('[ProfileCompletionPage] Profile updated successfully');
 
-      // Redirect to family setup page or specified redirect
-      const redirectPath = state.redirectTo || '/family-setup';
+      // Redirect to onboarding page or specified redirect
+      const redirectPath = state.redirectTo || '/onboarding';
       navigate(redirectPath, {
         state: {
           user: state.user,
@@ -183,17 +183,19 @@ export const ProfileCompletionPage: React.FC<ProfileCompletionPageProps> = () =>
               </p>
             </div>
 
-            {needsBirthDate && (
+            {needsYearOfBirth && (
               <div className="space-y-2">
-                <Label htmlFor="birthDate" className="flex items-center gap-1">
-                  Birth Date <span className="text-destructive">*</span>
+                <Label htmlFor="yearOfBirth" className="flex items-center gap-1">
+                  Year of Birth <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  id="birthDate"
-                  type="date"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
+                  id="yearOfBirth"
+                  type="number"
+                  value={yearOfBirth}
+                  onChange={(e) => setYearOfBirth(e.target.value)}
+                  min="1900"
+                  max={new Date().getFullYear()}
+                  placeholder="YYYY"
                   required
                   className="w-full"
                 />

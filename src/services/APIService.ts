@@ -1,6 +1,7 @@
 import { APIDataService, type FileImport as APIFileImport, checkAPIConfiguration, getAPIConfigStatus } from '../lib/apiData';
 import { apiClient } from '../lib/api';
 import { DashboardData } from '../types/dashboard';
+import type { UserProfile } from '../types/accounts';
 
 // Simple logger utility for production-safe logging
 const logger = {
@@ -69,26 +70,39 @@ export interface TokenResponse {
 }
 
 // User & Profile Types
+// MIGRATED: Updated to match accounts + user_profiles schema
 export interface User {
+  // Account fields (from accounts table)
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
   role: 'admin' | 'member' | 'moderator';
-  isActive: boolean;
+  status: 'active' | 'inactive' | 'suspended' | 'pending_verification';
   createdAt: string;
   lastLoginAt?: string;
-  // Family account fields
-  is_family_account?: boolean | number;
-  family_account_type?: 'parent' | 'child' | null;
-  primary_family_member_id?: string | null;
-  // 🆕 Family member fields (populated when primary_family_member_id is set)
-  displayName?: string;
-  currentAge?: number;
-  relationship?: 'self' | 'child' | 'spouse' | 'sibling' | 'guardian';
+  
+  // Profile fields (from user_profiles + alumni_members, for active profile)
+  profileId?: string;
+  alumniMemberId?: string;
+  firstName?: string;
+  lastName?: string;
+  relationship?: 'parent' | 'child';  // UPDATED: Only parent/child per new schema
   accessLevel?: 'full' | 'supervised' | 'blocked';
+  
+  // Alumni member data (from alumni_members via user_profiles)
+  batch?: string;
+  centerName?: string;
+  yearOfBirth?: number;
+  displayName?: string;
   profileImageUrl?: string;
+  
+  // Profile count (for multi-profile accounts)
+  profileCount?: number;
 }
+
+// @deprecated - Use types from src/types/accounts.ts instead
+// Account and UserProfile types moved to centralized location
+// Import with: import type { Account, UserProfile } from '../types/accounts';
+export type { Account, UserProfile } from '../types/accounts';
 
 export interface AlumniProfile extends Record<string, unknown> {
   id: string;
@@ -963,25 +977,8 @@ export const APIService = {
     }
   },
 
-  // Create family invitation
-  createFamilyInvitation: async (invitationData: {
-    parentEmail: string;
-    childrenData: any[];
-    invitedBy: string;
-    expiresInDays: number;
-  }): Promise<any> => {
-    try {
-      logger.info('Creating family invitation for:', invitationData.parentEmail);
-
-      const response = await apiClient.post('/api/invitations/family', invitationData);
-
-      logger.info('Family invitation created successfully for:', invitationData.parentEmail);
-      return response;
-    } catch (error) {
-      logger.error('Failed to create family invitation:', error);
-      throw new Error('Failed to create family invitation. Please try again.');
-    }
-  },
+  // @deprecated - REMOVED: Family invitations replaced by onboarding flow
+  // Use validateInvitation + onboarding endpoints instead
 
   // Create bulk invitations for existing users
   createBulkInvitations: async (invitations: {
@@ -1012,7 +1009,7 @@ export const APIService = {
     firstName?: string;
     lastName?: string;
     email?: string;
-    birthDate?: string;
+    yearOfBirth?: number;  // UPDATED: YOB instead of birthDate
     graduationYear?: number;
     program?: string;
     currentPosition?: string;
@@ -1105,25 +1102,8 @@ export const APIService = {
     }
   },
 
-  // Get family invitations (for admin management)
-  getFamilyInvitations: async (params: { page?: number; pageSize?: number; status?: string } = {}): Promise<any[]> => {
-    try {
-      logger.info('Fetching family invitations for admin management');
-
-      const queryParams = new URLSearchParams();
-      if (params.page) queryParams.append('page', params.page.toString());
-      if (params.pageSize) queryParams.append('pageSize', params.pageSize.toString());
-      if (params.status) queryParams.append('status', params.status);
-
-      const response = await apiClient.get(`/api/invitations/family?${queryParams.toString()}`);
-
-      logger.info('Family invitations fetched successfully');
-      return Array.isArray(response) ? response : (response?.data || []);
-    } catch (error) {
-      logger.error('Failed to fetch family invitations:', error);
-      throw new Error('Failed to fetch family invitations. Please try again.');
-    }
-  },
+  // @deprecated - REMOVED: Family invitations table dropped
+  // Standard invitations now handled through onboarding flow
 
   // Resend invitation
   resendInvitation: async (invitationId: string): Promise<any> => {
@@ -1174,52 +1154,158 @@ export const APIService = {
     }
   },
 
-  // Register from invitation (streamlined version)
-  registerFromInvitation: async (data: { invitationToken: string; additionalData?: any }): Promise<any> => {
+  // Register a new account from an invitation token
+  registerFromInvitation: async (
+    params: { invitationToken: string; password?: string; additionalData?: Record<string, unknown> }
+  ): Promise<{
+    success: boolean;
+    accountId: string;
+    email: string;
+    nextStep?: string;
+    user: { id: string; email: string; needsProfileCompletion: boolean };
+  }> => {
+    const generateTempPassword = () => `Tmp!${Math.random().toString(36).slice(2, 12)}A1`;
+
     try {
-      logger.info('Registering from invitation');
-      console.log('[APIService.registerFromInvitation] 🔍 DEBUG INFO:');
-      console.log('  - Request data:', data);
-      console.log('  - Auth token present:', !!localStorage.getItem('authToken'));
-      console.log('  - Endpoint: /api/auth/register-from-invitation');
-      console.log('  - Method: POST');
+      logger.info('Registering from invitation token');
 
-      const response = await apiClient.post('/api/auth/register-from-invitation', data);
+      const payload = {
+        invitationToken: params.invitationToken,
+        password: params.password || generateTempPassword(),
+        additionalData: params.additionalData || {}
+      };
 
-      logger.info('Registration from invitation completed successfully');
-      console.log('[APIService.registerFromInvitation] ✅ Response:', response);
-      return response;
-    } catch (error) {
-      console.error('[APIService.registerFromInvitation] ❌ FULL ERROR DETAILS:');
-      console.error('  - Error object:', error);
-      console.error('  - Error type:', error?.constructor?.name);
-      console.error('  - Error message:', (error as any)?.message);
-      console.error('  - HTTP status:', (error as any)?.status);
-      console.error('  - Error code:', (error as any)?.code);
-      console.error('  - Error details:', (error as any)?.details);
-      console.error('  - Full response:', (error as any)?.response);
-      logger.error('Failed to register from invitation:', error);
-      
-      // Extract error message from error object
-      let errorMessage = 'Failed to complete registration. Please try again.';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        // Handle error objects with various structures
-        if ('message' in error && typeof error.message === 'string') {
-          errorMessage = error.message;
-        } else if ('error' in error) {
-          const nestedError = (error as any).error;
-          if (typeof nestedError === 'string') {
-            errorMessage = nestedError;
-          } else if (typeof nestedError === 'object' && nestedError?.message) {
-            errorMessage = nestedError.message;
-          }
+      const response: any = await apiClient.post('/api/auth/register-from-invitation', payload);
+
+      // Shape response to what the onboarding pages expect
+      const accountId = response?.accountId || response?.id;
+      const email = response?.email;
+
+      return {
+        success: true,
+        accountId,
+        email,
+        nextStep: response?.nextStep || '/onboarding',
+        user: {
+          id: accountId,
+          email,
+          // Assume profile completion is needed until onboarding finishes
+          needsProfileCompletion: true
         }
-      }
-      
-      throw new Error(errorMessage);
+      };
+    } catch (error) {
+      logger.error('Failed to register from invitation:', error);
+      throw new Error('Failed to register from invitation. Please try again.');
+    }
+  },
+
+  // @deprecated - REMOVED: Replaced by separate registration + onboarding flow
+  // Use register() + onboarding endpoints instead
+
+  // ============================================================================
+  // ONBOARDING METHODS (NEW - Phase 3/4 Refactoring)
+  // ============================================================================
+
+  // Get alumni records matching the logged-in user's email (session-based, no token)
+  getMyAlumni: async (): Promise<{
+    success: boolean;
+    email: string;
+    alumni: Array<{
+      id: number;
+      firstName: string;
+      lastName: string;
+      email: string;
+      batch: number;
+      centerName: string;
+      yearOfBirth: number | null;
+      age: number | null;
+      coppaStatus: 'blocked' | 'requires_consent' | 'full_access' | 'unknown';
+      canCreateProfile: boolean;
+      alreadyClaimed: boolean;
+    }>;
+  }> => {
+    try {
+      logger.info('Fetching alumni for logged-in user');
+      const response = await apiClient.get('/api/onboarding/my-alumni');
+      logger.info('Alumni fetch completed');
+      return response as any;
+    } catch (error) {
+      logger.error('Failed to fetch alumni:', error);
+      throw new Error('Failed to fetch alumni records. Please try again.');
+    }
+  },
+
+  // Select profiles during onboarding (after invitation validation)
+  selectProfiles: async (selections: Array<{
+    alumniMemberId: number;
+    relationship: 'parent' | 'child';
+    yearOfBirth?: number;
+  }>): Promise<{
+    success: boolean;
+    profiles: UserProfile[];
+    requiresConsent: boolean;
+  }> => {
+    try {
+      logger.info('Selecting profiles during onboarding:', selections);
+      const response = await apiClient.post('/api/onboarding/select-profiles', { selections });
+      logger.info('Profile selection completed');
+      return response as { success: boolean; profiles: UserProfile[]; requiresConsent: boolean };
+    } catch (error) {
+      logger.error('Failed to select profiles:', error);
+      throw new Error('Failed to select profiles. Please try again.');
+    }
+  },
+
+  // Collect year of birth for alumni member during onboarding
+  collectYob: async (alumniMemberId: number, yearOfBirth: number): Promise<{
+    success: boolean;
+    age: number;
+    coppaStatus: string;
+  }> => {
+    try {
+      logger.info('Collecting year of birth for alumni member:', alumniMemberId);
+      const response = await apiClient.post('/api/onboarding/collect-yob', {
+        alumniMemberId,
+        yearOfBirth
+      });
+      logger.info('Year of birth collected successfully');
+      return response as { success: boolean; age: number; coppaStatus: string };
+    } catch (error) {
+      logger.error('Failed to collect year of birth:', error);
+      throw new Error('Failed to collect year of birth. Please try again.');
+    }
+  },
+
+  // Grant parental consent during onboarding
+  grantConsent: async (childProfileId: string): Promise<{
+    success: boolean;
+    expiresAt: string;
+  }> => {
+    try {
+      logger.info('Granting consent for child profile:', childProfileId);
+      const response = await apiClient.post('/api/onboarding/grant-consent', {
+        childProfileId
+      });
+      logger.info('Consent granted successfully');
+      return response as { success: boolean; expiresAt: string };
+    } catch (error) {
+      logger.error('Failed to grant consent:', error);
+      throw new Error('Failed to grant consent. Please try again.');
+    }
+  },
+
+  // Revoke parental consent
+  revokeConsent: async (childProfileId: string, reason?: string): Promise<{
+    success: boolean;
+  }> => {
+    try {
+      logger.info('Revoking consent for child profile:', childProfileId);
+      const response = await apiClient.post(`/api/family-members/${childProfileId}/consent/revoke`, { reason });
+      logger.info('Consent revoked successfully');
+      return response as { success: boolean };
+    } catch (error) {
+      logger.error('Failed to revoke consent:', error);
+      throw new Error('Failed to revoke consent. Please try again.');
     }
   },
 

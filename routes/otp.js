@@ -73,7 +73,7 @@ export const generateAndSendOTP = async (req, res) => {
     // Get user ID if user exists
     console.log('🔍 [DEBUG] Querying for user ID...');
     const [userRows] = await connection.execute(
-      'SELECT id FROM app_users WHERE email = ?',
+      'SELECT id FROM accounts WHERE email = ?',
       [email]
     );
     console.log('🔍 [DEBUG] User query result:', userRows);
@@ -81,13 +81,13 @@ export const generateAndSendOTP = async (req, res) => {
     const userId = userRows.length > 0 ? userRows[0].id : null;
     console.log('🔍 [DEBUG] User ID:', userId);
 
-    // FIX: Validate email exists in app_users for login type OTPs
-    // Only registered users (those in app_users) can login
+    // FIX: Validate email exists in accounts for login type OTPs
+    // Only registered users (those in accounts) can login
     if (type === 'login') {
-      console.log('🔍 [DEBUG] Validating email exists in app_users for login OTP...');
+      console.log('🔍 [DEBUG] Validating email exists in accounts for login OTP...');
       
         if (userRows.length === 0) {
-        console.log('❌ [DEBUG] Email not found in app_users for login OTP');
+        console.log('❌ [DEBUG] Email not found in accounts for login OTP');
         return res.status(400).json({
           error: 'Email not found. Please use the email address from your invitation.'
         });
@@ -260,6 +260,33 @@ export const validateOTP = async (req, res) => {
           'UPDATE OTP_TOKENS SET is_used = TRUE, used_at = NOW() WHERE id = ?',
           [token.id]
         );
+
+        // CRITICAL FIX: Activate account when OTP is verified for registration
+        // This ensures the account status changes from 'pending' to 'active'
+        // so that the subsequent login call succeeds
+        if (tokenType === 'registration') {
+          console.log('🔓 [VALIDATE_OTP] Registration OTP verified, activating account...');
+          const [updateResult] = await connection.execute(
+            `UPDATE accounts SET status = 'active', email_verified = TRUE, updated_at = NOW()
+             WHERE email = ? AND status = 'pending'`,
+            [email]
+          );
+          console.log('✅ [VALIDATE_OTP] Account activation result:', updateResult.affectedRows, 'rows affected');
+        }
+
+        // Also activate account for login OTP if it's still pending
+        // This handles the case where user registered but never verified
+        if (tokenType === 'login') {
+          console.log('🔓 [VALIDATE_OTP] Login OTP verified, checking if account needs activation...');
+          const [updateResult] = await connection.execute(
+            `UPDATE accounts SET status = 'active', email_verified = TRUE, updated_at = NOW()
+             WHERE email = ? AND status = 'pending'`,
+            [email]
+          );
+          if (updateResult.affectedRows > 0) {
+            console.log('✅ [VALIDATE_OTP] Pending account activated via login OTP');
+          }
+        }
 
         return res.json({
           isValid: true,
@@ -495,7 +522,7 @@ export const setupTOTP = async (req, res) => {
 
     // Check if TOTP already exists for user
     const [existing] = await connection.execute(
-      'SELECT id FROM USER_TOTP_SECRETS WHERE user_id = (SELECT id FROM app_users WHERE email = ?) AND is_active = TRUE',
+      'SELECT id FROM USER_TOTP_SECRETS WHERE user_id = (SELECT id FROM accounts WHERE email = ?) AND is_active = TRUE',
       [email]
     );
 
@@ -506,7 +533,7 @@ export const setupTOTP = async (req, res) => {
 
     // Get user ID
     const [userRows] = await connection.execute(
-      'SELECT id FROM app_users WHERE email = ?',
+      'SELECT id FROM accounts WHERE email = ?',
       [email]
     );
 
@@ -550,7 +577,7 @@ export const getTOTPStatus = async (req, res) => {
     const [rows] = await connection.execute(`
       SELECT uts.id, uts.is_active, uts.last_used
       FROM USER_TOTP_SECRETS uts
-      JOIN app_users u ON u.id = uts.user_id
+      JOIN accounts u ON u.id = uts.user_id
       WHERE u.email = ? AND uts.is_active = TRUE
       ORDER BY uts.created_at DESC
       LIMIT 1
@@ -579,15 +606,11 @@ export const getOTPUserProfile = async (req, res) => {
 
     const connection = await pool.getConnection();
 
-    const [rows] = await connection.execute(
-      'SELECT phone_number FROM app_users WHERE email = ?',
-      [email]
-    );
-
+    // accounts table does not store phone numbers; return null placeholder
     connection.release();
 
     res.json({
-      phoneNumber: rows[0]?.phone_number || null
+      phoneNumber: null
     });
 
   } catch (error) {
@@ -618,7 +641,7 @@ export const generateTestOTP = async (req, res) => {
 
     // Get user ID if user exists
     const [userRows] = await connection.execute(
-      'SELECT id FROM app_users WHERE email = ?',
+      'SELECT id FROM accounts WHERE email = ?',
       [email]
     );
     const userId = userRows.length > 0 ? userRows[0].id : null;

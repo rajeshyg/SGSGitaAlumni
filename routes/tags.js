@@ -345,9 +345,9 @@ export const getPendingTags = async (req, res) => {
     
     const [tags] = await pool.query(`
       SELECT t.id, t.name, t.tag_type, t.created_by, t.created_at,
-             u.email as creator_email
+             a.email as creator_email
       FROM TAGS t
-      LEFT JOIN app_users u ON t.created_by = u.id
+      LEFT JOIN accounts a ON t.created_by = a.id
       WHERE t.tag_type = 'custom' AND t.is_approved = FALSE AND t.is_active = TRUE
       ORDER BY t.created_at DESC
     `);

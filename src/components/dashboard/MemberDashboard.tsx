@@ -4,9 +4,10 @@
 // Main dashboard component with personalized content and widgets
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Skeleton } from '../ui/skeleton';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthSafe } from '../../contexts/AuthContext';
 import { useDashboardData } from '../../hooks/useDashboardData';
 import { DashboardHeader } from './DashboardHeader';
 import { DashboardHero } from './DashboardHero';
@@ -30,12 +31,25 @@ interface MemberDashboardProps {
 
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: propUser }) => {
   const { data, loading, error, refetch } = useDashboardData(userId);
-  const { user: authUser, logout } = useAuth();
+  // Use safe version to avoid throwing during navigation transitions
+  const authContext = useAuthSafe();
+  const authUser = authContext?.user ?? null;
+  const logout = authContext?.logout ?? (async () => {});
   const [showProfileSwitcher, setShowProfileSwitcher] = useState(false);
+  const navigate = useNavigate();
   const handleRetry = () => { void refetch(); };
 
   // Use prop user or auth user
   const currentUser = propUser || authUser;
+  
+  // Show switch profile button for ALL authenticated users
+  // This allows them to access the profile management page even if they have 1 profile
+  const isFamilyAccount = Boolean(
+    currentUser?.is_family_account === 1 ||
+    currentUser?.is_family_account === true ||
+    (currentUser?.profileCount ?? 0) > 1 ||
+    currentUser?.profileId // If user has any profile, allow them to manage profiles
+  );
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -78,8 +92,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
   };
 
   const handleSwitchProfile = () => {
-    console.log('[MemberDashboard] Opening profile switcher...');
-    setShowProfileSwitcher(true);
+    console.log('[MemberDashboard] Navigating to profile management...');
+    navigate('/onboarding');
   };
 
   const handleProfileSelected = () => {
@@ -88,7 +102,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
     void refetch(); // Reload dashboard data
   };
 
-  // Show profile switcher modal if active
+  // Show profile switcher modal if active (legacy - can be removed if not needed)
   if (showProfileSwitcher) {
     return (
       <FamilyProfileSelector 
@@ -103,7 +117,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
       <DashboardHeader
         currentProfile={currentProfile}
         stats={headerStats}
-        isFamilyAccount={!!currentUser.is_family_account}
+        isFamilyAccount={isFamilyAccount}
         onSwitchProfile={handleSwitchProfile}
         onLogout={handleLogout}
       />

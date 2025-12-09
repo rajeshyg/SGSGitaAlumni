@@ -25,7 +25,8 @@ import { ValidationError, ResourceError, ServerError } from '../errors/ApiError.
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
-const pool = getPool();
+// Don't initialize pool at module load time - do it lazily in route handlers
+const getDbPool = () => getPool();
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -76,8 +77,9 @@ const requireModerator = async (req, res, next) => {
       });
     }
 
-    const [rows] = await pool.query(
-      'SELECT id, email, role FROM app_users WHERE id = ?',
+    // MIGRATED: app_users → accounts
+    const [rows] = await getDbPool().query(
+      'SELECT id, email, role FROM accounts WHERE id = ?',
       [req.user.id]
     );
 
@@ -213,7 +215,7 @@ router.get('/queue',
     }
 
     // Get total count
-    const [countResult] = await pool.query(
+    const [countResult] = await getDbPool().query(
       `SELECT COUNT(DISTINCT p.id) as total
        FROM POSTINGS p
        LEFT JOIN POSTING_DOMAINS pd ON p.id = pd.posting_id
@@ -227,8 +229,8 @@ router.get('/queue',
 
     console.log('[MODERATION_QUEUE] Total items found:', totalItems);
 
-    // Get queue items with all necessary joins
-    const [postings] = await pool.query(
+    // Get queue items with all necessary joins - MIGRATED: app_users → accounts + user_profiles
+    const [postings] = await getDbPool().query(
       `SELECT DISTINCT
         p.id,
         p.title,
@@ -238,10 +240,10 @@ router.get('/queue',
         p.created_at,
         p.expires_at,
         p.version,
-        u.id as submitter_id,
-        u.first_name,
-        u.last_name,
-        u.email as submitter_email,
+        a.id as submitter_id,
+        am.first_name,
+        am.last_name,
+        a.email as submitter_email,
         (
           SELECT JSON_ARRAYAGG(
             JSON_OBJECT(
@@ -262,10 +264,12 @@ router.get('/queue',
         (SELECT COUNT(*)
          FROM MODERATION_HISTORY mh2
          INNER JOIN POSTINGS p2 ON mh2.posting_id = p2.id
-         WHERE p2.author_id = u.id
+         WHERE p2.author_id = a.id
          AND mh2.action = 'REJECTED') as submitter_rejection_count
       FROM POSTINGS p
-      INNER JOIN app_users u ON p.author_id = u.id
+      INNER JOIN accounts a ON p.author_id = a.id
+      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       ${domain ? 'INNER JOIN POSTING_DOMAINS pd_filter ON p.id = pd_filter.posting_id' : ''}
       ${whereClause}
       ${orderByClause}
@@ -299,7 +303,7 @@ router.get('/queue',
     });
 
     // Get queue statistics - using 'moderation_status' field
-    const [stats] = await pool.query(
+    const [stats] = await getDbPool().query(
       `SELECT
         COUNT(CASE WHEN moderation_status = 'PENDING' THEN 1 END) as pending_count,
         COUNT(CASE WHEN moderation_status = 'ESCALATED' THEN 1 END) as escalated_count,
@@ -337,7 +341,7 @@ router.post('/approve',
   requireModerator,
   validateRequest({ body: ApproveRequestSchema }),
   asyncHandler(async (req, res) => {
-    const connection = await pool.getConnection();
+    const connection = await getDbPool().getConnection();
 
     try {
       await connection.beginTransaction();
@@ -437,7 +441,7 @@ router.post('/reject',
   requireModerator,
   validateRequest({ body: RejectRequestSchema }),
   asyncHandler(async (req, res) => {
-    const connection = await pool.getConnection();
+    const connection = await getDbPool().getConnection();
 
     try {
       await connection.beginTransaction();
@@ -537,7 +541,7 @@ router.post('/escalate',
   requireModerator,
   validateRequest({ body: EscalateRequestSchema }),
   asyncHandler(async (req, res) => {
-    const connection = await pool.getConnection();
+    const connection = await getDbPool().getConnection();
 
     try {
       await connection.beginTransaction();
@@ -641,19 +645,21 @@ router.get('/posting/:id',
       throw ValidationError.invalidData('Invalid posting ID format');
     }
 
-    // Get posting with submitter details
-    const [postings] = await pool.query(
+    // Get posting with submitter details - MIGRATED: app_users → accounts + user_profiles
+    const [postings] = await getDbPool().query(
       `SELECT
         p.*,
         pd.domain_id,
         d.name as domain_name,
-        u.id as submitter_id,
-        u.first_name as submitter_first_name,
-        u.last_name as submitter_last_name,
-        u.email as submitter_email,
-        u.created_at as submitter_joined_date
+        a.id as submitter_id,
+        am.first_name as submitter_first_name,
+        am.last_name as submitter_last_name,
+        a.email as submitter_email,
+        a.created_at as submitter_joined_date
       FROM POSTINGS p
-      INNER JOIN app_users u ON p.author_id = u.id
+      INNER JOIN accounts a ON p.author_id = a.id
+      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       LEFT JOIN POSTING_DOMAINS pd ON p.id = pd.posting_id AND pd.is_primary = 1
       LEFT JOIN DOMAINS d ON pd.domain_id = d.id
       WHERE p.id = ?`,
@@ -669,7 +675,7 @@ router.get('/posting/:id',
     const posting = postings[0];
 
     // Get submitter's moderation history stats
-    const [submitterStats] = await pool.query(
+    const [submitterStats] = await getDbPool().query(
       `SELECT
         COUNT(*) as total_postings,
         COUNT(CASE WHEN moderation_status = 'APPROVED' THEN 1 END) as approved_count,
@@ -683,14 +689,16 @@ router.get('/posting/:id',
       throw ServerError.database('fetch submitter statistics');
     });
 
-    // Get this posting's moderation history
-    const [moderationHistory] = await pool.query(
+    // Get this posting's moderation history - MIGRATED: app_users → accounts + user_profiles
+    const [moderationHistory] = await getDbPool().query(
       `SELECT
         mh.*,
-        u.first_name as moderator_first_name,
-        u.last_name as moderator_last_name
+        am.first_name as moderator_first_name,
+        am.last_name as moderator_last_name
       FROM MODERATION_HISTORY mh
-      INNER JOIN app_users u ON mh.moderator_id = u.id
+      INNER JOIN accounts a ON mh.moderator_id = a.id
+      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       WHERE mh.posting_id = ?
       ORDER BY mh.created_at DESC`,
       [id]
@@ -699,7 +707,7 @@ router.get('/posting/:id',
     });
 
     // Get all domains (primary, secondary, and areas of interest)
-    const [allDomains] = await pool.query(
+    const [allDomains] = await getDbPool().query(
       `SELECT
         d.id,
         d.name,
@@ -736,3 +744,4 @@ router.get('/posting/:id',
 );
 
 export default router;
+

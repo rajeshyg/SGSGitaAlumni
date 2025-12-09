@@ -78,10 +78,11 @@ async function createConversation(userId, data) {
     }
 
     // Validate all participants exist before starting transaction
+    // MIGRATED: app_users → accounts
     if (allParticipantIds.length > 0) {
       const placeholders = allParticipantIds.map(() => '?').join(',');
       const [users] = await connection.execute(
-        `SELECT id FROM app_users WHERE id IN (${placeholders}) AND is_active = true`,
+        `SELECT id FROM accounts WHERE id IN (${placeholders}) AND status = 'active'`,
         allParticipantIds
       );
 
@@ -118,15 +119,18 @@ async function createConversation(userId, data) {
     await connection.commit();
 
     // Fetch and return created conversation with participants
+    // MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [conversations] = await connection.execute(
       `SELECT
         c.*,
-        u.first_name as creator_first_name,
-        u.last_name as creator_last_name,
-        u.email as creator_email,
+        am.first_name as creator_first_name,
+        am.last_name as creator_last_name,
+        a.email as creator_email,
         p.title as posting_title
        FROM CONVERSATIONS c
-       LEFT JOIN app_users u ON c.created_by = u.id
+       LEFT JOIN accounts a ON c.created_by = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        LEFT JOIN POSTINGS p ON c.posting_id = p.id
        WHERE c.id = ?`,
       [conversationId]
@@ -138,7 +142,7 @@ async function createConversation(userId, data) {
       throw new Error(`Failed to fetch created conversation with ID ${conversationId}`);
     }
 
-    // Get participants
+    // Get participants - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [participants] = await connection.execute(
       `SELECT
         cp.id as participant_id,
@@ -146,12 +150,14 @@ async function createConversation(userId, data) {
         cp.joined_at,
         cp.last_read_at,
         cp.is_muted,
-        u.id as user_id,
-        u.first_name,
-        u.last_name,
-        u.email
+        a.id as user_id,
+        am.first_name,
+        am.last_name,
+        a.email
        FROM CONVERSATION_PARTICIPANTS cp
-       JOIN app_users u ON cp.user_id = u.id
+       JOIN accounts a ON cp.user_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
       [conversationId]
     );
@@ -252,15 +258,18 @@ async function getConversations(userId, filters = {}) {
 
     // === CONVERSATIONS QUERY ===
     // Build separate parameter array for conversations query to avoid confusion
+    // MIGRATED: app_users → accounts + user_profiles + alumni_members
     let conversationSQL = `SELECT
         c.*,
-        u.first_name as creator_first_name,
-        u.last_name as creator_last_name,
+        am.first_name as creator_first_name,
+        am.last_name as creator_last_name,
         p.title as posting_title,
         0 as unread_count
        FROM CONVERSATIONS c
        INNER JOIN CONVERSATION_PARTICIPANTS cp ON c.id = cp.conversation_id
-       LEFT JOIN app_users u ON c.created_by = u.id
+       LEFT JOIN accounts a ON c.created_by = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        LEFT JOIN POSTINGS p ON c.posting_id = p.id
        WHERE cp.user_id = ? AND cp.left_at IS NULL`;
 
@@ -283,6 +292,7 @@ async function getConversations(userId, filters = {}) {
     // Get last message for each conversation
     const result = [];
     for (const conv of conversations) {
+      // MIGRATED: app_users → accounts + user_profiles + alumni_members
       const [lastMessage] = await connection.execute(
         `SELECT
           m.id,
@@ -290,10 +300,12 @@ async function getConversations(userId, filters = {}) {
           m.message_type,
           m.created_at,
           m.edited_at,
-          u.first_name as sender_first_name,
-          u.last_name as sender_last_name
+          am.first_name as sender_first_name,
+          am.last_name as sender_last_name
          FROM MESSAGES m
-         JOIN app_users u ON m.sender_id = u.id
+         JOIN accounts a ON m.sender_id = a.id
+         LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+         LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
          WHERE m.conversation_id = ? AND m.deleted_at IS NULL
          ORDER BY m.created_at DESC
          LIMIT 1`,
@@ -304,15 +316,18 @@ async function getConversations(userId, filters = {}) {
       // For DIRECT chats: Returns the other participant (1 person)
       // For GROUP chats: Returns other participants (for display names)
       // Note: Frontend only displays first 3 names, but we return all for flexibility
+      // MIGRATED: app_users → accounts + user_profiles + alumni_members
       const [participants] = await connection.execute(
         `SELECT
           cp.user_id,
           cp.role,
-          u.first_name,
-          u.last_name,
-          u.profile_image_url
+          am.first_name,
+          am.last_name,
+          am.profile_image_url
          FROM CONVERSATION_PARTICIPANTS cp
-         JOIN app_users u ON cp.user_id = u.id
+         JOIN accounts a ON cp.user_id = a.id
+         LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+         LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
          WHERE cp.conversation_id = ? AND cp.left_at IS NULL AND cp.user_id != ?
          ORDER BY cp.joined_at ASC`,
         [conv.id, userId]
@@ -390,15 +405,17 @@ async function getConversationById(conversationId, userId) {
       throw new Error('You do not have access to this conversation');
     }
 
-    // Get conversation details
+    // Get conversation details - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [conversations] = await connection.execute(
       `SELECT
         c.*,
-        u.first_name as creator_first_name,
-        u.last_name as creator_last_name,
-        u.email as creator_email
+        am.first_name as creator_first_name,
+        am.last_name as creator_last_name,
+        a.email as creator_email
        FROM CONVERSATIONS c
-       LEFT JOIN app_users u ON c.created_by = u.id
+       LEFT JOIN accounts a ON c.created_by = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE c.id = ?`,
       [conversationId]
     );
@@ -409,7 +426,7 @@ async function getConversationById(conversationId, userId) {
 
     const conversation = conversations[0];
 
-    // Get participants
+    // Get participants - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [participants] = await connection.execute(
       `SELECT
         cp.id as participant_id,
@@ -417,12 +434,14 @@ async function getConversationById(conversationId, userId) {
         cp.joined_at,
         cp.last_read_at,
         cp.is_muted,
-        u.id as user_id,
-        u.first_name,
-        u.last_name,
-        u.email
+        a.id as user_id,
+        am.first_name,
+        am.last_name,
+        a.email
        FROM CONVERSATION_PARTICIPANTS cp
-       JOIN app_users u ON cp.user_id = u.id
+       JOIN accounts a ON cp.user_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
       [conversationId]
     );
@@ -518,15 +537,17 @@ async function sendMessage(userId, data) {
 
     await connection.commit();
 
-    // Fetch created message with sender info
+    // Fetch created message with sender info - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [messages] = await connection.execute(
       `SELECT
         m.*,
-        u.first_name as sender_first_name,
-        u.last_name as sender_last_name,
-        u.email as sender_email
+        am.first_name as sender_first_name,
+        am.last_name as sender_last_name,
+        a.email as sender_email
        FROM MESSAGES m
-       JOIN app_users u ON m.sender_id = u.id
+       JOIN accounts a ON m.sender_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE m.id = ?`,
       [messageId]
     );
@@ -617,22 +638,24 @@ async function getMessages(conversationId, userId, pagination = {}) {
     const total = countResult[0].total;
     const offset = (page - 1) * limit;
 
-    // Get messages
+    // Get messages - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [messages] = await connection.execute(
       `SELECT
         m.*,
-        u.first_name as sender_first_name,
-        u.last_name as sender_last_name,
-        u.email as sender_email
+        am.first_name as sender_first_name,
+        am.last_name as sender_last_name,
+        a.email as sender_email
        FROM MESSAGES m
-       JOIN app_users u ON m.sender_id = u.id
+       JOIN accounts a ON m.sender_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE ${whereClause}
        ORDER BY m.created_at DESC
        LIMIT ? OFFSET ?`,
       [...queryParams, parseInt(limit), parseInt(offset)]
     );
 
-    // Get reactions for each message
+    // Get reactions for each message - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const result = [];
     for (const msg of messages) {
       const [reactions] = await connection.execute(
@@ -640,11 +663,13 @@ async function getMessages(conversationId, userId, pagination = {}) {
           mr.id,
           mr.emoji,
           mr.created_at,
-          u.id as user_id,
-          u.first_name,
-          u.last_name
+          a.id as user_id,
+          am.first_name,
+          am.last_name
          FROM MESSAGE_REACTIONS mr
-         JOIN app_users u ON mr.user_id = u.id
+         JOIN accounts a ON mr.user_id = a.id
+         LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+         LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
          WHERE mr.message_id = ?`,
         [msg.id]
       );
@@ -720,15 +745,17 @@ async function editMessage(messageId, userId, content) {
       [content, messageId]
     );
 
-    // Fetch updated message
+    // Fetch updated message - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [updatedMessages] = await connection.execute(
       `SELECT
         m.*,
-        u.first_name as sender_first_name,
-        u.last_name as sender_last_name,
-        u.email as sender_email
+        am.first_name as sender_first_name,
+        am.last_name as sender_last_name,
+        a.email as sender_email
        FROM MESSAGES m
-       JOIN app_users u ON m.sender_id = u.id
+       JOIN accounts a ON m.sender_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE m.id = ?`,
       [messageId]
     );
@@ -828,17 +855,19 @@ async function addReaction(messageId, userId, emoji) {
       [reactionId, messageId, userId, emoji]
     );
 
-    // Fetch created reaction
+    // Fetch created reaction - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [reactions] = await connection.execute(
       `SELECT
         mr.id,
         mr.emoji,
         mr.created_at,
-        u.id as user_id,
-        u.first_name,
-        u.last_name
+        a.id as user_id,
+        am.first_name,
+        am.last_name
        FROM MESSAGE_REACTIONS mr
-       JOIN app_users u ON mr.user_id = u.id
+       JOIN accounts a ON mr.user_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE mr.id = ?`,
       [reactionId]
     );
@@ -910,18 +939,20 @@ async function addParticipant(conversationId, userId, targetUserId, role = 'MEMB
   const connection = await getPool().getConnection();
 
   try {
-    // Check if target user is already a participant
+    // Check if target user is already a participant - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [existing] = await connection.execute(
       `SELECT 
         cp.id as participant_id,
         cp.role,
         cp.joined_at,
-        u.id as user_id,
-        u.first_name,
-        u.last_name,
-        u.email
+        a.id as user_id,
+        am.first_name,
+        am.last_name,
+        a.email
        FROM CONVERSATION_PARTICIPANTS cp
-       JOIN app_users u ON cp.user_id = u.id
+       JOIN accounts a ON cp.user_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE cp.conversation_id = ? AND cp.user_id = ? AND cp.left_at IS NULL`,
       [conversationId, targetUserId]
     );
@@ -979,18 +1010,20 @@ async function addParticipant(conversationId, userId, targetUserId, role = 'MEMB
       [participantId, conversationId, targetUserId, role]
     );
 
-    // Fetch created participant
+    // Fetch created participant - MIGRATED: app_users → accounts + user_profiles + alumni_members
     const [participants] = await connection.execute(
       `SELECT
         cp.id as participant_id,
         cp.role,
         cp.joined_at,
-        u.id as user_id,
-        u.first_name,
-        u.last_name,
-        u.email
+        a.id as user_id,
+        am.first_name,
+        am.last_name,
+        a.email
        FROM CONVERSATION_PARTICIPANTS cp
-       JOIN app_users u ON cp.user_id = u.id
+       JOIN accounts a ON cp.user_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE cp.id = ?`,
       [participantId]
     );
@@ -1162,7 +1195,7 @@ async function getGroupConversationByPostingId(postingId) {
 
     const conversation = conversations[0];
 
-    // Get participants
+    // Get participants - MIGRATED: app_users → accounts + user_profiles + alumni_members (getGroupConversationByPostingId)
     const [participants] = await connection.execute(
       `SELECT
         cp.id as participant_id,
@@ -1170,12 +1203,14 @@ async function getGroupConversationByPostingId(postingId) {
         cp.joined_at,
         cp.last_read_at,
         cp.is_muted,
-        u.id as user_id,
-        u.first_name,
-        u.last_name,
-        u.email
+        a.id as user_id,
+        am.first_name,
+        am.last_name,
+        a.email
        FROM CONVERSATION_PARTICIPANTS cp
-       JOIN app_users u ON cp.user_id = u.id
+       JOIN accounts a ON cp.user_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
       [conversation.id]
     );
@@ -1246,7 +1281,7 @@ async function getDirectConversationByPostingAndUsers(postingId, userId1, userId
 
     const conversation = conversations[0];
 
-    // Get participants
+    // Get participants - MIGRATED: app_users → accounts + user_profiles + alumni_members (getDirectConversationByPostingId)
     const [participants] = await connection.execute(
       `SELECT
         cp.id as participant_id,
@@ -1254,12 +1289,14 @@ async function getDirectConversationByPostingAndUsers(postingId, userId1, userId
         cp.joined_at,
         cp.last_read_at,
         cp.is_muted,
-        u.id as user_id,
-        u.first_name,
-        u.last_name,
-        u.email
+        a.id as user_id,
+        am.first_name,
+        am.last_name,
+        a.email
        FROM CONVERSATION_PARTICIPANTS cp
-       JOIN app_users u ON cp.user_id = u.id
+       JOIN accounts a ON cp.user_id = a.id
+       LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
        WHERE cp.conversation_id = ? AND cp.left_at IS NULL`,
       [conversation.id]
     );

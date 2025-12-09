@@ -1,6 +1,7 @@
 import mysql from 'mysql2/promise';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 import { hmacTokenService } from '../src/lib/security/HMACTokenService.js';
 import { serverMonitoring } from '../src/lib/monitoring/server.js';
 import { initializeSecurity } from '../src/lib/security/index.js';
@@ -8,6 +9,7 @@ import { AuthError, ValidationError, ResourceError, ServerError } from '../serve
 import { asyncHandler } from '../server/middleware/errorHandler.js';
 import { emailService } from '../utils/emailService.js';
 import { logger } from '../utils/logger.js';
+import { getPool } from '../utils/database.js';
 
 // JWT Configuration
 // SECURITY FIX: Lazy initialization to ensure env vars are loaded
@@ -38,11 +40,21 @@ function getJwtSecret() {
 const JWT_EXPIRES_IN = process.env.NODE_ENV === 'development' ? '24h' : (process.env.JWT_EXPIRES_IN || '1h');
 const REFRESH_TOKEN_EXPIRES_IN = process.env.NODE_ENV === 'development' ? '30d' : (process.env.REFRESH_TOKEN_EXPIRES_IN || '7d');
 
-// Get database pool - will be passed from main server
-let pool = null;
+// Get database pool - use function to ensure proper initialization
+let _authPool = null;
 
 export function setAuthPool(dbPool) {
-  pool = dbPool;
+  _authPool = dbPool;
+  logger.debug('Auth pool set successfully');
+}
+
+// Helper function to safely get the pool
+function getAuthPool() {
+  if (!_authPool) {
+    // Fallback to getPool() if not set via setAuthPool
+    _authPool = getPool();
+  }
+  return _authPool;
 }
 
 // ============================================================================
@@ -77,15 +89,15 @@ export const authenticateToken = async (req, res, next) => {
       try {
         // Verify user still exists and is active with timeout
         connection = await Promise.race([
-          pool.getConnection(),
+          getAuthPool().getConnection(),
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
           )
         ]);
 
         const [rows] = await connection.execute(
-          'SELECT id, email, role, is_active FROM app_users WHERE id = ? AND is_active = true',
-          [decoded.userId]
+          'SELECT id, email, role, status FROM accounts WHERE id = ? AND status = ?',
+          [decoded.accountId, 'active']
         );
 
         if (rows.length === 0) {
@@ -145,23 +157,30 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   logger.debug('Login: Attempting database connection');
+  
   // Use database authentication with timeout
   let connection;
+  const authPool = getAuthPool();
   try {
     // Add timeout to connection acquisition
     connection = await Promise.race([
-      pool.getConnection(),
+      authPool.getConnection(),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
       )
     ]);
     logger.debug('Login: DB connection obtained');
   } catch (connError) {
-    logger.error('Login: DB connection failed', connError);
+    logger.error('Login: DB connection failed', { 
+      message: connError?.message || 'Unknown error',
+      code: connError?.code,
+      errno: connError?.errno,
+      stack: connError?.stack 
+    });
     serverMonitoring.logFailedLogin(
       req.ip || req.connection.remoteAddress || 'unknown',
       email,
-      { reason: 'connection_timeout', error: connError.message }
+      { reason: 'connection_timeout', error: connError?.message || 'Unknown' }
     );
     throw ServerError.unavailable('Database');
   }
@@ -170,10 +189,9 @@ export const login = asyncHandler(async (req, res) => {
     // Find user by email - order by role priority (admin first, then moderator, then member)
     logger.debug('Login: Looking up user in database');
     const [rows] = await connection.execute(
-      `SELECT id, email, password_hash, role, is_active, created_at,
-              is_family_account, family_account_type, primary_family_member_id,
-              first_name, last_name
-       FROM app_users
+      `SELECT id, email, password_hash, role, status, created_at, email_verified, 
+              last_login_at, login_count, requires_otp
+       FROM accounts
        WHERE email = ?
        ORDER BY CASE WHEN role = "admin" THEN 1 WHEN role = "moderator" THEN 2 ELSE 3 END, created_at ASC`,
       [email]
@@ -194,18 +212,8 @@ export const login = asyncHandler(async (req, res) => {
     user = rows[0];
     logger.debug('Login: User record retrieved');
 
-    // Check if user is active
-    if (!user.is_active) {
-      // Log failed login attempt
-      serverMonitoring.logFailedLogin(
-        req.ip || req.connection.remoteAddress || 'unknown',
-        email,
-        { reason: 'account_disabled', userId: user.id }
-      );
-      throw AuthError.invalidCredentials();
-    }
-
     // FIX 1: Add server-side OTP verification check to prevent authentication bypass
+    // Check OTP BEFORE status check to handle pending accounts with fresh OTP verification
     if (otpVerified) {
       logger.debug('Login: Verifying OTP was validated');
 
@@ -231,6 +239,30 @@ export const login = asyncHandler(async (req, res) => {
       }
 
       logger.debug('Login: OTP verification confirmed');
+
+      // CRITICAL FIX: If account is pending but OTP is valid, activate the account now
+      // This handles race conditions where login happens before OTP validation updates DB
+      if (user.status === 'pending') {
+        logger.info('Login: Activating pending account via OTP-verified login');
+        await connection.execute(
+          `UPDATE accounts SET status = 'active', email_verified = TRUE, updated_at = NOW()
+           WHERE id = ? AND status = 'pending'`,
+          [user.id]
+        );
+        user.status = 'active';
+        user.email_verified = true;
+      }
+    }
+
+    // Check if account is active (after potential OTP activation)
+    if (user.status !== 'active') {
+      // Log failed login attempt
+      serverMonitoring.logFailedLogin(
+        req.ip || req.connection.remoteAddress || 'unknown',
+        email,
+        { reason: 'account_disabled', userId: user.id }
+      );
+      throw AuthError.invalidCredentials();
     }
 
     // Verify password (skip for OTP-verified logins)
@@ -252,197 +284,71 @@ export const login = asyncHandler(async (req, res) => {
       logger.debug('Skipping password verification (OTP-verified login)');
     }
 
-    // COPPA COMPLIANCE: Verify parental consent for family accounts
-    if (user.primary_family_member_id) {
-      logger.debug('Login: Checking family member consent and age requirements');
-
-      // Get family member details
-      const [familyMembers] = await connection.execute(
-        `SELECT id, first_name, last_name, current_age, can_access_platform,
-                requires_parent_consent, parent_consent_given, access_level,
-                birth_date
-         FROM FAMILY_MEMBERS
-         WHERE id = ? AND parent_user_id = ?`,
-        [user.primary_family_member_id, user.id]
-      );
-
-      if (familyMembers.length === 0) {
-        logger.security('Login failed - family member not found', {
-          userId: user.id,
-          familyMemberId: user.primary_family_member_id
-        });
-        throw AuthError.invalidCredentials();
-      }
-
-      const familyMember = familyMembers[0];
-
-      // Check age and consent requirements
-      if (!familyMember.can_access_platform) {
-        // Determine specific reason for blocking
-        let reason = 'access_denied';
-        let message = 'Platform access has been restricted for this account.';
-
-        if (familyMember.current_age < 14) {
-          reason = 'underage';
-          message = 'Platform access is restricted to users 14 years and older (COPPA compliance). Please contact your parent or guardian.';
-        } else if (familyMember.requires_parent_consent && !familyMember.parent_consent_given) {
-          reason = 'no_parental_consent';
-          message = 'Parental consent is required for platform access. Please ask your parent or guardian to grant consent through the Family Settings.';
-        }
-
-        logger.security('Login blocked - COPPA compliance check failed', {
-          userId: user.id,
-          familyMemberId: familyMember.id,
-          age: familyMember.current_age,
-          reason,
-          canAccess: familyMember.can_access_platform,
-          requiresConsent: familyMember.requires_parent_consent,
-          consentGiven: familyMember.parent_consent_given
-        });
-
-        // Log to age verification audit trail (async, don't wait)
-        db.execute(
-          `INSERT INTO AGE_VERIFICATION_AUDIT (
-            id, family_member_id, age_at_check, birth_date,
-            action_taken, check_context, ip_address, user_agent, endpoint, notes
-          ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            familyMember.id,
-            familyMember.current_age,
-            familyMember.birth_date,
-            reason === 'underage' ? 'blocked_underage' : 'blocked_no_consent',
-            'login_attempt',
-            clientIP,
-            userAgent,
-            '/api/auth/login',
-            `Login attempt blocked: ${reason}`
-          ]
-        ).catch(err => logger.error('Failed to log age verification audit', err));
-
-        serverMonitoring.logFailedLogin(clientIP, email, {
-          reason: `coppa_${reason}`,
-          userId: user.id,
-          familyMemberId: familyMember.id,
-          age: familyMember.current_age
-        });
-
-        throw AuthError.forbidden(message);
-      }
-
-      // Check for expired consent (annual renewal requirement)
-      if (familyMember.requires_parent_consent && familyMember.parent_consent_given) {
-        const [consentRecords] = await connection.execute(
-          `SELECT id, expires_at
-           FROM PARENT_CONSENT_RECORDS
-           WHERE family_member_id = ?
-             AND consent_given = TRUE
-             AND is_active = TRUE
-           ORDER BY created_at DESC
-           LIMIT 1`,
-          [familyMember.id]
-        );
-
-        if (consentRecords.length > 0 && new Date(consentRecords[0].expires_at) < new Date()) {
-          logger.security('Login blocked - parental consent expired', {
-            userId: user.id,
-            familyMemberId: familyMember.id,
-            consentId: consentRecords[0].id,
-            expiredAt: consentRecords[0].expires_at
-          });
-
-          // Log to audit trail
-          db.execute(
-            `INSERT INTO AGE_VERIFICATION_AUDIT (
-              id, family_member_id, age_at_check, birth_date,
-              action_taken, check_context, ip_address, user_agent, endpoint, notes
-            ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              familyMember.id,
-              familyMember.current_age,
-              familyMember.birth_date,
-              'consent_expired',
-              'login_attempt',
-              clientIP,
-              userAgent,
-              '/api/auth/login',
-              `Consent expired on ${consentRecords[0].expires_at}`
-            ]
-          ).catch(err => logger.error('Failed to log age verification audit', err));
-
-          serverMonitoring.logFailedLogin(clientIP, email, {
-            reason: 'consent_expired',
-            userId: user.id,
-            familyMemberId: familyMember.id,
-            consentId: consentRecords[0].id
-          });
-
-          throw AuthError.forbidden(
-            'Parental consent has expired and requires annual renewal. Please ask your parent or guardian to renew consent through the Family Settings.'
-          );
-        }
-      }
-
-      // Success - log access granted
-      logger.debug('Login: Family member consent and age verification passed');
-
-      // Log successful access (async, don't wait)
-      connection.execute(
-        `INSERT INTO AGE_VERIFICATION_AUDIT (
-          id, family_member_id, age_at_check, birth_date,
-          action_taken, check_context, ip_address, user_agent, endpoint
-        ) VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          familyMember.id,
-          familyMember.current_age,
-          familyMember.birth_date,
-          familyMember.access_level === 'full' ? 'allowed_full' : 'allowed_supervised',
-          'login_attempt',
-          clientIP,
-          userAgent,
-          '/api/auth/login'
-        ]
-      ).catch(err => logger.error('Failed to log age verification audit', err));
-    }
+    // No family member checks in new schema; COPPA handled during onboarding/profile creation
   } finally {
     connection.release();
   }
 
-  // Generate tokens with family member context
+  // Generate tokens with account context (family profiles handled via onboarding)
   const tokenPayload = {
-    userId: user.id,
+    accountId: user.id,
     email: user.email,
     role: user.role,
-    // Include family member context for family accounts
-    activeFamilyMemberId: user.primary_family_member_id || null,
-    isFamilyAccount: user.is_family_account || false
+    activeProfileId: null
   };
 
   const token = jwt.sign(tokenPayload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
-  const refreshToken = jwt.sign({ userId: user.id }, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+  const refreshToken = jwt.sign({ accountId: user.id }, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+
+  // Load user profiles (for new schema)
+  const pool = getPool();
+  const [profiles] = await pool.execute(
+    `SELECT up.id, up.relationship, up.access_level, up.status, up.parent_profile_id,
+            up.requires_consent, up.parent_consent_given,
+            am.first_name, am.last_name, am.batch, am.center_name, am.year_of_birth, am.email as alumni_email
+     FROM user_profiles up
+     JOIN alumni_members am ON up.alumni_member_id = am.id
+     WHERE up.account_id = ?
+     ORDER BY up.relationship DESC, up.created_at ASC`,
+    [user.id]
+  );
+
+  // Use first profile's data for display name (if available)
+  const primaryProfile = profiles[0];
 
   // Log token generation (without sensitive data)
   console.log('[Auth] 🔑 JWT token generated:', {
     userId: user.id,
     email: user.email,
+    profileCount: profiles.length,
     expiresIn: JWT_EXPIRES_IN,
     timestamp: new Date().toISOString()
   });
 
   // SECURITY FIX: Log success without exposing sensitive data
-  logger.audit('login_success', user.id, { role: user.role, isMobile, clientIP });
+  logger.audit('login_success', user.id, { role: user.role, isMobile, clientIP, profileCount: profiles.length });
 
-  // Return user data (without password hash)
+  // Return account + profile data (compatible with old User type for now)
   const userResponse = {
     id: user.id,
     email: user.email,
-    firstName: user.first_name || '',
-    lastName: user.last_name || '',
+    firstName: primaryProfile?.first_name || '',
+    lastName: primaryProfile?.last_name || '',
     role: user.role,
-    isActive: user.is_active,
+    status: user.status,
+    emailVerified: user.email_verified,
+    isActive: user.status === 'active',
     createdAt: user.created_at,
-    is_family_account: user.is_family_account,
-    family_account_type: user.family_account_type,
-    primary_family_member_id: user.primary_family_member_id
+    lastLoginAt: user.last_login_at,
+    // New schema additions
+    profileCount: profiles.length,
+    profileId: primaryProfile?.id,
+    alumniMemberId: primaryProfile?.alumni_member_id,
+    relationship: primaryProfile?.relationship,
+    accessLevel: primaryProfile?.access_level,
+    batch: primaryProfile?.batch,
+    centerName: primaryProfile?.center_name,
+    yearOfBirth: primaryProfile?.year_of_birth
   };
 
   res.json({
@@ -450,6 +356,19 @@ export const login = asyncHandler(async (req, res) => {
     token,
     refreshToken,
     user: userResponse,
+    profiles: profiles.map(p => ({
+      id: p.id,
+      relationship: p.relationship,
+      accessLevel: p.access_level,
+      status: p.status,
+      firstName: p.first_name,
+      lastName: p.last_name,
+      batch: p.batch,
+      centerName: p.center_name,
+      yearOfBirth: p.year_of_birth,
+      requiresConsent: p.requires_consent,
+      parentConsentGiven: p.parent_consent_given
+    })),
     expiresIn: 3600 // 1 hour in seconds
   });
 });
@@ -483,13 +402,13 @@ export const verifyAuth = asyncHandler(async (req, res) => {
     logger.debug('Auth verification - token decoded');
 
     // Verify user still exists
-    connection = await pool.getConnection();
+    connection = await getAuthPool().getConnection();
     const [rows] = await connection.execute(
-      'SELECT id, email, role, is_active, first_name, last_name FROM app_users WHERE id = ?',
-      [decoded.userId]
+      'SELECT id, email, role, status, email_verified FROM accounts WHERE id = ?',
+      [decoded.accountId]
     );
 
-    if (rows.length === 0 || !rows[0].is_active) {
+    if (rows.length === 0 || rows[0].status !== 'active') {
       logger.debug('Auth verification failed - user not found or inactive');
       return res.json({
         authenticated: false,
@@ -499,6 +418,18 @@ export const verifyAuth = asyncHandler(async (req, res) => {
     }
 
     user = rows[0];
+    
+    // Load user profiles
+    const [profiles] = await connection.execute(
+      `SELECT up.id, up.relationship, am.first_name, am.last_name
+       FROM user_profiles up
+       JOIN alumni_members am ON up.alumni_member_id = am.id
+       WHERE up.account_id = ?
+       LIMIT 1`,
+      [user.id]
+    );
+    
+    const primaryProfile = profiles[0];
     logger.debug('Auth verification successful');
 
     return res.json({
@@ -507,9 +438,9 @@ export const verifyAuth = asyncHandler(async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        isActive: user.is_active
+        firstName: primaryProfile?.first_name || '',
+        lastName: primaryProfile?.last_name || '',
+        isActive: user.status === 'active'
       },
       tokenValid: true,
       message: 'Authentication valid'
@@ -548,24 +479,17 @@ export const refresh = asyncHandler(async (req, res, next) => {
     try {
       // Verify user still exists with timeout
       connection = await Promise.race([
-        pool.getConnection(),
+        getAuthPool().getConnection(),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
         )
       ]);
 
       const [rows] = await connection.execute(
-        `SELECT
-          u.id, u.email, u.role, u.is_active,
-          u.first_name, u.last_name,
-          u.is_family_account, u.family_account_type, u.primary_family_member_id,
-          fm.first_name as family_first_name,
-          fm.last_name as family_last_name,
-          fm.display_name as family_display_name
-        FROM app_users u
-        LEFT JOIN FAMILY_MEMBERS fm ON u.primary_family_member_id = fm.id
-        WHERE u.id = ? AND u.is_active = true`,
-        [decoded.userId]
+        `SELECT id, email, role, status, email_verified
+        FROM accounts
+        WHERE id = ? AND status = 'active'`,
+        [decoded.accountId]
       );
 
       if (rows.length === 0) {
@@ -573,30 +497,37 @@ export const refresh = asyncHandler(async (req, res, next) => {
       }
 
       const user = rows[0];
+      
+      // Load user profiles for response
+      const [profiles] = await connection.execute(
+        `SELECT up.id, up.relationship, am.first_name, am.last_name
+         FROM user_profiles up
+         JOIN alumni_members am ON up.alumni_member_id = am.id
+         WHERE up.account_id = ?
+         LIMIT 1`,
+        [user.id]
+      );
+      
+      const primaryProfile = profiles[0];
 
       // Generate new tokens with family member context
       const tokenPayload = {
-        userId: user.id,
+        accountId: user.id,
         email: user.email,
         role: user.role,
-        // Maintain family member context in refreshed token
-        activeFamilyMemberId: user.primary_family_member_id || null,
-        isFamilyAccount: user.is_family_account || false
+        activeProfileId: decoded.activeProfileId || null
       };
 
       const newToken = jwt.sign(tokenPayload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
-      const newRefreshToken = jwt.sign({ userId: user.id }, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+      const newRefreshToken = jwt.sign({ accountId: user.id }, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
-      // Build user object with family member data if applicable
+      // Build user object with profile data
       const userResponse = {
         id: user.id,
         email: user.email,
         role: user.role,
-        firstName: user.family_first_name || user.first_name,
-        lastName: user.family_last_name || user.last_name,
-        is_family_account: user.is_family_account,
-        family_account_type: user.family_account_type,
-        primary_family_member_id: user.primary_family_member_id
+        firstName: primaryProfile?.first_name || '',
+        lastName: primaryProfile?.last_name || ''
       };
 
       res.json({
@@ -620,291 +551,85 @@ export const refresh = asyncHandler(async (req, res, next) => {
 export const registerFromInvitation = asyncHandler(async (req, res) => {
   logger.debug('Registration from invitation started', { method: req.method, path: req.path });
 
-  const { invitationToken, additionalData = {} } = req.body;
+  const { invitationToken, password } = req.body;
 
   if (!invitationToken) {
     logger.debug('Registration failed - missing invitation token');
     throw ValidationError.missingField('invitationToken');
   }
 
+  if (!password) {
+    logger.debug('Registration failed - missing password');
+    throw ValidationError.missingField('password');
+  }
+
   logger.debug('Registration: validating invitation token');
 
-  // SECURITY FIX: Removed test token backdoor - all tokens must be validated properly
-
-  // Import services dynamically to avoid circular dependencies
-  const { AlumniDataIntegrationService } = await import('../src/services/AlumniDataIntegrationService.js');
-  const { StreamlinedRegistrationService } = await import('../src/services/StreamlinedRegistrationService.js');
-
-  // Initialize services (EmailService is optional and not available on server side)
-  logger.debug('Registration: initializing services');
-  const alumniService = new AlumniDataIntegrationService(pool);
-  const registrationService = new StreamlinedRegistrationService(pool, alumniService);
-
-  // First validate the invitation to determine registration path
-  const validation = await registrationService.validateInvitationWithAlumniData(invitationToken);
-
-  if (!validation.isValid) {
-    logger.debug('Registration failed - invalid invitation');
-    throw ValidationError.invalidData({ reason: 'Invalid or expired invitation' });
-  }
-
-  let user;
-  if (validation.canOneClickJoin) {
-    // One-click registration with complete alumni data
-    logger.debug('Registration: using one-click registration');
-    user = await registrationService.completeStreamlinedRegistration(invitationToken, additionalData);
-  } else {
-    // Registration requiring additional user data
-    logger.debug('Registration: using incomplete data registration');
-    user = await registrationService.handleIncompleteAlumniData(invitationToken, additionalData);
-  }
-
-  logger.audit('registration_completed', user.id, { hasAlumniData: validation.canOneClickJoin });
-
-  res.status(201).json({
-    success: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      alumniMemberId: user.alumniMemberId
-    },
-    message: 'Registration completed successfully'
-  });
-});
-
-// Register from family invitation
-export const registerFromFamilyInvitation = asyncHandler(async (req, res) => {
-  const {
-    firstName,
-    lastName,
-    birthDate,
-    graduationYear,
-    program,
-    currentPosition,
-    bio,
-    email,
-    invitationId,
-    profileId,
-    requiresOtp,
-    ageVerified,
-    parentConsentRequired,
-    parentConsentGiven
-  } = req.body;
-
-  const connection = await pool.getConnection();
+  let connection;
   try {
+    connection = await getAuthPool().getConnection();
 
-  // Create user account
-  const userId = generateUUID();
-  const user = {
-    id: userId,
-    firstName,
-    lastName,
-    email,
-    birthDate: new Date(birthDate),
-    program,
-    currentPosition,
-    bio,
-    invitationId,
-    profileId,
-    isActive: true,
-    ageVerified,
-    parentConsentRequired,
-    parentConsentGiven,
-    requiresOtp,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
+    // Validate invitation token - first by invitation_token (HMAC signed), then by id (UUID)
+    let [invitations] = await connection.execute(
+      `SELECT id, email, status, expires_at FROM USER_INVITATIONS
+       WHERE invitation_token = ? AND status = 'pending' AND expires_at > NOW()`,
+      [invitationToken]
+    );
 
-  const query = `
-    INSERT INTO app_users (
-      id, first_name, last_name, email, birth_date,
-      program, current_position, bio, invitation_id, profile_id,
-      is_active, age_verified, parent_consent_required, parent_consent_given,
-      requires_otp, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  await connection.execute(query, [
-    user.id,
-    user.firstName,
-    user.lastName,
-    user.email,
-    user.birthDate,
-    user.program,
-    user.currentPosition || null,
-    user.bio || null,
-    user.invitationId,
-    user.profileId,
-    user.isActive,
-    user.ageVerified,
-    user.parentConsentRequired,
-    user.parentConsentGiven,
-    user.requiresOtp,
-    user.createdAt,
-    user.updatedAt
-  ]);
-
-  // Create default preferences for the new user
-  logger.debug('Creating default preferences for new user');
-  const { createDefaultPreferences } = await import('./preferences.js');
-  try {
-    await createDefaultPreferences(userId);
-    logger.debug('Default preferences created successfully');
-  } catch (prefError) {
-    logger.warn('Failed to create default preferences', prefError);
-    // Don't fail registration if preference creation fails
-  }
-
-  // CRITICAL FIX: Create family members from invitation data
-  // This was missing - causing only 1 record instead of multiple family members
-  if (invitationId) {
-    try {
-      logger.debug(`Fetching invitation ${invitationId} to create family members`);
-
-      let childrenProfiles = [];
-
-      // First try FAMILY_INVITATIONS table
-      const [familyInvitationRows] = await connection.execute(
-        'SELECT children_profiles FROM FAMILY_INVITATIONS WHERE id = ?',
-        [invitationId]
+    // Fallback: try by UUID id for backward compatibility
+    if (invitations.length === 0) {
+      [invitations] = await connection.execute(
+        `SELECT id, email, status, expires_at FROM USER_INVITATIONS
+         WHERE id = ? AND status = 'pending' AND expires_at > NOW()`,
+        [invitationToken]
       );
-
-      if (familyInvitationRows.length > 0 && familyInvitationRows[0].children_profiles) {
-        childrenProfiles = JSON.parse(familyInvitationRows[0].children_profiles || '[]');
-        logger.debug(`Found ${childrenProfiles.length} family members in FAMILY_INVITATIONS`);
-      } else {
-        // Fallback: check USER_INVITATIONS.invitation_data for familyMembers
-        logger.debug('No data in FAMILY_INVITATIONS, checking USER_INVITATIONS...');
-        const [userInvitationRows] = await connection.execute(
-          'SELECT invitation_data FROM USER_INVITATIONS WHERE id = ?',
-          [invitationId]
-        );
-
-        if (userInvitationRows.length > 0 && userInvitationRows[0].invitation_data) {
-          try {
-            const invitationData = JSON.parse(userInvitationRows[0].invitation_data || '{}');
-            // Check for familyMembers array in invitation_data
-            if (invitationData.familyMembers && Array.isArray(invitationData.familyMembers)) {
-              childrenProfiles = invitationData.familyMembers;
-              logger.debug(`Found ${childrenProfiles.length} family members in USER_INVITATIONS.invitation_data`);
-            } else if (invitationData.children && Array.isArray(invitationData.children)) {
-              childrenProfiles = invitationData.children;
-              logger.debug(`Found ${childrenProfiles.length} family members in USER_INVITATIONS.invitation_data.children`);
-            }
-          } catch (parseError) {
-            logger.warn('Failed to parse USER_INVITATIONS.invitation_data:', parseError);
-          }
-        }
-      }
-
-      if (childrenProfiles.length > 0) {
-        logger.debug(`Creating ${childrenProfiles.length} family members for user ${userId}`);
-
-        // Mark this account as a family account
-        await connection.execute(
-          `UPDATE app_users
-           SET is_family_account = TRUE, family_account_type = 'parent'
-           WHERE id = ?`,
-          [userId]
-        );
-
-        // Create family members for each profile in the invitation
-        let primaryMemberId = null;
-        for (let i = 0; i < childrenProfiles.length; i++) {
-          const profile = childrenProfiles[i];
-          const memberId = generateUUID();
-
-          // Calculate age and access levels
-          let age = null;
-          let canAccess = true;
-          let requiresConsent = false;
-          let accessLevel = 'full';
-
-          if (profile.birthDate) {
-            const today = new Date();
-            const birth = new Date(profile.birthDate);
-            age = today.getFullYear() - birth.getFullYear();
-            const monthDiff = today.getMonth() - birth.getMonth();
-            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-              age--;
-            }
-
-            // COPPA compliance: under 14 = blocked, 14-17 = needs consent, 18+ = full
-            if (age < 14) {
-              canAccess = false;
-              accessLevel = 'blocked';
-            } else if (age < 18) {
-              requiresConsent = true;
-              accessLevel = 'supervised';
-              // Auto-grant consent if parent registered them
-              canAccess = true;
-            }
-          }
-
-          const isPrimary = i === 0; // First profile is primary
-
-          logger.debug(`Creating family member ${i + 1}/${childrenProfiles.length}: ${profile.firstName} ${profile.lastName}`);
-
-          await connection.execute(
-            `INSERT INTO FAMILY_MEMBERS (
-              id, parent_user_id, first_name, last_name, display_name,
-              birth_date, current_age, can_access_platform, requires_parent_consent,
-              parent_consent_given, parent_consent_date, access_level,
-              relationship, is_primary_contact, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-            [
-              memberId,
-              userId,
-              profile.firstName || firstName,
-              profile.lastName || lastName,
-              profile.displayName || `${profile.firstName || firstName} ${profile.lastName || lastName}`,
-              profile.birthDate || null,
-              age,
-              canAccess ? 1 : 0,
-              requiresConsent ? 1 : 0,
-              requiresConsent ? 1 : 0, // Auto-grant consent for parent-registered children
-              requiresConsent ? new Date() : null,
-              accessLevel,
-              profile.relationship || 'child',
-              isPrimary ? 1 : 0,
-              canAccess ? 'active' : (requiresConsent ? 'pending_consent' : 'blocked')
-            ]
-          );
-
-          if (isPrimary) {
-            primaryMemberId = memberId;
-          }
-
-          logger.debug(`Created family member: ${memberId}`);
-        }
-
-        // Set primary family member
-        if (primaryMemberId) {
-          await connection.execute(
-            'UPDATE app_users SET primary_family_member_id = ? WHERE id = ?',
-            [primaryMemberId, userId]
-          );
-          logger.debug(`Set primary family member: ${primaryMemberId}`);
-        }
-
-        logger.info(`Successfully created ${childrenProfiles.length} family members for user ${userId}`);
-      } else {
-        logger.warn(`No family members found in invitation ${invitationId} (checked FAMILY_INVITATIONS and USER_INVITATIONS)`);
-      }
-    } catch (familyError) {
-      logger.error('Failed to create family members:', familyError);
-      logger.error('Family error details:', familyError.message);
-      // Don't fail registration if family member creation fails
-      // The user account was created successfully
     }
-  }
 
-  res.status(201).json({ success: true, user });
+    if (invitations.length === 0) {
+      logger.debug('Registration failed - invalid or expired invitation');
+      throw ValidationError.invalidData({ reason: 'Invalid or expired invitation' });
+    }
+
+    const invitation = invitations[0];
+
+    // Check if account already exists
+    const [existing] = await connection.execute(
+      'SELECT id FROM accounts WHERE email = ?',
+      [invitation.email]
+    );
+
+    if (existing.length > 0) {
+      logger.debug('Registration failed - account already exists');
+      throw ValidationError.invalidData({ reason: 'Account already exists with this email' });
+    }
+
+    // Create account
+    const accountId = uuidv4();
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await connection.execute(
+      `INSERT INTO accounts (id, email, password_hash, role, status, created_at, updated_at)
+       VALUES (?, ?, ?, 'user', 'pending', NOW(), NOW())`,
+      [accountId, invitation.email, hashedPassword]
+    );
+
+    // Update invitation status (use invitation.id, not the token parameter)
+    await connection.execute(
+      `UPDATE USER_INVITATIONS SET status = 'accepted', is_used = TRUE, used_at = NOW(), accepted_by = ?
+       WHERE id = ?`,
+      [accountId, invitation.id]
+    );
+
+    logger.audit('registration_completed', accountId, { email: invitation.email });
+
+    res.status(201).json({
+      success: true,
+      accountId,
+      email: invitation.email,
+      nextStep: '/onboarding/select-profiles'
+    });
   } finally {
-    connection.release();
+    if (connection) connection.release();
   }
 });
 
@@ -921,11 +646,11 @@ export const requestPasswordReset = asyncHandler(async (req, res) => {
     throw ValidationError.missingField('email');
   }
 
-  const connection = await pool.getConnection();
+  const connection = await getAuthPool().getConnection();
   try {
     // Check if user exists
     const [users] = await connection.execute(
-      'SELECT id, email, first_name, last_name FROM app_users WHERE email = ?',
+      'SELECT id, email, first_name, last_name FROM accounts WHERE email = ?',
       [email]
     );
 
@@ -994,7 +719,7 @@ export const validatePasswordResetToken = asyncHandler(async (req, res) => {
     throw ValidationError.missingField('token');
   }
 
-  const connection = await pool.getConnection();
+  const connection = await getAuthPool().getConnection();
   try {
     // Check if token exists and hasn't expired
     const [resets] = await connection.execute(`
@@ -1041,7 +766,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
     throw ValidationError.weakPassword('Password must be 8-128 characters and contain uppercase, lowercase, number, and special character');
   }
 
-  const connection = await pool.getConnection();
+  const connection = await getAuthPool().getConnection();
   try {
     // Verify token and get user
     const [resets] = await connection.execute(`
@@ -1079,7 +804,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
     // Update user password
     await connection.execute(
-      'UPDATE app_users SET password_hash = ?, updated_at = NOW() WHERE id = ?',
+      'UPDATE accounts SET password_hash = ?, updated_at = NOW() WHERE id = ?',
       [hashedPassword, resetRecord.user_id]
     );
 

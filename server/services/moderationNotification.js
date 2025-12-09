@@ -57,13 +57,13 @@ async function sendModerationNotification(type, data) {
 async function sendApprovalNotification(data) {
   const { postingId, postingTitle, authorEmail, moderatorName } = data;
   
-  // Get author email if not provided
+  // Get author email if not provided - MIGRATED: app_users → accounts (approval)
   let recipientEmail = authorEmail;
   if (!recipientEmail || !recipientEmail.includes('@')) {
     const [users] = await db.query(
-      `SELECT u.email 
-       FROM app_users u 
-       INNER JOIN POSTINGS p ON p.created_by = u.id 
+      `SELECT a.email 
+       FROM accounts a 
+       INNER JOIN POSTINGS p ON p.created_by = a.id 
        WHERE p.id = ?`,
       [postingId]
     );
@@ -138,13 +138,13 @@ async function sendApprovalNotification(data) {
 async function sendRejectionNotification(data) {
   const { postingId, postingTitle, authorEmail, rejectionReason, feedback, moderatorName } = data;
   
-  // Get author email if not provided
+  // Get author email if not provided - MIGRATED: app_users → accounts (rejection)
   let recipientEmail = authorEmail;
   if (!recipientEmail || !recipientEmail.includes('@')) {
     const [users] = await db.query(
-      `SELECT u.email 
-       FROM app_users u 
-       INNER JOIN POSTINGS p ON p.created_by = u.id 
+      `SELECT a.email 
+       FROM accounts a 
+       INNER JOIN POSTINGS p ON p.created_by = a.id 
        WHERE p.id = ?`,
       [postingId]
     );
@@ -252,9 +252,9 @@ async function sendRejectionNotification(data) {
 async function sendEscalationNotification(data) {
   const { postingId, postingTitle, authorEmail, escalationReason, escalationNotes, moderatorName } = data;
   
-  // Get all admin emails
+  // Get all admin emails - MIGRATED: app_users → accounts
   const [admins] = await db.query(
-    `SELECT email FROM app_users WHERE role = 'admin'`
+    `SELECT email FROM accounts WHERE role = 'admin'`
   );
   const adminEmails = admins.map(admin => admin.email);
   
@@ -263,13 +263,13 @@ async function sendEscalationNotification(data) {
     return;
   }
   
-  // Get author email if not provided
+  // Get author email if not provided - MIGRATED: app_users → accounts (escalation)
   let authorRecipientEmail = authorEmail;
   if (!authorRecipientEmail || !authorRecipientEmail.includes('@')) {
     const [users] = await db.query(
-      `SELECT u.email 
-       FROM app_users u 
-       INNER JOIN POSTINGS p ON p.created_by = u.id 
+      `SELECT a.email 
+       FROM accounts a 
+       INNER JOIN POSTINGS p ON p.created_by = a.id 
        WHERE p.id = ?`,
       [postingId]
     );
