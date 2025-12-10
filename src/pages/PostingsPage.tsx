@@ -108,8 +108,10 @@ const PostingsPage: React.FC = () => {
       };
 
       // Use matched endpoint if user is logged in and wants matched postings
-      if (showMatchedOnly && user?.id) {
-        endpoint = `/api/postings/matched/${user.id}`;
+      // Use profileId if available (preferences are profile-based)
+      const targetId = user?.profileId || user?.id;
+      if (showMatchedOnly && targetId) {
+        endpoint = `/api/postings/matched/${targetId}`;
       }
 
       // Fetch postings from backend API

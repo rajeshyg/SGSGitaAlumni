@@ -143,10 +143,11 @@ const PreferencesPage: React.FC = () => {
       }
 
       // Fetch user preferences if available
-      if (user?.id) {
-        console.log(`🔍 [DIAGNOSTIC] Fetching preferences for user ID: ${user.id}`);
+      const targetId = user?.profileId || user?.id;
+      if (targetId) {
+        console.log(`🔍 [DIAGNOSTIC] Fetching preferences for user ID: ${targetId}`);
         try {
-          const prefsResponse = await APIService.get<{success: boolean; preferences: any}>(`/api/preferences/${user.id}`);
+          const prefsResponse = await APIService.get<{success: boolean; preferences: any}>(`/api/preferences/${targetId}`);
           console.log('🔍 [DIAGNOSTIC] Preferences API response:', prefsResponse);
 
           if (prefsResponse.success && prefsResponse.preferences) {
@@ -300,7 +301,10 @@ const PreferencesPage: React.FC = () => {
           setPreferences(sanitized);
         }
 
-        await APIService.put(`/api/preferences/${user.id}`, sanitized);
+        const targetId = user?.profileId || user?.id;
+        if (targetId) {
+          await APIService.put(`/api/preferences/${targetId}`, sanitized);
+        }
         setOriginalPreferences(sanitized);
       } else if (activeTab === 'notifications') {
         await notificationsTabRef.current?.save();

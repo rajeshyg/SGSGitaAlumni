@@ -364,6 +364,9 @@ export const getMemberDashboard = async (req, res) => {
 
 			const userRow = userRows[0];
 
+			// Use profileId if available (preferences are profile-based)
+			const preferenceUserId = req.user.profileId || requestedAccountId;
+
 			const [preferenceRows] = await connection.execute(`
 				SELECT
 					id,
@@ -375,7 +378,7 @@ export const getMemberDashboard = async (req, res) => {
 					interface_settings
 				FROM USER_PREFERENCES
 				WHERE user_id = ?
-			`, [requestedAccountId]);
+			`, [preferenceUserId]);
 
 			let preferences = null;
 			let matchingDomainIds = [];
@@ -570,7 +573,7 @@ export const getMemberDashboard = async (req, res) => {
 				FROM accounts a
 				LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
 				LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
-				LEFT JOIN USER_PREFERENCES pref ON pref.user_id = a.id
+				LEFT JOIN USER_PREFERENCES pref ON pref.user_id = up.id
 				WHERE a.id != ? AND a.status = 'active'
 				ORDER BY
 					(CASE WHEN am.batch IS NOT NULL AND am.batch = ? THEN 1 ELSE 0 END) DESC,

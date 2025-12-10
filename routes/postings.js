@@ -102,8 +102,8 @@ router.get('/', asyncHandler(async (req, res) => {
         WHERE pt.posting_id = p.id
       ) as tags
     FROM POSTINGS p
-    LEFT JOIN accounts a ON p.author_id = a.id
-    LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+    LEFT JOIN user_profiles up ON p.author_id = up.id
+    LEFT JOIN accounts a ON up.account_id = a.id
     LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
     LEFT JOIN POSTING_CATEGORIES pc ON p.category_id = pc.id
   `;
@@ -468,8 +468,8 @@ router.get('/:id', asyncHandler(async (req, res) => {
         WHERE pa.posting_id = p.id
       ) as attachments
     FROM POSTINGS p
-    LEFT JOIN accounts a ON p.author_id = a.id
-    LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+    LEFT JOIN user_profiles up ON p.author_id = up.id
+    LEFT JOIN accounts a ON up.account_id = a.id
     LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
     LEFT JOIN POSTING_CATEGORIES pc ON p.category_id = pc.id
     WHERE p.id = ?
@@ -556,9 +556,15 @@ router.get('/:id', asyncHandler(async (req, res) => {
 /**
  * POST /api/postings
  * Create new posting
- * Requires authentication
+ * Requires authentication with active profile
  */
 router.post('/', authenticateToken, validateRequest({ body: PostingCreateSchema }), asyncHandler(async (req, res) => {
+  // Get active profile ID from session (postings are created by profiles, not accounts)
+  const authorId = req.session?.activeProfileId;
+  if (!authorId) {
+    throw ValidationError.custom('No active profile selected. Please select a profile first.');
+  }
+
   const {
     title,
     content,
@@ -580,32 +586,35 @@ router.post('/', authenticateToken, validateRequest({ body: PostingCreateSchema 
 
   // Task 7.7.9: Calculate expiry date with 30-day minimum enforcement
   // Business Rule: expires_at = MAX(user_provided_date, created_at + 30 days)
-  const now = new Date();
-  const minimumExpiryDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  // NOTE: The DB has CHECK constraint: expires_at >= (created_at + interval 30 day)
+  // We let MySQL calculate the minimum to avoid timezone/millisecond mismatches
   
-  let finalExpiryDate;
+  let expiryExpression;
   if (expires_at) {
     const userProvidedDate = new Date(expires_at);
-    // Use the later of user's date or 30-day minimum
-    finalExpiryDate = userProvidedDate > minimumExpiryDate ? userProvidedDate : minimumExpiryDate;
+    // MySQL will use GREATEST to pick the later of user date or 30-day minimum
+    expiryExpression = `GREATEST(?, NOW() + INTERVAL 30 DAY)`;
   } else {
-    // Default to 30-day minimum
-    finalExpiryDate = minimumExpiryDate;
+    // Default to 30-day minimum from now
+    expiryExpression = `NOW() + INTERVAL 30 DAY`;
   }
 
   const postingId = uuidv4();
 
-  // Insert posting
-  await pool.query(`
+  // Insert posting (author_id references user_profiles.id)
+  // Use dynamic SQL for expiry calculation to satisfy DB constraint
+  const insertQuery = `
     INSERT INTO POSTINGS (
       id, author_id, title, content, posting_type, category_id,
       urgency_level, contact_name, contact_phone, contact_country,
       contact_email, location, location_type, duration,
       max_connections, expires_at, status, published_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending_review', NOW())
-  `, [
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${expiryExpression}, 'pending_review', NOW())
+  `;
+  
+  const insertParams = [
     postingId,
-    req.user.id,
+    authorId,  // Use active profile ID, not account ID
     title,
     content,
     posting_type,
@@ -618,9 +627,21 @@ router.post('/', authenticateToken, validateRequest({ body: PostingCreateSchema 
     location || null,
     location_type,
     duration || null,
-    max_connections,
-    finalExpiryDate
-  ]).catch(err => {
+    max_connections
+  ];
+  
+  // Add user-provided expiry date to params if provided
+  if (expires_at) {
+    insertParams.push(new Date(expires_at));
+  }
+  
+  await pool.query(insertQuery, insertParams).catch(err => {
+    console.error('❌ Database error creating posting:', {
+      code: err.code,
+      errno: err.errno,
+      sqlMessage: err.sqlMessage,
+      sql: err.sql?.substring(0, 200)
+    });
     throw ServerError.database('create posting');
   });
 
@@ -1017,8 +1038,8 @@ router.get('/matched/:userId', asyncHandler(async (req, res) => {
           WHERE pt.posting_id = p.id
         ) as tags
       FROM POSTINGS p
-      LEFT JOIN accounts a ON p.author_id = a.id
-      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      LEFT JOIN user_profiles up ON p.author_id = up.id
+      LEFT JOIN accounts a ON up.account_id = a.id
       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       LEFT JOIN POSTING_CATEGORIES pc ON p.category_id = pc.id
       INNER JOIN POSTING_DOMAINS pd ON p.id = pd.posting_id

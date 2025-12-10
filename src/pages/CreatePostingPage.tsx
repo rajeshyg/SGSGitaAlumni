@@ -150,10 +150,12 @@ const CreatePostingPage: React.FC = () => {
   };
 
   const loadUserPreferences = async () => {
-    if (!user?.id) return;
+    // Use profileId if available, otherwise fallback to id (though preferences are now profile-based)
+    const targetId = user?.profileId || user?.id;
+    if (!targetId) return;
 
     try {
-      const response = await APIService.get<{success: boolean; preferences: any}>(`/api/preferences/${user.id}`);
+      const response = await APIService.get<{success: boolean; preferences: any}>(`/api/preferences/${targetId}`);
 
       if (response.success && response.preferences) {
         const prefs = response.preferences;
@@ -407,16 +409,17 @@ const CreatePostingPage: React.FC = () => {
       const submissionData = {
         ...formData,
         domain_ids, // API expects domain_ids array
-        status: 'pending_review',
         expires_at: formData.expiry_date
           ? new Date(formData.expiry_date + 'T00:00:00Z').toISOString()
-          : null  // Backend will enforce 30-day minimum
+          : undefined  // Backend will enforce 30-day minimum
       };
 
-      // Remove the 3-level fields as API doesn't expect them
+      // Remove fields not in the API schema
       delete (submissionData as any).primary_domain_id;
       delete (submissionData as any).secondary_domain_ids;
       delete (submissionData as any).areas_of_interest_ids;
+      delete (submissionData as any).expiry_date;  // API uses expires_at
+      delete (submissionData as any).preferred_contact_method;  // Not in schema
 
       await APIService.postGeneric('/api/postings', submissionData);
 
