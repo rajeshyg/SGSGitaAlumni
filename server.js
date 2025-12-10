@@ -370,7 +370,8 @@ app.get('/api/users/:userId/stats', authenticateToken, async (req, res) => {
     const pool = getPool();
 
     // Verify user has access to this data (users can only see their own stats unless admin)
-    if (req.user.id !== parseInt(userId) && req.user.role !== 'admin') {
+    // Note: req.user.id is now a UUID string (from accounts table)
+    if (req.user.id !== userId && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden', message: 'Access denied' });
     }
 
@@ -399,7 +400,8 @@ app.get('/api/conversations/recent', authenticateToken, async (req, res) => {
     const pool = getPool();
 
     // Verify user has access to this data
-    if (req.user.id !== parseInt(userId) && req.user.role !== 'admin') {
+    // Note: req.user.id is now a UUID string (from accounts table)
+    if (req.user.id !== userId && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden', message: 'Access denied' });
     }
 
@@ -423,7 +425,8 @@ app.get('/api/posts/personalized', authenticateToken, async (req, res) => {
     const pool = getPool();
 
     // Verify user has access to this data
-    if (req.user.id !== parseInt(userId) && req.user.role !== 'admin') {
+    // Note: req.user.id is now a UUID string (from accounts table)
+    if (req.user.id !== userId && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden', message: 'Access denied' });
     }
 
@@ -447,7 +450,8 @@ app.get('/api/notifications', authenticateToken, async (req, res) => {
     const pool = getPool();
 
     // Verify user has access to this data
-    if (req.user.id !== parseInt(userId) && req.user.role !== 'admin') {
+    // Note: req.user.id is now a UUID string (from accounts table)
+    if (req.user.id !== userId && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Forbidden', message: 'Access denied' });
     }
 

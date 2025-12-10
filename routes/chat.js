@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Chat & Messaging API Routes
  * Task 7.10: Chat & Messaging System
  *
@@ -12,7 +12,9 @@
  */
 
 import { z } from 'zod';
-import { authenticateToken } from './auth.js';
+// CRITICAL: Use middleware/auth.js authenticateToken, NOT routes/auth.js
+// The middleware version populates req.session with profiles and activeProfileId
+import { authenticateToken } from '../middleware/auth.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { asyncHandler } from '../server/middleware/errorHandler.js';
 import { ValidationError, ResourceError, AuthError, ServerError } from '../server/errors/ApiError.js';
@@ -35,6 +37,65 @@ export function setChatIO(socketIO) {
   io = socketIO;
 }
 
+/**
+ * Helper to get active profile ID from session
+ * Returns the active profile ID or throws an appropriate error
+ */
+function getActiveProfileId(req) {
+  // First check if session exists
+  if (!req.session) {
+    console.log('[Chat API] No session object on request');
+    return null;
+  }
+  
+  // Check for active profile ID
+  const profileId = req.session.activeProfileId;
+  
+  if (!profileId) {
+    console.log('[Chat API] No active profile ID in session:', {
+      hasSession: !!req.session,
+      profiles: req.session.profiles?.length || 0,
+      accountId: req.session.accountId,
+      user: req.user ? { id: req.user.id, email: req.user.email } : 'none'
+    });
+    
+    // If there are profiles but no active one selected, use the first one
+    if (req.session.profiles && req.session.profiles.length > 0) {
+      const firstProfile = req.session.profiles[0];
+      console.log('[Chat API] Using first available profile as fallback:', firstProfile.id);
+      return firstProfile.id;
+    }
+    
+    // No profiles at all - log warning
+    console.warn('[Chat API] Account has no user profiles - user needs to complete onboarding');
+  }
+  
+  return profileId;
+}
+
+// Helper to create appropriate error response for missing profile
+function createNoProfileError(req) {
+  const hasProfiles = req.session?.profiles?.length > 0;
+  
+  if (!hasProfiles) {
+    return {
+      success: false,
+      error: {
+        code: 'NO_USER_PROFILE',
+        message: 'Your account has no user profiles. Please complete onboarding first.'
+      }
+    };
+  }
+  
+  return {
+    success: false,
+    error: {
+      code: 'NO_ACTIVE_PROFILE',
+      message: 'Please select a profile'
+    }
+  };
+}
+
 // ============================================================================
 // CONVERSATION ENDPOINTS
 // ============================================================================
@@ -44,29 +105,38 @@ export function setChatIO(socketIO) {
  * Create a new conversation
  */
 export const createConversation = asyncHandler(async (req, res) => {
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  // Conversations happen between user profiles, not accounts
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
+
   console.log('[Chat API] Create conversation request:', {
-    userId: req.user.id,
+    profileId,
+    accountId: req.user.id,
     type: req.body.type
   });
 
   // Validate request body
   const validatedData = CreateConversationSchema.parse(req.body);
 
-  // Create conversation
-  const conversation = await chatService.createConversation(req.user.id, validatedData);
+  // Create conversation using profile ID
+  const conversation = await chatService.createConversation(profileId, validatedData);
 
-  // Notify participants via WebSocket
-  if (io) {
+  // Notify participants via WebSocket (defensive: check participants exists)
+  if (io && conversation.participants && Array.isArray(conversation.participants)) {
     for (const participant of conversation.participants) {
-      if (participant.userId !== req.user.id) {
+      if (participant.profileId !== profileId) {
         const socketHelpers = await import('../server/socket/chatSocket.js');
-        socketHelpers.sendToUser(io, participant.userId, 'conversation:created', {
+        socketHelpers.sendToUser(io, participant.profileId, 'conversation:created', {
           conversation: {
             id: conversation.id,
             type: conversation.type,
             name: conversation.name,
             createdBy: {
-              id: req.user.id,
+              profileId: profileId,
               firstName: req.user.first_name,
               lastName: req.user.last_name
             },
@@ -90,8 +160,15 @@ export const createConversation = asyncHandler(async (req, res) => {
 export const getConversations = asyncHandler(async (req, res) => {
   const { type, includeArchived, page, limit } = req.query;
 
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
+
   console.log('[Chat API] Get conversations request:', {
-    userId: req.user.id,
+    profileId,
     type,
     includeArchived,
     page,
@@ -105,7 +182,7 @@ export const getConversations = asyncHandler(async (req, res) => {
     limit: parseInt(limit) || 20
   };
 
-  const result = await chatService.getConversations(req.user.id, filters);
+  const result = await chatService.getConversations(profileId, filters);
 
   res.json({
     success: true,
@@ -120,9 +197,16 @@ export const getConversations = asyncHandler(async (req, res) => {
 export const getConversationById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  console.log('[Chat API] Get conversation by ID:', { conversationId: id, userId: req.user.id });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
 
-  const conversation = await chatService.getConversationById(id, req.user.id);
+  console.log('[Chat API] Get conversation by ID:', { conversationId: id, profileId });
+
+  const conversation = await chatService.getConversationById(id, profileId);
 
   res.json({
     success: true,
@@ -136,8 +220,9 @@ export const getConversationById = asyncHandler(async (req, res) => {
  */
 export const getGroupConversationByPostingId = asyncHandler(async (req, res) => {
   const { postingId } = req.params;
+  const profileId = getActiveProfileId(req);
 
-  console.log('[Chat API] Get group conversation by posting ID:', { postingId, userId: req.user.id });
+  console.log('[Chat API] Get group conversation by posting ID:', { postingId, profileId });
 
   const conversation = await chatService.getGroupConversationByPostingId(postingId);
 
@@ -165,9 +250,16 @@ export const getGroupConversationByPostingId = asyncHandler(async (req, res) => 
 export const getDirectConversationByPostingAndUser = asyncHandler(async (req, res) => {
   const { postingId, otherUserId } = req.params;
 
-  console.log('[Chat API] Get direct conversation by posting and user:', { postingId, userId: req.user.id, otherUserId });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
 
-  const conversation = await chatService.getDirectConversationByPostingAndUsers(postingId, req.user.id, otherUserId);
+  console.log('[Chat API] Get direct conversation by posting and user:', { postingId, profileId, otherUserId });
+
+  const conversation = await chatService.getDirectConversationByPostingAndUsers(postingId, profileId, otherUserId);
 
   if (!conversation) {
     return res.status(404).json({
@@ -193,16 +285,23 @@ export const addCurrentUserToConversation = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { userId } = req.body;
 
-  console.log('[Chat API] Add current user to conversation:', { conversationId: id, userId: userId || req.user.id });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
 
-  // Use provided userId or current user's ID
-  const targetUserId = userId || req.user.id;
+  console.log('[Chat API] Add user to conversation:', { conversationId: id, profileId, targetUserId: userId || profileId });
+
+  // Use provided userId (must be a profile ID) or current profile ID
+  const targetUserId = userId || profileId;
 
   // Add participant (with MEMBER role by default)
   const participant = await chatService.addParticipant(
     id,
-    req.user.id,  // Current user making the request
-    targetUserId,  // User to add
+    profileId,     // Current profile making the request
+    targetUserId,  // Profile to add
     'MEMBER'
   );
 
@@ -240,18 +339,25 @@ export const addCurrentUserToConversation = asyncHandler(async (req, res) => {
 export const archiveConversation = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  console.log('[Chat API] Archive conversation:', { conversationId: id, userId: req.user.id });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
 
-  await chatService.archiveConversation(id, req.user.id);
+  console.log('[Chat API] Archive conversation:', { conversationId: id, profileId });
+
+  await chatService.archiveConversation(id, profileId);
 
   // Notify other participants via WebSocket
   if (io) {
     const socketHelpers = await import('../server/socket/chatSocket.js');
     socketHelpers.broadcastToConversation(io, id, 'conversation:archived', {
       conversationId: id,
-      archivedBy: req.user.id,
+      archivedBy: profileId,
       archivedAt: new Date().toISOString()
-    }, req.user.id);
+    }, profileId);
   }
 
   res.json({
@@ -272,7 +378,14 @@ export const getMessages = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { page, limit, before, after } = req.query;
 
-  console.log('[Chat API] Get messages:', { conversationId: id, userId: req.user.id });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
+
+  console.log('[Chat API] Get messages:', { conversationId: id, profileId });
 
   // Validate query parameters
   const validatedData = GetMessagesSchema.parse({
@@ -285,7 +398,7 @@ export const getMessages = asyncHandler(async (req, res) => {
 
   const result = await chatService.getMessages(
     validatedData.conversationId,
-    req.user.id,
+    profileId,
     {
       page: validatedData.page,
       limit: validatedData.limit,
@@ -307,7 +420,14 @@ export const getMessages = asyncHandler(async (req, res) => {
 export const sendMessage = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  console.log('[Chat API] Send message:', { conversationId: id, userId: req.user.id });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
+
+  console.log('[Chat API] Send message:', { conversationId: id, profileId });
 
   // Validate request body
   const validatedData = SendMessageSchema.parse({
@@ -315,8 +435,8 @@ export const sendMessage = asyncHandler(async (req, res) => {
     ...req.body
   });
 
-  // Send message
-  const message = await chatService.sendMessage(req.user.id, validatedData);
+  // Send message using profile ID
+  const message = await chatService.sendMessage(profileId, validatedData);
 
   // Broadcast message via WebSocket
   if (io) {
@@ -325,7 +445,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
       conversationId: id,
       conversationIdType: typeof id,
       messageId: message.id,
-      senderId: req.user.id,
+      senderProfileId: profileId,
       io: !!io
     });
     
@@ -333,6 +453,8 @@ export const sendMessage = asyncHandler(async (req, res) => {
     const roomName = `conversation:${id}`;
     console.log('[Chat API] Broadcasting to room:', roomName);
     
+    // CRITICAL: Pass account ID (req.user.id) to exclude sender from broadcast
+    // Socket connections are tracked by account ID, not profile ID
     socketHelpers.broadcastToConversation(io, id, 'message:new', {
       messageId: message.id,
       conversationId: message.conversationId,
@@ -363,7 +485,14 @@ export const editMessage = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
 
-  console.log('[Chat API] Edit message:', { messageId: id, userId: req.user.id });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
+
+  console.log('[Chat API] Edit message:', { messageId: id, profileId });
 
   // Validate request body
   const validatedData = EditMessageSchema.parse({
@@ -371,12 +500,13 @@ export const editMessage = asyncHandler(async (req, res) => {
     content
   });
 
-  // Edit message
-  const message = await chatService.editMessage(validatedData.messageId, req.user.id, validatedData.content);
+  // Edit message using profile ID
+  const message = await chatService.editMessage(validatedData.messageId, profileId, validatedData.content);
 
   // Broadcast edit via WebSocket
   if (io) {
     const socketHelpers = await import('../server/socket/chatSocket.js');
+    // CRITICAL: Pass account ID to exclude sender from broadcast
     socketHelpers.broadcastToConversation(io, message.conversationId, 'message:edited', {
       messageId: message.id,
       content: message.content,
@@ -397,7 +527,14 @@ export const editMessage = asyncHandler(async (req, res) => {
 export const deleteMessage = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  console.log('[Chat API] Delete message:', { messageId: id, userId: req.user.id });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
+
+  console.log('[Chat API] Delete message:', { messageId: id, profileId });
 
   // Get message details before deleting (for WebSocket notification)
   // Note: chatService.deleteMessage will validate permissions
@@ -415,12 +552,13 @@ export const deleteMessage = asyncHandler(async (req, res) => {
 
   const conversationId = messages[0].conversation_id;
 
-  // Delete message
-  await chatService.deleteMessage(id, req.user.id);
+  // Delete message using profile ID
+  await chatService.deleteMessage(id, profileId);
 
   // Broadcast deletion via WebSocket
   if (io) {
     const socketHelpers = await import('../server/socket/chatSocket.js');
+    // CRITICAL: Pass account ID to exclude sender from broadcast
     socketHelpers.broadcastToConversation(io, conversationId, 'message:deleted', {
       messageId: id,
       deletedAt: new Date().toISOString()
@@ -445,7 +583,14 @@ export const addReaction = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { emoji } = req.body;
 
-  console.log('[Chat API] Add reaction:', { messageId: id, userId: req.user.id, emoji });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
+
+  console.log('[Chat API] Add reaction:', { messageId: id, profileId, emoji });
 
   // Validate request body
   const validatedData = AddReactionSchema.parse({
@@ -453,8 +598,8 @@ export const addReaction = asyncHandler(async (req, res) => {
     emoji
   });
 
-  // Add reaction
-  const reaction = await chatService.addReaction(validatedData.messageId, req.user.id, validatedData.emoji);
+  // Add reaction using profile ID
+  const reaction = await chatService.addReaction(validatedData.messageId, profileId, validatedData.emoji);
 
   // Get conversation ID for WebSocket broadcast
   const db = getPool();
@@ -468,6 +613,7 @@ export const addReaction = asyncHandler(async (req, res) => {
   // Broadcast reaction via WebSocket
   if (io && messages.length > 0) {
     const socketHelpers = await import('../server/socket/chatSocket.js');
+    // CRITICAL: Pass account ID to exclude sender from broadcast
     socketHelpers.broadcastToConversation(io, messages[0].conversation_id, 'message:reaction', {
       messageId: id,
       reaction: {
@@ -492,7 +638,14 @@ export const addReaction = asyncHandler(async (req, res) => {
 export const removeReaction = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  console.log('[Chat API] Remove reaction:', { reactionId: id, userId: req.user.id });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
+
+  console.log('[Chat API] Remove reaction:', { reactionId: id, profileId });
 
   // Get message ID and conversation ID before deleting (for WebSocket notification)
   const db = getPool();
@@ -513,16 +666,17 @@ export const removeReaction = asyncHandler(async (req, res) => {
   const messageId = reactions[0].message_id;
   const conversationId = reactions[0].conversation_id;
 
-  // Remove reaction
-  await chatService.removeReaction(id, req.user.id);
+  // Remove reaction using profile ID
+  await chatService.removeReaction(id, profileId);
 
   // Broadcast reaction removal via WebSocket
   if (io) {
     const socketHelpers = await import('../server/socket/chatSocket.js');
+    // CRITICAL: Pass account ID to exclude sender from broadcast
     socketHelpers.broadcastToConversation(io, conversationId, 'message:reaction:removed', {
       messageId,
       reactionId: id,
-      userId: req.user.id
+      profileId
     }, req.user.id);
   }
 
@@ -544,20 +698,27 @@ export const addParticipant = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { userId, role } = req.body;
 
-  console.log('[Chat API] Add participant:', { conversationId: id, targetUserId: userId, role });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
 
-  // Validate request body
+  console.log('[Chat API] Add participant:', { conversationId: id, targetProfileId: userId, role, byProfileId: profileId });
+
+  // Validate request body - userId must be a profile ID
   const validatedData = AddParticipantSchema.parse({
     conversationId: id,
     userId,
     role
   });
 
-  // Add participant
+  // Add participant using profile ID
   const participant = await chatService.addParticipant(
     validatedData.conversationId,
-    req.user.id,
-    validatedData.userId,
+    profileId,           // Current profile making the request
+    validatedData.userId, // Target profile ID to add
     validatedData.role
   );
 
@@ -567,7 +728,7 @@ export const addParticipant = asyncHandler(async (req, res) => {
     socketHelpers.sendToUser(io, validatedData.userId, 'conversation:added', {
       conversationId: id,
       addedBy: {
-        id: req.user.id,
+        profileId: profileId,
         firstName: req.user.first_name,
         lastName: req.user.last_name
       },
@@ -578,7 +739,7 @@ export const addParticipant = asyncHandler(async (req, res) => {
     socketHelpers.broadcastToConversation(io, id, 'conversation:participant:added', {
       conversationId: id,
       participant
-    }, req.user.id);
+    }, profileId);
   }
 
   res.status(201).json({
@@ -594,18 +755,25 @@ export const addParticipant = asyncHandler(async (req, res) => {
 export const removeParticipant = asyncHandler(async (req, res) => {
   const { id, userId } = req.params;
 
-  console.log('[Chat API] Remove participant:', { conversationId: id, targetUserId: userId });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
 
-  // Remove participant
-  await chatService.removeParticipant(id, req.user.id, parseInt(userId));
+  console.log('[Chat API] Remove participant:', { conversationId: id, targetProfileId: userId, byProfileId: profileId });
+
+  // Remove participant (userId is profile ID)
+  await chatService.removeParticipant(id, profileId, userId);
 
   // Notify removed participant via WebSocket
   if (io) {
     const socketHelpers = await import('../server/socket/chatSocket.js');
-    socketHelpers.sendToUser(io, parseInt(userId), 'conversation:removed', {
+    socketHelpers.sendToUser(io, userId, 'conversation:removed', {
       conversationId: id,
       removedBy: {
-        id: req.user.id,
+        profileId: profileId,
         firstName: req.user.first_name,
         lastName: req.user.last_name
       }
@@ -614,9 +782,9 @@ export const removeParticipant = asyncHandler(async (req, res) => {
     // Notify remaining participants
     socketHelpers.broadcastToConversation(io, id, 'conversation:participant:removed', {
       conversationId: id,
-      userId: parseInt(userId),
-      removedBy: req.user.id
-    }, req.user.id);
+      profileId: userId,
+      removedBy: profileId
+    }, profileId);
   }
 
   res.json({
@@ -637,7 +805,14 @@ export const markAsRead = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { messageId } = req.body;
 
-  console.log('[Chat API] Mark as read:', { conversationId: id, messageId, userId: req.user.id });
+  // CRITICAL: Use activeProfileId (user profile) not user.id (account)
+  const profileId = getActiveProfileId(req);
+  
+  if (!profileId) {
+    return res.status(403).json(createNoProfileError(req));
+  }
+
+  console.log('[Chat API] Mark as read:', { conversationId: id, messageId, profileId });
 
   // Validate request body
   const validatedData = MarkAsReadSchema.parse({
@@ -645,15 +820,16 @@ export const markAsRead = asyncHandler(async (req, res) => {
     messageId
   });
 
-  // Mark as read
-  await chatService.markAsRead(validatedData.conversationId, req.user.id, validatedData.messageId);
+  // Mark as read using profile ID
+  await chatService.markAsRead(validatedData.conversationId, profileId, validatedData.messageId);
 
   // Broadcast read receipt via WebSocket
   if (io) {
     const socketHelpers = await import('../server/socket/chatSocket.js');
+    // CRITICAL: Pass account ID to exclude sender from broadcast
     socketHelpers.broadcastToConversation(io, id, 'message:read', {
       conversationId: id,
-      userId: req.user.id,
+      profileId: profileId,
       messageId: validatedData.messageId,
       readAt: new Date().toISOString()
     }, req.user.id);

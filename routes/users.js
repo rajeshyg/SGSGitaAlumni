@@ -371,22 +371,28 @@ export const searchUsers = async (req, res) => {
     }
 
     const limitNum = parseInt(limit) || 50;
+    // CRITICAL FIX: Return user_profile.id (profile ID) as the primary ID for chat
+    // Conversations happen between user profiles, not accounts (accounts are shared by family)
     const searchQuery = `
       SELECT
-        a.id,
+        up.id as profile_id,
+        a.id as account_id,
         COALESCE(am.first_name, 'Unknown') as firstName,
         COALESCE(am.last_name, 'Unknown') as lastName,
         a.email,
         a.status,
+        up.display_name,
+        up.relationship,
         NULL as current_position,
         NULL as company,
         NULL as location,
         a.created_at,
         CASE WHEN (am.first_name IS NOT NULL AND am.last_name IS NOT NULL) THEN 1 ELSE 0 END as isProfileComplete
-      FROM accounts a
-      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      FROM user_profiles up
+      INNER JOIN accounts a ON up.account_id = a.id
       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       ${whereClause}
+      AND up.status = 'active'
       ORDER BY COALESCE(am.last_name, 'Unknown'), COALESCE(am.first_name, 'Unknown')
       LIMIT ${limitNum}
     `;
@@ -398,10 +404,14 @@ export const searchUsers = async (req, res) => {
     console.log('🎉 API: Search query executed successfully, found', rows.length, 'rows');
 
     // Transform results to match expected interface
+    // CRITICAL: Use profile_id as the primary ID for chat functionality
     const users = rows.map(row => ({
-      id: row.id,
+      id: row.profile_id,  // Use profile ID as primary ID for chat
+      accountId: row.account_id,  // Keep account ID for reference
       firstName: row.firstName || 'Unknown',
       lastName: row.lastName || 'Unknown',
+      displayName: row.display_name,
+      relationship: row.relationship,
       email: row.email,
       status: row.status,
       emailVerified: !!row.email_verified,

@@ -274,7 +274,8 @@ export const CreateConversationSchema = z.object({
   type: z.enum(['DIRECT', 'GROUP', 'POST_LINKED']),
   name: z.string().max(100).optional(),
   postingId: UUIDSchema.optional(),
-  participantIds: z.array(z.coerce.number().int().positive()).min(1).max(50),
+  // CRITICAL FIX: participantIds are now user_profile UUIDs, not integer account IDs
+  participantIds: z.array(UUIDSchema).min(1).max(50),
   initialMessage: z.string().max(2000).optional()
 }).refine((data) => {
   // Group conversations must have a name
@@ -309,7 +310,8 @@ export const AddReactionSchema = z.object({
 
 export const AddParticipantSchema = z.object({
   conversationId: UUIDSchema,
-  userId: z.coerce.number().int().positive(),
+  // CRITICAL FIX: userId is now a user_profile UUID, not integer account ID
+  userId: UUIDSchema,
   role: z.enum(['MEMBER', 'ADMIN']).default('MEMBER')
 });
 

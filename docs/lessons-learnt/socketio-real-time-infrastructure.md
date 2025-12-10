@@ -1,16 +1,84 @@
 # Socket.IO Real-Time Infrastructure - Lessons Learned
 
-**Last Updated:** November 16, 2025  
+**Last Updated:** December 9, 2025  
 **Scope:** Critical fixes, patterns, and best practices for Socket.IO infrastructure  
 **Audience:** Developers working with real-time WebSocket communication
 
 ---
 
 ## Table of Contents
-1. [JWT Authentication Fix (Nov 16, 2025)](#jwt-authentication-fix)
-2. [Broadcasting Bug Fix (Nov 8, 2025)](#broadcasting-bug-fix)
-3. [Best Practices & Patterns](#best-practices)
-4. [Prevention Checklist](#prevention-checklist)
+1. [MySQL2 Prepared Statement Fix (Dec 9, 2025)](#mysql2-prepared-statement-fix)
+2. [JWT Authentication Fix (Nov 16, 2025)](#jwt-authentication-fix)
+3. [Broadcasting Bug Fix (Nov 8, 2025)](#broadcasting-bug-fix)
+4. [Best Practices & Patterns](#best-practices)
+5. [Prevention Checklist](#prevention-checklist)
+
+---
+
+## MySQL2 Prepared Statement Fix
+
+**Date:** December 9, 2025  
+**Issue:** `ER_WRONG_ARGUMENTS - Incorrect arguments to mysqld_stmt_execute` on chat API calls  
+**Impact:** Chat conversations fail to load - 500 Internal Server Error  
+**Resolution Time:** ~30 minutes
+
+### The Problem
+
+After the COPPA refactor (changing user IDs from integers to UUIDs), the chat API started failing:
+
+```
+GET /api/conversations → 500 Internal Server Error
+MySQL Error: ER_WRONG_ARGUMENTS
+SQL Error: 'Incorrect arguments to mysqld_stmt_execute'
+```
+
+### Root Cause: Mixed Parameter Types in Prepared Statements
+
+MySQL2's `execute()` method (prepared statements) has issues when mixing different parameter types in the same query:
+
+```javascript
+// ❌ BROKEN: UUID string + integer LIMIT/OFFSET
+const params = [userId, parseInt(limit), parseInt(offset)];  // ['uuid-string', 20, 0]
+await connection.execute('SELECT * FROM table WHERE user_id = ? LIMIT ? OFFSET ?', params);
+```
+
+When `userId` changed from an integer to a UUID string, the parameter array now contained mixed types, causing the prepared statement execution to fail.
+
+### The Solution: Embed LIMIT/OFFSET in SQL String
+
+```javascript
+// ✅ FIXED: Embed LIMIT/OFFSET directly in SQL, only UUID as parameter
+const safeLimit = Math.max(1, Math.min(100, parseInt(limit) || 20));
+const safeOffset = Math.max(0, parseInt(offset) || 0);
+
+await connection.execute(
+  `SELECT * FROM table WHERE user_id = ? LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+  [userId]  // Only UUID parameter
+);
+```
+
+### Why This Works
+
+- LIMIT and OFFSET are sanitized as integers before embedding (prevents SQL injection)
+- Only UUID strings are passed as prepared statement parameters
+- MySQL2 handles homogeneous parameter types correctly
+
+### Files Modified
+
+- `server/services/chatService.js` - Fixed `getConversations()` and `getMessages()` functions
+
+### Prevention Pattern
+
+When using MySQL2 prepared statements with pagination:
+
+```javascript
+// ✅ SAFE PATTERN for LIMIT/OFFSET with UUIDs
+const safeLimit = Math.max(1, Math.min(100, parseInt(limit) || 20));
+const safeOffset = Math.max(0, parseInt(offset) || 0);
+
+const sql = `SELECT * FROM table WHERE id = ? LIMIT ${safeLimit} OFFSET ${safeOffset}`;
+await connection.execute(sql, [uuidParam]);
+```
 
 ---
 
@@ -453,6 +521,14 @@ app.listen(3000);
 - [ ] Test with actual production scenarios
 - [ ] Document lessons learned immediately
 
+### When Using MySQL2 Prepared Statements
+
+- [ ] Don't mix UUID strings with integer LIMIT/OFFSET as parameters
+- [ ] Embed LIMIT/OFFSET directly in SQL string (sanitized)
+- [ ] Validate and sanitize pagination values before embedding
+- [ ] Use `Math.max/min` to bound LIMIT values
+- [ ] Test queries after changing ID types (int → UUID)
+
 ---
 
 ## Quick Reference
@@ -467,6 +543,8 @@ app.listen(3000);
 | Messages not received | Broadcasting bug | Check `except()` usage |
 | Connection refused | Server not running | Check server status |
 | CORS error | Client URL not allowed | Update CORS config |
+| `ER_WRONG_ARGUMENTS` | Mixed param types in execute() | Embed LIMIT/OFFSET in SQL |
+| `mysqld_stmt_execute` error | UUID + integer params mixed | Separate param types |
 
 ### Time-Saving Tips
 
