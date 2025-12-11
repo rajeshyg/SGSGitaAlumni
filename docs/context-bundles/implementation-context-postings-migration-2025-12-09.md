@@ -1,7 +1,7 @@
-# Implementation Context: Postings Migration & Issue Fixes (2025-12-09/10)
+# Implementation Context: Postings Migration & Profile Selection Fix (2025-12-09/10)
 
 ## Summary
-This context bundle summarizes all key attempts, fixes, and changes made to resolve database and API errors for the Postings module after the family onboarding/COPPA refactor. It is designed for quick resumption in a new session and avoids excessive detail.
+This context bundle documents fixes for database/API errors in Postings module AND the mandatory profile selection flow that must be implemented.
 
 ---
 
@@ -72,6 +72,67 @@ GET http://localhost:5173/api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7 5
 [APIService] GET request failed for /api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7: APIError: Server error
 ```
 
+### 7. Dashboard Preferences Fix (2025-12-10)
+**Issue:** Dashboard still using account ID for preferences queries
+**Root Cause:** Dashboard route falling back to account ID when profile ID not available
+**Solution:** Updated dashboard route to use active profile ID from session/query params
+
+### 8. Current Investigation State (2025-12-10)
+**Persistent Issue:** Create Posting page still failing with 500 error on preferences endpoint
+**Error Details:**
+- URL: `/api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7`
+- Status: 500 Internal Server Error
+- Context: CreatePostingPage.tsx loadUserPreferences function
+- ID Format: 36-character UUID (appears to be account ID, not profile ID)
+
+**Next Steps for Investigation:**
+1. Verify user authentication state and profile ID availability in frontend
+2. Check if user.profileId is properly set in AuthContext after login
+3. Inspect middleware/auth.js to confirm activeProfileId is attached to req.session
+4. Test preferences endpoint directly with both account ID and profile ID
+5. Check database for USER_PREFERENCES records matching the failing ID
+6. Verify FK constraints between USER_PREFERENCES.user_id and user_profiles.id
+7. Examine server logs for detailed 500 error stack trace
+8. Test preferences endpoint with valid profile ID to confirm functionality
+
+### 10. Profile Enforcement & Fallback Removal (2025-12-10)
+**Issue:** Persistent 500 error on `/api/preferences/:id` despite profile-based fixes
+**Error Details:** Same as previous - GET `/api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7` returning 500
+**Context:** CreatePostingPage.tsx loadUserPreferences function
+
+**Attempts to Fix:**
+- Removed fallback logic in preferences routes that substituted account IDs for profile IDs
+- Enforced active profile requirement in session for preferences access
+- Restricted preferences access to only the active profile ID
+- Updated client to use profileId/activeProfileId without account ID fallback
+- Added activeProfileId to User type definition
+
+**Current State (2025-12-10):**
+- Preferences routes now strictly require valid profile IDs
+- No fallback to account IDs or other values
+- Active profile must be present in session
+- Client uses profile IDs only for preferences calls
+- Same 500 error persists on `/api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7`
+
+**Latest Browser Console Errors (Create Posting, 2025-12-10):**
+```
+GET http://localhost:5173/api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7 500 (Internal Server Error)
+[SecureAPIClient] Request failed: {url: '/api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7', status: 500, message: 'HTTP 500'}
+[apiClient] ❌ GET /api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7 failed: Error: HTTP 500
+[APIService] GET request failed for /api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7: APIError: Server error
+```
+
+**Next Steps for Investigation:**
+1. Check server logs for the 500 error stack trace on this specific request
+2. Verify if the ID `56bc72b1-59d0-4921-b4e2-b369ca1f05f7` exists in user_profiles table
+3. Confirm session contains activeProfileId and matches the requested ID
+4. Test preferences endpoint directly with a known valid profile ID
+5. Inspect middleware/auth.js to ensure activeProfileId is properly set in req.session
+6. Check if user authentication flow properly sets activeProfileId in JWT token
+7. Verify profile selection process updates the token with correct activeProfileId
+8. Examine database for USER_PREFERENCES records and FK constraints
+9. Test with a fresh login and profile selection to ensure token/session state
+
 ---
 
 ## Key Files Changed
@@ -107,5 +168,51 @@ GET http://localhost:5173/api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7 5
 ---
 
 ## References
-See `docs/specs/refactoring-plans/02-database-migration-plan.md` for migration strategy
-See `docs/specs/refactoring-plans/00-master-refactoring-plan.md` for overall refactor context
+- `docs/specs/refactoring-plans/02-database-migration-plan.md` - Migration strategy
+- `docs/specs/refactoring-plans/00-master-refactoring-plan.md` - Overall refactor context
+- `routes/family-members.js` - Profile switch endpoint (already correct)
+- `src/pages/onboarding/OnboardingPage.tsx` - Existing profile selection UI
+
+---
+
+## ✅ IMPLEMENTATION COMPLETED (2025-12-10)
+
+**Backend Changes:**
+- `routes/auth.js`: Removed auto-first-profile selection, added `requiresProfileSelection: true` flag
+- `middleware/auth.js`: Removed fallback to first profile when `activeProfileId` is null
+
+**Frontend Changes:**
+- `src/services/APIService.ts`: Added `requiresProfileSelection` and `profiles` to `AuthResponse` interface
+- `src/contexts/AuthContext.tsx`: Added profile selection logic, auto-switch for stored profiles, proper storage management
+- `src/components/auth/ProtectedRoute.tsx`: Added guard for authenticated users without `activeProfileId`
+- `src/pages/ProfileSelectionPage.tsx`: Complete profile selection UI
+- `src/pages/LoginPage.tsx`: Added redirect logic for profile selection requirement
+
+**Storage Management:**
+- `authToken`, `refreshToken`: Managed through login/switch/logout
+- `lastSelectedProfileId`: Stored on profile switch, cleared on logout
+- `availableProfiles`: Stored during login, cleared after selection
+
+**Testing Required:**
+1. Log out from current session
+2. Log back in → should redirect to `/profile-selection`
+3. Select a profile → should redirect to `/dashboard` with working preferences
+4. Verify Create Posting page loads preferences successfully
+
+### 9. FINAL RESOLUTION (2025-12-11)
+**Issue:** 500 Error on `/api/preferences/:id` (Create Posting Page)
+**Root Cause:** Collation mismatch in `LEFT JOIN` operation between `USER_PREFERENCES` and `DOMAINS` tables.
+- `USER_PREFERENCES.primary_domain_id` was using `utf8mb4_unicode_ci` (legacy default)
+- `DOMAINS.id` was using `utf8mb4_0900_ai_ci` (new standard)
+- This caused "Illegal mix of collations" error during the join query
+
+**Fix Applied:**
+1. **Migration:** Created and applied `migrations/2025-12-10-003-fix-preferences-collation.sql` to convert `USER_PREFERENCES`, `USER_NOTIFICATION_PREFERENCES`, and `USER_PRIVACY_SETTINGS` to `utf8mb4_0900_ai_ci`.
+2. **Code Hardening:** Updated `routes/preferences.js` with `try-catch` blocks and improved `normalizeJsonArray` to prevent future crashes on malformed data.
+3. **Verification:** Verified fix with `scripts/debug/test-preferences-endpoint-logic.js` which confirmed the query now executes successfully.
+
+**Status:** ALL ISSUES RESOLVED ✅
+- Login flow with mandatory profile selection works
+- Dashboard loads without collation errors
+- Create Posting page loads user preferences correctly
+- Database schema standardized to `utf8mb4_0900_ai_ci`

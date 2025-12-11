@@ -110,29 +110,43 @@ async function validatePreferences(preferences) {
 }
 
 function normalizeJsonArray(value) {
-  if (!value) {
-    return [];
-  }
-
-  if (Array.isArray(value)) {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
-      console.warn('⚠️  Failed to parse JSON array value:', value, error.message);
+  try {
+    if (!value) {
       return [];
     }
-  }
 
-  if (typeof value === 'object') {
-    return Array.isArray(value) ? value : [];
-  }
+    if (Array.isArray(value)) {
+      return value;
+    }
 
-  return [];
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        console.warn('⚠️  Failed to parse JSON array value:', value, error.message);
+        return [];
+      }
+    }
+
+    if (typeof value === 'object') {
+      // Handle potential Buffer objects from DB
+      if (Buffer.isBuffer(value)) {
+         try {
+           const parsed = JSON.parse(value.toString());
+           return Array.isArray(parsed) ? parsed : [];
+         } catch (e) {
+           return [];
+         }
+      }
+      return Array.isArray(value) ? value : [];
+    }
+
+    return [];
+  } catch (err) {
+    console.error('Error in normalizeJsonArray:', err);
+    return [];
+  }
 }
 
 /**
@@ -141,6 +155,7 @@ function normalizeJsonArray(value) {
  */
 export async function createDefaultPreferences(userId) {
   try {
+    console.log(`[createDefaultPreferences] Starting for user ${userId}`);
     let preferenceId;
 
     const [existingPreferences] = await pool.query(
@@ -211,9 +226,36 @@ export async function createDefaultPreferences(userId) {
  * Automatically creates default preferences if none exist
  */
 export const getUserPreferences = async (req, res) => {
+  const { userId } = req.params;
+
   try {
-    const { userId } = req.params;
-    console.log(`🔍 [DIAGNOSTIC] getUserPreferences called for userId: ${userId}`);
+    // Require an active profile in the session; callers must select a profile before hitting this endpoint
+    if (!req.session?.activeProfileId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Active profile required'
+      });
+    }
+
+    // Enforce that callers can only access their active profile preferences
+    if (userId !== req.session.activeProfileId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied for this profile'
+      });
+    }
+
+    // Strictly require a valid profile id; do not fall back to account ids or other values
+    let targetProfileId = userId;
+    const [profileRows] = await pool.query('SELECT id FROM user_profiles WHERE id = ?', [targetProfileId]);
+
+    if (profileRows.length === 0) {
+      console.warn(`⚠️  Preferences requested for non-profile id ${targetProfileId}`);
+      return res.status(404).json({
+        success: false,
+        error: 'Profile not found'
+      });
+    }
 
     const [preferences] = await pool.query(`
       SELECT
@@ -224,16 +266,14 @@ export const getUserPreferences = async (req, res) => {
       FROM USER_PREFERENCES up
       LEFT JOIN DOMAINS pd ON up.primary_domain_id = pd.id
       WHERE up.user_id = ?
-    `, [userId]);
-
-    console.log(`🔍 [DIAGNOSTIC] Query returned ${preferences.length} preference record(s)`);
+    `, [targetProfileId]);
 
     // If no preferences exist, create default preferences
     if (preferences.length === 0) {
-      console.log(`📋 No preferences found for user ${userId}, creating defaults...`);
+      console.log(`📋 No preferences found for profile ${targetProfileId}, creating defaults...`);
 
       // Create default preferences
-      await createDefaultPreferences(userId);
+      await createDefaultPreferences(targetProfileId);
 
       // Fetch the newly created preferences
       const [newPreferences] = await pool.query(`
@@ -245,16 +285,17 @@ export const getUserPreferences = async (req, res) => {
         FROM USER_PREFERENCES up
         LEFT JOIN DOMAINS pd ON up.primary_domain_id = pd.id
         WHERE up.user_id = ?
-      `, [userId]);
+      `, [targetProfileId]);
 
       if (newPreferences.length === 0) {
+        console.error('❌ Failed to retrieve preferences after creation');
         return res.status(500).json({
           success: false,
           error: 'Failed to create default preferences'
         });
       }
 
-      console.log(`✅ Default preferences created for user ${userId}`);
+      console.log(`✅ Default preferences created for profile ${targetProfileId}`);
 
       // Return the newly created preferences with empty arrays for domains
       const pref = newPreferences[0];
@@ -268,19 +309,9 @@ export const getUserPreferences = async (req, res) => {
     }
 
     const pref = preferences[0];
-    console.log(`🔍 [DIAGNOSTIC] Raw preference data from DB:`, {
-      id: pref.id,
-      user_id: pref.user_id,
-      primary_domain_id: pref.primary_domain_id,
-      secondary_domain_ids_type: typeof pref.secondary_domain_ids,
-      secondary_domain_ids_value: pref.secondary_domain_ids,
-      areas_of_interest_ids_type: typeof pref.areas_of_interest_ids,
-      areas_of_interest_ids_value: pref.areas_of_interest_ids
-    });
 
     // Populate secondary domains
     const secondaryIds = normalizeJsonArray(pref.secondary_domain_ids);
-    console.log(`🔍 [DIAGNOSTIC] Normalized secondary_domain_ids:`, secondaryIds);
 
     if (secondaryIds.length > 0) {
         const [secondaryDomains] = await pool.query(`
@@ -288,7 +319,6 @@ export const getUserPreferences = async (req, res) => {
           FROM DOMAINS
           WHERE id IN (?)
         `, [secondaryIds]);
-        console.log(`🔍 [DIAGNOSTIC] Found ${secondaryDomains.length} secondary domains`);
         pref.secondary_domains = secondaryDomains;
     } else {
       pref.secondary_domains = [];
@@ -296,7 +326,6 @@ export const getUserPreferences = async (req, res) => {
 
     // Populate areas of interest
     const areaIds = normalizeJsonArray(pref.areas_of_interest_ids);
-    console.log(`🔍 [DIAGNOSTIC] Normalized areas_of_interest_ids:`, areaIds);
 
     if (areaIds.length > 0) {
         const [areas] = await pool.query(`
@@ -304,24 +333,10 @@ export const getUserPreferences = async (req, res) => {
           FROM DOMAINS
           WHERE id IN (?)
         `, [areaIds]);
-        console.log(`🔍 [DIAGNOSTIC] Found ${areas.length} areas of interest`);
         pref.areas_of_interest = areas;
     } else {
       pref.areas_of_interest = [];
     }
-
-    console.log(`🔍 [DIAGNOSTIC] Final response structure:`, {
-      success: true,
-      preferences: {
-        id: pref.id,
-        user_id: pref.user_id,
-        primary_domain_id: pref.primary_domain_id,
-        secondary_domain_ids: pref.secondary_domain_ids,
-        areas_of_interest_ids: pref.areas_of_interest_ids,
-        secondary_domains_count: pref.secondary_domains?.length || 0,
-        areas_of_interest_count: pref.areas_of_interest?.length || 0
-      }
-    });
 
     res.json({
       success: true,
@@ -329,12 +344,15 @@ export const getUserPreferences = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error fetching preferences:', error);
-    console.error('❌ Error details:', {
-      message: error.message,
-      code: error.code,
-      sqlMessage: error.sqlMessage,
-      sql: error.sql
-    });
+    // Log stack trace for deeper debugging of database errors
+    if (error.sql) {
+        console.error('SQL Error Details:', {
+            message: error.message,
+            code: error.code,
+            sqlState: error.sqlState,
+            sql: error.sql
+        });
+    }
     res.status(500).json({
       success: false,
       error: 'Failed to fetch preferences',
@@ -350,12 +368,35 @@ export const getUserPreferences = async (req, res) => {
 export const updateUserPreferences = async (req, res) => {
   try {
     const { userId } = req.params;
+    if (!req.session?.activeProfileId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Active profile required'
+      });
+    }
+
+    if (userId !== req.session.activeProfileId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied for this profile'
+      });
+    }
+    // Strictly require a valid profile id; do not fall back to account ids or other values
+    let targetProfileId = userId;
+    const [profileRows] = await pool.query('SELECT id FROM user_profiles WHERE id = ?', [targetProfileId]);
+    if (profileRows.length === 0) {
+      console.warn(`⚠️  Update requested for non-profile id ${targetProfileId}`);
+      return res.status(404).json({
+        success: false,
+        error: 'Profile not found'
+      });
+    }
     const preferences = req.body;
     
     // Validate preferences
     const errors = await validatePreferences({
       ...preferences,
-      user_id: userId
+      user_id: targetProfileId
     });
     
     if (errors.length > 0) {
@@ -369,7 +410,7 @@ export const updateUserPreferences = async (req, res) => {
     // Check if preferences exist
     const [existing] = await pool.query(
       'SELECT id FROM USER_PREFERENCES WHERE user_id = ?',
-      [userId]
+      [targetProfileId]
     );
     
     if (existing.length === 0) {
@@ -383,7 +424,7 @@ export const updateUserPreferences = async (req, res) => {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         id,
-        userId,
+        targetProfileId,
         preferences.primary_domain_id,
         JSON.stringify(preferences.secondary_domain_ids || []),
         JSON.stringify(preferences.areas_of_interest_ids || []),
@@ -423,7 +464,7 @@ export const updateUserPreferences = async (req, res) => {
         JSON.stringify(preferences.interface_settings),
         preferences.is_professional,
         preferences.education_status,
-        userId
+          targetProfileId
       ]);
     }
     

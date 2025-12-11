@@ -289,18 +289,7 @@ export const login = asyncHandler(async (req, res) => {
     connection.release();
   }
 
-  // Generate tokens with account context (family profiles handled via onboarding)
-  const tokenPayload = {
-    accountId: user.id,
-    email: user.email,
-    role: user.role,
-    activeProfileId: null
-  };
-
-  const token = jwt.sign(tokenPayload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
-  const refreshToken = jwt.sign({ accountId: user.id }, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
-
-  // Load user profiles (for new schema)
+  // Load user profiles (for new schema) - BEFORE generating tokens so we can set activeProfileId
   const pool = getPool();
   const [profiles] = await pool.execute(
     `SELECT up.id, up.relationship, up.access_level, up.status, up.parent_profile_id,
@@ -313,14 +302,28 @@ export const login = asyncHandler(async (req, res) => {
     [user.id]
   );
 
-  // Use first profile's data for display name (if available)
-  const primaryProfile = profiles[0];
+  // DO NOT auto-select profile - require explicit selection
+  // const primaryProfile = profiles[0];
+  // const defaultActiveProfileId = primaryProfile?.id || null;
+
+  // Generate tokens WITHOUT activeProfileId - user must select profile first
+  const tokenPayload = {
+    accountId: user.id,
+    email: user.email,
+    role: user.role,
+    activeProfileId: null  // Force profile selection
+  };
+
+  const token = jwt.sign(tokenPayload, getJwtSecret(), { expiresIn: JWT_EXPIRES_IN });
+  const refreshToken = jwt.sign({ accountId: user.id, activeProfileId: null }, getJwtSecret(), { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
 
   // Log token generation (without sensitive data)
   console.log('[Auth] 🔑 JWT token generated:', {
     userId: user.id,
     email: user.email,
     profileCount: profiles.length,
+    activeProfileId: null,  // No auto-selection
+    requiresProfileSelection: true,
     expiresIn: JWT_EXPIRES_IN,
     timestamp: new Date().toISOString()
   });
@@ -332,8 +335,8 @@ export const login = asyncHandler(async (req, res) => {
   const userResponse = {
     id: user.id,
     email: user.email,
-    firstName: primaryProfile?.first_name || '',
-    lastName: primaryProfile?.last_name || '',
+    firstName: '',  // No primary profile selected yet
+    lastName: '',   // No primary profile selected yet
     role: user.role,
     status: user.status,
     emailVerified: user.email_verified,
@@ -342,13 +345,13 @@ export const login = asyncHandler(async (req, res) => {
     lastLoginAt: user.last_login_at,
     // New schema additions
     profileCount: profiles.length,
-    profileId: primaryProfile?.id,
-    alumniMemberId: primaryProfile?.alumni_member_id,
-    relationship: primaryProfile?.relationship,
-    accessLevel: primaryProfile?.access_level,
-    batch: primaryProfile?.batch,
-    centerName: primaryProfile?.center_name,
-    yearOfBirth: primaryProfile?.year_of_birth
+    profileId: null,  // No profile selected yet
+    alumniMemberId: null,  // No profile selected yet
+    relationship: null,  // No profile selected yet
+    accessLevel: null,  // No profile selected yet
+    batch: null,
+    centerName: null,
+    yearOfBirth: null
   };
 
   res.json({
@@ -369,6 +372,7 @@ export const login = asyncHandler(async (req, res) => {
       requiresConsent: p.requires_consent,
       parentConsentGiven: p.parent_consent_given
     })),
+    requiresProfileSelection: true,  // Force profile selection before allowing app access
     expiresIn: 3600 // 1 hour in seconds
   });
 });
@@ -417,7 +421,7 @@ export const verifyAuth = asyncHandler(async (req, res) => {
       });
     }
 
-    user = rows[0];
+    const user = rows[0];
     
     // Load user profiles
     const [profiles] = await connection.execute(
