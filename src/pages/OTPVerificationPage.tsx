@@ -70,7 +70,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
     if (isAuthenticated && user) {
       console.log('[OTPVerificationPage] User already authenticated, checking family account...');
       const isFamilyAccount = user.is_family_account === 1 || user.is_family_account === true;
-      const redirectTo = isFamilyAccount ? '/profile-selection' : '/dashboard';
+      const redirectTo = isFamilyAccount ? '/onboarding' : '/dashboard';
       console.log('[OTPVerificationPage] Redirecting to:', redirectTo);
       navigate(redirectTo, { replace: true });
     }
@@ -281,7 +281,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
             const isFamilyAccount = loginResult.user.is_family_account === 1 || loginResult.user.is_family_account === true;
             console.log('[OTPVerificationPage] isFamilyAccount check result:', isFamilyAccount);
             
-            const redirectTo = isFamilyAccount ? '/profile-selection' : (state?.redirectTo || '/dashboard');
+            const redirectTo = isFamilyAccount ? '/onboarding' : (state?.redirectTo || '/dashboard');
             console.log('[OTPVerificationPage] 🎯 Redirecting to:', redirectTo);
 
             navigate(redirectTo, {

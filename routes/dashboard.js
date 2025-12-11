@@ -364,8 +364,9 @@ export const getMemberDashboard = async (req, res) => {
 
 			const userRow = userRows[0];
 
-			// Use profileId if available (preferences are profile-based)
-			const preferenceUserId = req.user.profileId || requestedAccountId;
+			// Preferences are profile-based; prefer active profile over account id
+			const activeProfileId = req.query.profileId || req.session?.activeProfileId || userRow.user_profile_id || null;
+			const preferenceUserId = activeProfileId || requestedAccountId;
 
 			const [preferenceRows] = await connection.execute(`
 				SELECT

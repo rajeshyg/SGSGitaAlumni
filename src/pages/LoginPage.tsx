@@ -44,10 +44,10 @@ export function LoginPage() {
 
       console.log('[LoginPage] isFamilyAccount check:', isFamilyAccount);
 
-      // For family accounts, redirect to profile selection page
+      // For family accounts, redirect to onboarding page
       if (isFamilyAccount) {
-        console.log('🔄 LoginPage: Family account detected, redirecting to profile selection');
-        navigate('/profile-selection', { replace: true });
+        console.log('🔄 LoginPage: Family account detected, redirecting to onboarding');
+        navigate('/onboarding', { replace: true });
         return;
       }
 
@@ -136,8 +136,16 @@ export function LoginPage() {
         hasRefreshToken: !!response.refreshToken,
         tokenLength: response.token?.length,
         refreshTokenLength: response.refreshToken?.length,
-        user: response.user 
+        user: response.user,
+        requiresProfileSelection: response.requiresProfileSelection
       });
+
+      // Check if profile selection is required
+      if (response.requiresProfileSelection) {
+        console.log('🔐 [LoginPage] 🔄 Profile selection required, redirecting...');
+        navigate('/onboarding', { replace: true });
+        return;
+      }
 
       // CRITICAL: Verify tokens were stored immediately after login
       console.log('🔐 [LoginPage] 🔍 VERIFYING TOKEN STORAGE...');

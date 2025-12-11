@@ -310,48 +310,56 @@ async function getConversations(userId, filters = {}) {
     const result = [];
     for (const conv of conversations) {
       // CRITICAL FIX: sender_id now stores user_profile.id, not accounts.id
-      const [lastMessage] = await connection.execute(
-        `SELECT
-          m.id,
-          m.content,
-          m.message_type,
-          m.created_at,
-          m.edited_at,
-          am.first_name as sender_first_name,
-          am.last_name as sender_last_name
-         FROM MESSAGES m
-         JOIN user_profiles up ON m.sender_id = up.id
-         LEFT JOIN accounts a ON up.account_id = a.id
-         LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
-         WHERE m.conversation_id = ? AND m.deleted_at IS NULL
-         ORDER BY m.created_at DESC
-         LIMIT 1`,
-        [conv.id]
-      );
+      // Declare variables outside try block to ensure they're in scope
+      let lastMessage = [];
+      let participants = [];
+      
+      try {
+        [lastMessage] = await connection.execute(
+          `SELECT
+            m.id,
+            m.content,
+            m.message_type,
+            m.created_at,
+            m.edited_at,
+            am.first_name as sender_first_name,
+            am.last_name as sender_last_name
+           FROM MESSAGES m
+           JOIN user_profiles up ON m.sender_id = up.id
+           LEFT JOIN accounts a ON up.account_id = a.id
+           LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
+           WHERE m.conversation_id = ? AND m.deleted_at IS NULL
+           ORDER BY m.created_at DESC
+           LIMIT 1`,
+          [conv.id]
+        );
 
-      // Get participants with details (excluding current user)
-      // For DIRECT chats: Returns the other participant (1 person)
-      // For GROUP chats: Returns other participants (for display names)
-      // Note: Frontend only displays first 3 names, but we return all for flexibility
-      // CRITICAL FIX: cp.user_id now stores user_profile.id, not accounts.id
-      const [participants] = await connection.execute(
-        `SELECT
-          cp.user_id as profile_id,
-          cp.role,
-          up.account_id,
-          up.display_name,
-          up.relationship,
-          am.first_name,
-          am.last_name,
-          am.profile_image_url
-         FROM CONVERSATION_PARTICIPANTS cp
-         INNER JOIN user_profiles up ON cp.user_id = up.id
-         LEFT JOIN accounts a ON up.account_id = a.id
-         LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
-         WHERE cp.conversation_id = ? AND cp.left_at IS NULL AND cp.user_id != ?
-         ORDER BY cp.joined_at ASC`,
-        [conv.id, userId]
-      );
+        // Get participants with details (excluding current user)
+        // For DIRECT chats: Returns the other participant (1 person)
+        // For GROUP chats: Returns other participants (for display names)
+        // Note: Frontend only displays first 3 names, but we return all for flexibility
+        // CRITICAL FIX: cp.user_id now stores user_profile.id, not accounts.id
+        [participants] = await connection.execute(
+          `SELECT
+            cp.user_id as profile_id,
+            cp.role,
+            up.account_id,
+            up.display_name,
+            up.relationship,
+            am.first_name,
+            am.last_name,
+            am.profile_image_url
+           FROM CONVERSATION_PARTICIPANTS cp
+           INNER JOIN user_profiles up ON cp.user_id = up.id
+           LEFT JOIN accounts a ON up.account_id = a.id
+           LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
+           WHERE cp.conversation_id = ? AND cp.left_at IS NULL AND cp.user_id != ?
+           ORDER BY cp.joined_at ASC`,
+          [conv.id, userId]
+        );
+      } catch (nestedError) {
+        throw nestedError;
+      }
 
       result.push({
         id: conv.id,

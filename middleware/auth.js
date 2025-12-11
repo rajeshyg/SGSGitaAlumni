@@ -80,16 +80,14 @@ export const authenticateToken = async (req, res, next) => {
           [account.id]
         );
 
-        // Determine active profile
+        // Determine active profile - NO FALLBACK to first profile
         let activeProfileId = decoded.activeProfileId;
-        
-        // If activeProfileId from token doesn't exist in DB, use first profile
+
+        // If activeProfileId from token doesn't exist in DB, set to null (force profile selection)
         if (activeProfileId && !profiles.some(p => p.id === activeProfileId)) {
-          activeProfileId = profiles.length > 0 ? profiles[0].id : null;
-        } else if (!activeProfileId && profiles.length > 0) {
-          // If no activeProfileId in token, use first profile
-          activeProfileId = profiles[0].id;
+          activeProfileId = null;
         }
+        // DO NOT auto-select first profile if no activeProfileId in token
 
         // Load active profile details if available
         let activeProfile = null;

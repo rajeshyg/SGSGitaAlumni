@@ -3,6 +3,7 @@ import { APIService, type User, type LoginCredentials, type RegisterData, type A
 import { AuthErrorHandler, type AuthError } from '../lib/auth/errorHandling';
 import { apiClient } from '../lib/api';
 import { chatClient } from '../lib/socket/chatClient';
+import { switchProfile } from '../services/familyMemberService';
 
 // ============================================================================
 // AUTHENTICATION CONTEXT TYPES
@@ -160,24 +161,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.log('[AuthContext] Login response user:', response.user, 'role:', response.user.role);
-        console.log('[AuthContext] User role type:', typeof response.user.role, 'Value:', JSON.stringify(response.user.role));
-        console.log('[AuthContext] 🔍 PROFILE DEBUG:');
-        console.log('  - profileId:', response.user.profileId);
-        console.log('  - relationship:', response.user.relationship);
-        console.log('  - accessLevel:', response.user.accessLevel);
       }
 
-      // Store tokens securely using StorageUtils for mobile compatibility
+      // Store tokens and set authenticated state
       StorageUtils.setItem('authToken', response.token);
       StorageUtils.setItem('refreshToken', response.refreshToken);
-
-      console.log('[AuthContext.login] 🔐 Tokens stored using StorageUtils');
-      console.log('[AuthContext.login] 🔍 authToken length:', response.token?.length || 0);
-      console.log('[AuthContext.login] 🔍 refreshToken length:', response.refreshToken?.length || 0);
-      console.log('[AuthContext.login] 🔍 refreshToken exists:', !!response.refreshToken);
-
-      // Initialize API client with auth tokens
       apiClient.initializeAuth(response.token, response.refreshToken);
+      setAuthState({
+        user: response.user,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+        authError: null
+      });
+
+      // Handle profile selection requirement
+      if (response.requiresProfileSelection) {
+        console.log('[AuthContext] 🔄 Profile selection required.');
+        if (response.profiles) {
+          StorageUtils.setItem('availableProfiles', JSON.stringify(response.profiles));
+        }
+        return response; // Caller will handle redirect
+      }
+      
+      // If no profile selection is needed, proceed with full session setup
+      console.log('[AuthContext] Profile already selected or not required.');
 
       // Initialize chat socket connection
       chatClient.connect(response.token).catch(error => {
@@ -196,19 +204,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       };
       localStorage.setItem('currentProfile', JSON.stringify(profile));
-
+      
       if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
         console.log('[AuthContext] Login successful, stored profile:', profile);
       }
-
-      setAuthState({
-        user: response.user,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-        authError: null
-      });
 
       return response;
     } catch (error) {
@@ -271,6 +270,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       StorageUtils.removeItem('authToken');
       StorageUtils.removeItem('refreshToken');
       StorageUtils.removeItem('currentProfile');
+      StorageUtils.removeItem('lastSelectedProfileId');
+      StorageUtils.removeItem('availableProfiles');
 
       // Clear API client auth tokens
       apiClient.clearAuth();
@@ -391,6 +392,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
       };
       StorageUtils.setItem('currentProfile', JSON.stringify(profile));
+
+      // Store last selected profile ID for future logins
+      StorageUtils.setItem('lastSelectedProfileId', activeProfile.id);
     }
   };
 
@@ -483,6 +487,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
              error: null,
              authError: null
            });
+
+           // Check if we need to auto-switch to last selected profile
+           if (!user.profileId) {
+             const lastSelectedProfileId = StorageUtils.getItem('lastSelectedProfileId');
+             if (lastSelectedProfileId) {
+               console.log('[AuthContext] 🔄 Found lastSelectedProfileId, attempting auto-switch:', lastSelectedProfileId);
+               try {
+                 const result = await switchProfile(lastSelectedProfileId);
+                 if (result.success && result.token && result.refreshToken && result.activeProfile) {
+                   console.log('[AuthContext] ✅ Auto-switched to last selected profile');
+                   updateTokensAfterProfileSwitch(result.token, result.refreshToken, result.activeProfile);
+                 } else {
+                   console.log('[AuthContext] ❌ Auto-switch failed, will require manual selection');
+                 }
+               } catch (switchError) {
+                 console.error('[AuthContext] ❌ Auto-switch error:', switchError);
+               }
+             }
+           }
          } catch (error) {
            console.error('[AuthContext] ❌ Failed to restore auth from token:', error);
            // Token might be expired, try to refresh

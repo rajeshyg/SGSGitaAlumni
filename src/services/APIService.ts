@@ -60,6 +60,8 @@ export interface AuthResponse {
   refreshToken: string;
   user: User;
   expiresIn: number;
+  requiresProfileSelection?: boolean;
+  profiles?: any[]; // Available profiles for selection
 }
 
 export interface TokenResponse {
@@ -81,6 +83,7 @@ export interface User {
   lastLoginAt?: string;
   
   // Profile fields (from user_profiles + alumni_members, for active profile)
+  activeProfileId?: string;
   profileId?: string;
   alumniMemberId?: string;
   firstName?: string;

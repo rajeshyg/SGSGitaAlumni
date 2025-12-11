@@ -35,7 +35,7 @@ const EditPostingPage = lazy(() => import('./pages/EditPostingPage'))
 const ModerationQueuePage = lazy(() => import('./pages/moderator/ModerationQueuePage').then(module => ({ default: module.ModerationQueuePage })))
 const ChatPage = lazy(() => import('./pages/ChatPage'))
 
-const ProfileSelectionPage = lazy(() => import('./pages/ProfileSelectionPage'))
+
 
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
@@ -273,13 +273,7 @@ function App() {
                     </ProtectedRoute>
                   </ErrorBoundary>
                 } />
-                <Route path="/profile-selection" element={
-                  <ErrorBoundary level="page">
-                    <ProtectedRoute>
-                      <ProfileSelectionPage />
-                    </ProtectedRoute>
-                  </ErrorBoundary>
-                } />
+
 
                 {/* Catch all - redirect to login for unauthenticated, admin for authenticated */}
                 <Route path="*" element={<Navigate to="/login" replace />} />

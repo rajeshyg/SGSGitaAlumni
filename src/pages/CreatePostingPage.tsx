@@ -127,7 +127,7 @@ const CreatePostingPage: React.FC = () => {
   useEffect(() => {
     loadReferenceData();
     loadUserPreferences();
-  }, [user?.id]);
+  }, [user?.id, user?.profileId]);
 
   const loadReferenceData = async () => {
     setLoading(true);
@@ -150,9 +150,12 @@ const CreatePostingPage: React.FC = () => {
   };
 
   const loadUserPreferences = async () => {
-    // Use profileId if available, otherwise fallback to id (though preferences are now profile-based)
-    const targetId = user?.profileId || user?.id;
-    if (!targetId) return;
+    // Use the active profile; do not fall back to the account ID because preferences are profile-based
+    const targetId = user?.profileId;
+    if (!targetId) {
+      console.warn('[CreatePostingPage] Missing profileId; skipping preferences load');
+      return;
+    }
 
     try {
       const response = await APIService.get<{success: boolean; preferences: any}>(`/api/preferences/${targetId}`);

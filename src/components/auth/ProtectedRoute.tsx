@@ -72,9 +72,10 @@ export function ProtectedRoute({
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // Enforce profile selection/onboarding before accessing protected content
-  // If there is no active profileId yet, send the user to the unified onboarding hub
-  if (!user?.profileId && !isOnboardingPath) {
+  // Enforce profile selection before accessing protected content
+  // If user is authenticated but has no activeProfileId, redirect to onboarding
+  if (isAuthenticated && !user?.profileId && !isOnboardingPath && location.pathname !== '/onboarding') {
+    console.log('🔐 ProtectedRoute: User authenticated but no active profile, redirecting to onboarding');
     return <Navigate to="/onboarding" state={{ from: location }} replace />;
   }
 
