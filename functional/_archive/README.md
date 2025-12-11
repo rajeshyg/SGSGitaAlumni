@@ -1,15 +1,19 @@
 # Archive
 
-This directory contains archived functional requirements and specifications that are no longer active but preserved for historical reference.
+This directory contains archived functional specifications and documentation that are no longer actively maintained but preserved for historical reference.
 
-## Contents
+## Overview
 
-This directory may contain:
-- Deprecated feature specifications
-- Superseded requirements documents
-- Historical implementation notes
-- Archived design documents
+The _archive directory serves as a repository for:
+- Completed functional specifications
+- Deprecated feature documentation
+- Historical project documentation
+- Reference materials no longer in active use
 
-## Note
+## Organization
 
-Files in this directory are kept for reference purposes and may not reflect current system implementation or requirements.
+Files in this archive are organized by their original functional phase or feature area. They are kept for reference but should not be used as the basis for new development work.
+
+## Status
+
+This is an archive directory. Files here are preserved for historical reference only and are not actively maintained.
