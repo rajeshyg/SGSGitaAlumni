@@ -702,6 +702,10 @@ async function getMessages(conversationId, userId, pagination = {}) {
       queryParams
     );
 
+    // Reverse messages to return them in chronological order (oldest first)
+    // while still fetching the most recent ones (due to DESC in SQL)
+    messages.reverse();
+
     // Get reactions for each message - CRITICAL FIX: user_id stores user_profile.id
     const result = [];
     for (const msg of messages) {
