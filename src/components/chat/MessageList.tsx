@@ -22,7 +22,7 @@ import { format } from 'date-fns';
 export interface Message {
   id: string;  // UUID - Unique message identifier
   conversationId: string;  // UUID - Parent conversation
-  senderId: number;  // User ID of message sender
+  senderId: string | number;  // User ID of message sender (UUID string or legacy number)
   senderName: string;  // Display name of sender
   senderAvatar?: string;  // Optional avatar URL
   content: string;  // Message text content
@@ -33,12 +33,12 @@ export interface Message {
   replyToMessageId?: string;  // UUID of message being replied to
   reactions?: Array<{  // User reactions to this message
     id: string;  // UUID - Reaction identifier
-    userId: number;  // User who reacted
+    userId: string | number;  // User who reacted
     userName: string;  // Display name of reactor
     emoji: string;  // Emoji character
   }>;
   readBy?: Array<{  // Read receipts tracking
-    userId: number;  // User who read the message
+    userId: string | number;  // User who read the message
     readAt: string;  // ISO timestamp of when message was read
   }>;
 }
@@ -48,7 +48,7 @@ export interface Message {
  */
 interface MessageListProps {
   messages: Message[];  // Array of messages to display
-  currentUserId: number;  // Current logged-in user's ID (for own message detection)
+  currentUserId: string | number;  // Current logged-in user's ID (for own message detection)
   onEditMessage?: (messageId: string, content: string) => void;  // Callback for editing messages
   onDeleteMessage?: (messageId: string) => void;  // Callback for deleting messages
   onReplyMessage?: (messageId: string) => void;  // Callback for replying to messages

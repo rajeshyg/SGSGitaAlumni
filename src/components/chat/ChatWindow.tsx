@@ -56,7 +56,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     const newMessage: Message = {
       id: data.messageId || data.id,  // Backend sends 'messageId'
       conversationId: data.conversationId,
-      senderId: data.sender?.id || data.senderId,  // Backend sends sender object
+      senderId: data.sender?.profileId || data.sender?.id || data.senderId,  // Backend sends sender object
       senderName: data.sender
         ? `${data.sender.firstName} ${data.sender.lastName}`.trim()
         : data.senderName || 'Unknown',
@@ -279,7 +279,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       const transformedMessages = rawMessages.map((msg: any) => ({
         id: msg.id,
         conversationId: msg.conversationId,
-        senderId: msg.sender?.id || msg.senderId,
+        // Map from profileId if available (new format), fallback to id or senderId
+        senderId: msg.sender?.profileId || msg.sender?.id || msg.senderId,
         senderName: msg.sender 
           ? `${msg.sender.firstName} ${msg.sender.lastName}` 
           : msg.senderName || 'Unknown',
@@ -292,7 +293,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         replyToMessageId: msg.replyToId,
         reactions: msg.reactions?.map((r: any) => ({
           id: r.id,
-          userId: r.userId,
+          userId: r.profileId || r.userId, // Map from profileId if available
           userName: `${r.userFirstName} ${r.userLastName}`,
           emoji: r.emoji
         }))
@@ -342,7 +343,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       const optimisticMessage: Message = {
         id: `temp-${Date.now()}`,  // Temporary ID until server responds
         conversationId: selectedConversationId,
-        senderId: typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10),
+        senderId: user.id, // Use user.id directly
         senderName: `${user.firstName} ${user.lastName}`,
         senderAvatar: undefined,
         content,
@@ -367,7 +368,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       const transformedMessage: Message = {
         id: rawMessage.id,
         conversationId: rawMessage.conversationId,
-        senderId: rawMessage.sender?.id || rawMessage.senderId,
+        senderId: rawMessage.sender?.profileId || rawMessage.sender?.id || rawMessage.senderId,
         senderName: rawMessage.sender 
           ? `${rawMessage.sender.firstName} ${rawMessage.sender.lastName}` 
           : rawMessage.senderName || 'Unknown',
@@ -380,7 +381,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         replyToMessageId: rawMessage.replyToId,
         reactions: rawMessage.reactions?.map((r: any) => ({
           id: r.id,
-          userId: r.userId,
+          userId: r.profileId || r.userId,
           userName: `${r.userFirstName} ${r.userLastName}`,
           emoji: r.emoji
         }))
@@ -638,7 +639,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               <div className="flex-1 min-h-0 flex flex-col">
                 <MessageList
                   messages={messages}
-                  currentUserId={typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10)}
+                  currentUserId={user.id} // Pass directly as string or number
                   onEditMessage={handleEditMessage}
                   onDeleteMessage={handleDeleteMessage}
                   onReplyMessage={handleReplyMessage}
