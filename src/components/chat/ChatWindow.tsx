@@ -38,7 +38,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [typingUsers, setTypingUsers] = useState<Map<number, string>>(new Map());
+  const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
   const [replyToMessage, setReplyToMessage] = useState<Message | undefined>(undefined);
   const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
   const [messageToForward, setMessageToForward] = useState<Message | undefined>(undefined);
@@ -112,19 +112,21 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   // Handle typing indicators
   const handleTypingStart = useCallback((data: any) => {
-    if (data.conversationId === selectedConversationId && data.userId !== user?.id) {
+    // Check if the typing user is NOT the current user (using profileId for comparison)
+    const currentProfileId = user?.profileId || user?.id;
+    if (data.conversationId === selectedConversationId && data.userId !== currentProfileId) {
       setTypingUsers(prev => {
         const newMap = new Map(prev);
-        newMap.set(data.userId, data.userName);
+        newMap.set(String(data.userId), data.userName);
         return newMap;
       });
     }
-  }, [selectedConversationId, user?.id]);
+  }, [selectedConversationId, user?.id, user?.profileId]);
 
   const handleTypingStop = useCallback((data: any) => {
     setTypingUsers(prev => {
       const newMap = new Map(prev);
-      newMap.delete(data.userId);
+      newMap.delete(String(data.userId));
       return newMap;
     });
   }, []);
@@ -339,11 +341,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
     setIsSending(true);
     try {
+      // Use profileId if available (preferred for chat), otherwise fallback to id
+      const senderId = user.profileId || user.id;
+      
       // Optimistically add message to UI
       const optimisticMessage: Message = {
         id: `temp-${Date.now()}`,  // Temporary ID until server responds
         conversationId: selectedConversationId,
-        senderId: user.id, // Use user.id directly
+        senderId: senderId, 
         senderName: `${user.firstName} ${user.lastName}`,
         senderAvatar: undefined,
         content,
@@ -499,7 +504,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   // Handle typing indicators
   const handleTyping = useCallback(() => {
     if (selectedConversationId && user) {
-      const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10);
+      // Use profileId if available (preferred for chat), otherwise fallback to id
+      // Don't force parseInt as IDs are now UUID strings
+      const userId = user.profileId || user.id;
       chatClient.sendTypingIndicator(
         selectedConversationId,
         userId,
@@ -510,7 +517,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const handleStopTyping = useCallback(() => {
     if (selectedConversationId && user) {
-      const userId = typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10);
+      // Use profileId if available (preferred for chat), otherwise fallback to id
+      const userId = user.profileId || user.id;
       chatClient.stopTypingIndicator(selectedConversationId, userId);
     }
   }, [selectedConversationId, user]);
@@ -639,7 +647,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               <div className="flex-1 min-h-0 flex flex-col">
                 <MessageList
                   messages={messages}
-                  currentUserId={user.id} // Pass directly as string or number
+                  currentUserId={user.profileId || user.id} // Pass profileId (preferred) or id
                   onEditMessage={handleEditMessage}
                   onDeleteMessage={handleDeleteMessage}
                   onReplyMessage={handleReplyMessage}
