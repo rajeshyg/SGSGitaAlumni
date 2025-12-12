@@ -11,9 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Alert, AlertDescription } from '../ui/alert';
 import { APIService } from '../../services/APIService';
 
-interface AnalyticsDashboardProps {
-  // No props needed - uses API service
-}
+interface AnalyticsDashboardProps {}
 
 interface InvitationAnalytics {
   profileCompletion: {

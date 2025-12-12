@@ -20,9 +20,7 @@ type FamilyMember = UserProfile & {
   current_age?: number;
 };
 
-interface FamilySetupPageProps {
-  // No props needed - uses location state
-}
+interface FamilySetupPageProps {}
 
 interface LocationState {
   user?: {

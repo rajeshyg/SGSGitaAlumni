@@ -79,7 +79,7 @@ export interface QualityRecommendations {
   estimatedImpact: 'Low' | 'Medium' | 'High';
   estimatedEffort: 'Low' | 'Medium' | 'High';
   actions: string[];
-}[]
+}
 
 export interface RemediationStrategy {
   issue: QualityIssue;

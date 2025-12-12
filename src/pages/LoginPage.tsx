@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, StorageUtils } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
 import { OTPService } from '../services/OTPService';
-import { StorageUtils } from '../contexts/AuthContext';
 import { APIConfigDisplay } from '../components/APIConfigDisplay';
 
 // ============================================================================
@@ -44,10 +43,10 @@ export function LoginPage() {
 
       console.log('[LoginPage] isFamilyAccount check:', isFamilyAccount);
 
-      // For family accounts, redirect to onboarding page
+      // For family accounts, redirect to profile selection page
       if (isFamilyAccount) {
-        console.log('🔄 LoginPage: Family account detected, redirecting to onboarding');
-        navigate('/onboarding', { replace: true });
+        console.log('🔄 LoginPage: Family account detected, redirecting to profile selection');
+        navigate('/profile-selection', { replace: true });
         return;
       }
 
@@ -136,16 +135,8 @@ export function LoginPage() {
         hasRefreshToken: !!response.refreshToken,
         tokenLength: response.token?.length,
         refreshTokenLength: response.refreshToken?.length,
-        user: response.user,
-        requiresProfileSelection: response.requiresProfileSelection
+        user: response.user 
       });
-
-      // Check if profile selection is required
-      if (response.requiresProfileSelection) {
-        console.log('🔐 [LoginPage] 🔄 Profile selection required, redirecting...');
-        navigate('/onboarding', { replace: true });
-        return;
-      }
 
       // CRITICAL: Verify tokens were stored immediately after login
       console.log('🔐 [LoginPage] 🔍 VERIFYING TOKEN STORAGE...');

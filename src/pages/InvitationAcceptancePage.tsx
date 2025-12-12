@@ -41,9 +41,7 @@ interface InvitationValidationResponse {
   };
 }
 
-interface InvitationAcceptancePageProps {
-  // No props needed - uses URL params
-}
+interface InvitationAcceptancePageProps {}
 
 export const InvitationAcceptancePage: React.FC<InvitationAcceptancePageProps> = () => {
   const { token } = useParams<{ token: string }>();

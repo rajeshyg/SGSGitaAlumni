@@ -15,12 +15,21 @@ describe('Moderation Queue API', () => {
   let moderatorToken;
   let testPostingId;
   let testUserId;
+  const testDomainId = 'f7b3c9a0-0e1a-4d3b-8c2e-7f8a6d5c4b1a'; // Example UUID for testing
 
   beforeAll(async () => {
     // Create test moderator user
     const [userResult] = await db.query(
-      `INSERT INTO app_users (id, email, first_name, last_name, password_hash, role, email_verified)
-       VALUES (UUID(), 'moderator@test.com', 'Test', 'Moderator', 'hash', 'moderator', 1)`
+      `INSERT INTO accounts (id, email, password_hash, role)
+       VALUES (UUID(), 'moderator@test.com', 'hash', 'moderator')`
+    );
+    testUserId = userResult.insertId;
+
+    // We need a user_profile for the account
+    await db.query(
+      `INSERT INTO user_profiles (id, account_id, alumni_member_id, relationship)
+       VALUES (UUID(), ?, 1, 'parent')`, // Assuming alumni_member_id 1 exists and 'parent' is a valid relationship
+      [testUserId]
     );
     
     // Login to get token
@@ -35,9 +44,9 @@ describe('Moderation Queue API', () => {
     
     // Create test posting
     const [postingResult] = await db.query(
-      `INSERT INTO POSTINGS (id, title, description, posting_type, domain_id, created_by, moderation_status)
-       VALUES (UUID(), 'Test Posting', 'Test Description', 'JOB', ?, ?, 'PENDING')`,
-      [testDomainId, userResult.insertId]
+      `INSERT INTO POSTINGS (id, title, content, posting_type, author_id, moderation_status)
+       VALUES (UUID(), 'Test Posting', 'Test Description', 'JOB', (SELECT id FROM user_profiles WHERE account_id = ?), 'PENDING')`,
+      [testUserId]
     );
     
     testPostingId = postingResult.insertId;

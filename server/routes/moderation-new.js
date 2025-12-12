@@ -19,6 +19,7 @@
 
 import express from 'express';
 import { getPool } from '../../utils/database.js';
+import { logger } from '../../utils/logger.js';
 import { z } from 'zod';
 import { validateRequest } from '../middleware/validation.js';
 import { ValidationError, ResourceError, ServerError } from '../errors/ApiError.js';
@@ -101,6 +102,7 @@ const requireModerator = async (req, res, next) => {
     }
 
     if (!isModeratorRole && !isAdminRole) {
+      logger.warn('Access denied: User is not a moderator', { userId: req.user.id, role: normalizedRole });
       return res.status(403).json({
         success: false,
         error: 'Moderator or Admin access required',
@@ -113,7 +115,7 @@ const requireModerator = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Authentication check failed:', error);
+    logger.error('Authentication check failed in requireModerator', error);
     res.status(500).json({
       success: false,
       error: 'Authentication check failed',
@@ -128,7 +130,7 @@ const requireModerator = async (req, res, next) => {
 
 const sendModerationNotification = async (type, data) => {
   // TODO: Implement email notifications (Day 5)
-  console.log(`[Notification] ${type}:`, data);
+  logger.info(`[Notification] ${type}:`, data);
 };
 
 const calculateExpiryDate = (posting, customDate = null) => {
@@ -165,7 +167,7 @@ router.get('/queue',
 
     const offset = (page - 1) * limit;
 
-    console.log('[MODERATION_QUEUE] Fetching queue with params:', { page, limit, domain, status, search, sortBy });
+    logger.debug('[MODERATION_QUEUE] Fetching queue', { page, limit, domain, status, search, sortBy });
 
     // Build WHERE conditions
     const conditions = [];
@@ -173,10 +175,10 @@ router.get('/queue',
 
     // Status filter - using 'moderation_status' field for moderation queue filtering
     if (status !== 'all') {
-      conditions.push('p.moderation_status COLLATE utf8mb4_unicode_ci = ?');
+      conditions.push('p.moderation_status = ?');
       params.push(status);
     } else {
-      conditions.push("p.moderation_status COLLATE utf8mb4_unicode_ci IN ('PENDING', 'ESCALATED')");
+      conditions.push("p.moderation_status IN ('PENDING', 'ESCALATED')");
     }
 
     // Domain filter (through junction table)
@@ -196,8 +198,7 @@ router.get('/queue',
       ? `WHERE ${conditions.join(' AND ')}`
       : '';
 
-    console.log('[MODERATION_QUEUE] WHERE clause:', whereClause);
-    console.log('[MODERATION_QUEUE] Query params:', params);
+    logger.debug('[MODERATION_QUEUE] Query construction', { whereClause, params });
 
     // Build ORDER BY clause
     let orderByClause;
@@ -222,14 +223,15 @@ router.get('/queue',
        ${whereClause}`,
       params
     ).catch(err => {
+      logger.error('Database error in fetch moderation queue count', err);
       throw ServerError.database('fetch moderation queue count');
     });
     const totalItems = countResult[0].total;
     const totalPages = Math.ceil(totalItems / limit);
 
-    console.log('[MODERATION_QUEUE] Total items found:', totalItems);
+    logger.debug('[MODERATION_QUEUE] Count result', { totalItems, totalPages });
 
-    // Get queue items with all necessary joins - MIGRATED: app_users → accounts + user_profiles
+    // Get queue items with all necessary joins - FIXED: Joined via user_profiles
     const [postings] = await getDbPool().query(
       `SELECT DISTINCT
         p.id,
@@ -240,7 +242,7 @@ router.get('/queue',
         p.created_at,
         p.expires_at,
         p.version,
-        a.id as submitter_id,
+        up.id as submitter_id,
         am.first_name,
         am.last_name,
         a.email as submitter_email,
@@ -264,11 +266,11 @@ router.get('/queue',
         (SELECT COUNT(*)
          FROM MODERATION_HISTORY mh2
          INNER JOIN POSTINGS p2 ON mh2.posting_id = p2.id
-         WHERE p2.author_id = a.id
+         WHERE p2.author_id = up.id
          AND mh2.action = 'REJECTED') as submitter_rejection_count
       FROM POSTINGS p
-      INNER JOIN accounts a ON p.author_id = a.id
-      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      INNER JOIN user_profiles up ON p.author_id = up.id
+      INNER JOIN accounts a ON up.account_id = a.id
       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       ${domain ? 'INNER JOIN POSTING_DOMAINS pd_filter ON p.id = pd_filter.posting_id' : ''}
       ${whereClause}
@@ -276,12 +278,13 @@ router.get('/queue',
       LIMIT ? OFFSET ?`,
       [...params, parseInt(limit), parseInt(offset)]
     ).catch(err => {
+      logger.error('Database error in fetch moderation queue postings', err);
       throw ServerError.database('fetch moderation queue postings');
     });
 
-    console.log('[MODERATION_QUEUE] Postings fetched:', postings.length);
+    logger.debug('[MODERATION_QUEUE] Postings fetched', { count: postings.length });
     if (postings.length > 0) {
-      console.log('[MODERATION_QUEUE] First posting:', { id: postings[0].id, title: postings[0].title, status: postings[0].moderation_status });
+      logger.debug('[MODERATION_QUEUE] Sample posting', { id: postings[0].id, title: postings[0].title, status: postings[0].moderation_status });
     }
 
     // Parse JSON fields for domains
@@ -312,6 +315,7 @@ router.get('/queue',
       FROM POSTINGS
       WHERE moderation_status IN ('PENDING', 'ESCALATED')`
     ).catch(err => {
+      logger.error('Database error in fetch moderation queue statistics', err);
       throw ServerError.database('fetch moderation queue statistics');
     });
 
@@ -373,7 +377,7 @@ router.post('/approve',
       // Calculate final expiry date
       const finalExpiryDate = calculateExpiryDate(posting, expiryDate);
 
-      // Update posting status (moderated_by is now bigint)
+      // Update posting status (moderated_by is now UUID)
       const [updateResult] = await connection.query(
         `UPDATE POSTINGS
          SET moderation_status = 'APPROVED',
@@ -394,7 +398,7 @@ router.post('/approve',
         throw ValidationError.invalidData('Posting was modified by another moderator. Please refresh and try again.');
       }
 
-      // Insert moderation history (moderator_id is now bigint)
+      // Insert moderation history (moderator_id is now UUID)
       await connection.query(
         `INSERT INTO MODERATION_HISTORY
          (posting_id, moderator_id, action, moderator_notes)
@@ -412,7 +416,7 @@ router.post('/approve',
         postingTitle: posting.title,
         authorId: posting.author_id,
         moderatorId
-      }).catch(err => console.error('Notification failed:', err));
+      }).catch(err => logger.error('Notification failed:', err));
 
       res.json({
         success: true,
@@ -512,7 +516,7 @@ router.post('/reject',
         rejectionReason: reason,
         feedback: feedbackToUser,
         moderatorId
-      }).catch(err => console.error('Notification failed:', err));
+      }).catch(err => logger.error('Notification failed:', err));
 
       res.json({
         success: true,
@@ -609,7 +613,7 @@ router.post('/escalate',
         escalationReason,
         escalationNotes,
         moderatorId
-      }).catch(err => console.error('Notification failed:', err));
+      }).catch(err => logger.error('Notification failed:', err));
 
       res.json({
         success: true,
@@ -645,20 +649,20 @@ router.get('/posting/:id',
       throw ValidationError.invalidData('Invalid posting ID format');
     }
 
-    // Get posting with submitter details - MIGRATED: app_users → accounts + user_profiles
+    // Get posting with submitter details - FIXED: Joined via user_profiles
     const [postings] = await getDbPool().query(
       `SELECT
         p.*,
         pd.domain_id,
         d.name as domain_name,
-        a.id as submitter_id,
+        up.id as submitter_id,
         am.first_name as submitter_first_name,
         am.last_name as submitter_last_name,
         a.email as submitter_email,
         a.created_at as submitter_joined_date
       FROM POSTINGS p
-      INNER JOIN accounts a ON p.author_id = a.id
-      LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+      INNER JOIN user_profiles up ON p.author_id = up.id
+      INNER JOIN accounts a ON up.account_id = a.id
       LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
       LEFT JOIN POSTING_DOMAINS pd ON p.id = pd.posting_id AND pd.is_primary = 1
       LEFT JOIN DOMAINS d ON pd.domain_id = d.id

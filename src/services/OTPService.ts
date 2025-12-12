@@ -4,14 +4,7 @@
 // Service for managing One-Time Password authentication
 
 // Type imports and error classes
-import type {
-  OTPToken,
-  OTPRequest,
-  OTPVerificationRequest,
-  OTPValidation,
-  OTPServiceInterface,
-  OTPType
-} from '../types/invitation';
+import type { OTPToken, OTPRequest, OTPVerificationRequest, OTPValidation, OTPServiceInterface, OTPType } from '../types/invitation';
 import { OTPError } from '../types/invitation';
 
 // External services

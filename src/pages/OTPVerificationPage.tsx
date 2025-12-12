@@ -17,9 +17,7 @@ import {
   OTPError
 } from '../types/invitation';
 
-interface OTPVerificationPageProps {
-  // No props needed - uses URL params and location state
-}
+interface OTPVerificationPageProps {}
 
 interface LocationState {
   email?: string;

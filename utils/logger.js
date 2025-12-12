@@ -3,6 +3,8 @@
 // ============================================================================
 // Environment-aware logging with sensitive data sanitization
 
+import { logToFile } from './file-logger.js';
+
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -67,6 +69,9 @@ export const logger = {
    * Log warnings (always logged, sanitized in production)
    */
   warn: (message, ...args) => {
+    // Write to file system
+    logToFile('WARN', 'SERVER', message);
+
     if (isProduction) {
       console.warn(`[WARN] ${message}`);
     } else {
@@ -79,6 +84,13 @@ export const logger = {
    * Log errors (always logged, sanitized in production)
    */
   error: (message, ...args) => {
+    // Extract stack if an Error object is present in args
+    const errorObj = args.find(arg => arg instanceof Error);
+    const stack = errorObj ? errorObj.stack : undefined;
+    
+    // Write to file system
+    logToFile('ERROR', 'SERVER', message, stack);
+
     if (isProduction) {
       // In production, only log the message, not the args (may contain sensitive data)
       console.error(`[ERROR] ${message}`);

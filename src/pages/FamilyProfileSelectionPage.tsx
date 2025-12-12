@@ -153,10 +153,7 @@ const useFamilyInvitation = (token: string | undefined) => {
   };
 };
 
-interface FamilyProfileSelectionPageProps {
-  // No props needed - uses URL params
-   
-}
+interface FamilyProfileSelectionPageProps {}
 
 // ============================================================================
 // SUB-COMPONENTS

@@ -133,7 +133,6 @@ function renderTableHeader(
   )
 }
 
-/* eslint-disable max-lines-per-function */
 export function TableHeader({
   groupHeaders,
   table,

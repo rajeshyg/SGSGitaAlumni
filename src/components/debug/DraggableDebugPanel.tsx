@@ -55,9 +55,6 @@ export const DraggableDebugPanel: React.FC = () => {
   const isAuthenticated = auth?.isAuthenticated ?? false;
   const isLoading = auth?.isLoading ?? true;
 
-  if (!isDevelopment) {
-    return null;
-  }
   const panelRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
 
@@ -107,6 +104,10 @@ export const DraggableDebugPanel: React.FC = () => {
     reconnectAttempts: 0,
     socketUrl: window.location.origin,
   });
+
+  if (!isDevelopment) {
+    return null;
+  }
 
   // Persist visibility
   useEffect(() => {

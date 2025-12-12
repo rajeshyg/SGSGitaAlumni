@@ -13,9 +13,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Calendar } from 'lucide-react';
 import { APIService } from '../services/APIService';
 
-interface ProfileCompletionPageProps {
-  // No props needed - uses location state
-}
+interface ProfileCompletionPageProps {}
 
 interface UserData {
   id: string;

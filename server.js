@@ -42,6 +42,7 @@ import { getPool, testDatabaseConnection, startPoolMonitoring } from './utils/da
 import { authenticateToken, setAuthMiddlewarePool } from './middleware/auth.js';
 import { loginRateLimit, invitationRateLimit, apiRateLimit, emailRateLimit, searchRateLimit, registrationRateLimit, otpRateLimit, rateLimitStatus, clearRateLimit } from './middleware/rateLimit.js';
 import { monitoringMiddleware } from './middleware/monitoring.js';
+import { logSessionStart } from './utils/file-logger.js';
 import { validateRequest } from './server/middleware/validation.js';
 import { errorHandler, notFoundHandler } from './server/middleware/errorHandler.js';
 
@@ -235,6 +236,15 @@ app.use(express.json());
 
 // Monitoring middleware (must be early in the stack)
 app.use(monitoringMiddleware);
+
+// ============================================================================
+// DEVELOPMENT ROUTES (Only available in non-production)
+// ============================================================================
+if (process.env.NODE_ENV !== 'production') {
+  const { default: devRouter } = await import('./routes/dev.js');
+  app.use('/api/dev', devRouter);
+  console.log('🛠️  Dev tools enabled at /api/dev');
+}
 
 // AUTHENTICATION ROUTES
 // ============================================================================
@@ -705,6 +715,7 @@ try {
 
 
 const server = app.listen(PORT, '0.0.0.0', async () => {
+  logSessionStart(); // Mark the start of a new logging session
   try {
     // Get actual network IP
     const os = await import('os');

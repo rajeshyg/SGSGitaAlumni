@@ -85,7 +85,6 @@ function createEnhancedColumns<T extends Record<string, unknown>>(
 
 
 
-/* eslint-disable max-lines-per-function, complexity */
 export function TanStackAdvancedTable<T extends Record<string, unknown>>({
   data,
   columns,
