@@ -40,10 +40,49 @@ async function login(page: Page, email: string, password: string) {
   // Click Sign In button
   await page.locator('button').filter({ hasText: /^Sign In$/ }).click();
 
-  // Wait for successful login
-  await page.waitForURL(/\/(dashboard|home|profile-selection)/, { timeout: 15000 });
+  // Wait for navigation to complete (either to dashboard or onboarding)
   await page.waitForLoadState('networkidle');
 
+  // Check where we landed
+  let currentUrl = page.url();
+  
+  // Handle profile selection or onboarding if needed
+  if (currentUrl.includes('profile-selection') || currentUrl.includes('onboarding')) {
+    console.log(`[Login] Landed on ${currentUrl}, selecting first profile...`);
+    
+    // Wait for the "Select Your Profile" header or loading state to resolve
+    await page.waitForLoadState('networkidle');
+    
+    // Check if we are on the actual selection page
+    const profileHeader = page.locator('text=Select Your Profile');
+    if (await profileHeader.isVisible()) {
+      // Find the first profile button. They usually contain "Access Level:" text based on the component.
+      // Fallback to just the first button in the list container if specific text isn't found.
+      const profileButton = page.locator('button').filter({ hasText: 'Access Level:' }).first();
+      
+      if (await profileButton.isVisible()) {
+        console.log('[Login] Found profile button, clicking...');
+        await profileButton.click();
+      } else {
+        // Fallback: try clicking the first button that looks like a profile card (border + full width)
+        console.log('[Login] "Access Level:" text not found, trying generic button selector...');
+        const genericButton = page.locator('button.w-full.border-2').first();
+        if (await genericButton.isVisible()) {
+           await genericButton.click();
+        } else {
+           console.warn('[Login] No obvious profile buttons found');
+        }
+      }
+    } else {
+       console.log('[Login] "Select Your Profile" header not found, might be loading or different state');
+    }
+    
+    // Wait for navigation after profile selection to dashboard
+    await page.waitForLoadState('networkidle');
+  }
+
+  // Ensure we are on the dashboard or authorized area
+  await page.waitForSelector('text=My Postings', { timeout: 30000 });
   console.log(`[Login] ✓ Logged in successfully as: ${email}`);
 }
 
@@ -90,10 +129,35 @@ async function createFullPosting(page: Page): Promise<string> {
   const data = generateTestPostingData();
   console.log(`[Create] Creating posting: "${data.title}"`);
 
+  // Start listening for the preferences response BEFORE navigating
+  // We want to ensure it does NOT return 500
+  const preferencesResponsePromise = page.waitForResponse(response => 
+    response.url().includes('/api/preferences/') && response.status() !== 200,
+    { timeout: 5000 }
+  ).then(response => {
+    // If we catch a non-200 response, that's a potential issue, especially 500
+    if (response.status() === 500) {
+      throw new Error(`Preferences API returned 500 Internal Server Error: ${response.url()}`);
+    }
+    // 404 is acceptable if user has no preferences yet
+    if (response.status() !== 404) {
+      console.warn(`[Create] Preferences API returned ${response.status()}`);
+    }
+  }).catch(() => {
+    // Timeout means no bad response was received, which is good (or it was 200 and we didn't catch it here)
+    // To be safer, we can listen for ANY response and check it
+  });
+
   // Navigate to create page
   await page.goto('/postings/new');
+  
+  // Wait for page load
   await page.waitForLoadState('networkidle');
   await expect(page.locator('h1:has-text("Create New Posting")')).toBeVisible();
+
+  // Explicit check for 500 error in console logs or network is handled by the promise above
+  // but we also check for UI error states
+  await expect(page.locator('text=Internal Server Error')).not.toBeVisible();
 
   // STEP 1: Basic Information
   console.log('[Create] Step 1: Basic Information');

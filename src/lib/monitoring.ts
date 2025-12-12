@@ -1,6 +1,24 @@
 import * as Sentry from '@sentry/react'
 import { config } from '@/config/environments'
 
+// Helper to send logs to backend terminal in development
+function sendToDevBackend(type: 'ERROR' | 'WARN' | 'UNCAUGHT', message: string, stack?: string) {
+  if (import.meta.env.PROD) return;
+
+  // Debounce/Throttle could be added here if needed
+  try {
+    fetch('/api/dev/client-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        type, 
+        message: String(message), 
+        stack: stack 
+      })
+    }).catch(() => { /* Ignore network errors to avoid loops */ });
+  } catch (e) { /* Ignore */ }
+}
+
 export function initializeMonitoring() {
   if (config.sentryDsn) {
     Sentry.init({
@@ -14,6 +32,20 @@ export function initializeMonitoring() {
       replaysSessionSampleRate: 0.1,
       replaysOnErrorSampleRate: 1.0,
     })
+  }
+
+  // Hook into global errors only in development
+  if (import.meta.env.DEV) {
+    window.onerror = (message, source, lineno, colno, error) => {
+      sendToDevBackend('UNCAUGHT', `In ${source}:${lineno}`, error?.stack || String(message));
+      return false; // Let default handler run
+    };
+
+    window.onunhandledrejection = (event) => {
+      sendToDevBackend('UNCAUGHT', 'Unhandled Promise Rejection', String(event.reason));
+    };
+    
+    console.log('🔌 [Dev] Client logging bridge active');
   }
 }
 
@@ -32,6 +64,9 @@ export const logger = {
   warn: (message: string, ...args: unknown[]) => {
     // eslint-disable-next-line no-console
     console.warn(`[WARN] ${message}`, ...args)
+    // Also send warnings to backend for visibility
+    sendToDevBackend('WARN', message);
+
     if (config.sentryDsn) {
       Sentry.addBreadcrumb({
         message,
@@ -43,6 +78,11 @@ export const logger = {
   error: (message: string, ...args: unknown[]) => {
     // eslint-disable-next-line no-console
     console.error(`[ERROR] ${message}`, ...args)
+    
+    // Send to backend
+    const stack = args.find(a => a instanceof Error) ? (args.find(a => a instanceof Error) as Error).stack : undefined;
+    sendToDevBackend('ERROR', message, stack);
+
     if (config.sentryDsn) {
       Sentry.captureMessage(message, {
         level: 'error',
@@ -55,6 +95,10 @@ export const logger = {
 export function logError(error: Error, context?: Record<string, any>) {
   // eslint-disable-next-line no-console
   console.error('Application Error:', error)
+  
+  // Send to backend
+  sendToDevBackend('ERROR', error.message, error.stack);
+
   if (config.sentryDsn) {
     Sentry.captureException(error, { extra: context })
   }

@@ -216,3 +216,51 @@ GET http://localhost:5173/api/preferences/56bc72b1-59d0-4921-b4e2-b369ca1f05f7 5
 - Dashboard loads without collation errors
 - Create Posting page loads user preferences correctly
 - Database schema standardized to `utf8mb4_0900_ai_ci`
+
+### 10. My Postings Fix (2025-12-10)
+**Issue:** "My Postings" page showing 0 posts despite user having created postings.
+**Root Cause:** ID mismatch between frontend request and backend data.
+- Frontend (`MyPostingsPage.tsx`) sends **Account ID** in the URL: `/api/postings/my/:userId`.
+- Backend (`routes/postings.js`) used this ID directly to query `POSTINGS.author_id`.
+- Database `POSTINGS` table uses **Profile ID** for `author_id` (correct new architecture).
+- Query `WHERE author_id = 'ACCOUNT_ID'` returned 0 results.
+
+**Fix Applied:**
+- Updated `routes/postings.js` logic for `GET /api/postings/my/:userId`.
+- If the requested `userId` matches the authenticated `Account ID`, the backend now automatically uses the session's `activeProfileId` for the database query.
+- This maintains backward compatibility with the frontend while querying the correct data structure.
+- Also added support for direct Profile ID querying for future frontend updates.
+
+**Verification:**
+- Verified `POSTINGS` table data confirms `author_id` columns store valid Profile IDs.
+- Verified these Profile IDs are linked to the user's Account ID.
+- The new logic correctly bridges the gap between Account-based request and Profile-based data.
+
+### 11. Next Steps: Update Playwright E2E Tests
+To ensure the stability of the postings module and prevent future regressions (like the "My Postings" empty list issue), the End-to-End (E2E) tests must be updated.
+
+**Target File:** `tests/e2e/postings.spec.ts`
+
+**Required Test Scenarios:**
+
+1.  **Create New Posting:**
+    *   Simulate a user logging in and selecting a profile (ensure `activeProfileId` is set in session).
+    *   Navigate to "Create New Posting" (`/postings/new`).
+    *   Verify user preferences are loaded (no 500 error).
+    *   Fill out the form (Title, Type, Category, Content, Domains, etc.).
+    *   Submit the form and verify success message/redirection.
+
+2.  **Verify "My Postings":**
+    *   Navigate to "My Postings" (`/postings/my`).
+    *   **Validation Point:** Verify that the *newly created posting* appears in the list. This specifically tests the fix for the Account ID vs. Profile ID mismatch.
+    *   Verify the status of the posting (e.g., "Pending Review" or "Active").
+
+3.  **Edit Existing Posting:**
+    *   From the "My Postings" list, click "Edit" on a posting.
+    *   Modify a field (e.g., Title or Content).
+    *   Save changes.
+    *   Verify the changes are reflected in the "My Postings" list and/or Posting Detail view.
+
+**Implementation Notes:**
+*   Ensure the test user has a valid profile setup.
+*   The tests must handle the `requiresProfileSelection` flow if they use the standard UI login, or mock the session state with `activeProfileId` correctly if bypassing UI login.

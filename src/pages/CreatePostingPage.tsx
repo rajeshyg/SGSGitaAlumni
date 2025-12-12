@@ -363,6 +363,7 @@ const CreatePostingPage: React.FC = () => {
 
       const draftData = {
         ...formData,
+        authorId: user?.profileId, // Add this line
         status: 'draft',
         expires_at: formData.expiry_date
           ? new Date(formData.expiry_date + 'T00:00:00Z').toISOString()
@@ -411,6 +412,7 @@ const CreatePostingPage: React.FC = () => {
 
       const submissionData = {
         ...formData,
+        authorId: user?.profileId, // Add this line
         domain_ids, // API expects domain_ids array
         expires_at: formData.expiry_date
           ? new Date(formData.expiry_date + 'T00:00:00Z').toISOString()

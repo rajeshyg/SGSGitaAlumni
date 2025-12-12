@@ -1,58 +1,101 @@
 ---
-version: "1.0"
+version: "1.1"
 status: implemented
-last_updated: 2025-11-23
-applies_to: backend
+last_updated: 2025-12-12
+applies_to: backend, frontend
 ---
 
 # Logging Architecture
 
 ## Overview
 
-This document describes the logging implementation for the SGS Gita Alumni platform, including log levels, formats, sensitive data filtering, and usage patterns across the codebase.
+This document describes the logging implementation for the SGS Gita Alumni platform, focusing on the "Unified Stream" architecture that centralizes both backend and frontend errors into a single, persistent log file for efficient debugging and AI analysis.
+
+## Core Architecture: Unified Stream
+
+The platform implements a **Unified Logging Stream** that routes all significant errors (Server and Client) to a centralized file on the backend.
+
+### Components
+
+1.  **File Logger (`utils/file-logger.js`)**:
+    *   Core utility that appends logs to `logs/errors.log`.
+    *   Handles session separation (markers on server start).
+    *   Thread-safe append operations.
+
+2.  **Server Logger (`utils/logger.js`)**:
+    *   Wraps the File Logger.
+    *   Automatically persists `error` and `warn` level logs to disk.
+
+3.  **Client Bridge (`routes/dev.js`)**:
+    *   Development-only endpoint (`POST /api/dev/client-log`).
+    *   Receives errors from the frontend.
+    *   Tags them with `[CLIENT]` and writes them to the unified log file.
+    *   Also echoes them to the Server Console for immediate visual feedback.
+
+4.  **Frontend Monitor (`src/lib/monitoring.ts`)**:
+    *   Intercepts `logger.error`, `logger.warn`, `window.onerror`, and `unhandledrejection`.
+    *   Forwards these events to the Client Bridge in development mode.
 
 ## Logger Implementation
 
 **Primary Implementation**: `/utils/logger.js`
 
-The platform uses a custom environment-aware logger with sensitive data sanitization.
+The platform uses a custom environment-aware logger that integrates with the file system.
 
 ```javascript
 // utils/logger.js
+import { logToFile } from './file-logger.js';
+
 export const logger = {
-  info: (message, ...args) => { /* ... */ },
-  debug: (message, ...args) => { /* ... */ },
-  warn: (message, ...args) => { /* ... */ },
-  error: (message, ...args) => { /* ... */ },
-  security: (message, context = {}) => { /* ... */ },
-  audit: (action, userId, details = {}) => { /* ... */ }
+  // ... info/debug (console only) ...
+
+  warn: (message, ...args) => {
+    logToFile('WARN', 'SERVER', message); // Persist
+    // ... console output ...
+  },
+
+  error: (message, ...args) => {
+    const stack = args.find(a => a instanceof Error)?.stack;
+    logToFile('ERROR', 'SERVER', message, stack); // Persist
+    // ... console output ...
+  }
 }
 ```
+
+## Log File: `logs/errors.log`
+
+This file serves as the "Source of Truth" for debugging sessions.
+
+*   **Location**: `logs/errors.log` (gitignored)
+*   **Format**:
+    ```text
+    [2025-12-12T10:00:00.000Z] [ERROR] [SERVER] Database connection failed
+    Stack: Error: Connection refused...
+    --------------------------------------------------------------------------------
+    [2025-12-12T10:00:05.000Z] [ERROR] [CLIENT] Failed to load user profile
+    Stack: Error: Network Error...
+    --------------------------------------------------------------------------------
+    ```
+*   **Session Markers**: A distinct separator is written on every server start to identify new debugging sessions.
+
+### Management Commands
+
+*   `npm run clear-logs`: Deletes `logs/errors.log` to start a fresh debugging session.
 
 ## Log Levels
 
 ### Level Hierarchy
 
-| Level | Description | Environment | Use Case |
-|-------|-------------|-------------|----------|
-| `debug` | Detailed debugging info | Development only | Variable values, flow tracing |
-| `info` | General information | Development only | Startup, request info |
-| `warn` | Warning conditions | All environments | Degraded service, deprecations |
-| `error` | Error conditions | All environments | Failures, exceptions |
-| `security` | Security events | All environments | Auth failures, access denials |
-| `audit` | Audit trail | All environments | User actions, data changes |
+| Level | Description | Environment | Persistence | Use Case |
+|-------|-------------|-------------|-------------|----------|
+| `debug` | Detailed debugging info | Development | Console | Variable values, flow tracing |
+| `info` | General information | Development | Console | Startup, request info |
+| `warn` | Warning conditions | All | **File + Console** | Degraded service, deprecations |
+| `error` | Error conditions | All | **File + Console** | Failures, exceptions |
+| `security`| Security events | All | Console | Auth failures, access denials |
+| `audit` | Audit trail | All | Console | User actions, data changes |
 
-### Environment Behavior
-
-**Development** (`NODE_ENV=development`):
-- All log levels enabled
-- Full details included with sanitization
-- Pretty printed output
-
-**Production** (`NODE_ENV=production`):
-- Only `warn`, `error`, `security`, `audit` logged
-- Minimal details for security
-- Arguments stripped from error logs
+*(Note: Security and Audit logs are currently console-only but slated for database/file persistence)*
 
 ## Log Format
 
@@ -62,16 +105,12 @@ export const logger = {
 [LEVEL] message { sanitized_data }
 ```
 
-### Security Format
+### Unified File Format
 
 ```
-[SECURITY] 2025-11-23T10:30:00.000Z - message { context }
-```
-
-### Audit Format
-
-```
-[AUDIT] 2025-11-23T10:30:00.000Z - User user-123 - action { details }
+[TIMESTAMP] [LEVEL] [SOURCE] MESSAGE
+Stack: (if available)
+-----------------------
 ```
 
 ## Sensitive Data Filtering
@@ -115,174 +154,37 @@ function sanitize(data) {
 }
 ```
 
-### Redacted Fields
-
-- `password`
-- `token`
-- `secret`
-- `authorization`
-- `password_hash`
-
 ## Usage Patterns
 
-### Authentication Middleware
-
-**File**: `/middleware/auth.js`
+### Standard Logging (Preferred)
 
 ```javascript
-import { logger } from '../utils/logger.js';
+import { logger } from '../utils/logger.js'; // Backend
+// OR
+import { logger } from '@/lib/monitoring'; // Frontend
 
-// Token verification
-logger.debug('Auth middleware request', { path: req.path, hasToken: !!token });
-
-// Auth failure
-logger.debug('Auth failed: no token provided');
-logger.debug('JWT verification failed', { error: err.message });
-
-// Auth success
-logger.debug('Authentication successful');
+// These will automatically be captured to logs/errors.log
+logger.error('Failed to process payment', error);
+logger.warn('Rate limit approaching', { count: 50 });
 ```
 
-### Age Access Control
+### Legacy Logging (To Be Deprecated)
 
-**File**: `/middleware/ageAccessControl.js`
-
-```javascript
-// Platform access denied
-logger.security('Platform access denied - no access permission', {
-  userId: req.user.id,
-  reason: 'no_platform_access'
-});
-
-// Parental consent required
-logger.security('Parent consent required but not given', {
-  userId,
-  memberAge
-});
-```
-
-### Monitoring Middleware
-
-**File**: `/middleware/monitoring.js`
+Direct calls to `console` bypass the file logger and are strictly for temporary local debugging.
 
 ```javascript
-// Request logging
-logger.debug(`Request: ${req.method} ${req.path}`, {
-  ip: clientIP,
-  userAgent
-});
-
-// Slow request warning
-logger.warn(`Slow request: ${req.method} ${req.path}`, {
-  duration,
-  threshold
-});
-
-// Response logging
-logger.debug(`Response: ${statusCode} (${duration}ms)`, {
-  method: req.method,
-  path: req.path
-});
-```
-
-### Rate Limiting
-
-**File**: `/middleware/rateLimit.js`
-
-```javascript
-// Rate limit checks
-console.log(`[RATE_LIMIT] ${policyName}: Starting rate limit check for ${req.path}`);
-console.log(`[RATE_LIMIT] ${policyName}: Redis check completed, result: ${result.allowed}`);
-```
-
-### Server Startup
-
-**File**: `/server.js`
-
-```javascript
-// Startup messages
-console.log(`Server running on http://0.0.0.0:${PORT}`);
-console.log(`MySQL Database: ${process.env.DB_NAME}`);
-console.log('Database connection test passed');
-
-// Error handling
-console.error('Database connection test failed:', dbError.message);
-console.error('Uncaught Exception:', error);
-```
-
-### Services
-
-**File**: `/services/FamilyMemberService.js`
-
-```javascript
-// Operation logging
-console.log('[FamilyMemberService] switchProfile called:', { userId, memberId });
-console.log('[FamilyMemberService] Profile switch complete!');
-
-// Error logging
-console.error('[FamilyMemberService] switchProfile ERROR:', error);
-console.error('[FamilyMemberService] Error stack:', error.stack);
-```
-
-## Logging Best Practices
-
-### Do
-
-- Use structured logging with context objects
-- Include request identifiers for tracing
-- Log at appropriate levels
-- Sanitize all user input before logging
-- Include timestamps for audit events
-- Use prefixes for service identification
-
-### Don't
-
-- Log passwords, tokens, or secrets
-- Log full request bodies without sanitization
-- Use `console.log` in production code paths
-- Log sensitive user data (SSN, credit cards, etc.)
-- Log stack traces in production
-
-## Migration from console.log
-
-### Current State
-
-The codebase uses a mix of:
-- Custom `logger` utility (preferred)
-- Direct `console.log/warn/error` calls (legacy)
-
-### Migration Pattern
-
-**Before** (Legacy):
-```javascript
+// AVOID IN PRODUCTION CODE
 console.log('User logged in', user);
 console.error('Database error:', error);
 ```
 
-**After** (Preferred):
-```javascript
-logger.info('User logged in', { userId: user.id });
-logger.error('Database error', { message: error.message });
-```
+## Migration Strategy
 
-## Future Improvements
+The goal is to move all critical application logging from `console.*` to `logger.*`.
 
-### Pending Enhancements
-
-- [ ] Replace all console.* with structured logger
-- [ ] Add request ID tracking
-- [ ] Implement log rotation
-- [ ] Add CloudWatch integration
-- [ ] JSON format for production logs
-- [ ] Log aggregation setup
-
-### Planned Logger Features
-
-```javascript
-// Proposed enhancements
-logger.withContext({ requestId, userId }).info('Operation complete');
-logger.child({ service: 'auth' }).debug('Token validated');
-```
+1.  **Backend Routes**: Replace `console.error` with `logger.error`.
+2.  **Frontend Services**: Replace `console.error` with `logger.error` (from monitoring).
+3.  **Startup Scripts**: Ensure startup errors use `logger`.
 
 ## Configuration
 
@@ -293,36 +195,21 @@ logger.child({ service: 'auth' }).debug('Token validated');
 | `NODE_ENV` | Environment mode | `development` |
 | `LOG_LEVEL` | Minimum log level | Based on NODE_ENV |
 
-### Recommended Settings
-
-**Development**:
-```bash
-NODE_ENV=development
-# All logs enabled, full details
-```
-
-**Production**:
-```bash
-NODE_ENV=production
-# warn/error/security/audit only
-```
-
 ## Monitoring Integration
 
 ### Current
 
-- Console output to stdout/stderr
-- Manual log review
+*   **Unified File**: `logs/errors.log` (Primary for AI/Dev debugging)
+*   **Console**: Combined output of Server + Client (via bridge)
+*   **Manual**: `npm run clear-logs` to reset.
 
 ### Planned
 
-- CloudWatch Logs integration
-- Sentry for error tracking
-- Log-based alerting
-- Performance metrics from logs
+*   CloudWatch Logs integration (Production)
+*   Sentry for error tracking (Production)
+*   Log rotation for `logs/errors.log`
 
 ## Related Specifications
 
 - [Error Handling](./error-handling.md) - Error logging patterns
 - [API Design](./api-design.md) - Request/response logging
-- [Performance](./performance.md) - Performance monitoring

@@ -15,7 +15,20 @@ import { v4 as uuidv4 } from 'uuid';
 import { authenticateToken } from '../middleware/auth.js';
 import { validateRequest } from '../server/middleware/validation.js';
 import { PostingCreateSchema, PostingUpdateSchema } from '../src/schemas/validation/index.js';
-import { ValidationError, ResourceError, ServerError } from '../server/errors/ApiError.js';
+import { 
+  ValidationError, 
+  ResourceError, 
+  ServerError, 
+  AuthError 
+} from '../server/errors/ApiError.js';
+
+// Debug check for AuthError import
+if (!AuthError) {
+  console.error('CRITICAL: AuthError failed to import in postings.js');
+} else {
+  // console.log('AuthError successfully imported in postings.js');
+}
+
 import { asyncHandler } from '../server/middleware/errorHandler.js';
 
 const router = express.Router();
@@ -305,9 +318,39 @@ router.get('/my/:userId', authenticateToken, asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { limit = 50, offset = 0 } = req.query;
 
-  // SECURITY: Ensure user can only access their own postings
-  if (req.user.id.toString() !== userId.toString()) {
-    throw ValidationError.unauthorized('You can only view your own postings');
+  // Resolve which Profile ID to query
+  let profileIdToQuery;
+
+  // Case 1: Param is Account ID (Legacy frontend behavior)
+  // If the frontend sends the Account ID, we assume they mean "postings for my active profile"
+  if (req.user.id.toString() === userId.toString()) {
+     profileIdToQuery = req.session.activeProfileId;
+     
+     if (!profileIdToQuery) {
+         console.warn('[GET /api/postings/my] Account ID provided but no active profile found in session.');
+         // If no active profile selected, we can't find their postings
+         return res.json({ 
+           success: true, 
+           postings: [], 
+           pagination: { total: 0, limit: parseInt(limit), offset: parseInt(offset) } 
+         });
+     }
+  } 
+  // Case 2: Param is Profile ID (New frontend behavior)
+  else if (req.session.activeProfileId && req.session.activeProfileId.toString() === userId.toString()) {
+     profileIdToQuery = userId;
+  }
+  // Case 3: Unauthorized or Mismatched ID
+  else {
+      // Check if it's one of the user's other profiles (e.g. parent viewing child's posts)
+      const userProfiles = req.session.profiles || [];
+      const isOwnedProfile = userProfiles.some(p => p.id === userId);
+      
+      if (isOwnedProfile) {
+          profileIdToQuery = userId;
+      } else {
+          throw AuthError.unauthorized('You can only view your own postings');
+      }
   }
 
   const query = `
@@ -358,11 +401,11 @@ router.get('/my/:userId', authenticateToken, asyncHandler(async (req, res) => {
     LIMIT ? OFFSET ?
   `;
 
-  const [postings] = await pool.query(query, [userId, parseInt(limit), parseInt(offset)]).catch(err => {
+  const [postings] = await pool.query(query, [profileIdToQuery, parseInt(limit), parseInt(offset)]).catch(err => {
     throw ServerError.database('fetch user postings');
   });
 
-  console.log(`[GET /api/postings/my/:userId] Retrieved ${postings.length} postings for user ${userId}`);
+  console.log(`[GET /api/postings/my/:userId] Retrieved ${postings.length} postings for profile ${profileIdToQuery} (requested user: ${userId})`);
   console.log('[GET /api/postings/my/:userId] Raw postings from DB:', postings.map(p => ({ id: p.id, title: p.title, status: p.status })));
 
   // Log status breakdown
@@ -722,8 +765,14 @@ router.put('/:id', authenticateToken, validateRequest({ body: PostingUpdateSchem
     throw ResourceError.notFound('Posting');
   }
 
-  if (existingPostings[0].author_id !== req.user.id) {
-    throw ValidationError.unauthorized('You are not authorized to update this posting');
+  // Check if the current user (account) owns the profile that created the posting
+  // Postings are linked to profiles (author_id = user_profiles.id), not account IDs
+  const isAuthor = req.session.profiles?.some(p => p.id === existingPostings[0].author_id);
+  if (!isAuthor) {
+    // Fallback: check if the user is an admin (optional, but good practice)
+    if (req.user.role !== 'admin') {
+      throw AuthError.unauthorized('You are not authorized to update this posting');
+    }
   }
 
   // Build update query dynamically
@@ -830,9 +879,15 @@ router.delete('/:id', authenticateToken, asyncHandler(async (req, res) => {
     throw ResourceError.notFound('Posting');
   }
 
-  if (existingPostings[0].author_id !== req.user.id) {
-    console.log('[DELETE /api/postings/:id] Unauthorized - author_id mismatch');
-    throw ValidationError.unauthorized('You are not authorized to delete this posting');
+  // Check if the current user (account) owns the profile that created the posting
+  const isAuthor = req.session.profiles?.some(p => p.id === existingPostings[0].author_id);
+  
+  if (!isAuthor) {
+    // Fallback: check if the user is an admin
+    if (req.user.role !== 'admin') {
+      console.log('[DELETE /api/postings/:id] Unauthorized - author_id mismatch');
+      throw AuthError.unauthorized('You are not authorized to delete this posting');
+    }
   }
 
   // Soft delete: mark as archived instead of hard delete

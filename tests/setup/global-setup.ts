@@ -10,6 +10,7 @@ import { testConfig, testUsers } from './test-data';
 import mysql from 'mysql2/promise';
 import bcrypt from 'bcrypt';
 import dotenv from 'dotenv';
+import { v4 as uuidv4 } from 'uuid';
 
 // Load environment variables
 dotenv.config();
@@ -25,9 +26,6 @@ async function globalSetup(config: FullConfig) {
 
   // Seed test data
   await seedTestData();
-
-  // Skip API validation for now - tests use mocks
-  // await validateAPIEndpoints();
 
   console.log('✅ Global test setup completed successfully');
 }
@@ -94,28 +92,72 @@ async function seedTestData() {
 
     for (const user of testUsers) {
       try {
-        // Check if user already exists
-        const [existing] = await connection.execute(
-          'SELECT id FROM app_users WHERE email = ?',
+        // 1. Ensure Alumni Member Exists
+        // We need a unique alumni member for each test user to link the profile
+        // Construct a dummy alumni email if not present in test data
+        const alumniEmail = user.email.replace('@', '.alumni@'); 
+        
+        const [existingAlumni] = await connection.execute(
+          'SELECT id FROM alumni_members WHERE email = ?',
+          [alumniEmail]
+        );
+
+        let alumniId;
+        if (existingAlumni.length > 0) {
+          alumniId = existingAlumni[0].id;
+        } else {
+          const [result] = await connection.execute(
+            `INSERT INTO alumni_members (first_name, last_name, email, batch, center_name)
+             VALUES (?, ?, ?, '2020', 'Test Center')`,
+            [user.firstName, user.lastName, alumniEmail]
+          );
+          alumniId = result.insertId;
+          console.log(`  ➕ Created alumni member for ${user.email}`);
+        }
+
+        // 2. Check/Create Account
+        const [existingAccount] = await connection.execute(
+          'SELECT id FROM accounts WHERE email = ?',
           [user.email]
         );
 
-        if (existing.length > 0) {
-          console.log(`  ⏭️ User already exists: ${user.email}`);
-          continue;
+        let accountId;
+        if (existingAccount.length > 0) {
+          console.log(`  ⏭️ Account already exists: ${user.email}`);
+          accountId = existingAccount[0].id;
+        } else {
+          // Hash the password
+          const hashedPassword = await bcrypt.hash(user.password, 10);
+          accountId = uuidv4(); // Generate new UUID for account
+
+          // Insert the account
+          await connection.execute(
+            `INSERT INTO accounts (id, email, password_hash, role, status, email_verified, requires_otp, created_at)
+             VALUES (?, ?, ?, ?, 'active', 1, 0, NOW())`,
+            [accountId, user.email, hashedPassword, user.role]
+          );
+          console.log(`  ✅ Created account: ${user.email}`);
         }
 
-        // Hash the password
-        const hashedPassword = await bcrypt.hash(user.password, 10);
-
-        // Insert the user
-        await connection.execute(
-          `INSERT INTO app_users (id, email, password_hash, first_name, last_name, role, is_active, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
-          [user.id, user.email, hashedPassword, user.firstName, user.lastName, user.role, user.isActive ? 1 : 0]
+        // 3. Check/Create User Profile
+        // We check if a profile exists for this account
+        const [existingProfile] = await connection.execute(
+          'SELECT id FROM user_profiles WHERE account_id = ?',
+          [accountId]
         );
 
-        console.log(`  ✅ Created test user: ${user.email}`);
+        if (existingProfile.length === 0) {
+          const profileId = uuidv4();
+          await connection.execute(
+            `INSERT INTO user_profiles (
+               id, account_id, alumni_member_id, relationship, 
+               access_level, status, display_name, visibility, created_at
+             ) VALUES (?, ?, ?, 'parent', 'full', 'active', ?, 'public', NOW())`,
+            [profileId, accountId, alumniId, `${user.firstName} ${user.lastName}`]
+          );
+          console.log(`  ✅ Created profile for: ${user.email}`);
+        }
+
       } catch (error) {
         console.error(`  ❌ Failed to seed user ${user.email}:`, error.message);
       }
@@ -125,8 +167,6 @@ async function seedTestData() {
     console.log('✅ Test data seeding completed');
   } catch (error) {
     console.error('❌ Test data seeding failed:', error);
-    // Don't throw - allow tests to continue even if seeding fails
-    // The database might already have the data
     console.warn('⚠️ Continuing with existing database state...');
   } finally {
     if (pool) {

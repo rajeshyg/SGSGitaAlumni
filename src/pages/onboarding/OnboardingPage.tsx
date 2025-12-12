@@ -82,7 +82,8 @@ export function OnboardingPage() {
       const data = await getProfiles();
       setProfiles(data || []);
     } catch (err: any) {
-      // Profiles might not exist yet - that's fine
+      console.error('[Onboarding] Profile load error:', err);
+      setActionError(`Profile load error: ${err.message || 'Unknown error'}`);
       setProfiles([]);
     } finally {
       setProfilesLoading(false);

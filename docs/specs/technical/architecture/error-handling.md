@@ -1,7 +1,7 @@
 ---
-version: "1.0"
+version: "1.1"
 status: implemented
-last_updated: 2025-11-23
+last_updated: 2025-12-12
 applies_to: all
 enforcement: required
 ---
@@ -181,26 +181,20 @@ try {
 
 ## Frontend Implementation
 
-### Error Flow
+### Error Flow (Unified)
 
-1. **SecureAPIClient** (`/src/lib/security/SecureAPIClient.ts`)
-   - Detects error format in response
-   - Extracts code, message, details
-   - Creates Error with properties: `code`, `status`, `details`, `isStandardError`
+1. **Detection**:
+    *   **SecureAPIClient**: Detects 4xx/5xx API responses.
+    *   **Global Handlers**: `window.onerror` and `onunhandledrejection` catch crashes.
+    *   **Logger**: `logger.error()` calls catch explicit errors.
 
-2. **apiClient** (`/src/lib/api.ts`)
-   - Receives error from SecureAPIClient
-   - Converts to appropriate error class:
-     - `AuthenticationError` for AUTH_* codes and 401/403 status
-     - `APIError` for other errors
+2. **Reporting (Development)**:
+    *   Errors detected by `src/lib/monitoring.ts` are forwarded to the backend via `POST /api/dev/client-log`.
+    *   These errors appear in the server terminal and `logs/errors.log`.
 
-3. **APIService** (`/src/services/APIService.ts`)
-   - Catches errors from apiClient
-   - Re-throws with user-friendly message
-
-4. **UI Components**
-   - Catch errors using try-catch
-   - Display appropriate user message
+3. **Handling**:
+    *   **UI Components**: Catch errors using try-catch and display user messages.
+    *   **SecureAPIClient**: Converts responses to `APIError` objects.
 
 ### Error Handling Utilities
 
@@ -238,6 +232,7 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
+    // This now automatically syncs to backend logs via logger
     logError(error, errorInfo);
   }
 
@@ -250,45 +245,24 @@ class ErrorBoundary extends React.Component {
 }
 ```
 
-### Component Error Handling Example
-
-```typescript
-import { AuthenticationError, APIError } from '@/utils/errorHandling';
-
-async function handleLogin(email: string, password: string) {
-  try {
-    const response = await APIService.login({ email, password });
-    localStorage.setItem('authToken', response.token);
-  } catch (error) {
-    if (error instanceof AuthenticationError) {
-      showErrorAlert('Invalid credentials. Please try again.');
-    } else if (error instanceof APIError) {
-      if (error.code === 'VALIDATION_ERROR') {
-        showErrorAlert(`Validation error: ${error.message}`);
-      } else {
-        showErrorAlert(error.message);
-      }
-    } else {
-      showErrorAlert('An unexpected error occurred.');
-    }
-  }
-}
-```
-
 ## Development vs Production
 
 ### Production
 
-- Error stack traces NOT included in responses
-- Database error details NOT exposed
-- Generic error messages for security
-- Minimal error logging
+- Error stack traces NOT included in responses.
+- Database error details NOT exposed.
+- Generic error messages for security.
+- Errors logged to monitoring service (Sentry/CloudWatch).
+- **Client logs** stay in browser/Sentry (no bridge).
 
 ### Development
 
-- Error stack traces included in 500 errors
-- Database error details included for debugging
-- Detailed console logging for all errors
+- Error stack traces included in 500 errors.
+- Database error details included for debugging.
+- **Unified Logging**:
+    - Client errors forwarded to Backend.
+    - All errors (Client + Server) saved to `logs/errors.log`.
+    - Console shows unified stream.
 
 ```javascript
 const isDev = process.env.NODE_ENV !== 'production';
@@ -318,49 +292,6 @@ All routes have been updated to use standardized error handling:
 | `routes/users.js` | Implemented |
 | `routes/alumni-members.js` | Implemented |
 
-## Testing
-
-### Manual Testing
-
-```bash
-# Test invalid credentials
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"wrong"}'
-# Expected: 401 with AUTH_INVALID_CREDENTIALS
-
-# Test missing field
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com"}'
-# Expected: 400 with VALIDATION_MISSING_FIELD
-```
-
-### Automated Testing
-
-```typescript
-test('returns standardized error on invalid credentials', async () => {
-  const response = await fetch('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email: 'user@example.com', password: 'wrong' })
-  });
-
-  const data = await response.json();
-  expect(data.success).toBe(false);
-  expect(data.error.code).toBe('AUTH_INVALID_CREDENTIALS');
-  expect(response.status).toBe(401);
-});
-```
-
-## Troubleshooting
-
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| Error not caught | Route not wrapped with asyncHandler | Wrap with `asyncHandler((req, res) => {...})` |
-| Handler not registered | Error handlers before routes | Move `app.use(errorHandler)` to end |
-| Frontend not showing message | Error not caught in try-catch | Ensure APIService methods use try-catch |
-| Different formats | Some routes not updated | Check route uses standardized errors |
-
 ## Implementation Files
 
 - Backend Error Class: `/server/errors/ApiError.js`
@@ -368,7 +299,7 @@ test('returns standardized error on invalid credentials', async () => {
 - Frontend Error Utilities: `/src/utils/errorHandling.ts`
 - Frontend API Client: `/src/lib/api.ts`
 - Frontend Secure API Client: `/src/lib/security/SecureAPIClient.ts`
-- Frontend API Service: `/src/services/APIService.ts`
+- Frontend Monitor: `/src/lib/monitoring.ts` (Handles reporting)
 
 ## Related Specifications
 

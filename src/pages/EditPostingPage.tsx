@@ -186,16 +186,16 @@ const EditPostingPage = () => {
         content: formData.content,
         category_id: formData.category_id,
         urgency_level: formData.urgency_level,
-        location: formData.location || null,
+        location: formData.location || undefined,
         location_type: formData.location_type,
-        duration: formData.duration || null,
+        duration: formData.duration || undefined,
         expires_at: formData.expires_at
           ? new Date(formData.expires_at + 'T00:00:00Z').toISOString()
-          : null,
-        contact_name: formData.contact_name || null,
-        contact_phone: formData.contact_phone || null,
-        contact_country: formData.contact_country || null,
-        contact_email: formData.contact_email || null,
+          : undefined,
+        contact_name: formData.contact_name || undefined,
+        contact_phone: formData.contact_phone || undefined,
+        contact_country: formData.contact_country || undefined,
+        contact_email: formData.contact_email || undefined,
         domain_ids
       };
 
