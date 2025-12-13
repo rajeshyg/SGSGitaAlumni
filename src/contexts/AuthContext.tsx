@@ -476,7 +476,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
            if (import.meta.env.DEV) {
              // eslint-disable-next-line no-console
              console.log('[AuthContext] 🔄 Restored login from cached tokens, user:', user.email);
-             console.log('[AuthContext] is_family_account:', user.is_family_account);
            }
 
            console.log('[AuthContext] ✅ Setting authenticated state with user:', user.email);

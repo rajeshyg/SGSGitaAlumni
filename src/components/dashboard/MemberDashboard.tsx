@@ -44,12 +44,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({ userId, user: 
   
   // Show switch profile button for ALL authenticated users
   // This allows them to access the profile management page even if they have 1 profile
-  const isFamilyAccount = Boolean(
-    currentUser?.is_family_account === 1 ||
-    currentUser?.is_family_account === true ||
-    (currentUser?.profileCount ?? 0) > 1 ||
-    currentUser?.profileId // If user has any profile, allow them to manage profiles
-  );
+  // MIGRATED: Removed obsolete is_family_account check. All users can manage profiles.
+  const isFamilyAccount = true;
 
   if (loading) {
     return <DashboardSkeleton />;

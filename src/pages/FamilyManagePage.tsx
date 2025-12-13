@@ -15,11 +15,11 @@ const FamilyManagePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Check if user has a family account
-  const isFamilyAccount = user?.is_family_account === 1 || user?.is_family_account === true;
-  const isParent = user?.family_account_type === 'parent';
+  // Check if user is a parent (using new relationship field)
+  // MIGRATED: Uses relationship field instead of old flags
+  const isParent = user?.relationship === 'parent';
 
-  if (!isFamilyAccount || !isParent) {
+  if (!isParent) {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="container mx-auto max-w-2xl">

@@ -1239,13 +1239,21 @@ router.get('/matched/:userId', asyncHandler(async (req, res) => {
  */
 router.get('/:id/interest-status', authenticateToken, asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const userId = req.user.id;
+  const profileId = req.session?.activeProfileId;
+
+  if (!profileId) {
+    // If no active profile, they can't have liked it as a profile
+    return res.json({
+      success: true,
+      hasExpressedInterest: false
+    });
+  }
 
   // Check if user has liked this posting
   const [existing] = await pool.query(`
     SELECT id FROM POSTING_LIKES
     WHERE posting_id = ? AND user_id = ?
-  `, [id, userId]).catch(err => {
+  `, [id, profileId]).catch(err => {
     throw ServerError.database('fetch posting like status');
   });
 
@@ -1262,7 +1270,11 @@ router.get('/:id/interest-status', authenticateToken, asyncHandler(async (req, r
  */
 router.post('/:id/like', authenticateToken, asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const userId = req.user.id;
+  const profileId = req.session?.activeProfileId;
+
+  if (!profileId) {
+    throw ValidationError.custom('No active profile selected. Please select a profile first.');
+  }
 
   // Check if posting exists
   const [postings] = await pool.query('SELECT id FROM POSTINGS WHERE id = ?', [id]).catch(err => {
@@ -1277,7 +1289,7 @@ router.post('/:id/like', authenticateToken, asyncHandler(async (req, res) => {
   const [existing] = await pool.query(`
     SELECT id FROM POSTING_LIKES
     WHERE posting_id = ? AND user_id = ?
-  `, [id, userId]).catch(err => {
+  `, [id, profileId]).catch(err => {
     throw ServerError.database('fetch posting like');
   });
 
@@ -1286,7 +1298,7 @@ router.post('/:id/like', authenticateToken, asyncHandler(async (req, res) => {
     await pool.query(`
       DELETE FROM POSTING_LIKES
       WHERE posting_id = ? AND user_id = ?
-    `, [id, userId]).catch(err => {
+    `, [id, profileId]).catch(err => {
       throw ServerError.database('delete posting like');
     });
 
@@ -1304,7 +1316,7 @@ router.post('/:id/like', authenticateToken, asyncHandler(async (req, res) => {
     await pool.query(`
       INSERT INTO POSTING_LIKES (id, posting_id, user_id)
       VALUES (?, ?, ?)
-    `, [likeId, id, userId]).catch(err => {
+    `, [likeId, id, profileId]).catch(err => {
       throw ServerError.database('create posting like');
     });
 
@@ -1342,7 +1354,11 @@ router.post('/:id/like', authenticateToken, asyncHandler(async (req, res) => {
 router.post('/:id/comment', authenticateToken, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { comment } = req.body;
-  const userId = req.user.id;
+  const profileId = req.session?.activeProfileId;
+
+  if (!profileId) {
+    throw ValidationError.custom('No active profile selected. Please select a profile first.');
+  }
 
   if (!comment || comment.trim().length === 0) {
     throw ValidationError.missingField('comment');
@@ -1361,7 +1377,7 @@ router.post('/:id/comment', authenticateToken, asyncHandler(async (req, res) => 
   await pool.query(`
     INSERT INTO POSTING_COMMENTS (id, posting_id, user_id, comment_text)
     VALUES (?, ?, ?, ?)
-  `, [commentId, id, userId, comment]).catch(err => {
+  `, [commentId, id, profileId, comment]).catch(err => {
     throw ServerError.database('create posting comment');
   });
 
@@ -1374,14 +1390,13 @@ router.post('/:id/comment', authenticateToken, asyncHandler(async (req, res) => 
     throw ServerError.database('fetch comment count');
   });
 
-  // Get user info for the response (via accounts + user_profiles + alumni_members)
+  // Get user info for the response
   const [users] = await pool.query(`
     SELECT am.first_name, am.last_name
-    FROM accounts a
-    LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+    FROM user_profiles up
     LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
-    WHERE a.id = ?
-  `, [userId]).catch(err => {
+    WHERE up.id = ?
+  `, [profileId]).catch(err => {
     throw ServerError.database('fetch user info');
   });
 
@@ -1390,7 +1405,7 @@ router.post('/:id/comment', authenticateToken, asyncHandler(async (req, res) => 
     comment: {
       id: commentId,
       posting_id: id,
-      user_id: userId,
+      user_id: profileId,
       user_name: users.length > 0 ? `${users[0].first_name} ${users[0].last_name}` : 'Anonymous',
       comment_text: comment,
       created_at: new Date()
@@ -1417,8 +1432,7 @@ router.get('/:id/comments', asyncHandler(async (req, res) => {
       am.first_name,
       am.last_name
     FROM POSTING_COMMENTS pc
-    LEFT JOIN accounts a ON pc.user_id = a.id
-    LEFT JOIN user_profiles up ON up.account_id = a.id AND up.relationship = 'parent'
+    LEFT JOIN user_profiles up ON pc.user_id = up.id
     LEFT JOIN alumni_members am ON up.alumni_member_id = am.id
     WHERE pc.posting_id = ?
     ORDER BY pc.created_at DESC

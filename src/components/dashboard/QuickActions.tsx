@@ -76,7 +76,8 @@ const getStaticActions = (isFamilyAccount: boolean, userRole?: string) => {
 
 export const QuickActions: React.FC<QuickActionsProps> = () => {
   const { user } = useAuth();
-  const isFamilyAccount = user?.is_family_account === 1 || user?.is_family_account === true;
+  // Check if user is a parent (using new relationship field)
+  const isFamilyAccount = user?.relationship === 'parent';
   const staticActions = getStaticActions(isFamilyAccount, user?.role);
 
   return (

@@ -90,9 +90,10 @@ const PreferencesPage: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState('domains');
 
-  // Check if user has family account
-  const isFamilyAccount = user?.is_family_account === 1 || user?.is_family_account === true;
-  const isParent = user?.family_account_type === 'parent';
+  // Check if user has family account (is a parent)
+  // MIGRATED: Uses relationship field from user_profiles instead of old flags
+  const isFamilyAccount = user?.relationship === 'parent';
+  const isParent = isFamilyAccount;
 
   // Refs for tab components
   const notificationsTabRef = React.useRef<{ save: () => Promise<void> }>(null);

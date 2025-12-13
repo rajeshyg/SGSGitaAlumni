@@ -33,27 +33,27 @@ export function LoginPage() {
     console.log('[LoginPage] 🔍 Current location:', location.pathname);
 
     if (isAuthenticated && user) {
-      console.log('[LoginPage] ✅ User authenticated, checking family account status...');
+      console.log('[LoginPage] ✅ User authenticated, checking profile status...');
       console.log('[LoginPage] User object:', user);
-      console.log('[LoginPage] is_family_account:', user.is_family_account);
-      console.log('[LoginPage] Type:', typeof user.is_family_account);
-
+      
+      // Check if user has an active profile selected
+      // API Service defines this as activeProfileId, but we check profileId as fallback
+      const hasActiveProfile = !!(user.activeProfileId || user.profileId);
       const userRole = user.role?.toLowerCase();
-      const isFamilyAccount = user.is_family_account === 1 || user.is_family_account === true;
 
-      console.log('[LoginPage] isFamilyAccount check:', isFamilyAccount);
+      console.log('[LoginPage] Has active profile:', hasActiveProfile);
 
-      // For family accounts, redirect to profile selection page
-      if (isFamilyAccount) {
-        console.log('🔄 LoginPage: Family account detected, redirecting to profile selection');
-        navigate('/profile-selection', { replace: true });
+      // If no profile is selected, redirect to onboarding for profile selection
+      if (!hasActiveProfile) {
+        console.log('🔄 LoginPage: No active profile, redirecting to onboarding');
+        navigate('/onboarding', { replace: true });
         return;
       }
 
-      // For non-family accounts, use normal redirect logic
+      // For users with active profiles, use normal redirect logic
       const defaultRedirect = userRole === 'admin' ? '/admin' : '/dashboard';
       const from = location.state?.from?.pathname || defaultRedirect;
-      console.log('🔄 LoginPage: Non-family account, redirecting to:', from);
+      console.log('🔄 LoginPage: Active profile found, redirecting to:', from);
       navigate(from, { replace: true });
     } else if (!isLoading) {
       console.log('[LoginPage] ❌ User not authenticated or still loading');

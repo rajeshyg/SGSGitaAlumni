@@ -66,9 +66,9 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
   // Redirect if already authenticated (e.g., user refreshes page after login)
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log('[OTPVerificationPage] User already authenticated, checking family account...');
-      const isFamilyAccount = user.is_family_account === 1 || user.is_family_account === true;
-      const redirectTo = isFamilyAccount ? '/onboarding' : '/dashboard';
+      console.log('[OTPVerificationPage] User already authenticated, checking profile status...');
+      const hasActiveProfile = !!(user.activeProfileId || user.profileId);
+      const redirectTo = hasActiveProfile ? '/dashboard' : '/onboarding';
       console.log('[OTPVerificationPage] Redirecting to:', redirectTo);
       navigate(redirectTo, { replace: true });
     }
@@ -231,7 +231,7 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
             // If we have user credentials from state, use them for automatic login
             if (state?.user) {
               // Create session for the newly registered user using OTP-verified login
-              const loginResult = await login({
+              await login({
                 email: email,
                 password: '', // OTP verification serves as authentication
                 otpVerified: true
@@ -270,16 +270,14 @@ export const OTPVerificationPage: React.FC<OTPVerificationPageProps> = () => {
               otpVerified: true
             });
 
-            console.log('[OTPVerificationPage] ✅ Login successful, checking family account status...');
+            console.log('[OTPVerificationPage] ✅ Login successful, checking profile status...');
             console.log('[OTPVerificationPage] Login result user:', loginResult.user);
-            console.log('[OTPVerificationPage] is_family_account:', loginResult.user.is_family_account);
-            console.log('[OTPVerificationPage] Type:', typeof loginResult.user.is_family_account);
-
-            // Check if this is a family account and redirect accordingly
-            const isFamilyAccount = loginResult.user.is_family_account === 1 || loginResult.user.is_family_account === true;
-            console.log('[OTPVerificationPage] isFamilyAccount check result:', isFamilyAccount);
             
-            const redirectTo = isFamilyAccount ? '/onboarding' : (state?.redirectTo || '/dashboard');
+            // Check if user has an active profile
+            const hasActiveProfile = !!(loginResult.user.activeProfileId || loginResult.user.profileId);
+            console.log('[OTPVerificationPage] Has active profile:', hasActiveProfile);
+            
+            const redirectTo = !hasActiveProfile ? '/onboarding' : (state?.redirectTo || '/dashboard');
             console.log('[OTPVerificationPage] 🎯 Redirecting to:', redirectTo);
 
             navigate(redirectTo, {
