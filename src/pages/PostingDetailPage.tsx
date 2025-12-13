@@ -122,7 +122,8 @@ const PostingDetailPage = () => {
       
       try {
         const existingResponse = await APIService.get(
-          `/api/conversations/direct/${posting.id}/${posting.author_id}`
+          `/api/conversations/direct/${posting.id}/${posting.author_id}`,
+          { suppressErrors: [404] }
         );
         conversationId = existingResponse.data?.id;
       } catch (err: any) {
@@ -192,9 +193,14 @@ const PostingDetailPage = () => {
         if (existingGroup && existingGroup.id) {
           conversationId = existingGroup.id;
           // Add current user to existing group
-          await APIService.postGeneric(`/api/conversations/${existingGroup.id}/add-participant`, {
-            userId: user.id
-          });
+          if (user.profileId) {
+            await APIService.postGeneric(`/api/conversations/${existingGroup.id}/add-participant`, {
+              userId: user.profileId
+            });
+          } else {
+             console.error("No active profile ID found for user");
+             throw new Error("You must have an active profile to join a group.");
+          }
         }
       } catch (err: any) {
         // If 404, group doesn't exist yet - we'll create it below
@@ -209,11 +215,15 @@ const PostingDetailPage = () => {
 
       // If no existing group found, create a new one
       if (!conversationId) {
+        if (!user.profileId) {
+            console.error("No active profile ID found for user");
+            throw new Error("You must have an active profile to join a group.");
+        }
         const response = await APIService.postGeneric('/api/conversations', {
           type: 'GROUP',
           postingId: posting.id,
           name: posting.title,
-          participantIds: [posting.author_id, user.id]
+          participantIds: [posting.author_id, user.profileId]
         });
         conversationId = response.data?.id || response.id;
       }

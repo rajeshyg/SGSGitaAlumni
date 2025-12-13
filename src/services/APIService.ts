@@ -1333,7 +1333,8 @@ export const APIService = {
       return response as T;
     } catch (error: any) {
       // Check if this error status should be suppressed
-      const shouldSuppress = config?.suppressErrors?.includes(error.status || error.response?.status);
+      const status = error.status || error.response?.status;
+      const shouldSuppress = config?.suppressErrors?.some(s => Number(s) === Number(status));
       
       if (!shouldSuppress) {
         logger.error(`GET request failed for ${endpoint}:`, error);
